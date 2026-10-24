@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\NavigationGroup;
 use App\Models\User;
 use App\Support\LearningInsights;
 use BackedEnum;
@@ -18,15 +19,23 @@ class MyLearningProgress extends Page
 {
     protected string $view = 'filament.pages.my-learning-progress';
 
-    protected static ?string $title = 'Mein Lernstand';
-
     protected static ?string $slug = 'mein-lernstand';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Lernen';
+    protected static string|UnitEnum|null $navigationGroup = NavigationGroup::Lernen;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedArrowTrendingUp;
 
     protected static ?int $navigationSort = 2;
+
+    public static function getNavigationLabel(): string
+    {
+        return __('Mein Lernstand');
+    }
+
+    public function getTitle(): string
+    {
+        return __('Mein Lernstand');
+    }
 
     public static function canAccess(): bool
     {

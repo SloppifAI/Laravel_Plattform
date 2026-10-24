@@ -88,9 +88,9 @@ class PracticeTaskCreationTest extends TestCase
 
         // Mia and Ben are below the threshold in one competency, nobody in the other one.
         // One button, and it names its competency for screen readers.
-        $this->assertSame(1, substr_count($page->html(), 'aria-label="Förderaufgabe erstellen zu '));
-        $page->assertSeeHtml('aria-label="Förderaufgabe erstellen zu Versuche auswerten"');
-        $page->assertSee('Versuche auswerten')->assertSee('2 Schüler:innen unter 50 Punkten');
+        $this->assertSame(1, substr_count($page->html(), 'aria-label="Create practice task for '));
+        $page->assertSeeHtml('aria-label="Create practice task for Versuche auswerten"');
+        $page->assertSee('Versuche auswerten')->assertSee('2 students below 50 points');
 
         $cleanClass = SchoolClass::factory()->for($this->teacher, 'teacher')->create(['name' => '8a']);
         $clean = User::factory()->student($cleanClass)->create();
@@ -98,8 +98,8 @@ class PracticeTaskCreationTest extends TestCase
 
         Livewire::actingAs($this->teacher)->test(LearningProgress::class)
             ->set('schoolClassId', $cleanClass->id)
-            ->assertSee('Derzeit liegt bei niemandem in dieser Klasse eine Kompetenz unter der Förderschwelle.')
-            ->assertDontSee('Förderaufgabe erstellen');
+            ->assertSee('Currently nobody in this class has a competency below the support threshold.')
+            ->assertDontSee('Create practice task');
     }
 
     public function test_the_action_refuses_a_competency_without_support_needs_in_the_class(): void
@@ -128,7 +128,7 @@ class PracticeTaskCreationTest extends TestCase
         $lesson = Lesson::query()->where('practice_competency_id', $this->competency->id)->sole();
 
         $page->assertRedirect(LessonResource::getUrl('edit', ['record' => $lesson]))
-            ->assertNotified('Förderaufgabe als Entwurf angelegt');
+            ->assertNotified('Practice task saved as a draft');
 
         $this->assertTrue($lesson->isPracticeTask());
         $this->assertSame('Förderaufgabe: Versuche auswerten', $lesson->topic);
@@ -148,6 +148,7 @@ class PracticeTaskCreationTest extends TestCase
         $this->assertLessThanOrEqual(4, $questions->count());
         $this->assertSame(range(1, $questions->count()), $questions->pluck('position')->all());
         $this->assertSame([$this->competency->id], $questions->pluck('competency_id')->unique()->values()->all());
+        $this->assertTrue($questions->every(fn (Question $question): bool => $question->ai_drafted), 'A new AI draft may replace its own questions later.');
         $this->assertSame(1, $questions->where('type', QuestionType::Application)->count());
         // The gap the AI named in Mia's homework is practised first.
         $this->assertStringContainsString('„Chlorophyll“', $questions->first()->prompt);
@@ -166,7 +167,7 @@ class PracticeTaskCreationTest extends TestCase
             ], arguments: ['competency' => $this->competency->id])
             ->assertHasNoActionErrors()
             ->assertNoRedirect()
-            ->assertNotified('Förderaufgabe freigegeben');
+            ->assertNotified('Practice task released');
 
         $lesson = Lesson::query()->where('practice_competency_id', $this->competency->id)->sole();
 
@@ -178,7 +179,7 @@ class PracticeTaskCreationTest extends TestCase
         $this->assertSame(0, Lesson::assignedTo($this->lena)->where('practice_competency_id', $this->competency->id)->count());
 
         Livewire::actingAs($this->teacher)->test(LearningProgress::class)
-            ->assertSeeInOrder(['Förderaufgabe vom '.$lesson->held_on->format('d.m.'), '0 von 1 abgegeben']);
+            ->assertSeeInOrder(['Practice task from '.$lesson->held_on->format('d.m.'), '0 of 1 submitted']);
     }
 
     public function test_a_due_date_in_the_past_is_rejected_for_direct_distribution(): void
@@ -282,10 +283,10 @@ class PracticeTaskCreationTest extends TestCase
         $this->assertSame($questionCount, Question::query()->count());
 
         $notification = $this->sentNotifications()->sole();
-        $this->assertSame('KI-Entwurf fehlgeschlagen', $notification['title']);
+        $this->assertSame('AI draft failed', $notification['title']);
         $this->assertSame('danger', $notification['status']);
-        $this->assertStringContainsString('Es wurde nichts angelegt', $notification['body']);
-        $this->assertStringContainsString('Demo-Modus', $notification['body']);
+        $this->assertStringContainsString('Nothing was created', $notification['body']);
+        $this->assertStringContainsString('demo mode', $notification['body']);
     }
 
     public function test_a_failing_ai_request_creates_nothing_and_does_not_blame_the_demo_mode(): void
@@ -302,8 +303,8 @@ class PracticeTaskCreationTest extends TestCase
         $this->assertSame(0, Lesson::query()->whereNotNull('practice_competency_id')->count());
 
         $notification = $this->sentNotifications()->sole();
-        $this->assertSame('KI-Entwurf fehlgeschlagen', $notification['title']);
-        $this->assertStringNotContainsString('Demo-Modus', $notification['body']);
+        $this->assertSame('AI draft failed', $notification['title']);
+        $this->assertStringNotContainsString('demo mode', $notification['body']);
     }
 
     public function test_with_the_ai_enabled_the_draft_is_stored_and_no_student_names_leave_the_platform(): void
@@ -361,10 +362,10 @@ class PracticeTaskCreationTest extends TestCase
 
         $page = Livewire::actingAs($this->teacher)->test(LearningProgress::class);
 
-        $page->assertSeeInOrder(['Förderaufgabe vom 22.10., 16:40 Uhr', 'Wartet auf Freigabe', 'Förderaufgabe vom 22.10., 14:05 Uhr', 'Wartet auf Freigabe', 'Förderaufgabe vom 20.10., 08:30 Uhr', '1 von 2 abgegeben'])
+        $page->assertSeeInOrder(['Practice task from 22.10., 16:40', 'Waiting for release', 'Practice task from 22.10., 14:05', 'Waiting for release', 'Practice task from 20.10., 08:30', '1 of 2 submitted'])
             ->assertSee(LessonResource::getUrl('edit', ['record' => $published]), false)
             ->assertSee(LessonResource::getUrl('edit', ['record' => $ownDraft]), false)
-            ->assertDontSee('Förderaufgabe vom 23.10.')
+            ->assertDontSee('Practice task from 23.10.')
             ->assertDontSee(LessonResource::getUrl('edit', ['record' => $colleaguesDraft]), false)
             ->assertDontSee(LessonResource::getUrl('edit', ['record' => $ordinaryHomework]), false);
     }
@@ -486,10 +487,10 @@ class PracticeTaskCreationTest extends TestCase
             ->create(['practice_competency_id' => $this->competency->id])->students()->sync([$this->ben->id]);
 
         $page = Livewire::actingAs($this->teacher)->test(LearningProgress::class)
-            ->assertSeeHtml('aria-label="Weitere Förderaufgabe erstellen zu Versuche auswerten"')
+            ->assertSeeHtml('aria-label="Create another practice task for Versuche auswerten"')
             ->mountAction('createPracticeTask', ['competency' => $this->competency->id])
             ->assertSchemaComponentExists('students', checkComponentUsing: fn (CheckboxList $field): bool => $field->getDescriptions() === [
-                $this->mia->id => 'hat bereits eine offene Förderaufgabe zu dieser Kompetenz',
+                $this->mia->id => 'already has an open practice task for this competency',
             ]);
 
         $this->assertEquals([$this->ben->id], $page->instance()->mountedActions[0]['data']['students']);
@@ -510,25 +511,25 @@ class PracticeTaskCreationTest extends TestCase
 
         Livewire::actingAs($this->teacher)->test(LearningProgress::class)
             ->mountAction('createPracticeTask', $arguments)
-            ->assertSchemaComponentExists('distribute', checkComponentUsing: fn (Toggle $toggle): bool => str_contains($toggle->toHtml(), 'besser erst als Entwurf prüfen'));
+            ->assertSchemaComponentExists('distribute', checkComponentUsing: fn (Toggle $toggle): bool => str_contains($toggle->toHtml(), 'better to check them as a draft first'));
 
         Livewire::actingAs($this->teacher)->test(LearningProgress::class)
             ->callAction('createPracticeTask', data: ['students' => [$this->mia->id], 'distribute' => true, 'due_on' => today()->addWeek()->toDateString()], arguments: $arguments);
         $distributed = $this->sentNotifications()->sole();
-        $this->assertSame('Förderaufgabe freigegeben', $distributed['title']);
-        $this->assertStringContainsString('Demo-Modus', $distributed['body']);
-        $this->assertStringNotContainsString('bitte prüfe', $distributed['body']);
+        $this->assertSame('Practice task released', $distributed['title']);
+        $this->assertStringContainsString('Demo mode', $distributed['body']);
+        $this->assertStringNotContainsString('please check', $distributed['body']);
 
         Livewire::actingAs($this->teacher)->test(LearningProgress::class)
             ->callAction('createPracticeTask', data: ['students' => [$this->ben->id], 'distribute' => false], arguments: $arguments);
-        $this->assertStringContainsString('bitte prüfe und passe sie an', $this->sentNotifications()->sole()['body']);
+        $this->assertStringContainsString('please check and adjust them', $this->sentNotifications()->sole()['body']);
 
         $this->preventRealAiCalls();
         $this->enableAiFor($this->teacher->school);
 
         Livewire::actingAs($this->teacher)->test(LearningProgress::class)
             ->mountAction('createPracticeTask', $arguments)
-            ->assertSchemaComponentExists('distribute', checkComponentUsing: fn (Toggle $toggle): bool => str_contains($toggle->toHtml(), 'Aus: Du prüfst') && ! str_contains($toggle->toHtml(), 'Demo-Modus'));
+            ->assertSchemaComponentExists('distribute', checkComponentUsing: fn (Toggle $toggle): bool => str_contains($toggle->toHtml(), 'Off: You check') && ! str_contains($toggle->toHtml(), 'demo mode'));
     }
 
     public function test_the_class_average_table_lists_ordinary_homework_only(): void

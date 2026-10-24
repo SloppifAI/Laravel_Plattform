@@ -17,6 +17,7 @@ use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Notifications\DatabaseNotification;
+use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
@@ -24,6 +25,9 @@ use Illuminate\Support\Facades\Gate;
  * The bell of the platform: small, typed helpers that put a Filament database notification into the notifications
  * table of exactly the people concerned and of nobody from another school. Texts never name a person; teachers get
  * a count per lesson instead ("3 neue Abgaben"), so a class handing in does not flood the bell.
+ *
+ * The texts are stored when they are sent, so each one is built in the language of its recipient (send() runs the
+ * builder under that locale): whoever triggers the notification does not decide what the other person reads.
  *
  * Delivery is immediate (notifyNow): the production container runs no queue worker, which a queued notification needs.
  * Every helper returns the number of notifications that were put into a bell.
@@ -43,8 +47,6 @@ final class Notify
         }
 
         $url = WorkOnHomework::getUrl(['lesson' => $lesson], isAbsolute: false);
-        $due = $lesson->due_on ? 'Abgabe bis '.$lesson->due_on->format('d.m.Y').'.' : null;
-        $title = $lesson->isPracticeTask() ? "Neue Förderaufgabe: „{$lesson->topic}“" : "Neue Hausaufgabe: „{$lesson->topic}“";
 
         $recipients = $lesson->students()
             ->whereKey(collect($students)->map(fn (User $student): mixed => $student->getKey())->all())
@@ -53,7 +55,14 @@ final class Notify
             ->get();
 
         foreach ($recipients as $student) {
-            self::send($student, self::make($title, $due, $url, Heroicon::OutlinedBookOpen));
+            self::send($student, fn (): Notification => self::make(
+                $lesson->isPracticeTask()
+                    ? __('Neue Förderaufgabe: „:topic“', ['topic' => $lesson->topic])
+                    : __('Neue Hausaufgabe: „:topic“', ['topic' => $lesson->topic]),
+                $lesson->due_on ? __('Abgabe bis :date.', ['date' => $lesson->due_on->format('d.m.Y')]) : null,
+                $url,
+                Heroicon::OutlinedBookOpen,
+            ));
         }
 
         return $recipients->count();
@@ -67,7 +76,7 @@ final class Notify
         $lesson = $submission->lesson;
 
         return self::sendCountedToTeacher($lesson, 'submission', fn (int $count): Notification => self::make(
-            $count === 1 ? "Neue Abgabe zu „{$lesson->topic}“" : "{$count} neue Abgaben zu „{$lesson->topic}“",
+            trans_choice('Neue Abgabe zu „:topic“|:count neue Abgaben zu „:topic“', $count, ['topic' => $lesson->topic]),
             self::lessonLabel($lesson),
             LessonResource::getUrl('edit', ['record' => $lesson], isAbsolute: false),
             Heroicon::OutlinedClipboardDocumentCheck,
@@ -87,7 +96,7 @@ final class Notify
         }
 
         return self::sendCountedToTeacher($lesson, 'question', fn (int $count): Notification => self::make(
-            $count === 1 ? "Neue Frage zu „{$lesson->topic}“" : "{$count} neue Fragen zu „{$lesson->topic}“",
+            trans_choice('Neue Frage zu „:topic“|:count neue Fragen zu „:topic“', $count, ['topic' => $lesson->topic]),
             self::lessonLabel($lesson),
             class_exists(QuestionInbox::class)
                 ? QuestionInbox::getUrl(isAbsolute: false)
@@ -108,8 +117,8 @@ final class Notify
             return 0;
         }
 
-        self::send($student, self::make(
-            "Deine Frage zu „{$lesson->topic}“ wurde beantwortet",
+        self::send($student, fn (): Notification => self::make(
+            __('Deine Frage zu „:topic“ wurde beantwortet', ['topic' => $lesson->topic]),
             self::lessonLabel($lesson),
             class_exists(MyQuestions::class) ? MyQuestions::getUrl(isAbsolute: false) : MyHomework::getUrl(isAbsolute: false),
             Heroicon::OutlinedChatBubbleLeftEllipsis,
@@ -143,7 +152,7 @@ final class Notify
             $count = $previous->sum(fn (DatabaseNotification $entry): int => $entry->data['viewData']['count']) + 1;
             $previous->each->delete();
 
-            self::send($teacher, $build($count)->viewData(['kind' => $kind, 'lesson_id' => $lesson->getKey(), 'count' => $count]));
+            self::send($teacher, fn (): Notification => $build($count)->viewData(['kind' => $kind, 'lesson_id' => $lesson->getKey(), 'count' => $count]));
         });
 
         return 1;
@@ -156,12 +165,25 @@ final class Notify
             ->body($body)
             ->icon($icon)
             ->iconColor('primary')
-            ->actions([Action::make('open')->label('Öffnen')->button()->url($url)->markAsRead()]);
+            ->actions([Action::make('open')->label(__('Öffnen'))->button()->url($url)->markAsRead()]);
     }
 
-    private static function send(User $recipient, Notification $notification): void
+    /**
+     * Builds the notification under the recipient's locale (their own choice, else the platform default) and delivers
+     * it. Pass a closure so every text of the notification is translated for the recipient, not for the requester.
+     *
+     * @param  Closure(): Notification  $build
+     */
+    private static function send(User $recipient, Closure $build): void
     {
-        $recipient->notifyNow($notification->toDatabase());
+        $previousLocale = App::getLocale();
+        App::setLocale($recipient->preferredLocale() ?? config('lernplattform.locale.default'));
+
+        try {
+            $recipient->notifyNow($build()->toDatabase());
+        } finally {
+            App::setLocale($previousLocale);
+        }
     }
 
     private static function belongsToSchoolOf(?User $user, Lesson $lesson): bool

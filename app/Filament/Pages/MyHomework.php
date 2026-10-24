@@ -31,15 +31,26 @@ class MyHomework extends Page implements HasTable
 
     protected static ?string $slug = 'hausaufgaben';
 
-    protected static ?string $title = 'Meine Hausaufgaben';
-
     protected static string|UnitEnum|null $navigationGroup = NavigationGroup::Lernen;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedClipboardDocumentList;
 
     protected static ?int $navigationSort = 1;
 
-    protected static string|Htmlable|null $navigationBadgeTooltip = 'Noch nicht abgegeben';
+    public static function getNavigationLabel(): string
+    {
+        return __('Meine Hausaufgaben');
+    }
+
+    public function getTitle(): string
+    {
+        return __('Meine Hausaufgaben');
+    }
+
+    public static function getNavigationBadgeTooltip(): string|Htmlable|null
+    {
+        return __('Noch nicht abgegeben');
+    }
 
     public static function canAccess(): bool
     {
@@ -81,7 +92,7 @@ class MyHomework extends Page implements HasTable
             ->defaultSort('held_on', 'desc')
             ->columns([
                 TextColumn::make('topic')
-                    ->label('Thema')
+                    ->label(__('Thema'))
                     ->description(fn (Lesson $record): string => $record->subject, position: 'above')
                     // The date column below is hidden on a phone, so the stacked cards carry the badge under the topic instead.
                     ->description(fn (Lesson $record) => $record->isPracticeTask() ? view('filament.resources.lessons.practice-badge', ['class' => 'md:hidden']) : null, position: 'below')
@@ -89,46 +100,52 @@ class MyHomework extends Page implements HasTable
                     ->wrap(),
                 // A Förderaufgabe was not held as a lesson, so it shows its kind instead of a date.
                 TextColumn::make('held_on')
-                    ->label('Stunde vom')
-                    ->formatStateUsing(fn (Lesson $record): string => $record->isPracticeTask() ? 'Förderaufgabe' : $record->held_on->format('d.m.Y'))
+                    ->label(__('Stunde vom'))
+                    ->formatStateUsing(fn (Lesson $record): string => $record->isPracticeTask() ? __('Förderaufgabe') : $record->held_on->format('d.m.Y'))
                     ->badge(fn (Lesson $record): bool => $record->isPracticeTask())
                     ->icon(fn (Lesson $record): ?Heroicon => $record->isPracticeTask() ? Heroicon::OutlinedLifebuoy : null)
                     ->sortable()
                     ->visibleFrom('md'),
                 // Status, understanding and due date share one column so the table fits a 375px phone screen.
                 TextColumn::make('status')
-                    ->label('Status')
+                    ->label(__('Status'))
                     ->state(function (Lesson $record): array {
                         $score = $record->submissions->first()?->understanding_score;
 
                         return array_filter([
                             match (true) {
-                                $record->submissions->isNotEmpty() => 'Abgegeben',
-                                $record->due_on?->isBefore(today()) ?? false => 'Überfällig',
-                                default => 'Offen',
+                                $record->submissions->isNotEmpty() => 'submitted',
+                                $record->due_on?->isBefore(today()) ?? false => 'overdue',
+                                default => 'open',
                             },
                             $score === null ? null : UnderstandingLevel::fromScore($score),
                         ]);
                     })
                     ->badge()
+                    ->formatStateUsing(fn (string|UnderstandingLevel $state): string => match ($state) {
+                        'submitted' => __('Abgegeben'),
+                        'overdue' => __('Überfällig'),
+                        'open' => __('Offen'),
+                        default => $state->getLabel(),
+                    })
                     ->color(fn (string|UnderstandingLevel $state): string => match ($state) {
-                        'Abgegeben' => 'success',
-                        'Überfällig' => 'danger',
-                        'Offen' => 'info',
+                        'submitted' => 'success',
+                        'overdue' => 'danger',
+                        'open' => 'info',
                         default => $state->getColor(),
                     })
                     ->icon(fn (string|UnderstandingLevel $state): Heroicon => match ($state) {
-                        'Abgegeben' => Heroicon::OutlinedCheck,
-                        'Überfällig' => Heroicon::OutlinedExclamationTriangle,
-                        'Offen' => Heroicon::OutlinedPencil,
+                        'submitted' => Heroicon::OutlinedCheck,
+                        'overdue' => Heroicon::OutlinedExclamationTriangle,
+                        'open' => Heroicon::OutlinedPencil,
                         default => $state->getIcon(),
                     })
-                    ->description(fn (Lesson $record): ?string => $record->due_on ? 'Abgabe bis '.$record->due_on->format('d.m.Y') : null),
+                    ->description(fn (Lesson $record): ?string => $record->due_on ? __('Abgabe bis :date', ['date' => $record->due_on->format('d.m.Y')]) : null),
             ])
             ->recordUrl(fn (Lesson $record): string => WorkOnHomework::getUrl(['lesson' => $record]))
             ->emptyStateIcon(Heroicon::OutlinedFaceSmile)
-            ->emptyStateHeading('Gerade hast du keine Hausaufgaben')
-            ->emptyStateDescription('Sobald deine Lehrkraft dir etwas aufgibt, findest du es hier. Genieß die freie Zeit!');
+            ->emptyStateHeading(__('Gerade hast du keine Hausaufgaben'))
+            ->emptyStateDescription(__('Sobald deine Lehrkraft dir etwas aufgibt, findest du es hier. Genieß die freie Zeit!'));
     }
 
     private static function student(): ?User

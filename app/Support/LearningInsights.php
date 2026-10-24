@@ -257,7 +257,7 @@ class LearningInsights
         $level = UnderstandingLevel::fromScore($score);
 
         return match ($level) {
-            UnderstandingLevel::NeedsSupport => ['label' => 'Noch üben', 'color' => 'warning', 'icon' => Heroicon::OutlinedLightBulb],
+            UnderstandingLevel::NeedsSupport => ['label' => __('Noch üben'), 'color' => 'warning', 'icon' => Heroicon::OutlinedLightBulb],
             default => ['label' => $level->getLabel(), 'color' => $level->getColor(), 'icon' => $level->getIcon()],
         };
     }

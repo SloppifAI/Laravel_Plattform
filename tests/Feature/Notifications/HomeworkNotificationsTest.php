@@ -37,8 +37,8 @@ class HomeworkNotificationsTest extends TestCase
         $this->assertCount(0, $lesson->teacher->notifications);
 
         $data = $delegated->notifications->first()->data;
-        $this->assertSame('Neue Hausaufgabe: „Fotosynthese“', $data['title']);
-        $this->assertSame('Abgabe bis 05.11.2026.', $data['body']);
+        $this->assertSame('New homework: “Fotosynthese”', $data['title']);
+        $this->assertSame('Due by 05.11.2026.', $data['body']);
         $this->assertSame(WorkOnHomework::getUrl(['lesson' => $lesson], isAbsolute: false), $data['actions'][0]['url']);
         $this->assertStringStartsWith('/', $data['actions'][0]['url']);
     }
@@ -56,7 +56,7 @@ class HomeworkNotificationsTest extends TestCase
 
         $this->assertSame(1, Notify::homeworkReleased($practice, [$student]));
         $this->assertSame(0, Notify::homeworkReleased($draft, [$student]));
-        $this->assertSame('Neue Förderaufgabe: „Brüche“', $student->notifications->sole()->data['title']);
+        $this->assertSame('New practice task: “Brüche”', $student->notifications->sole()->data['title']);
     }
 
     public function test_submission_notifies_only_the_lessons_teacher_without_the_students_name(): void
@@ -72,7 +72,7 @@ class HomeworkNotificationsTest extends TestCase
         $this->assertCount(0, $student->notifications);
         $this->assertCount(0, $otherTeacher->notifications);
         $notification = $lesson->teacher->notifications->sole();
-        $this->assertSame('Neue Abgabe zu „Fotosynthese“', $notification->data['title']);
+        $this->assertSame('New submission for “Fotosynthese”', $notification->data['title']);
         $this->assertSame(LessonResource::getUrl('edit', ['record' => $lesson], isAbsolute: false), $notification->data['actions'][0]['url']);
         $this->assertStringNotContainsString('Hoffmann', json_encode($notification->data));
     }
@@ -90,13 +90,13 @@ class HomeworkNotificationsTest extends TestCase
 
         $titles = $lesson->teacher->unreadNotifications->pluck('data.title');
         $this->assertCount(2, $titles);
-        $this->assertContains('2 neue Abgaben zu „Fotosynthese“', $titles);
-        $this->assertContains('Neue Abgabe zu „Zellen“', $titles);
+        $this->assertContains('2 new submissions for “Fotosynthese”', $titles);
+        $this->assertContains('New submission for “Zellen”', $titles);
 
         $lesson->teacher->unreadNotifications()->where('data->viewData->lesson_id', $lesson->id)->update(['read_at' => now()]);
         Notify::submissionReceived(Submission::factory()->for($lesson)->for($students[2], 'student')->create());
 
-        $this->assertSame('Neue Abgabe zu „Fotosynthese“', $lesson->teacher->unreadNotifications()->where('data->viewData->lesson_id', $lesson->id)->sole()->data['title']);
+        $this->assertSame('New submission for “Fotosynthese”', $lesson->teacher->unreadNotifications()->where('data->viewData->lesson_id', $lesson->id)->sole()->data['title']);
     }
 
     public function test_a_teacher_who_became_a_student_is_not_notified_about_the_lessons_submissions(): void

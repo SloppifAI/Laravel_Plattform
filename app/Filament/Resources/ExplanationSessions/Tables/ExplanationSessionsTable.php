@@ -22,34 +22,34 @@ class ExplanationSessionsTable
             ->defaultSort('created_at', 'desc')
             ->columns([
                 TextColumn::make('student.name')
-                    ->label('Schüler:in')
+                    ->label(__('Schüler:in'))
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('student.schoolClass.name')
-                    ->label('Klasse')
+                    ->label(__('Klasse'))
                     ->placeholder('–'),
                 TextColumn::make('topic')
-                    ->label('Thema')
+                    ->label(__('Thema'))
                     ->searchable()
                     ->wrap(),
                 TextColumn::make('lesson')
-                    ->label('Unterrichtsstunde')
+                    ->label(__('Unterrichtsstunde'))
                     ->state(fn (ExplanationSession $record): ?string => $record->lesson ? "{$record->lesson->subject}: {$record->lesson->topic}" : null)
                     ->placeholder('–')
                     ->wrap(),
                 TextColumn::make('created_at')
-                    ->label('Gestartet')
+                    ->label(__('Gestartet'))
                     ->dateTime('d.m.Y H:i')
                     ->sortable(),
-                ExplanationSessionResource::asStatusBadge(TextColumn::make('status')->label('Status')),
-                ExplanationSessionResource::asUnderstandingBadge(TextColumn::make('understanding_score')->label('Verständnis'))
+                ExplanationSessionResource::asStatusBadge(TextColumn::make('status')->label(__('Status'))),
+                ExplanationSessionResource::asUnderstandingBadge(TextColumn::make('understanding_score')->label(__('Verständnis')))
                     ->placeholder('–')
                     ->sortable(),
             ])
             ->filters([
                 // Built from the resource query of lessons, so teachers never see the lessons of colleagues.
                 SelectFilter::make('lesson_id')
-                    ->label('Unterrichtsstunde')
+                    ->label(__('Unterrichtsstunde'))
                     ->options(fn (): array => LessonResource::getEloquentQuery()
                         ->orderByDesc('held_on')
                         ->get()
@@ -57,15 +57,15 @@ class ExplanationSessionsTable
                         ->all())
                     ->searchable(),
                 TernaryFilter::make('finished_at')
-                    ->label('Status')
+                    ->label(__('Status'))
                     ->nullable()
-                    ->placeholder('Alle')
-                    ->trueLabel('Beendet')
-                    ->falseLabel('Läuft'),
+                    ->placeholder(__('Alle'))
+                    ->trueLabel(__('Beendet'))
+                    ->falseLabel(__('Läuft')),
             ])
             ->recordActions([
                 ViewAction::make()
-                    ->label('Ansehen'),
+                    ->label(__('Ansehen')),
             ]);
     }
 }

@@ -46,7 +46,7 @@ class ParentReport extends Page
 
     public function getTitle(): string
     {
-        return 'Elterngespräch: '.$this->student->name;
+        return __('Elterngespräch: :name', ['name' => $this->student->name]);
     }
 
     /**
@@ -56,7 +56,7 @@ class ParentReport extends Page
     {
         return [
             Action::make('print')
-                ->label('Drucken')
+                ->label(__('Drucken'))
                 ->icon(Heroicon::OutlinedPrinter)
                 ->alpineClickHandler('window.print()'),
         ];
@@ -84,7 +84,7 @@ class ParentReport extends Page
 
         // Homework that is neither handed in nor due yet does not count towards the submission rate.
         $submittedCount = $submissions->only($lessons->modelKeys())->count();
-        $notDueCount = $homework->where('status.0', 'Offen')->count();
+        $notDueCount = $homework->where('status.2', 'open')->count();
         $countedCount = $homework->count() - $notDueCount;
 
         return [
@@ -101,24 +101,24 @@ class ParentReport extends Page
             'submittedCount' => $submittedCount,
             'countedCount' => $countedCount,
             'submissionRate' => $countedCount > 0 ? (int) round(100 * $submittedCount / $countedCount) : null,
-            'onTimeCount' => $homework->where('status.0', 'Pünktlich abgegeben')->count(),
+            'onTimeCount' => $homework->where('status.2', 'on_time')->count(),
             'notDueCount' => $notDueCount,
             'sessions' => LearningInsights::visibleExplanationSessions(auth()->user(), $this->student),
         ];
     }
 
     /**
-     * @return array{0: string, 1: string} label and badge colour
+     * @return array{0: string, 1: string, 2: string} translated label, badge colour and the language-independent kind
      */
     private function homeworkStatus(Lesson $lesson, ?Submission $submission): array
     {
         $dueOn = $lesson->due_on?->toDateString();
 
         return match (true) {
-            $submission === null && ($dueOn === null || $dueOn >= today()->toDateString()) => ['Offen', 'gray'],
-            $submission === null => ['Nicht abgegeben', 'danger'],
-            $dueOn !== null && $submission->created_at->toDateString() > $dueOn => ['Verspätet abgegeben', 'warning'],
-            default => ['Pünktlich abgegeben', 'success'],
+            $submission === null && ($dueOn === null || $dueOn >= today()->toDateString()) => [__('Offen'), 'gray', 'open'],
+            $submission === null => [__('Nicht abgegeben'), 'danger', 'missing'],
+            $dueOn !== null && $submission->created_at->toDateString() > $dueOn => [__('Verspätet abgegeben'), 'warning', 'late'],
+            default => [__('Pünktlich abgegeben'), 'success', 'on_time'],
         };
     }
 }

@@ -38,7 +38,7 @@ class NotificationBellTest extends TestCase
         Notify::homeworkReleased($lesson, [$student]);
 
         $this->actingAs($student);
-        Livewire::test(DatabaseNotifications::class)->assertSee('Neue Hausaufgabe: „Fotosynthese“');
+        Livewire::test(DatabaseNotifications::class)->assertSee('New homework: “Fotosynthese”');
 
         $this->actingAs($classmate);
         Livewire::test(DatabaseNotifications::class)->assertDontSee('Fotosynthese');

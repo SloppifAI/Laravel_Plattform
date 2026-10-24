@@ -73,7 +73,7 @@ class PracticeTasks
 
         $draft = app(LessonAssistant::class)->draftPracticeTask($competency, $subject, $sourceLessons, $gaps);
 
-        return DB::transaction(function () use ($teacher, $schoolClass, $competency, $subject, $sourceLessons, $draft, $studentIds, $dueOn): Lesson {
+        $lesson = DB::transaction(function () use ($teacher, $schoolClass, $competency, $subject, $sourceLessons, $draft, $studentIds, $dueOn): Lesson {
             $lesson = Lesson::query()->create([
                 'school_class_id' => $schoolClass->getKey(),
                 'teacher_id' => $teacher->getKey(),
@@ -94,12 +94,21 @@ class PracticeTasks
                 'expected_answer' => $question['expected_answer'],
                 'competency_id' => $competency->getKey(),
                 'position' => $index + 1,
+                'ai_drafted' => true,
             ])->all());
 
             $lesson->students()->sync($studentIds);
 
             return $lesson;
         });
+
+        // Published right away is a release like any other (LessonRelease): the chosen students are told. The task is
+        // stored by now, so a failing bell is only reported: the caller would otherwise say "nothing was created".
+        if ($lesson->isPublished()) {
+            rescue(fn () => Notify::homeworkReleased($lesson, $lesson->students()->get()));
+        }
+
+        return $lesson;
     }
 
     /**

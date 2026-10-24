@@ -58,13 +58,13 @@ class PracticeTaskWordingTest extends TestCase
     {
         $this->get(WorkOnHomework::getUrl(['lesson' => $this->practiceTask]))
             ->assertOk()
-            ->assertSee('Förderaufgabe zu „Probleme mathematisch lösen“')
-            ->assertSee('Schreib in ein paar Sätzen auf, was du jetzt über „Probleme mathematisch lösen“ weißt')
-            ->assertSee('Mindestens '.WorkOnHomework::MINIMUM_PRACTICE_SUMMARY_LENGTH.' Zeichen')
-            ->assertDontSee('Stunde vom')
+            ->assertSee('Practice task on “Probleme mathematisch lösen”')
+            ->assertSee('Write a few sentences about what you now know about “Probleme mathematisch lösen”')
+            ->assertSee('At least '.WorkOnHomework::MINIMUM_PRACTICE_SUMMARY_LENGTH.' characters')
+            ->assertDontSee('Lesson of')
             ->assertDontSee('15.09.2026')
-            ->assertDontSee('Fasse die Stunde')
-            ->assertDontSee('Mindestens '.WorkOnHomework::MINIMUM_SUMMARY_LENGTH.' Zeichen');
+            ->assertDontSee('Summarise the lesson')
+            ->assertDontSee('At least '.WorkOnHomework::MINIMUM_SUMMARY_LENGTH.' characters');
     }
 
     public function test_the_result_of_a_foerderaufgabe_does_not_talk_about_a_lesson(): void
@@ -74,18 +74,18 @@ class PracticeTaskWordingTest extends TestCase
 
         $this->get(WorkOnHomework::getUrl(['lesson' => $this->practiceTask]))
             ->assertOk()
-            ->assertSee(['So fasst deine Lehrkraft „Probleme mathematisch lösen“ zusammen', 'So gehst du bei Sachaufgaben vor.'])
-            ->assertDontSee('die Stunde zusammen');
+            ->assertSee(['How your teacher summarises “Probleme mathematisch lösen”', 'So gehst du bei Sachaufgaben vor.'])
+            ->assertDontSee('summarises the lesson');
     }
 
     public function test_ordinary_homework_keeps_the_lesson_wording(): void
     {
         $this->get(WorkOnHomework::getUrl(['lesson' => $this->homework]))
             ->assertOk()
-            ->assertSee('Stunde vom 12.09.2026')
-            ->assertSee('Fasse die Stunde in deinen eigenen Worten zusammen')
-            ->assertSee('Mindestens '.WorkOnHomework::MINIMUM_SUMMARY_LENGTH.' Zeichen')
-            ->assertDontSee('Förderaufgabe');
+            ->assertSee('Lesson of 12.09.2026')
+            ->assertSee('Summarise the lesson in your own words')
+            ->assertSee('At least '.WorkOnHomework::MINIMUM_SUMMARY_LENGTH.' characters')
+            ->assertDontSee('Practice task');
     }
 
     public function test_a_foerderaufgabe_summary_may_be_shorter_than_a_homework_summary(): void
@@ -120,9 +120,9 @@ class PracticeTaskWordingTest extends TestCase
     {
         Livewire::test(MyHomework::class)
             ->assertCanSeeTableRecords([$this->practiceTask, $this->homework])
-            ->assertTableColumnFormattedStateSet('held_on', 'Förderaufgabe', $this->practiceTask)
+            ->assertTableColumnFormattedStateSet('held_on', 'Practice task', $this->practiceTask)
             ->assertTableColumnFormattedStateSet('held_on', '12.09.2026', $this->homework)
-            ->assertSee('Förderaufgabe')
+            ->assertSee('Practice task')
             ->assertDontSee('15.09.2026');
     }
 
@@ -133,6 +133,6 @@ class PracticeTaskWordingTest extends TestCase
         Livewire::test(MyHomework::class)
             ->assertCanSeeTableRecords([$this->homework])
             ->assertSee('12.09.2026')
-            ->assertDontSee('Förderaufgabe');
+            ->assertDontSee('Practice task');
     }
 }

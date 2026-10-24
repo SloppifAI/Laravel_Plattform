@@ -129,10 +129,10 @@ class StudentCompetenciesTest extends TestCase
 
     public function test_the_lowest_level_reads_as_noch_ueben_in_the_warning_colour_for_students(): void
     {
-        $this->assertSame('Noch üben', LearningInsights::studentLevel(49)['label']);
+        $this->assertSame('Keep practising', LearningInsights::studentLevel(49)['label']);
         $this->assertSame('warning', LearningInsights::studentLevel(0)['color']);
-        $this->assertSame('Teilweise verstanden', LearningInsights::studentLevel(50)['label']);
-        $this->assertSame('Gut verstanden', LearningInsights::studentLevel(75)['label']);
+        $this->assertSame('Partly understood', LearningInsights::studentLevel(50)['label']);
+        $this->assertSame('Well understood', LearningInsights::studentLevel(75)['label']);
         $this->assertSame('success', LearningInsights::studentLevel(100)['color']);
     }
 }

@@ -80,17 +80,17 @@ class MobileInsightsTest extends TestCase
         $this->assertSame(1, $xpath->query('(//table)[1]//'.$reportLink($this->weakStudent))->length);
 
         $this->assertSame(
-            ['Biologie Erkenntnisgewinnung 90 · Gut verstanden', 'Mathematik Probleme mathematisch lösen 30 · Förderbedarf'],
+            ['Biologie Erkenntnisgewinnung 90 · Well understood', 'Mathematik Probleme mathematisch lösen 30 · Needs support'],
             $this->rows($xpath, $weakCard),
         );
-        $this->assertStringContainsString('Förderbedarf', $this->text($xpath->query('./div[1]', $weakCard)->item(0)));
+        $this->assertStringContainsString('Needs support', $this->text($xpath->query('./div[1]', $weakCard)->item(0)));
         $this->assertStringContainsString('bg-danger-50', $weakCard->getAttribute('class'));
 
         $this->assertSame(
-            ['Biologie Erkenntnisgewinnung 85 · Gut verstanden', 'Mathematik Probleme mathematisch lösen –keine Daten'],
+            ['Biologie Erkenntnisgewinnung 85 · Well understood', 'Mathematik Probleme mathematisch lösen –no data'],
             $this->rows($xpath, $strongCard),
         );
-        $this->assertStringNotContainsString('Förderbedarf', $this->text($xpath->query('./div[1]', $strongCard)->item(0)));
+        $this->assertStringNotContainsString('Needs support', $this->text($xpath->query('./div[1]', $strongCard)->item(0)));
         $this->assertStringNotContainsString('danger', $strongCard->getAttribute('class'));
     }
 
@@ -102,12 +102,12 @@ class MobileInsightsTest extends TestCase
         $this->assertSame(3, $xpath->query($lessonCards)->length);
 
         $card = $xpath->query($lessonCards.'[p[normalize-space()="Fotosynthese"]]')->item(0);
-        $this->assertSame(['Datum', 'Fach', 'Abgaben', 'Durchschnitt'], $this->labels($xpath, $card));
+        $this->assertSame(['Date', 'Subject', 'Submissions', 'Average'], $this->labels($xpath, $card));
         $this->assertStringContainsString('01.10.2026', $this->text($card));
-        $this->assertStringContainsString('1 von 1', $this->text($card));
-        $this->assertStringContainsString('66 · Teilweise verstanden', $this->text($card));
+        $this->assertStringContainsString('1 of 1', $this->text($card));
+        $this->assertStringContainsString('66 · Partly understood', $this->text($card));
 
-        $this->assertStringContainsString('noch nicht bewertet', $this->text($xpath->query($lessonCards.'[p[normalize-space()="Satz des Pythagoras"]]')->item(0)));
+        $this->assertStringContainsString('not scored yet', $this->text($xpath->query($lessonCards.'[p[normalize-space()="Satz des Pythagoras"]]')->item(0)));
     }
 
     public function test_the_parent_report_shows_all_three_tables_as_labelled_cards_below_md(): void
@@ -119,22 +119,22 @@ class MobileInsightsTest extends TestCase
         $cards = fn (int $position): string => '(//ul['.$this->hasClasses('md:hidden', 'print:hidden').'])['.$position.']/li';
 
         $this->assertSame(2, $xpath->query($cards(1))->length);
-        $this->assertSame(['Fach', 'Bereich', 'Antworten', 'Durchschnitt'], $this->labels($xpath, $xpath->query($cards(1))->item(0)));
+        $this->assertSame(['Subject', 'Area', 'Answers', 'Average'], $this->labels($xpath, $xpath->query($cards(1))->item(0)));
 
         $submitted = $xpath->query($cards(2).'[p[normalize-space()="Fotosynthese"]]')->item(0);
-        $this->assertSame(['Stunde', 'Fach', 'Abgabe', 'Bewertung', 'Rückmeldung und Lücken'], $this->labels($xpath, $submitted));
-        $this->assertStringContainsString('66 · Teilweise verstanden', $this->text($submitted));
+        $this->assertSame(['Lesson', 'Subject', 'Submission', 'Score', 'Feedback and gaps'], $this->labels($xpath, $submitted));
+        $this->assertStringContainsString('66 · Partly understood', $this->text($submitted));
         $this->assertStringContainsString('Lichtreaktion', $this->text($submitted));
 
         $missing = $xpath->query($cards(2).'[p[normalize-space()="Satz des Pythagoras"]]')->item(0);
-        $this->assertSame(['Stunde', 'Fach', 'Abgabe', 'Bewertung'], $this->labels($xpath, $missing));
-        $this->assertStringContainsString('Nicht abgegeben', $this->text($missing));
+        $this->assertSame(['Lesson', 'Subject', 'Submission', 'Score'], $this->labels($xpath, $missing));
+        $this->assertStringContainsString('Not submitted', $this->text($missing));
 
         $this->assertSame(2, $xpath->query($cards(3))->length);
         $finished = $xpath->query($cards(3).'[p[normalize-space()="Fotosynthese erklärt"]]')->item(0);
-        $this->assertSame(['Datum', 'Bewertung', 'Rückmeldung'], $this->labels($xpath, $finished));
-        $this->assertStringContainsString('70 · Teilweise verstanden', $this->text($finished));
-        $this->assertStringContainsString('Noch nicht abgeschlossen', $this->text($xpath->query($cards(3).'[p[normalize-space()="Zellatmung erklärt"]]')->item(0)));
+        $this->assertSame(['Date', 'Score', 'Feedback'], $this->labels($xpath, $finished));
+        $this->assertStringContainsString('70 · Partly understood', $this->text($finished));
+        $this->assertStringContainsString('Not finished yet', $this->text($xpath->query($cards(3).'[p[normalize-space()="Zellatmung erklärt"]]')->item(0)));
     }
 
     public function test_print_always_uses_the_table_variant_of_the_parent_report(): void
@@ -152,7 +152,7 @@ class MobileInsightsTest extends TestCase
         $this->answer($homework, Competency::factory()->create(), 20);
         $this->answer($homework, Competency::factory()->create(), 60);
 
-        $html = $this->actingAs($this->weakStudent)->get(MyLearningProgress::getUrl())->assertOk()->assertSee('Hier lohnt sich Üben')->getContent();
+        $html = $this->actingAs($this->weakStudent)->get(MyLearningProgress::getUrl())->assertOk()->assertSee('Practising pays off here')->getContent();
 
         $this->assertStringNotContainsString('<table', $html);
     }

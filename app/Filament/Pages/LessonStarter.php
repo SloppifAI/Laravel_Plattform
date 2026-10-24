@@ -21,8 +21,6 @@ class LessonStarter extends Page
 {
     protected string $view = 'filament.pages.lesson-starter';
 
-    protected static ?string $title = 'Einstieg für die nächste Stunde';
-
     protected static ?string $slug = 'einstieg/{lesson}';
 
     protected static bool $shouldRegisterNavigation = false;
@@ -31,6 +29,11 @@ class LessonStarter extends Page
     public Lesson $lesson;
 
     public bool $showSolutions = false;
+
+    public function getTitle(): string
+    {
+        return __('Einstieg für die nächste Stunde');
+    }
 
     public static function canAccess(): bool
     {
@@ -44,8 +47,8 @@ class LessonStarter extends Page
 
     public function mount(Lesson $lesson): void
     {
-        // Custom pages don't apply policies: whoever may update the lesson may review it.
-        Gate::authorize('update', $lesson);
+        // Custom pages don't apply policies: the board shows what the class got wrong, so only those who may read the lesson's results get in.
+        Gate::authorize('viewResults', $lesson);
 
         // A Förderaufgabe is delegated to a few named students, so its results would be individual results.
         abort_if($lesson->isPracticeTask(), 404);
@@ -58,7 +61,7 @@ class LessonStarter extends Page
      */
     public function getBreadcrumbs(): array
     {
-        return [LessonResource::getUrl() => LessonResource::getBreadcrumb(), 'Einstieg'];
+        return [LessonResource::getUrl() => LessonResource::getBreadcrumb(), __('Einstieg')];
     }
 
     /**
@@ -67,7 +70,7 @@ class LessonStarter extends Page
     protected function getViewData(): array
     {
         // The lesson survives in the Livewire snapshot, so every render re-checks the rights.
-        Gate::authorize('update', $this->lesson);
+        Gate::authorize('viewResults', $this->lesson);
 
         return [
             'review' => LessonReview::forLesson($this->lesson),

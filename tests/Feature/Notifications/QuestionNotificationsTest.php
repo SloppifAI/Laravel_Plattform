@@ -47,7 +47,7 @@ class QuestionNotificationsTest extends TestCase
         $this->assertCount(0, $this->student->notifications);
         $this->assertCount(0, $classmate->notifications);
         $notification = $this->lesson->teacher->unreadNotifications->sole();
-        $this->assertSame('2 neue Fragen zu „Fotosynthese“', $notification->data['title']);
+        $this->assertSame('2 new questions about “Fotosynthese”', $notification->data['title']);
         $this->assertStringNotContainsString('Hoffmann', json_encode($notification->data));
 
         $expectedUrl = class_exists(QuestionInbox::class)
@@ -64,7 +64,7 @@ class QuestionNotificationsTest extends TestCase
 
         $this->assertCount(0, $this->lesson->teacher->notifications);
         $notification = $this->student->notifications->sole();
-        $this->assertSame('Deine Frage zu „Fotosynthese“ wurde beantwortet', $notification->data['title']);
+        $this->assertSame('Your question about “Fotosynthese” has been answered', $notification->data['title']);
         $expectedUrl = class_exists(MyQuestions::class) ? MyQuestions::getUrl(isAbsolute: false) : MyHomework::getUrl(isAbsolute: false);
         $this->assertSame($expectedUrl, $notification->data['actions'][0]['url']);
     }

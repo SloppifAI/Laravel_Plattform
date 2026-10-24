@@ -36,8 +36,6 @@ class LearningProgress extends Page
 {
     protected string $view = 'filament.pages.learning-progress';
 
-    protected static ?string $title = 'Lernstand & Förderbedarf';
-
     protected static ?string $slug = 'lernstand';
 
     protected static string|UnitEnum|null $navigationGroup = NavigationGroup::Unterricht;
@@ -46,6 +44,16 @@ class LearningProgress extends Page
 
     #[Url(as: 'klasse')]
     public ?int $schoolClassId = null;
+
+    public static function getNavigationLabel(): string
+    {
+        return __('Lernstand & Förderbedarf');
+    }
+
+    public function getTitle(): string
+    {
+        return __('Lernstand & Förderbedarf');
+    }
 
     public static function canAccess(): bool
     {
@@ -64,15 +72,15 @@ class LearningProgress extends Page
     public function createPracticeTaskAction(): Action
     {
         return Action::make('createPracticeTask')
-            ->label('Förderaufgabe erstellen')
+            ->label(__('Förderaufgabe erstellen'))
             ->icon(Heroicon::OutlinedSparkles)
             ->size(Size::Small)
             ->authorize(fn (): bool => $this->canCreatePracticeTasks())
-            ->modalHeading(fn (array $arguments): string => 'Förderaufgabe: '.$this->practiceTaskContext($arguments['competency'] ?? null)['competency']->name)
+            ->modalHeading(fn (array $arguments): string => __('Förderaufgabe: :competency', ['competency' => $this->practiceTaskContext($arguments['competency'] ?? null)['competency']->name]))
             ->modalDescription($this->isAiActive()
-                ? 'Die KI entwirft aus den Stunden, in denen sich die Lücke gezeigt hat, drei bis vier Übungsfragen von leicht bis schwer. Sie erhält Fach, Kompetenz, Stundennotizen und anonyme Hinweise, keine Namen.'
-                : 'Demo-Modus: Der Entwurf entsteht lokal aus den Stundennotizen, es wird nichts an eine KI gesendet. Drei bis vier Übungsfragen von leicht bis schwer.')
-            ->modalSubmitActionLabel('Förderaufgabe erstellen')
+                ? __('Die KI entwirft aus den Stunden, in denen sich die Lücke gezeigt hat, drei bis vier Übungsfragen von leicht bis schwer. Sie erhält Fach, Kompetenz, Notizen aus der Stunde und anonyme Hinweise, keine Namen.')
+                : __('Demo-Modus: Der Entwurf entsteht lokal aus den Notizen aus der Stunde, es wird nichts an eine KI gesendet. Drei bis vier Übungsfragen von leicht bis schwer.'))
+            ->modalSubmitActionLabel(__('Förderaufgabe erstellen'))
             ->fillForm(fn (array $arguments): array => [
                 // Whoever still has an open task for this competency does not get a second one by default.
                 'students' => array_values(array_diff(
@@ -84,22 +92,22 @@ class LearningProgress extends Page
             ])
             ->schema([
                 CheckboxList::make('students')
-                    ->label('Schüler:innen')
-                    ->helperText('Vorausgewählt sind alle, die in dieser Kompetenz unter der Förderschwelle liegen und noch keine offene Förderaufgabe dazu haben.')
+                    ->label(__('Schüler:innen'))
+                    ->helperText(__('Vorausgewählt sind alle, die in dieser Kompetenz unter der Förderschwelle liegen und noch keine offene Förderaufgabe dazu haben.'))
                     ->options(fn (): array => $this->classStudents()->pluck('name', 'id')->all())
                     ->descriptions(fn (): array => collect($this->studentsWithOpenPracticeTask($this->getMountedAction()?->getArguments()['competency'] ?? null))
-                        ->mapWithKeys(fn (int $id): array => [$id => 'hat bereits eine offene Förderaufgabe zu dieser Kompetenz'])
+                        ->mapWithKeys(fn (int $id): array => [$id => __('hat bereits eine offene Förderaufgabe zu dieser Kompetenz')])
                         ->all())
-                    ->validationMessages(['in' => 'Bitte wähle nur Schüler:innen dieser Klasse aus.'])
+                    ->validationMessages(['in' => __('Bitte wähle nur Schüler:innen dieser Klasse aus.')])
                     ->required()
                     ->bulkToggleable()
                     ->columns(2),
                 Toggle::make('distribute')
-                    ->label('Direkt freigeben')
-                    ->helperText('Aus: Du prüfst die Förderaufgabe zuerst als Entwurf und gibst sie danach selbst frei. An: Die Schüler:innen sehen sie sofort in ihrem Lernbereich.'.($this->isAiActive() ? '' : ' Im Demo-Modus sind die Fragen Beispielentwürfe – besser erst als Entwurf prüfen.'))
+                    ->label(__('Direkt freigeben'))
+                    ->helperText(__('Aus: Du prüfst die Förderaufgabe zuerst als Entwurf und gibst sie danach selbst frei. An: Die Schüler:innen sehen sie sofort in ihrem Lernbereich.').($this->isAiActive() ? '' : ' '.__('Im Demo-Modus sind die Fragen Beispielentwürfe – besser erst als Entwurf prüfen.')))
                     ->live(),
                 DatePicker::make('due_on')
-                    ->label('Abgabe bis')
+                    ->label(__('Abgabe bis'))
                     ->minDate(today())
                     ->required()
                     ->visible(fn (Get $get): bool => (bool) $get('distribute')),
@@ -121,8 +129,8 @@ class LearningProgress extends Page
 
                     Notification::make()
                         ->danger()
-                        ->title('KI-Entwurf fehlgeschlagen')
-                        ->body('Es wurde nichts angelegt. Bitte versuche es gleich noch einmal.'.($this->isAiActive() ? '' : ' Die KI-Anbindung ist nicht aktiv, die Plattform arbeitet im Demo-Modus.'))
+                        ->title(__('KI-Entwurf fehlgeschlagen'))
+                        ->body(__('Es wurde nichts angelegt. Bitte versuche es gleich noch einmal.').($this->isAiActive() ? '' : ' '.__('Die KI-Anbindung ist nicht aktiv, die Plattform arbeitet im Demo-Modus.')))
                         ->persistent()
                         ->send();
 
@@ -130,13 +138,13 @@ class LearningProgress extends Page
                     $action->halt();
                 }
 
-                $demoHint = $this->isAiActive() ? '' : ' Demo-Modus – KI-Anbindung vorbereitet, aber nicht aktiv.';
+                $demoHint = $this->isAiActive() ? '' : ' '.__('Demo-Modus – KI-Anbindung vorbereitet, aber nicht aktiv.');
 
                 if ($dueOn !== null) {
                     Notification::make()
                         ->success()
-                        ->title('Förderaufgabe freigegeben')
-                        ->body("An {$studentIds->count()} Schüler:innen, Abgabe bis {$dueOn->format('d.m.Y')}.".$demoHint)
+                        ->title(__('Förderaufgabe freigegeben'))
+                        ->body(trans_choice('An :count Schüler:in, Abgabe bis :date.|An :count Schüler:innen, Abgabe bis :date.', $studentIds->count(), ['date' => $dueOn->format('d.m.Y')]).$demoHint)
                         ->persistent()
                         ->send();
 
@@ -145,8 +153,8 @@ class LearningProgress extends Page
 
                 Notification::make()
                     ->success()
-                    ->title('Förderaufgabe als Entwurf angelegt')
-                    ->body('Prüfe Zusammenfassung und Fragen und gib die Förderaufgabe dann für die ausgewählten Schüler:innen frei.'.$demoHint.($demoHint === '' ? '' : ' Die Fragen sind Beispielentwürfe, bitte prüfe und passe sie an.'))
+                    ->title(__('Förderaufgabe als Entwurf angelegt'))
+                    ->body(__('Prüfe Zusammenfassung und Fragen und gib die Förderaufgabe dann für die ausgewählten Schüler:innen frei.').$demoHint.($demoHint === '' ? '' : ' '.__('Die Fragen sind Beispielentwürfe, bitte prüfe und passe sie an.')))
                     ->persistent()
                     ->send();
 

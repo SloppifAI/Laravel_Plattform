@@ -8,14 +8,14 @@
 <x-filament-panels::page>
     @if ($classes->isEmpty())
         <x-filament::empty-state
-            heading="Keine Klassen"
-            description="Sobald du eine Klasse leitest oder in einer Klasse unterrichtest, erscheint hier deren Lernstand."
+            :heading="__('Keine Klassen')"
+            :description="__('Sobald du eine Klasse leitest oder in einer Klasse unterrichtest, erscheint hier deren Lernstand.')"
             :icon="Heroicon::OutlinedUserGroup"
         />
     @else
         <div class="flex flex-wrap items-end justify-between gap-4">
             <label class="grid gap-1 text-sm font-medium text-gray-950 dark:text-white">
-                Klasse
+                {{ __('Klasse') }}
                 <x-filament::input.wrapper>
                     <x-filament::input.select wire:model.live="schoolClassId">
                         @foreach ($classes as $id => $name)
@@ -29,12 +29,12 @@
         </div>
 
         <x-filament::section
-            heading="Kompetenzmatrix"
-            description="Durchschnitt aller KI-bewerteten Antworten je Kompetenz des Referenzrahmens (0–100 Punkte). Ein Strich bedeutet: noch keine bewertete Antwort. Der Name führt zum Bericht für das Elterngespräch."
+            :heading="__('Kompetenzmatrix')"
+            :description="__('Durchschnitt aller KI-bewerteten Antworten je Kompetenz des Referenzrahmens (0–100 Punkte). Ein Strich bedeutet: noch keine bewertete Antwort. Der Name führt zum Bericht für das Elterngespräch.')"
             :icon="Heroicon::OutlinedChartBar"
         >
             @if ($competencies->isEmpty())
-                <p class="text-sm text-gray-600 dark:text-gray-400">Für diese Klasse liegen noch keine bewerteten Antworten vor.</p>
+                <p class="text-sm text-gray-600 dark:text-gray-400">{{ __('Für diese Klasse liegen noch keine bewerteten Antworten vor.') }}</p>
             @else
                 {{-- Below md one card per student, from md (and in print) the table. display:none keeps the inactive variant out of the accessibility tree. --}}
                 <ul class="grid gap-4 md:hidden print:hidden">
@@ -60,14 +60,14 @@
                                 @foreach ($competencies as $competency)
                                     <div class="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-gray-950/5 pt-2 first:border-t-0 first:pt-0 dark:border-white/10">
                                         <dt class="min-w-32 flex-1">
-                                            <span class="block text-xs text-gray-500 dark:text-gray-400">{{ $competency->subject ?? 'Fachübergreifend' }}</span>
+                                            <span class="block text-xs text-gray-500 dark:text-gray-400">{{ $competency->subject ?? __('Fachübergreifend') }}</span>
                                             <span class="text-gray-950 dark:text-white">{{ $competency->name }}</span>
                                         </dt>
                                         <dd class="ms-auto">
                                             @isset($averages[$student->id][$competency->id])
                                                 @include('filament.pages.insights.score', ['score' => $averages[$student->id][$competency->id], 'withLabel' => true])
                                             @else
-                                                <span class="text-gray-400 dark:text-gray-500">–<span class="sr-only">keine Daten</span></span>
+                                                <span class="text-gray-400 dark:text-gray-500">–<span class="sr-only">{{ __('keine Daten') }}</span></span>
                                             @endisset
                                         </dd>
                                     </div>
@@ -82,10 +82,10 @@
                     <table class="w-full text-sm">
                         <thead>
                             <tr class="border-b border-gray-950/5 dark:border-white/10">
-                                <th scope="col" class="px-3 py-2 text-start align-bottom font-medium text-gray-950 dark:text-white">Schüler:in</th>
+                                <th scope="col" class="px-3 py-2 text-start align-bottom font-medium text-gray-950 dark:text-white">{{ __('Schüler:in') }}</th>
                                 @foreach ($competencies as $competency)
                                     <th scope="col" class="min-w-32 px-3 py-2 text-start align-bottom font-medium text-gray-950 dark:text-white" title="{{ $competency->description }}">
-                                        <span class="block text-xs font-normal text-gray-500 dark:text-gray-400">{{ $competency->subject ?? 'Fachübergreifend' }}</span>
+                                        <span class="block text-xs font-normal text-gray-500 dark:text-gray-400">{{ $competency->subject ?? __('Fachübergreifend') }}</span>
                                         {{ $competency->name }}
                                     </th>
                                 @endforeach
@@ -102,7 +102,7 @@
                                             @isset($averages[$student->id][$competency->id])
                                                 @include('filament.pages.insights.score', ['score' => $averages[$student->id][$competency->id]])
                                             @else
-                                                <span class="text-gray-400 dark:text-gray-500">–<span class="sr-only">keine Daten</span></span>
+                                                <span class="text-gray-400 dark:text-gray-500">–<span class="sr-only">{{ __('keine Daten') }}</span></span>
                                             @endisset
                                         </td>
                                     @endforeach
@@ -115,18 +115,18 @@
         </x-filament::section>
 
         <x-filament::section
-            heading="Förderbedarf"
-            description="Schüler:innen mit mindestens einer Kompetenz unter {{ UnderstandingLevel::SUPPORT_THRESHOLD }} Punkten, mit den Stunden, in denen sich die Lücke gezeigt hat."
+            :heading="__('Förderbedarf')"
+            :description="__('Schüler:innen mit mindestens einer Kompetenz unter :threshold Punkten, mit den Stunden, in denen sich die Lücke gezeigt hat.', ['threshold' => UnderstandingLevel::SUPPORT_THRESHOLD])"
             :icon="Heroicon::OutlinedLifebuoy"
         >
             @if (empty($supportNeeds))
-                <p class="text-sm text-gray-600 dark:text-gray-400">Derzeit liegt bei niemandem in dieser Klasse eine Kompetenz unter der Förderschwelle.</p>
+                <p class="text-sm text-gray-600 dark:text-gray-400">{{ __('Derzeit liegt bei niemandem in dieser Klasse eine Kompetenz unter der Förderschwelle.') }}</p>
             @else
                 <div class="mb-6 rounded-xl p-4 ring-1 ring-gray-950/5 dark:ring-white/10">
-                    <h3 class="text-sm font-semibold text-gray-950 dark:text-white">Förderaufgaben auf Knopfdruck</h3>
+                    <h3 class="text-sm font-semibold text-gray-950 dark:text-white">{{ __('Förderaufgaben auf Knopfdruck') }}</h3>
 
                     <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                        Zu jeder Kompetenz mit Förderbedarf entwirft die KI drei bis vier Übungsfragen aus den betroffenen Stunden. Du prüfst sie, bevor sie freigegeben werden, oder gibst sie direkt frei.
+                        {{ __('Zu jeder Kompetenz mit Förderbedarf entwirft die KI drei bis vier Übungsfragen aus den betroffenen Stunden. Du prüfst sie, bevor sie freigegeben werden, oder gibst sie direkt frei.') }}
                     </p>
 
                     <ul class="mt-4 divide-y divide-gray-950/5 dark:divide-white/10">
@@ -136,33 +136,40 @@
                                     <p class="text-sm">
                                         <span class="font-medium text-gray-950 dark:text-white">{{ $competency->name }}</span>
                                         <span class="text-gray-600 dark:text-gray-400">
-                                            ({{ $competency->subject ?? 'Fachübergreifend' }}) ·
-                                            {{ $supportCounts[$competency->id] }} {{ $supportCounts[$competency->id] === 1 ? 'Schüler:in' : 'Schüler:innen' }} unter {{ UnderstandingLevel::SUPPORT_THRESHOLD }} Punkten
+                                            ({{ $competency->subject ?? __('Fachübergreifend') }}) ·
+                                            {{ trans_choice(':count Schüler:in unter :threshold Punkten|:count Schüler:innen unter :threshold Punkten', $supportCounts[$competency->id], ['threshold' => UnderstandingLevel::SUPPORT_THRESHOLD]) }}
                                         </span>
                                     </p>
 
                                     @php
                                         $existingTasks = $practiceTasks->get($competency->id, collect());
-                                        $buttonLabel = $existingTasks->isEmpty() ? 'Förderaufgabe erstellen' : 'Weitere Förderaufgabe erstellen';
+                                        $buttonLabel = $existingTasks->isEmpty() ? __('Förderaufgabe erstellen') : __('Weitere Förderaufgabe erstellen');
+                                        $buttonAriaLabel = $existingTasks->isEmpty()
+                                            ? __('Förderaufgabe erstellen zu :competency', ['competency' => $competency->name])
+                                            : __('Weitere Förderaufgabe erstellen zu :competency', ['competency' => $competency->name]);
                                     @endphp
 
-                                    {{ ($this->createPracticeTaskAction)(['competency' => $competency->id])->label($buttonLabel)->extraAttributes(['aria-label' => "{$buttonLabel} zu {$competency->name}"]) }}
+                                    {{ ($this->createPracticeTaskAction)(['competency' => $competency->id])->label($buttonLabel)->extraAttributes(['aria-label' => $buttonAriaLabel]) }}
                                 </div>
 
                                 @foreach ($existingTasks as $task)
+                                    @php
+                                        $taskLabel = __('Förderaufgabe vom :date, :time Uhr', ['date' => $task->held_on->format('d.m.'), 'time' => $task->created_at->format('H:i')]);
+                                    @endphp
+
                                     <p wire:key="practice-task-{{ $task->id }}" class="text-sm text-gray-600 dark:text-gray-400">
                                         @can('update', $task)
                                             <x-filament::link :href="LessonResource::getUrl('edit', ['record' => $task])" :icon="Heroicon::OutlinedClipboardDocumentList" size="sm">
-                                                Förderaufgabe vom {{ $task->held_on->format('d.m.') }}, {{ $task->created_at->format('H:i') }} Uhr
+                                                {{ $taskLabel }}
                                             </x-filament::link>
                                         @else
-                                            Förderaufgabe vom {{ $task->held_on->format('d.m.') }}, {{ $task->created_at->format('H:i') }} Uhr
+                                            {{ $taskLabel }}
                                         @endcan
                                         –
                                         @if ($task->isPublished())
-                                            {{ $task->submissions_count }} von {{ $task->students_count }} abgegeben
+                                            {{ __(':submitted von :total abgegeben', ['submitted' => $task->submissions_count, 'total' => $task->students_count]) }}
                                         @else
-                                            Wartet auf Freigabe
+                                            {{ __('Wartet auf Freigabe') }}
                                         @endif
                                     </p>
                                 @endforeach
@@ -177,7 +184,7 @@
                             <div class="flex flex-wrap items-center justify-between gap-2">
                                 <p class="font-medium text-gray-950 dark:text-white">{{ $student->name }}</p>
                                 <x-filament::link :href="ParentReport::getUrl(['student' => $student])" :icon="Heroicon::OutlinedDocumentText" size="sm">
-                                    Bericht für das Elterngespräch
+                                    {{ __('Bericht für das Elterngespräch') }}
                                 </x-filament::link>
                             </div>
 
@@ -190,10 +197,10 @@
                                     <li class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-gray-600 dark:text-gray-400">
                                         @include('filament.pages.insights.score', ['score' => $need['average']])
                                         <span class="font-medium text-gray-950 dark:text-white">{{ $competency->name }}</span>
-                                        <span>({{ $competency->subject ?? 'Fachübergreifend' }})</span>
+                                        <span>({{ $competency->subject ?? __('Fachübergreifend') }})</span>
                                         <span>
-                                            gezeigt in:
-                                            {{ collect($need['lesson_ids'])->map(fn ($lessonId) => $supportLessons[$lessonId]->topic.' am '.$supportLessons[$lessonId]->held_on->format('d.m.Y'))->join(', ') }}
+                                            {{ __('gezeigt in:') }}
+                                            {{ collect($need['lesson_ids'])->map(fn ($lessonId) => __(':topic am :date', ['topic' => $supportLessons[$lessonId]->topic, 'date' => $supportLessons[$lessonId]->held_on->format('d.m.Y')]))->join(', ') }}
                                         </span>
                                     </li>
                                 @endforeach
@@ -205,12 +212,12 @@
         </x-filament::section>
 
         <x-filament::section
-            heading="Klassendurchschnitt je Stunde"
-            description="Durchschnitt der KI-Gesamtbewertung aller bewerteten Abgaben einer Hausaufgabe."
+            :heading="__('Klassendurchschnitt je Stunde')"
+            :description="__('Durchschnitt der KI-Gesamtbewertung aller bewerteten Abgaben einer Hausaufgabe.')"
             :icon="Heroicon::OutlinedPresentationChartLine"
         >
             @if ($lessons->isEmpty())
-                <p class="text-sm text-gray-600 dark:text-gray-400">In dieser Klasse wurden noch keine Hausaufgaben veröffentlicht.</p>
+                <p class="text-sm text-gray-600 dark:text-gray-400">{{ __('In dieser Klasse wurden noch keine Hausaufgaben freigegeben.') }}</p>
             @else
                 <ul class="grid gap-3 md:hidden print:hidden">
                     @foreach ($lessons as $lesson)
@@ -219,24 +226,24 @@
 
                             <dl class="grid gap-2 text-sm text-gray-600 dark:text-gray-400">
                                 <div class="flex items-start justify-between gap-x-4">
-                                    <dt class="shrink-0">Datum</dt>
+                                    <dt class="shrink-0">{{ __('Datum') }}</dt>
                                     <dd class="min-w-0 break-words text-end">{{ $lesson->held_on->format('d.m.Y') }}</dd>
                                 </div>
                                 <div class="flex items-start justify-between gap-x-4">
-                                    <dt class="shrink-0">Fach</dt>
+                                    <dt class="shrink-0">{{ __('Fach') }}</dt>
                                     <dd class="min-w-0 break-words text-end">{{ $lesson->subject }}</dd>
                                 </div>
                                 <div class="flex items-start justify-between gap-x-4">
-                                    <dt class="shrink-0">Abgaben</dt>
-                                    <dd class="min-w-0 break-words text-end">{{ $lesson->submissions_count }} von {{ $lesson->students_count }}</dd>
+                                    <dt class="shrink-0">{{ __('Abgaben') }}</dt>
+                                    <dd class="min-w-0 break-words text-end">{{ __(':submitted von :total', ['submitted' => $lesson->submissions_count, 'total' => $lesson->students_count]) }}</dd>
                                 </div>
                                 <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-                                    <dt>Durchschnitt</dt>
+                                    <dt>{{ __('Durchschnitt') }}</dt>
                                     <dd class="ms-auto">
                                         @if ($lesson->submissions_avg_understanding_score !== null)
                                             @include('filament.pages.insights.score', ['score' => (int) round($lesson->submissions_avg_understanding_score), 'withLabel' => true])
                                         @else
-                                            noch nicht bewertet
+                                            {{ __('noch nicht bewertet') }}
                                         @endif
                                     </dd>
                                 </div>
@@ -249,11 +256,11 @@
                     <table class="w-full text-sm">
                         <thead>
                             <tr class="border-b border-gray-950/5 text-start dark:border-white/10">
-                                <th scope="col" class="px-3 py-2 text-start font-medium text-gray-950 dark:text-white">Datum</th>
-                                <th scope="col" class="px-3 py-2 text-start font-medium text-gray-950 dark:text-white">Fach</th>
-                                <th scope="col" class="px-3 py-2 text-start font-medium text-gray-950 dark:text-white">Thema</th>
-                                <th scope="col" class="px-3 py-2 text-start font-medium text-gray-950 dark:text-white">Abgaben</th>
-                                <th scope="col" class="px-3 py-2 text-start font-medium text-gray-950 dark:text-white">Durchschnitt</th>
+                                <th scope="col" class="px-3 py-2 text-start font-medium text-gray-950 dark:text-white">{{ __('Datum') }}</th>
+                                <th scope="col" class="px-3 py-2 text-start font-medium text-gray-950 dark:text-white">{{ __('Fach') }}</th>
+                                <th scope="col" class="px-3 py-2 text-start font-medium text-gray-950 dark:text-white">{{ __('Thema') }}</th>
+                                <th scope="col" class="px-3 py-2 text-start font-medium text-gray-950 dark:text-white">{{ __('Abgaben') }}</th>
+                                <th scope="col" class="px-3 py-2 text-start font-medium text-gray-950 dark:text-white">{{ __('Durchschnitt') }}</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-950/5 text-gray-600 dark:divide-white/10 dark:text-gray-400">
@@ -262,12 +269,12 @@
                                     <td class="px-3 py-2 whitespace-nowrap">{{ $lesson->held_on->format('d.m.Y') }}</td>
                                     <td class="px-3 py-2">{{ $lesson->subject }}</td>
                                     <td class="px-3 py-2 text-gray-950 dark:text-white">{{ $lesson->topic }}</td>
-                                    <td class="px-3 py-2 whitespace-nowrap">{{ $lesson->submissions_count }} von {{ $lesson->students_count }}</td>
+                                    <td class="px-3 py-2 whitespace-nowrap">{{ __(':submitted von :total', ['submitted' => $lesson->submissions_count, 'total' => $lesson->students_count]) }}</td>
                                     <td class="px-3 py-2">
                                         @if ($lesson->submissions_avg_understanding_score !== null)
                                             @include('filament.pages.insights.score', ['score' => (int) round($lesson->submissions_avg_understanding_score)])
                                         @else
-                                            <span class="text-gray-400 dark:text-gray-500">noch nicht bewertet</span>
+                                            <span class="text-gray-400 dark:text-gray-500">{{ __('noch nicht bewertet') }}</span>
                                         @endif
                                     </td>
                                 </tr>

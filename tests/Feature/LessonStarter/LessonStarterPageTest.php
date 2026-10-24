@@ -65,8 +65,8 @@ class LessonStarterPageTest extends TestCase
         $this->actingAs($this->teacher)
             ->get($this->url())
             ->assertOk()
-            ->assertSeeInOrder(['Einstieg für die nächste Stunde', 'Fotosynthese', 'Biologie · 7b · Stunde vom 01.10.2026', 'Diese Punkte lohnen eine Wiederholung', 'Warum brauchen Pflanzen Licht?', 'Im Schnitt 25 %', '3 von 3 Antworten unter 50 %', 'Wo findet die Fotosynthese statt?', 'Im Schnitt 65 %', '0 von 3 Antworten unter 50 %', 'Chlorophyll verwechselt', 'In 3 von 3 Abgaben als Lücke genannt'])
-            ->assertSee(['Wer kann das erklären?', 'Vollbild', 'Drucken', 'Es werden keine Namen und keine Einzelergebnisse gezeigt.'])
+            ->assertSeeInOrder(['Starter for the next lesson', 'Fotosynthese', 'Biologie · 7b · Lesson of 01.10.2026', 'These points are worth repeating', 'Warum brauchen Pflanzen Licht?', 'On average 25 %', '3 of 3 answers below 50 %', 'Wo findet die Fotosynthese statt?', 'On average 65 %', '0 of 3 answers below 50 %', 'Chlorophyll verwechselt', 'Named as a gap in 3 of 3 submissions'])
+            ->assertSee(['Who can explain this?', 'Full screen', 'Print', 'No names and no individual results are shown.'])
             ->assertDontSee('Was entsteht als Abfallprodukt?')
             ->assertDontSee(['Mia', 'Hoffmann', 'Ben', 'Schneider', 'Lena', 'Becker']);
     }
@@ -76,21 +76,21 @@ class LessonStarterPageTest extends TestCase
         $this->lesson->students()->sync($this->schoolClass->students()->pluck('id'));
         $assigned = $this->lesson->students()->count();
 
-        $this->actingAs($this->teacher)->get($this->url())->assertSee("3 von {$assigned} Schüler:innen haben abgegeben und wurden ausgewertet.");
+        $this->actingAs($this->teacher)->get($this->url())->assertSee("3 of {$assigned} students have handed in and been evaluated.");
     }
 
     public function test_the_solution_hints_are_hidden_until_the_teacher_reveals_them(): void
     {
         $solution = 'Licht liefert die Energie für die Zuckerherstellung.';
 
-        $this->actingAs($this->teacher)->get($this->url())->assertDontSee([$solution, 'Lösungshinweise ausblenden']);
+        $this->actingAs($this->teacher)->get($this->url())->assertDontSee([$solution, 'Hide solution hints']);
 
         Livewire::actingAs($this->teacher)
             ->test(LessonStarter::class, ['lesson' => $this->lesson])
-            ->assertSee('Lösungshinweise einblenden')
+            ->assertSee('Show solution hints')
             ->assertDontSee($solution)
             ->toggle('showSolutions')
-            ->assertSee(['Lösungshinweise ausblenden', 'Lösungshinweis', $solution, 'In den Chloroplasten.'])
+            ->assertSee(['Hide solution hints', 'Solution hint', $solution, 'In den Chloroplasten.'])
             ->toggle('showSolutions')
             ->assertDontSee($solution);
     }
@@ -102,9 +102,9 @@ class LessonStarterPageTest extends TestCase
         $this->actingAs($this->teacher)
             ->get($this->url($lesson))
             ->assertOk()
-            ->assertSee(['Zellatmung', 'Noch nichts ausgewertet'])
-            ->assertDontSee('Wer kann das erklären?')
-            ->assertDontSee('Lösungshinweise');
+            ->assertSee(['Zellatmung', 'Nothing evaluated yet'])
+            ->assertDontSee('Who can explain this?')
+            ->assertDontSee('solution hints');
     }
 
     public function test_with_fewer_than_three_evaluated_submissions_no_numbers_or_gaps_are_shown(): void
@@ -114,12 +114,12 @@ class LessonStarterPageTest extends TestCase
         $this->actingAs($this->teacher)
             ->get($this->url($lesson))
             ->assertOk()
-            ->assertSee(['Noch zu wenige Abgaben für einen Klassen-Einstieg', 'Bisher liegen 2 ausgewertete Abgaben vor.'])
-            ->assertDontSee(['Wer kann das erklären?', 'Im Schnitt', 'Zellwand vergessen', 'Lösungshinweise', 'Warum brauchen Pflanzen Licht?']);
+            ->assertSee(['Too few submissions for a class starter yet', 'So far there are 2 evaluated submissions.'])
+            ->assertDontSee(['Who can explain this?', 'On average', 'Zellwand vergessen', 'solution hints', 'Warum brauchen Pflanzen Licht?']);
 
         $single = $this->lessonWithEvaluatedSubmissions(1, 20, ['Zellwand vergessen']);
 
-        $this->actingAs($this->teacher)->get($this->url($single))->assertSee('Bisher liegt 1 ausgewertete Abgabe vor.')->assertDontSee(['Im Schnitt', 'Zellwand vergessen']);
+        $this->actingAs($this->teacher)->get($this->url($single))->assertSee('So far there is 1 evaluated submission.')->assertDontSee(['On average', 'Zellwand vergessen']);
     }
 
     public function test_a_class_that_understood_everything_gets_no_repeat_points(): void
@@ -129,8 +129,8 @@ class LessonStarterPageTest extends TestCase
         $this->actingAs($this->teacher)
             ->get($this->url($lesson))
             ->assertOk()
-            ->assertSee('Nichts, was wiederholt werden müsste')
-            ->assertDontSee(['Wer kann das erklären?', 'Diese Punkte lohnen eine Wiederholung', 'Im Schnitt']);
+            ->assertSee('Nothing that needs to be repeated')
+            ->assertDontSee(['Who can explain this?', 'These points are worth repeating', 'On average']);
     }
 
     public function test_a_foerderaufgabe_has_no_board(): void

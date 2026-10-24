@@ -6,7 +6,7 @@
 
 <x-dynamic-component :component="$getEntryWrapperView()" :entry="$entry">
     @if ($chatMessages->isEmpty())
-        <p class="text-sm text-gray-500 dark:text-gray-400">Es gibt noch keine Nachrichten in dieser Sitzung.</p>
+        <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('Es gibt noch keine Nachrichten in dieser Sitzung.') }}</p>
     @else
         <ol class="space-y-4">
             @foreach ($chatMessages as $chatMessage)
@@ -21,7 +21,7 @@
 
                     <div @class(['flex max-w-[85%] min-w-0 flex-col', 'items-end' => $fromStudent, 'items-start' => ! $fromStudent])>
                         <p class="mb-1 px-1 text-xs font-medium text-gray-500 dark:text-gray-400">
-                            {{ $fromStudent ? 'Schüler:in' : \App\Filament\Pages\ExplainIt::TUTOR_NAME }}
+                            {{ $fromStudent ? __('Schüler:in') : \App\Filament\Pages\ExplainIt::TUTOR_NAME }}
                             @if ($chatMessage->created_at)
                                 · <time datetime="{{ $chatMessage->created_at->toIso8601String() }}">{{ $chatMessage->created_at->format('d.m.Y H:i') }}</time>
                             @endif

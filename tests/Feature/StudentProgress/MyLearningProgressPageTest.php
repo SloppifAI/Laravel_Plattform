@@ -23,7 +23,7 @@ class MyLearningProgressPageTest extends TestCase
         $this->actingAs(User::factory()->student(SchoolClass::factory()->create())->create())
             ->get(MyLearningProgress::getUrl())
             ->assertOk()
-            ->assertSee('Mein Lernstand');
+            ->assertSee('My learning progress');
 
         $this->actingAs(User::factory()->teacher()->create())->get(MyLearningProgress::getUrl())->assertForbidden();
         $this->actingAs(User::factory()->admin()->create())->get(MyLearningProgress::getUrl())->assertForbidden();
@@ -41,18 +41,18 @@ class MyLearningProgressPageTest extends TestCase
         $this->actingAs($student)
             ->get(MyLearningProgress::getUrl())
             ->assertOk()
-            ->assertSee('keine Noten')
+            ->assertSee('not grades')
             ->assertSeeInOrder([
-                'Das kannst du schon gut', 'Fachbegriffe erklären', 'Gut verstanden',
-                'Hier lohnt sich Üben', 'Versuche planen', '30 %', 'Noch üben',
-                'Fast geschafft', 'Diagramme lesen', '60 %', 'Teilweise verstanden', 'Thema Tuto erklären', 'zu Diagramme lesen',
+                'What you are already good at', 'Fachbegriffe erklären', 'Well understood',
+                'Practising pays off here', 'Versuche planen', '30 %', 'Keep practising',
+                'Almost there', 'Diagramme lesen', '60 %', 'Partly understood', 'Explain a topic to Tuto', 'for Diagramme lesen',
             ])
             // Cut at a word boundary, never in the middle of a word.
             ->assertSee('Beschreibung. Das ist...')
             ->assertDontSee('Das ist ein...')
             ->assertDontSee('ENDE')
             // Teacher language and the red warning do not belong on the student's page.
-            ->assertDontSee('Förderbedarf');
+            ->assertDontSee('Needs support');
     }
 
     public function test_practice_shows_lessons_gaps_and_the_next_steps_for_each_lesson(): void
@@ -72,16 +72,16 @@ class MyLearningProgressPageTest extends TestCase
         $this->actingAs($student)
             ->get(MyLearningProgress::getUrl())
             ->assertOk()
-            ->assertSeeInOrder(['Bei diesen Hausaufgaben hat es noch gehakt', 'Biologie:', 'Bruchrechnung', '10.10.2026', 'Photosynthese', '01.10.2026'])
+            ->assertSeeInOrder(['You still had some trouble with these homework assignments', 'Biologie:', 'Bruchrechnung', '10.10.2026', 'Photosynthese', '01.10.2026'])
             // The gaps belong to the homework, not to one competency, so the heading says so.
-            ->assertSee('Das kannst du dir in diesen Hausaufgaben noch einmal anschauen')
+            ->assertSee('Take another look at this in your homework')
             ->assertSee('Wie Licht in Energie umgewandelt wird')
             ->assertSee('Brüche gleichnamig machen')
-            ->assertSee('Ergebnis ansehen')
-            ->assertSee('Thema Tuto erklären')
+            ->assertSee('View result')
+            ->assertSee('Explain a topic to Tuto')
             // Every link says where it leads, also for screen readers.
-            ->assertSee('Ergebnis ansehen<span class="sr-only"> zu Photosynthese</span>', false)
-            ->assertSee('Thema Tuto erklären<span class="sr-only"> zu Bruchrechnung</span>', false)
+            ->assertSee('View result<span class="sr-only"> for Photosynthese</span>', false)
+            ->assertSee('Explain a topic to Tuto<span class="sr-only"> for Bruchrechnung</span>', false)
             ->assertSee(WorkOnHomework::getUrl(['lesson' => $photosynthesis->lesson_id]), false)
             ->assertSee(ExplainIt::getUrl(['lesson' => $photosynthesis->lesson_id]), false)
             ->assertSee(WorkOnHomework::getUrl(['lesson' => $fractions->lesson_id]), false)
@@ -101,7 +101,7 @@ class MyLearningProgressPageTest extends TestCase
         $this->actingAs($student)
             ->get(MyLearningProgress::getUrl())
             ->assertOk()
-            ->assertSeeInOrder(['Dein Verständnis im Durchschnitt', '60 %', 'Teilweise verstanden', 'Entwicklung', 'Es geht aufwärts', 'Bisher bewertet', '2 Hausaufgaben']);
+            ->assertSeeInOrder(['Your understanding on average', '60 %', 'Partly understood', 'Progress', 'Things are looking up', 'Scored so far', '2 homework assignments']);
     }
 
     public function test_the_trend_is_the_one_the_parent_report_shows_for_the_same_homework(): void
@@ -115,12 +115,12 @@ class MyLearningProgressPageTest extends TestCase
         $this->actingAs($student)
             ->get(MyLearningProgress::getUrl())
             ->assertOk()
-            ->assertSee('Es geht aufwärts');
+            ->assertSee('Things are looking up');
 
         $this->actingAs(User::factory()->admin()->for($student->school)->create())
             ->get(ParentReport::getUrl(['student' => $student]))
             ->assertOk()
-            ->assertSee('Steigend: Die späteren Hausaufgaben liegen im Mittel 30 Punkte über den früheren.');
+            ->assertSee('Rising: The later homework is on average 30 points above the earlier homework.');
     }
 
     public function test_withdrawn_homework_does_not_count_and_its_competency_still_offers_a_way_to_start(): void
@@ -135,9 +135,9 @@ class MyLearningProgressPageTest extends TestCase
         $this->actingAs($student)
             ->get(MyLearningProgress::getUrl())
             ->assertOk()
-            ->assertSeeInOrder(['Dein Verständnis im Durchschnitt', '80 %', 'Bisher bewertet', '1 Hausaufgabe'])
-            ->assertSeeInOrder(['Hier lohnt sich Üben', 'Brüche kürzen', 'Thema Tuto erklären', 'zu Brüche kürzen'])
-            ->assertDontSee('Bei diesen Hausaufgaben hat es noch gehakt')
+            ->assertSeeInOrder(['Your understanding on average', '80 %', 'Scored so far', '1 homework assignment'])
+            ->assertSeeInOrder(['Practising pays off here', 'Brüche kürzen', 'Explain a topic to Tuto', 'for Brüche kürzen'])
+            ->assertDontSee('You still had some trouble with these homework assignments')
             ->assertDontSee('Bruchrechnung')
             ->assertDontSee(WorkOnHomework::getUrl(['lesson' => $withdrawn->lesson_id]), false);
     }
@@ -150,8 +150,8 @@ class MyLearningProgressPageTest extends TestCase
         $this->actingAs($student)
             ->get(MyLearningProgress::getUrl())
             ->assertOk()
-            ->assertSee('Im Moment läuft alles richtig gut.')
-            ->assertDontSee('Fast geschafft');
+            ->assertSee('Everything is going really well at the moment.')
+            ->assertDontSee('Almost there');
     }
 
     public function test_answers_of_classmates_never_influence_or_appear_on_the_page(): void
@@ -168,14 +168,14 @@ class MyLearningProgressPageTest extends TestCase
         $this->actingAs($student)
             ->get(MyLearningProgress::getUrl())
             ->assertOk()
-            ->assertSeeInOrder(['Das kannst du schon gut', 'Fachbegriffe erklären', 'Gut verstanden'])
-            ->assertSee('Im Moment läuft alles richtig gut.')
-            ->assertSeeInOrder(['Bisher bewertet', '1 Hausaufgabe'])
+            ->assertSeeInOrder(['What you are already good at', 'Fachbegriffe erklären', 'Well understood'])
+            ->assertSee('Everything is going really well at the moment.')
+            ->assertSeeInOrder(['Scored so far', '1 homework assignment'])
             ->assertDontSee('Nur bei der Mitschülerin')
             ->assertDontSee('Klassenarbeit der anderen')
             ->assertDontSee('Fremde Lücke')
             ->assertDontSee(WorkOnHomework::getUrl(['lesson' => $classmateHomework->lesson_id]), false)
-            ->assertDontSee('Klassendurchschnitt');
+            ->assertDontSee('Class average');
     }
 
     public function test_friendly_empty_state_without_evaluated_homework(): void
@@ -183,10 +183,10 @@ class MyLearningProgressPageTest extends TestCase
         $this->actingAs(User::factory()->student(SchoolClass::factory()->create())->create())
             ->get(MyLearningProgress::getUrl())
             ->assertOk()
-            ->assertSee('Hier gibt es noch nichts zu sehen')
-            ->assertSee('Zu meinen Hausaufgaben')
+            ->assertSee('Nothing to see here yet')
+            ->assertSee('To my homework')
             ->assertSee(MyHomework::getUrl(), false)
-            ->assertDontSee('Das kannst du schon gut')
-            ->assertDontSee('Dein Verständnis im Durchschnitt');
+            ->assertDontSee('What you are already good at')
+            ->assertDontSee('Your understanding on average');
     }
 }

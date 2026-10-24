@@ -91,7 +91,7 @@ class NotificationRetentionTest extends TestCase
         $export = PersonalDataExport::for($student);
 
         $this->assertCount(1, $export['benachrichtigungen']);
-        $this->assertSame('Neue Hausaufgabe: „Fotosynthese“', $export['benachrichtigungen'][0]['titel']);
+        $this->assertSame('New homework: “Fotosynthese”', $export['benachrichtigungen'][0]['titel']);
         $this->assertNotNull($export['benachrichtigungen'][0]['gelesen_am']);
         $this->assertCount(1, PersonalDataExport::for($classmate)['benachrichtigungen']);
         $this->assertArrayNotHasKey('benachrichtigungen', PersonalDataExport::for(User::factory()->admin()->create()));

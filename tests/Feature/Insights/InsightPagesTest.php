@@ -58,7 +58,7 @@ class InsightPagesTest extends TestCase
             ->assertOk()
             ->assertSet('schoolClassId', $this->schoolClass->id)
             ->assertDontSee('9c')
-            ->assertSee(['Mia Hoffmann', 'Erkenntnisgewinnung', 'Probleme mathematisch lösen', 'gezeigt in:', 'Fotosynthese am'])
+            ->assertSee(['Mia Hoffmann', 'Erkenntnisgewinnung', 'Probleme mathematisch lösen', 'shown in:', 'Fotosynthese on'])
             ->assertSee(ParentReport::getUrl(['student' => $this->student]))
             ->set('schoolClassId', $foreignClass->id)
             ->assertForbidden();
@@ -70,10 +70,10 @@ class InsightPagesTest extends TestCase
             $this->actingAs($viewer)
                 ->get(ParentReport::getUrl(['student' => $this->student]))
                 ->assertOk()
-                ->assertSee('Elterngespräch: Mia Hoffmann')
-                ->assertSee('keine Noten')
-                ->assertSeeInOrder(['Gesprächsgrundlage', 'Erkenntnisgewinnung (Biologie): 90 Punkte', 'Probleme mathematisch lösen (Mathematik): 30 Punkte, gezeigt in', 'Fotosynthese', 'Abgabequote 50 %'])
-                ->assertSee('Nicht abgegeben');
+                ->assertSee('Parent meeting: Mia Hoffmann')
+                ->assertSee('not grades')
+                ->assertSeeInOrder(['Basis for the conversation', 'Erkenntnisgewinnung (Biologie): 90 points', 'Probleme mathematisch lösen (Mathematik): 30 points, shown in', 'Fotosynthese', 'Submission rate 50%'])
+                ->assertSee('Not submitted');
         }
     }
 
@@ -126,7 +126,7 @@ class InsightPagesTest extends TestCase
                 ->assertOk()
                 ->assertSee('Fotosynthese erklärt')
                 ->assertDontSee('Mein geheimes Hobby')
-                ->assertSee('Gespräche zu frei gewählten Themen sind privat');
+                ->assertSee('Conversations about freely chosen topics are private');
         }
     }
 }

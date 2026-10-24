@@ -6,6 +6,7 @@ use App\Filament\Resources\ExplanationSessions\ExplanationSessionResource;
 use App\Filament\Resources\ExplanationSessions\Pages\ListExplanationSessions;
 use App\Filament\Resources\ExplanationSessions\Pages\ViewExplanationSession;
 use App\MessageAuthor;
+use App\Models\ClassSubstitution;
 use App\Models\ExplanationMessage;
 use App\Models\ExplanationSession;
 use App\Models\Lesson;
@@ -31,6 +32,23 @@ class ExplanationSessionResourceTest extends TestCase
             ->assertOk()
             ->assertCanSeeTableRecords([$own])
             ->assertCanNotSeeTableRecords([$foreign, $withoutLesson]);
+    }
+
+    public function test_a_substitute_loses_the_sessions_of_the_lessons_they_held_when_the_substitution_ends(): void
+    {
+        $schoolClass = SchoolClass::factory()->create();
+        $substitute = User::factory()->teacher()->for($schoolClass->school)->create();
+        $substitution = ClassSubstitution::factory()->for($schoolClass)->create(['substitute_id' => $substitute->id, 'starts_on' => today(), 'ends_on' => today()->addDay()]);
+        $session = ExplanationSession::factory()->for(Lesson::factory()->for($schoolClass)->for($substitute, 'teacher'))->create();
+
+        Livewire::actingAs($substitute)->test(ListExplanationSessions::class)->assertCanSeeTableRecords([$session]);
+
+        $substitution->end();
+
+        Livewire::actingAs($substitute->fresh())->test(ListExplanationSessions::class)->assertCanNotSeeTableRecords([$session]);
+        $this->actingAs($substitute->fresh())
+            ->get(ExplanationSessionResource::getUrl('view', ['record' => $session]))
+            ->assertNotFound();
     }
 
     public function test_admin_sees_lesson_sessions_of_the_own_school_but_not_free_topics(): void
@@ -126,7 +144,7 @@ class ExplanationSessionResourceTest extends TestCase
         Livewire::actingAs($teacher)
             ->test(ViewExplanationSession::class, ['record' => $session->getRouteKey()])
             ->assertOk()
-            ->assertSeeInOrder(['Tuto', 'Erste Frage der KI', 'Schüler:in', 'Zweite Antwort der Schülerin', 'Tuto', 'Dritte Nachfrage der KI']);
+            ->assertSeeInOrder(['Tuto', 'Erste Frage der KI', 'Student', 'Zweite Antwort der Schülerin', 'Tuto', 'Dritte Nachfrage der KI']);
     }
 
     public function test_view_page_shows_student_topic_level_and_feedback_of_a_finished_session(): void
@@ -139,7 +157,7 @@ class ExplanationSessionResourceTest extends TestCase
 
         Livewire::actingAs($teacher)
             ->test(ViewExplanationSession::class, ['record' => $session->getRouteKey()])
-            ->assertSeeInOrder(['Mia Beispiel', '7b', 'Zellkern erklärt', 'Biologie: Die Zelle', 'Beendet', '82 % · Gut verstanden', 'Sehr anschaulich erklärt.']);
+            ->assertSeeInOrder(['Mia Beispiel', '7b', 'Zellkern erklärt', 'Biologie: Die Zelle', __('Beendet'), '82 % · Well understood', 'Sehr anschaulich erklärt.']);
     }
 
     public function test_view_page_of_a_running_session_says_that_there_is_no_result_yet(): void
@@ -149,9 +167,9 @@ class ExplanationSessionResourceTest extends TestCase
 
         Livewire::actingAs($teacher)
             ->test(ViewExplanationSession::class, ['record' => $session->getRouteKey()])
-            ->assertSee('Läuft')
-            ->assertSee('Noch nicht ausgewertet')
-            ->assertSee('Es gibt noch keine Nachrichten in dieser Sitzung.');
+            ->assertSee('Running')
+            ->assertSee('Not evaluated yet')
+            ->assertSee('There are no messages in this session yet.');
     }
 
     public function test_teacher_cannot_open_sessions_of_other_teachers_or_without_lesson(): void
@@ -199,9 +217,9 @@ class ExplanationSessionResourceTest extends TestCase
 
         Livewire::actingAs($teacher)
             ->test(ListExplanationSessions::class)
-            ->assertTableColumnFormattedStateSet('status', 'Beendet', $finished)
-            ->assertTableColumnFormattedStateSet('understanding_score', '40 % · Förderbedarf', $finished)
-            ->assertTableColumnFormattedStateSet('status', 'Läuft', $running)
+            ->assertTableColumnFormattedStateSet('status', __('Beendet'), $finished)
+            ->assertTableColumnFormattedStateSet('understanding_score', '40 % · Needs support', $finished)
+            ->assertTableColumnFormattedStateSet('status', 'Running', $running)
             ->assertTableColumnStateSet('understanding_score', null, $running);
     }
 

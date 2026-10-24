@@ -48,14 +48,14 @@ class StudentPracticeTaskLinkTest extends TestCase
         $this->actingAs($this->student)
             ->get(MyLearningProgress::getUrl())
             ->assertOk()
-            ->assertSee('Deine Lehrkraft hat dir eine Förderaufgabe gegeben.')
-            ->assertSee('Förderaufgabe bearbeiten')
+            ->assertSee('Your teacher gave you a practice task.')
+            ->assertSee('Work on practice task')
             ->assertSee($url, false);
 
         Livewire::test(StudentLearningWidget::class)
-            ->assertSee('Förderaufgabe bearbeiten')
+            ->assertSee('Work on practice task')
             ->assertSee($url, false)
-            ->assertSee('Thema Tuto erklären');
+            ->assertSee('Explain a topic to Tuto');
 
         $this->get($url)->assertOk();
     }
@@ -64,8 +64,8 @@ class StudentPracticeTaskLinkTest extends TestCase
     {
         $this->actingAs($this->student);
 
-        Livewire::test(StudentLearningWidget::class)->assertDontSee('Förderaufgabe bearbeiten');
-        $this->get(MyLearningProgress::getUrl())->assertOk()->assertDontSee('Förderaufgabe bearbeiten');
+        Livewire::test(StudentLearningWidget::class)->assertDontSee('Work on practice task');
+        $this->get(MyLearningProgress::getUrl())->assertOk()->assertDontSee('Work on practice task');
     }
 
     public function test_drafts_foreign_tasks_other_competencies_and_finished_tasks_are_not_linked(): void
@@ -80,8 +80,8 @@ class StudentPracticeTaskLinkTest extends TestCase
 
         $this->actingAs($this->student);
 
-        Livewire::test(StudentLearningWidget::class)->assertDontSee('Förderaufgabe bearbeiten');
-        $this->get(MyLearningProgress::getUrl())->assertOk()->assertDontSee('Förderaufgabe bearbeiten');
+        Livewire::test(StudentLearningWidget::class)->assertDontSee('Work on practice task');
+        $this->get(MyLearningProgress::getUrl())->assertOk()->assertDontSee('Work on practice task');
     }
 
     public function test_the_newest_open_foerderaufgabe_of_the_competency_is_linked(): void

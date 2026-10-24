@@ -46,7 +46,7 @@ class MyHomeworkTest extends TestCase
         $this->actingAs($student);
 
         Livewire::test(MyHomework::class)
-            ->assertSee(['Offen', 'Überfällig', 'Abgegeben', 'Gut verstanden']);
+            ->assertSee(['Open', 'Overdue', 'Submitted', 'Well understood']);
 
         $this->assertSame('2', MyHomework::getNavigationBadge());
     }
@@ -61,7 +61,7 @@ class MyHomeworkTest extends TestCase
         $topic = Livewire::test(MyHomework::class)->instance()->getTable()->getColumn('topic');
 
         // The badge sits under the topic, a column that is never hidden, so the stacked cards of a phone show it.
-        $this->assertStringContainsString('Förderaufgabe', $topic->record($practice)->getDescriptionBelow()->toHtml());
+        $this->assertStringContainsString('Practice task', $topic->record($practice)->getDescriptionBelow()->toHtml());
         $this->assertNull($topic->record($ordinary)->getDescriptionBelow());
         $this->assertNull($topic->getHiddenFrom());
         $this->assertNull($topic->getVisibleFrom());
@@ -73,7 +73,7 @@ class MyHomeworkTest extends TestCase
 
         Livewire::test(MyHomework::class)
             ->assertCountTableRecords(0)
-            ->assertSee('Gerade hast du keine Hausaufgaben');
+            ->assertSee('You have no homework right now');
 
         $this->assertNull(MyHomework::getNavigationBadge());
     }
@@ -94,7 +94,7 @@ class MyHomeworkTest extends TestCase
         $this->actingAs($student)
             ->get(MyHomework::getUrl())
             ->assertOk()
-            ->assertSee('Meine Hausaufgaben')
+            ->assertSee('My homework')
             ->assertSee(WorkOnHomework::getUrl(['lesson' => $lesson]), false);
     }
 }

@@ -4,5 +4,5 @@
 @endphp
 
 <x-filament::badge :color="$level->getColor()" :icon="$level->getIcon()" :tooltip="$level->getLabel()" class="w-fit">
-    {{ $score }}@if ($withLabel ?? false) · {{ $level->getLabel() }}@else<span class="sr-only"> Punkte, {{ $level->getLabel() }}</span>@endif
+    {{ $score }}@if ($withLabel ?? false) · {{ $level->getLabel() }}@else<span class="sr-only"> {{ __('Punkte, :level', ['level' => $level->getLabel()]) }}</span>@endif
 </x-filament::badge>

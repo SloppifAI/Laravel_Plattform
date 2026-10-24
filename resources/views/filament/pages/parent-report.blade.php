@@ -6,10 +6,10 @@
     $weaknesses = $competencies->filter(fn ($competency) => $supportNeeds->has($competency->id));
     $finishedSessions = $sessions->filter->isFinished();
     $trendText = match (true) {
-        $trend === null => 'Für eine Aussage zum Verlauf liegen noch zu wenige bewertete Hausaufgaben vor.',
-        $trend >= 5 => "Steigend: Die späteren Hausaufgaben liegen im Mittel {$trend} Punkte über den früheren.",
-        $trend <= -5 => 'Fallend: Die späteren Hausaufgaben liegen im Mittel '.abs($trend).' Punkte unter den früheren.',
-        default => 'Gleichbleibend: Die Bewertungen schwanken um weniger als 5 Punkte.',
+        $trend === null => __('Für eine Aussage zum Verlauf liegen noch zu wenige bewertete Hausaufgaben vor.'),
+        $trend >= 5 => __('Steigend: Die späteren Hausaufgaben liegen im Mittel :points Punkte über den früheren.', ['points' => $trend]),
+        $trend <= -5 => __('Fallend: Die späteren Hausaufgaben liegen im Mittel :points Punkte unter den früheren.', ['points' => abs($trend)]),
+        default => __('Gleichbleibend: Die Bewertungen schwanken um weniger als 5 Punkte.'),
     };
     $trendIcon = match (true) {
         $trend === null => Heroicon::OutlinedMinus,
@@ -17,7 +17,7 @@
         $trend <= -5 => Heroicon::OutlinedArrowTrendingDown,
         default => Heroicon::OutlinedArrowLongRight,
     };
-    $competencyLabel = fn ($competency) => $competency->name.' ('.($competency->subject ?? 'fachübergreifend').')';
+    $competencyLabel = fn ($competency) => $competency->name.' ('.($competency->subject ?? __('fachübergreifend')).')';
 @endphp
 
 <x-filament-panels::page>
@@ -43,30 +43,30 @@
         }
     </style>
 
-    <x-filament::section :icon="Heroicon::OutlinedDocumentText" heading="Grunddaten">
+    <x-filament::section :icon="Heroicon::OutlinedDocumentText" :heading="__('Grunddaten')">
         <dl class="grid gap-x-8 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
             <div>
-                <dt class="text-gray-500 dark:text-gray-400">Schüler:in</dt>
+                <dt class="text-gray-500 dark:text-gray-400">{{ __('Schüler:in') }}</dt>
                 <dd class="font-medium text-gray-950 dark:text-white">{{ $student->name }}</dd>
             </div>
             <div>
-                <dt class="text-gray-500 dark:text-gray-400">Klasse</dt>
+                <dt class="text-gray-500 dark:text-gray-400">{{ __('Klasse') }}</dt>
                 <dd class="font-medium text-gray-950 dark:text-white">
-                    {{ $student->schoolClass?->name ?? 'keiner Klasse zugeordnet' }}
+                    {{ $student->schoolClass?->name ?? __('keiner Klasse zugeordnet') }}
                     @if ($student->schoolClass?->teacher)
-                        <span class="font-normal text-gray-600 dark:text-gray-400">(Klassenleitung: {{ $student->schoolClass->teacher->name }})</span>
+                        <span class="font-normal text-gray-600 dark:text-gray-400">{{ __('(Klassenleitung: :name)', ['name' => $student->schoolClass->teacher->name]) }}</span>
                     @endif
                 </dd>
             </div>
             <div>
-                <dt class="text-gray-500 dark:text-gray-400">Zeitraum</dt>
+                <dt class="text-gray-500 dark:text-gray-400">{{ __('Zeitraum') }}</dt>
                 <dd class="font-medium text-gray-950 dark:text-white">
-                    {{ $periodStart ? $periodStart->format('d.m.Y').' bis '.today()->format('d.m.Y') : 'noch keine Hausaufgaben' }}
+                    {{ $periodStart ? __(':start bis :end', ['start' => $periodStart->format('d.m.Y'), 'end' => today()->format('d.m.Y')]) : __('noch keine Hausaufgaben') }}
                 </dd>
             </div>
             <div>
-                <dt class="text-gray-500 dark:text-gray-400">Erstellt</dt>
-                <dd class="font-medium text-gray-950 dark:text-white">{{ now()->format('d.m.Y') }} von {{ auth()->user()->name }}</dd>
+                <dt class="text-gray-500 dark:text-gray-400">{{ __('Erstellt') }}</dt>
+                <dd class="font-medium text-gray-950 dark:text-white">{{ __(':date von :name', ['date' => now()->format('d.m.Y'), 'name' => auth()->user()->name]) }}</dd>
             </div>
         </dl>
 
@@ -74,42 +74,42 @@
             class="mt-6"
             color="info"
             :icon="Heroicon::OutlinedInformationCircle"
-            heading="Hinweis zur Einordnung"
-            description="Alle Punktwerte (0–100) sind KI-gestützte Einschätzungen des Verständnisses auf Grundlage der abgegebenen Hausaufgaben und „Erklär’s mir“-Sitzungen. Sie sind keine Noten und ersetzen nicht die pädagogische Beurteilung der Lehrkraft."
+            :heading="__('Hinweis zur Einordnung')"
+            :description="__('Alle Punktwerte (0–100) sind KI-gestützte Einschätzungen des Verständnisses auf Grundlage der abgegebenen Hausaufgaben und „Erklär’s mir“-Sitzungen. Sie sind keine Noten und ersetzen nicht die pädagogische Beurteilung der Lehrkraft.')"
         />
     </x-filament::section>
 
-    <x-filament::section :icon="Heroicon::OutlinedPresentationChartLine" heading="Gesamtbild und Verlauf">
+    <x-filament::section :icon="Heroicon::OutlinedPresentationChartLine" :heading="__('Gesamtbild und Verlauf')">
         <div class="grid gap-6 sm:grid-cols-3">
             <div>
-                <p class="text-sm text-gray-500 dark:text-gray-400">Durchschnitt aller bewerteten Hausaufgaben</p>
+                <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('Durchschnitt aller bewerteten Hausaufgaben') }}</p>
                 <div class="mt-2">
                     @if ($average !== null)
                         @include('filament.pages.insights.score', ['score' => $average, 'withLabel' => true])
                     @else
-                        <span class="text-sm text-gray-600 dark:text-gray-400">noch keine Bewertung</span>
+                        <span class="text-sm text-gray-600 dark:text-gray-400">{{ __('noch keine Bewertung') }}</span>
                     @endif
                 </div>
             </div>
             <div>
-                <p class="text-sm text-gray-500 dark:text-gray-400">Abgabequote</p>
+                <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('Abgabequote') }}</p>
                 <p class="mt-1 text-sm text-gray-950 dark:text-white">
                     @if ($submissionRate !== null)
                         <span class="text-2xl font-semibold">{{ $submissionRate }} %</span>
-                        <span class="block">{{ $submittedCount }} von {{ $countedCount }} abgegeben, davon {{ $onTimeCount }} pünktlich</span>
+                        <span class="block">{{ __(':submitted von :counted abgegeben, davon :onTime pünktlich', ['submitted' => $submittedCount, 'counted' => $countedCount, 'onTime' => $onTimeCount]) }}</span>
                     @else
-                        Noch keine Hausaufgabe fällig.
+                        {{ __('Noch keine Hausaufgabe fällig.') }}
                     @endif
                 </p>
             </div>
             <div>
-                <p class="text-sm text-gray-500 dark:text-gray-400">Verlauf (chronologisch)</p>
+                <p class="text-sm text-gray-500 dark:text-gray-400">{{ __('Verlauf (chronologisch)') }}</p>
                 <p class="mt-1 flex items-start gap-2 text-sm text-gray-950 dark:text-white">
                     <x-filament::icon :icon="$trendIcon" class="mt-0.5 size-5 shrink-0 text-gray-500 dark:text-gray-400" />
                     <span>{{ $trendText }}</span>
                 </p>
                 @if ($scores->isNotEmpty())
-                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Einzelwerte: {{ $scores->join(' → ') }}</p>
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ __('Einzelwerte: :values', ['values' => $scores->join(' → ')]) }}</p>
                 @endif
             </div>
         </div>
@@ -119,9 +119,9 @@
         </div>
     </x-filament::section>
 
-    <x-filament::section :icon="Heroicon::OutlinedChartBar" heading="Kompetenzen" description="Durchschnitt aller bewerteten Antworten je Kompetenz des Referenzrahmens.">
+    <x-filament::section :icon="Heroicon::OutlinedChartBar" :heading="__('Kompetenzen')" :description="__('Durchschnitt aller bewerteten Antworten je Kompetenz des Referenzrahmens.')">
         @if ($competencies->isEmpty())
-            <p class="text-sm text-gray-600 dark:text-gray-400">Noch keine bewerteten Antworten.</p>
+            <p class="text-sm text-gray-600 dark:text-gray-400">{{ __('Noch keine bewerteten Antworten.') }}</p>
         @else
             {{-- Below md cards with a label per value, from md (and in print) the table. display:none keeps the inactive variant out of the accessibility tree. --}}
             <ul class="grid gap-3 md:hidden print:hidden">
@@ -131,19 +131,19 @@
 
                         <dl class="grid gap-2 text-sm text-gray-600 dark:text-gray-400">
                             <div class="flex items-start justify-between gap-x-4">
-                                <dt class="shrink-0">Fach</dt>
-                                <dd class="min-w-0 break-words text-end">{{ $competency->subject ?? 'Fachübergreifend' }}</dd>
+                                <dt class="shrink-0">{{ __('Fach') }}</dt>
+                                <dd class="min-w-0 break-words text-end">{{ $competency->subject ?? __('Fachübergreifend') }}</dd>
                             </div>
                             <div class="flex items-start justify-between gap-x-4">
-                                <dt class="shrink-0">Bereich</dt>
+                                <dt class="shrink-0">{{ __('Bereich') }}</dt>
                                 <dd class="min-w-0 break-words text-end">{{ $competency->area }}</dd>
                             </div>
                             <div class="flex items-start justify-between gap-x-4">
-                                <dt class="shrink-0">Antworten</dt>
+                                <dt class="shrink-0">{{ __('Antworten') }}</dt>
                                 <dd class="min-w-0 break-words text-end">{{ $answerCounts[$competency->id] }}</dd>
                             </div>
                             <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-                                <dt>Durchschnitt</dt>
+                                <dt>{{ __('Durchschnitt') }}</dt>
                                 <dd class="ms-auto">@include('filament.pages.insights.score', ['score' => $averages[$competency->id], 'withLabel' => true])</dd>
                             </div>
                         </dl>
@@ -155,17 +155,17 @@
                 <table class="w-full text-sm">
                     <thead>
                         <tr class="border-b border-gray-950/5 dark:border-white/10">
-                            <th scope="col" class="px-3 py-2 text-start font-medium text-gray-950 dark:text-white">Fach</th>
-                            <th scope="col" class="px-3 py-2 text-start font-medium text-gray-950 dark:text-white">Bereich</th>
-                            <th scope="col" class="px-3 py-2 text-start font-medium text-gray-950 dark:text-white">Kompetenz</th>
-                            <th scope="col" class="px-3 py-2 text-start font-medium text-gray-950 dark:text-white">Antworten</th>
-                            <th scope="col" class="px-3 py-2 text-start font-medium text-gray-950 dark:text-white">Durchschnitt</th>
+                            <th scope="col" class="px-3 py-2 text-start font-medium text-gray-950 dark:text-white">{{ __('Fach') }}</th>
+                            <th scope="col" class="px-3 py-2 text-start font-medium text-gray-950 dark:text-white">{{ __('Bereich') }}</th>
+                            <th scope="col" class="px-3 py-2 text-start font-medium text-gray-950 dark:text-white">{{ __('Kompetenz') }}</th>
+                            <th scope="col" class="px-3 py-2 text-start font-medium text-gray-950 dark:text-white">{{ __('Antworten') }}</th>
+                            <th scope="col" class="px-3 py-2 text-start font-medium text-gray-950 dark:text-white">{{ __('Durchschnitt') }}</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-950/5 text-gray-600 dark:divide-white/10 dark:text-gray-400">
                         @foreach ($competencies as $competency)
                             <tr>
-                                <td class="px-3 py-2">{{ $competency->subject ?? 'Fachübergreifend' }}</td>
+                                <td class="px-3 py-2">{{ $competency->subject ?? __('Fachübergreifend') }}</td>
                                 <td class="px-3 py-2">{{ $competency->area }}</td>
                                 <td class="px-3 py-2 text-gray-950 dark:text-white">{{ $competency->name }}</td>
                                 <td class="px-3 py-2">{{ $answerCounts[$competency->id] }}</td>
@@ -178,9 +178,9 @@
         @endif
     </x-filament::section>
 
-    <x-filament::section :icon="Heroicon::OutlinedPencilSquare" heading="Hausaufgaben" description="Alle zugewiesenen Hausaufgaben mit Abgabestatus und Rückmeldung der KI.">
+    <x-filament::section :icon="Heroicon::OutlinedPencilSquare" :heading="__('Hausaufgaben')" :description="__('Alle zugewiesenen Hausaufgaben mit Abgabestatus und Rückmeldung der KI.')">
         @if ($homework->isEmpty())
-            <p class="text-sm text-gray-600 dark:text-gray-400">Bisher wurden keine Hausaufgaben zugewiesen.</p>
+            <p class="text-sm text-gray-600 dark:text-gray-400">{{ __('Bisher wurden keine Hausaufgaben zugewiesen.') }}</p>
         @else
             <ul class="grid gap-3 md:hidden print:hidden">
                 @foreach ($homework as ['lesson' => $lesson, 'submission' => $submission, 'status' => [$statusLabel, $statusColor]])
@@ -189,20 +189,20 @@
 
                         <dl class="grid gap-2 text-sm text-gray-600 dark:text-gray-400">
                             <div class="flex items-start justify-between gap-x-4">
-                                <dt class="shrink-0">Stunde</dt>
+                                <dt class="shrink-0">{{ __('Stunde') }}</dt>
                                 <dd class="min-w-0 break-words text-end">
                                     {{ $lesson->held_on->format('d.m.Y') }}
                                     @if ($lesson->due_on)
-                                        <span class="block text-xs">fällig {{ $lesson->due_on->format('d.m.Y') }}</span>
+                                        <span class="block text-xs">{{ __('fällig :date', ['date' => $lesson->due_on->format('d.m.Y')]) }}</span>
                                     @endif
                                 </dd>
                             </div>
                             <div class="flex items-start justify-between gap-x-4">
-                                <dt class="shrink-0">Fach</dt>
+                                <dt class="shrink-0">{{ __('Fach') }}</dt>
                                 <dd class="min-w-0 break-words text-end">{{ $lesson->subject }} · {{ $lesson->teacher->name }}</dd>
                             </div>
                             <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-                                <dt>Abgabe</dt>
+                                <dt>{{ __('Abgabe') }}</dt>
                                 <dd class="ms-auto grid justify-items-end gap-1">
                                     <x-filament::badge :color="$statusColor" class="w-fit">{{ $statusLabel }}</x-filament::badge>
                                     @if ($submission)
@@ -211,12 +211,12 @@
                                 </dd>
                             </div>
                             <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-                                <dt>Bewertung</dt>
+                                <dt>{{ __('Bewertung') }}</dt>
                                 <dd class="ms-auto">
                                     @if ($submission?->understanding_score !== null)
                                         @include('filament.pages.insights.score', ['score' => $submission->understanding_score, 'withLabel' => true])
                                     @elseif ($submission)
-                                        noch nicht bewertet
+                                        {{ __('noch nicht bewertet') }}
                                     @else
                                         –
                                     @endif
@@ -224,13 +224,13 @@
                             </div>
                             @if ($submission?->feedback || filled($submission?->gaps))
                                 <div class="grid gap-1">
-                                    <dt>Rückmeldung und Lücken</dt>
+                                    <dt>{{ __('Rückmeldung und Lücken') }}</dt>
                                     <dd class="min-w-0 break-words">
                                         @if ($submission->feedback)
                                             <p>{{ $submission->feedback }}</p>
                                         @endif
                                         @if (filled($submission->gaps))
-                                            <p class="mt-2 text-xs font-medium text-gray-950 dark:text-white">Lücken:</p>
+                                            <p class="mt-2 text-xs font-medium text-gray-950 dark:text-white">{{ __('Lücken:') }}</p>
                                             <ul class="list-disc ps-4 text-xs">
                                                 @foreach ($submission->gaps as $gap)
                                                     <li>{{ $gap }}</li>
@@ -249,11 +249,11 @@
                 <table class="w-full text-sm">
                     <thead>
                         <tr class="border-b border-gray-950/5 dark:border-white/10">
-                            <th scope="col" class="px-3 py-2 text-start font-medium text-gray-950 dark:text-white">Stunde</th>
-                            <th scope="col" class="px-3 py-2 text-start font-medium text-gray-950 dark:text-white">Fach / Thema</th>
-                            <th scope="col" class="px-3 py-2 text-start font-medium text-gray-950 dark:text-white">Abgabe</th>
-                            <th scope="col" class="px-3 py-2 text-start font-medium text-gray-950 dark:text-white">Bewertung</th>
-                            <th scope="col" class="px-3 py-2 text-start font-medium text-gray-950 dark:text-white">Rückmeldung und Lücken</th>
+                            <th scope="col" class="px-3 py-2 text-start font-medium text-gray-950 dark:text-white">{{ __('Stunde') }}</th>
+                            <th scope="col" class="px-3 py-2 text-start font-medium text-gray-950 dark:text-white">{{ __('Fach / Thema') }}</th>
+                            <th scope="col" class="px-3 py-2 text-start font-medium text-gray-950 dark:text-white">{{ __('Abgabe') }}</th>
+                            <th scope="col" class="px-3 py-2 text-start font-medium text-gray-950 dark:text-white">{{ __('Bewertung') }}</th>
+                            <th scope="col" class="px-3 py-2 text-start font-medium text-gray-950 dark:text-white">{{ __('Rückmeldung und Lücken') }}</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-950/5 text-gray-600 align-top dark:divide-white/10 dark:text-gray-400">
@@ -262,7 +262,7 @@
                                 <td class="px-3 py-2 whitespace-nowrap">
                                     {{ $lesson->held_on->format('d.m.Y') }}
                                     @if ($lesson->due_on)
-                                        <span class="block text-xs">fällig {{ $lesson->due_on->format('d.m.Y') }}</span>
+                                        <span class="block text-xs">{{ __('fällig :date', ['date' => $lesson->due_on->format('d.m.Y')]) }}</span>
                                     @endif
                                 </td>
                                 <td class="px-3 py-2">
@@ -279,7 +279,7 @@
                                     @if ($submission?->understanding_score !== null)
                                         @include('filament.pages.insights.score', ['score' => $submission->understanding_score, 'withLabel' => true])
                                     @elseif ($submission)
-                                        noch nicht bewertet
+                                        {{ __('noch nicht bewertet') }}
                                     @else
                                         –
                                     @endif
@@ -289,7 +289,7 @@
                                         <p>{{ $submission->feedback }}</p>
                                     @endif
                                     @if (filled($submission?->gaps))
-                                        <p class="mt-2 text-xs font-medium text-gray-950 dark:text-white">Lücken:</p>
+                                        <p class="mt-2 text-xs font-medium text-gray-950 dark:text-white">{{ __('Lücken:') }}</p>
                                         <ul class="list-disc ps-4 text-xs">
                                             @foreach ($submission->gaps as $gap)
                                                 <li>{{ $gap }}</li>
@@ -305,9 +305,9 @@
         @endif
     </x-filament::section>
 
-    <x-filament::section :icon="Heroicon::OutlinedChatBubbleLeftRight" heading="„Erklär’s mir“-Sitzungen" description="Die Schülerin bzw. der Schüler erklärt ein Thema aus dem Unterricht, die KI fragt nach und schätzt das Verständnis ein. Gespräche zu frei gewählten Themen sind privat und erscheinen hier nicht.">
+    <x-filament::section :icon="Heroicon::OutlinedChatBubbleLeftRight" :heading="__('„Erklär’s mir“-Sitzungen')" :description="__('Die Schülerin bzw. der Schüler erklärt ein Thema aus dem Unterricht, die KI fragt nach und schätzt das Verständnis ein. Gespräche zu frei gewählten Themen sind privat und erscheinen hier nicht.')">
         @if ($sessions->isEmpty())
-            <p class="text-sm text-gray-600 dark:text-gray-400">Bisher keine Sitzungen.</p>
+            <p class="text-sm text-gray-600 dark:text-gray-400">{{ __('Bisher keine Sitzungen.') }}</p>
         @else
             <ul class="grid gap-3 md:hidden print:hidden">
                 @foreach ($sessions as $session)
@@ -316,21 +316,21 @@
 
                         <dl class="grid gap-2 text-sm text-gray-600 dark:text-gray-400">
                             <div class="flex items-start justify-between gap-x-4">
-                                <dt class="shrink-0">Datum</dt>
+                                <dt class="shrink-0">{{ __('Datum') }}</dt>
                                 <dd class="min-w-0 break-words text-end">{{ $session->created_at->format('d.m.Y') }}</dd>
                             </div>
                             <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-                                <dt>Bewertung</dt>
+                                <dt>{{ __('Bewertung') }}</dt>
                                 <dd class="ms-auto">
                                     @if ($session->isFinished() && $session->understanding_score !== null)
                                         @include('filament.pages.insights.score', ['score' => $session->understanding_score, 'withLabel' => true])
                                     @else
-                                        <x-filament::badge color="gray" :icon="Heroicon::OutlinedClock" class="w-fit">Noch nicht abgeschlossen</x-filament::badge>
+                                        <x-filament::badge color="gray" :icon="Heroicon::OutlinedClock" class="w-fit">{{ __('Noch nicht abgeschlossen') }}</x-filament::badge>
                                     @endif
                                 </dd>
                             </div>
                             <div class="grid gap-1">
-                                <dt>Rückmeldung</dt>
+                                <dt>{{ __('Rückmeldung') }}</dt>
                                 <dd class="min-w-0 break-words">{{ $session->feedback ?? '–' }}</dd>
                             </div>
                         </dl>
@@ -342,10 +342,10 @@
                 <table class="w-full text-sm">
                     <thead>
                         <tr class="border-b border-gray-950/5 dark:border-white/10">
-                            <th scope="col" class="px-3 py-2 text-start font-medium text-gray-950 dark:text-white">Datum</th>
-                            <th scope="col" class="px-3 py-2 text-start font-medium text-gray-950 dark:text-white">Thema</th>
-                            <th scope="col" class="px-3 py-2 text-start font-medium text-gray-950 dark:text-white">Bewertung</th>
-                            <th scope="col" class="px-3 py-2 text-start font-medium text-gray-950 dark:text-white">Rückmeldung</th>
+                            <th scope="col" class="px-3 py-2 text-start font-medium text-gray-950 dark:text-white">{{ __('Datum') }}</th>
+                            <th scope="col" class="px-3 py-2 text-start font-medium text-gray-950 dark:text-white">{{ __('Thema') }}</th>
+                            <th scope="col" class="px-3 py-2 text-start font-medium text-gray-950 dark:text-white">{{ __('Bewertung') }}</th>
+                            <th scope="col" class="px-3 py-2 text-start font-medium text-gray-950 dark:text-white">{{ __('Rückmeldung') }}</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-950/5 text-gray-600 align-top dark:divide-white/10 dark:text-gray-400">
@@ -357,7 +357,7 @@
                                     @if ($session->isFinished() && $session->understanding_score !== null)
                                         @include('filament.pages.insights.score', ['score' => $session->understanding_score, 'withLabel' => true])
                                     @else
-                                        <x-filament::badge color="gray" :icon="Heroicon::OutlinedClock" class="w-fit">Noch nicht abgeschlossen</x-filament::badge>
+                                        <x-filament::badge color="gray" :icon="Heroicon::OutlinedClock" class="w-fit">{{ __('Noch nicht abgeschlossen') }}</x-filament::badge>
                                     @endif
                                 </td>
                                 <td class="max-w-md px-3 py-2">{{ $session->feedback ?? '–' }}</td>
@@ -369,55 +369,58 @@
         @endif
     </x-filament::section>
 
-    <x-filament::section :icon="Heroicon::OutlinedClipboardDocumentList" heading="Gesprächsgrundlage" description="Automatisch aus den obigen Daten zusammengestellt.">
+    <x-filament::section :icon="Heroicon::OutlinedClipboardDocumentList" :heading="__('Gesprächsgrundlage')" :description="__('Automatisch aus den obigen Daten zusammengestellt.')">
         <dl class="grid gap-4 text-sm">
             <div>
-                <dt class="font-medium text-gray-950 dark:text-white">Stärken (Kompetenzen ab 75 Punkten)</dt>
+                <dt class="font-medium text-gray-950 dark:text-white">{{ __('Stärken (Kompetenzen ab 75 Punkten)') }}</dt>
                 <dd class="mt-1 text-gray-600 dark:text-gray-400">
                     @forelse ($strengths as $competency)
-                        <span class="block">{{ $competencyLabel($competency) }}: {{ $averages[$competency->id] }} Punkte</span>
+                        <span class="block">{{ __(':competency: :score Punkte', ['competency' => $competencyLabel($competency), 'score' => $averages[$competency->id]]) }}</span>
                     @empty
-                        Derzeit liegt keine Kompetenz bei 75 Punkten oder mehr.
+                        {{ __('Derzeit liegt keine Kompetenz bei 75 Punkten oder mehr.') }}
                     @endforelse
                 </dd>
             </div>
             <div>
-                <dt class="font-medium text-gray-950 dark:text-white">Förderbedarf (Kompetenzen unter {{ UnderstandingLevel::SUPPORT_THRESHOLD }} Punkten)</dt>
+                <dt class="font-medium text-gray-950 dark:text-white">{{ __('Förderbedarf (Kompetenzen unter :threshold Punkten)', ['threshold' => UnderstandingLevel::SUPPORT_THRESHOLD]) }}</dt>
                 <dd class="mt-1 text-gray-600 dark:text-gray-400">
                     @forelse ($weaknesses as $competency)
                         <span class="block">
-                            {{ $competencyLabel($competency) }}: {{ $averages[$competency->id] }} Punkte, gezeigt in
-                            {{ collect($supportNeeds[$competency->id]['lesson_ids'])->map(fn ($lessonId) => $lessonsById[$lessonId]->topic.' ('.$lessonsById[$lessonId]->held_on->format('d.m.Y').')')->join(', ') }}
+                            {{ __(':competency: :score Punkte, gezeigt in :lessons', [
+                                'competency' => $competencyLabel($competency),
+                                'score' => $averages[$competency->id],
+                                'lessons' => collect($supportNeeds[$competency->id]['lesson_ids'])->map(fn ($lessonId) => $lessonsById[$lessonId]->topic.' ('.$lessonsById[$lessonId]->held_on->format('d.m.Y').')')->join(', '),
+                            ]) }}
                         </span>
                     @empty
-                        Derzeit liegt keine Kompetenz unter der Förderschwelle.
+                        {{ __('Derzeit liegt keine Kompetenz unter der Förderschwelle.') }}
                     @endforelse
                 </dd>
             </div>
             <div>
-                <dt class="font-medium text-gray-950 dark:text-white">Abgabeverhalten</dt>
+                <dt class="font-medium text-gray-950 dark:text-white">{{ __('Abgabeverhalten') }}</dt>
                 <dd class="mt-1 text-gray-600 dark:text-gray-400">
                     @if ($submissionRate !== null)
-                        Abgabequote {{ $submissionRate }} %: {{ $submittedCount }} von {{ $countedCount }} Hausaufgaben abgegeben, davon {{ $onTimeCount }} pünktlich.
+                        {{ __('Abgabequote :rate %: :submitted von :counted Hausaufgaben abgegeben, davon :onTime pünktlich.', ['rate' => $submissionRate, 'submitted' => $submittedCount, 'counted' => $countedCount, 'onTime' => $onTimeCount]) }}
                     @else
-                        Bisher war keine Hausaufgabe fällig.
+                        {{ __('Bisher war keine Hausaufgabe fällig.') }}
                     @endif
                     @if ($notDueCount > 0)
-                        Nicht mitgezählt: {{ $notDueCount }} noch nicht fällige {{ $notDueCount === 1 ? 'Hausaufgabe' : 'Hausaufgaben' }}.
+                        {{ trans_choice('Nicht mitgezählt: :count noch nicht fällige Hausaufgabe.|Nicht mitgezählt: :count noch nicht fällige Hausaufgaben.', $notDueCount) }}
                     @endif
                 </dd>
             </div>
             <div>
-                <dt class="font-medium text-gray-950 dark:text-white">Verlauf</dt>
+                <dt class="font-medium text-gray-950 dark:text-white">{{ __('Verlauf') }}</dt>
                 <dd class="mt-1 text-gray-600 dark:text-gray-400">{{ $trendText }}</dd>
             </div>
             <div>
-                <dt class="font-medium text-gray-950 dark:text-white">„Erklär’s mir“</dt>
+                <dt class="font-medium text-gray-950 dark:text-white">{{ __('„Erklär’s mir“') }}</dt>
                 <dd class="mt-1 text-gray-600 dark:text-gray-400">
                     @if ($finishedSessions->isNotEmpty())
-                        {{ $finishedSessions->count() }} abgeschlossene {{ $finishedSessions->count() === 1 ? 'Sitzung' : 'Sitzungen' }}, durchschnittlich {{ round($finishedSessions->avg('understanding_score')) }} Punkte.
+                        {{ trans_choice(':count abgeschlossene Sitzung, durchschnittlich :average Punkte.|:count abgeschlossene Sitzungen, durchschnittlich :average Punkte.', $finishedSessions->count(), ['average' => round($finishedSessions->avg('understanding_score'))]) }}
                     @else
-                        Noch keine abgeschlossene Sitzung.
+                        {{ __('Noch keine abgeschlossene Sitzung.') }}
                     @endif
                 </dd>
             </div>

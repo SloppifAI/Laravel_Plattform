@@ -15,32 +15,32 @@ class ExplanationSessionInfolist
     {
         return $schema
             ->components([
-                Section::make('Sitzung')
+                Section::make(__('Sitzung'))
                     ->columns(2)
                     ->columnSpanFull()
                     ->schema([
                         TextEntry::make('student.name')
-                            ->label('Schüler:in'),
+                            ->label(__('Schüler:in')),
                         TextEntry::make('student.schoolClass.name')
-                            ->label('Klasse')
+                            ->label(__('Klasse'))
                             ->placeholder('–'),
                         TextEntry::make('topic')
-                            ->label('Thema'),
+                            ->label(__('Thema')),
                         TextEntry::make('lesson')
-                            ->label('Unterrichtsstunde')
+                            ->label(__('Unterrichtsstunde'))
                             ->state(fn (ExplanationSession $record): ?string => $record->lesson ? "{$record->lesson->subject}: {$record->lesson->topic}" : null)
-                            ->placeholder('Ohne Unterrichtsstunde'),
+                            ->placeholder(__('Ohne Unterrichtsstunde')),
                         TextEntry::make('created_at')
-                            ->label('Gestartet')
+                            ->label(__('Gestartet'))
                             ->dateTime('d.m.Y H:i'),
-                        ExplanationSessionResource::asStatusBadge(TextEntry::make('status')->label('Status')),
-                        ExplanationSessionResource::asUnderstandingBadge(TextEntry::make('understanding_score')->label('Verständnis laut KI')),
+                        ExplanationSessionResource::asStatusBadge(TextEntry::make('status')->label(__('Status'))),
+                        ExplanationSessionResource::asUnderstandingBadge(TextEntry::make('understanding_score')->label(__('Verständnis laut KI'))),
                         TextEntry::make('feedback')
-                            ->label('Rückmeldung der KI')
-                            ->placeholder('Noch keine Rückmeldung, die Erklärung läuft noch.')
+                            ->label(__('Rückmeldung der KI'))
+                            ->placeholder(__('Noch keine Rückmeldung, die Erklärung läuft noch.'))
                             ->columnSpanFull(),
                     ]),
-                Section::make('Gesprächsverlauf')
+                Section::make(__('Gesprächsverlauf'))
                     ->columnSpanFull()
                     ->schema([
                         ViewEntry::make('messages')

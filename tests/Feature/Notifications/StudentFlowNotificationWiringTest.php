@@ -139,7 +139,7 @@ class StudentFlowNotificationWiringTest extends TestCase
             ->test(WorkOnHomework::class, ['lesson' => $this->lesson])
             ->fillForm($this->handInData($question))
             ->call('submit')
-            ->assertNotified('Geschafft!');
+            ->assertNotified('Done!');
 
         $this->assertTrue(Submission::query()->sole()->isEvaluated());
     }
@@ -152,7 +152,7 @@ class StudentFlowNotificationWiringTest extends TestCase
             ->test(ExplainIt::class)
             ->call('openSession', $session->id)
             ->callAction('askTeacher', ['question' => 'Warum ist Chlorophyll grün?'])
-            ->assertNotified('Deine Frage ist bei deiner Lehrkraft');
+            ->assertNotified('Your question has reached your teacher');
 
         $notification = $this->teacher->unreadNotifications->sole();
         $this->assertSame(trans_choice('Neue Frage zu „:topic“|:count neue Fragen zu „:topic“', 1, ['topic' => 'Fotosynthese']), $notification->data['title']);
@@ -243,7 +243,7 @@ class StudentFlowNotificationWiringTest extends TestCase
         Livewire::actingAs($this->teacher)
             ->test(QuestionInbox::class)
             ->callAction(TestAction::make('answer')->table($question), ['answer' => 'Antwort.'])
-            ->assertNotified('Antwort geschickt');
+            ->assertNotified('Answer sent');
 
         $this->assertFalse($question->refresh()->isOpen());
     }

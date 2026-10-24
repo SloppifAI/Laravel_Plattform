@@ -31,7 +31,7 @@ class DashboardPracticeCardTest extends TestCase
         $this->actingAs($student);
 
         Livewire::test(StudentLearningWidget::class)
-            ->assertSeeInOrder(['Hier lohnt sich Üben', 'Biologie: Thema Eins', 'Kompetenz Eins', 'Thema Tuto erklären', 'zu Kompetenz Eins', 'Thema Zwei', 'Kompetenz Zwei', 'Thema Drei', 'Kompetenz Drei'])
+            ->assertSeeInOrder(['Practising pays off here', 'Biologie: Thema Eins', 'Kompetenz Eins', 'Explain a topic to Tuto', 'for Kompetenz Eins', 'Thema Zwei', 'Kompetenz Zwei', 'Thema Drei', 'Kompetenz Drei'])
             ->assertSee(ExplainIt::getUrl(['lesson' => $lessons['Eins']]), false)
             ->assertSee(ExplainIt::getUrl(['lesson' => $lessons['Zwei']]), false)
             ->assertSee(ExplainIt::getUrl(['lesson' => $lessons['Drei']]), false)
@@ -39,7 +39,7 @@ class DashboardPracticeCardTest extends TestCase
             ->assertDontSee('Kompetenz Vier')
             ->assertDontSee(ExplainIt::getUrl(['lesson' => $lessons['Vier']]), false);
 
-        $this->get('/')->assertOk()->assertSee('Hier lohnt sich Üben')->assertSee('Kompetenz Drei');
+        $this->get('/')->assertOk()->assertSee('Practising pays off here')->assertSee('Kompetenz Drei');
     }
 
     public function test_the_card_is_encouraging_without_practice_needs(): void
@@ -49,17 +49,17 @@ class DashboardPracticeCardTest extends TestCase
 
         // Nothing evaluated yet is neutral, not the green "well done" box.
         Livewire::test(StudentLearningWidget::class)
-            ->assertSee('Hier lohnt sich Üben')
-            ->assertSee('Sobald deine Hausaufgaben bewertet sind')
-            ->assertDontSee('Gut gemacht!');
+            ->assertSee('Practising pays off here')
+            ->assertSee('As soon as your homework has been scored')
+            ->assertDontSee('Well done!');
 
         $this->answer($this->evaluatedHomework($student, 'Photosynthese'), Competency::factory()->create(), 90);
 
         Livewire::test(StudentLearningWidget::class)
-            ->assertSee('Gut gemacht!')
-            ->assertSee('Im Moment läuft alles richtig gut.')
-            ->assertDontSee('Sobald deine Hausaufgaben bewertet sind')
-            ->assertDontSee('zu Kompetenz');
+            ->assertSee('Well done!')
+            ->assertSee('Everything is going really well at the moment.')
+            ->assertDontSee('As soon as your homework has been scored')
+            ->assertDontSee('for Kompetenz');
     }
 
     public function test_students_never_see_foerderbedarf_or_a_red_warning_and_scores_carry_their_unit(): void
@@ -70,8 +70,8 @@ class DashboardPracticeCardTest extends TestCase
 
         Livewire::test(StudentLearningWidget::class)
             ->assertSee('30 %')
-            ->assertSee('Noch üben')
-            ->assertDontSee('Förderbedarf')
+            ->assertSee('Keep practising')
+            ->assertDontSee('Needs support')
             ->assertDontSee('danger');
     }
 
@@ -82,8 +82,8 @@ class DashboardPracticeCardTest extends TestCase
         $this->actingAs($student);
 
         Livewire::test(StudentLearningWidget::class)
-            ->assertSee('Deine Hausaufgabe ist abgegeben. Die Auswertung kommt später.')
-            ->assertDontSee('Gib deine erste Hausaufgabe ab');
+            ->assertSee('Your homework has been handed in. The evaluation will follow later.')
+            ->assertDontSee('Hand in your first homework');
     }
 
     public function test_withdrawn_homework_does_not_count_towards_the_average(): void
@@ -94,8 +94,8 @@ class DashboardPracticeCardTest extends TestCase
         $this->actingAs($student);
 
         Livewire::test(StudentLearningWidget::class)
-            ->assertSeeInOrder(['80', '%', 'Durchschnitt aus 1 Hausaufgabe'])
-            ->assertDontSee('Durchschnitt aus 2');
+            ->assertSeeInOrder(['80', '%', 'Average of 1 homework assignment'])
+            ->assertDontSee('Average of 2');
     }
 
     public function test_the_card_never_shows_competencies_of_classmates(): void
@@ -107,7 +107,7 @@ class DashboardPracticeCardTest extends TestCase
         $this->actingAs($student);
 
         Livewire::test(StudentLearningWidget::class)
-            ->assertSee('Sobald deine Hausaufgaben bewertet sind')
+            ->assertSee('As soon as your homework has been scored')
             ->assertDontSee('Nur bei der Mitschülerin')
             ->assertDontSee('Thema der anderen');
     }
