@@ -68,9 +68,15 @@
                     @endif
 
                     <x-slot name="afterHeader">
-                        <x-filament::button color="gray" size="sm" icon="heroicon-m-plus" wire:click="startOver">
-                            Neue Erklärung
-                        </x-filament::button>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <x-filament::button color="gray" size="sm" icon="heroicon-m-plus" wire:click="startOver">
+                                Neue Erklärung
+                            </x-filament::button>
+
+                            <x-filament::button color="danger" outlined size="sm" icon="heroicon-m-trash" wire:click="mountAction('deleteSession', { session: {{ $explanationSession->id }} })">
+                                Gespräch löschen
+                            </x-filament::button>
+                        </div>
                     </x-slot>
 
                     @if ($explanationSession->isFinished() && $explanationSession->understanding_score !== null)
@@ -108,7 +114,7 @@
                                         </span>
                                     @endunless
 
-                                    <div @class(['flex max-w-[85%] min-w-0 flex-col', 'items-end' => $fromStudent, 'items-start' => ! $fromStudent])>
+                                    <div data-read-aloud @class(['flex max-w-[85%] min-w-0 flex-col', 'items-end' => $fromStudent, 'items-start' => ! $fromStudent])>
                                         <p class="mb-1 px-1 text-xs font-medium text-gray-500 dark:text-gray-400">
                                             {{ $fromStudent ? 'Du' : $tutorName }}
                                         </p>
@@ -176,13 +182,13 @@
                 @forelse ($earlierSessions as $earlierSession)
                     @php($isCurrent = $earlierSession->is($explanationSession))
 
-                    <li wire:key="explanation-session-{{ $earlierSession->id }}">
+                    <li wire:key="explanation-session-{{ $earlierSession->id }}" class="flex items-start gap-1">
                         <button
                             type="button"
                             wire:click="openSession({{ $earlierSession->id }})"
                             @if ($isCurrent) aria-current="true" @endif
                             @class([
-                                'flex w-full flex-col items-start gap-1 rounded-lg px-2 py-2 text-left transition hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-primary-600 dark:hover:bg-white/5',
+                                'flex min-w-0 flex-1 flex-col items-start gap-1 rounded-lg px-2 py-2 text-left transition hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-primary-600 dark:hover:bg-white/5',
                                 'bg-primary-50 dark:bg-primary-400/10' => $isCurrent,
                             ])
                         >
@@ -204,6 +210,14 @@
                                 @endif
                             </span>
                         </button>
+
+                        <x-filament::icon-button
+                            icon="heroicon-m-trash"
+                            color="danger"
+                            size="sm"
+                            :label="'Gespräch löschen: '.$earlierSession->topic"
+                            wire:click="mountAction('deleteSession', { session: {{ $earlierSession->id }} })"
+                        />
                     </li>
                 @empty
                     <li class="px-2 text-sm text-gray-600 dark:text-gray-400">
