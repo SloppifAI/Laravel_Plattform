@@ -11,6 +11,7 @@ use App\Ai\Transcriber;
 use Filament\Forms\Components\Select;
 use Filament\Support\Facades\FilamentView;
 use Filament\Tables\Columns\SelectColumn;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Filament\View\PanelsRenderHook;
@@ -19,9 +20,15 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Str;
 
 class AppServiceProvider extends ServiceProvider
 {
+    /**
+     * How many words a table cell shows before it is cut off (the tooltip has the rest).
+     */
+    public const int TABLE_CELL_WORDS = 12;
+
     /**
      * Register any application services.
      */
@@ -47,6 +54,11 @@ class AppServiceProvider extends ServiceProvider
         Select::configureUsing(fn (Select $select): Select => $select->native(false));
         SelectFilter::configureUsing(fn (SelectFilter $filter): SelectFilter => $filter->native(false));
         SelectColumn::configureUsing(fn (SelectColumn $column): SelectColumn => $column->native(false));
+
+        // Long texts in table cells end after a few words with an ellipsis; the tooltip shows the whole text. HTML stays whole.
+        TextColumn::configureUsing(fn (TextColumn $column): TextColumn => $column
+            ->words(self::TABLE_CELL_WORDS)
+            ->tooltip(fn (TextColumn $column, mixed $state): ?string => is_string($state) && ! $column->isHtml() && Str::words($state, self::TABLE_CELL_WORDS) !== $state ? $state : null));
 
         // The parents' consent page: a small limit per link and IP, and a generous ceiling per IP only against abuse, because a whole
         // parents' evening can sit behind one school Wi-Fi address and revoking has to stay as easy as consenting.
