@@ -5,7 +5,7 @@
     </div>
 
     <p class="mt-6 text-2xl font-semibold tracking-tight text-balance text-primary-800 sm:text-3xl lg:mt-10 lg:text-5xl lg:leading-tight dark:text-primary-200">
-        Tuto. Was zählt, bleibt. Der Rest nicht.
+        Lernen zum Verstehen
     </p>
 
     <p class="mt-4 max-w-md text-base text-pretty text-gray-700 lg:text-lg dark:text-gray-300">
