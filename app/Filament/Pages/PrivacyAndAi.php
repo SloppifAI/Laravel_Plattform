@@ -11,7 +11,7 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 
 /**
- * Plain-language transparency page for every role: what is stored, who sees it and what the AI does.
+ * Plain-language transparency page for every role: what is stored, who sees it (within the own school only) and what the AI does.
  * The "who sees what" cards describe app/Policies; tests/Feature/Privacy/PrivacyAndAiTest keeps the AI status in sync with the config.
  */
 class PrivacyAndAi extends Page
@@ -64,7 +64,9 @@ class PrivacyAndAi extends Page
             'aiEnabled' => self::isAiEnabled(),
             'model' => $this->model(),
             'isAdmin' => $user?->isAdmin() ?? false,
+            'isOperator' => $user?->isOperator() ?? false,
             'isStudent' => $user?->isStudent() ?? false,
+            'roles' => Role::cases(),
             'dataCategories' => self::dataCategories(),
             'levels' => self::levels(),
         ];
@@ -86,7 +88,8 @@ class PrivacyAndAi extends Page
     private static function dataCategories(): array
     {
         $teacher = ['role' => Role::Teacher, 'label' => 'Lehrkraft der Stunde', 'icon' => Heroicon::OutlinedAcademicCap];
-        $admin = ['role' => Role::Admin, 'label' => 'Administration', 'icon' => Heroicon::OutlinedKey];
+        $admin = ['role' => Role::Admin, 'label' => 'Schuladministration (eigene Schule)', 'icon' => Heroicon::OutlinedKey];
+        $operator = ['role' => Role::Operator, 'icon' => Heroicon::OutlinedBuildingLibrary];
         $student = ['role' => Role::Student, 'icon' => Heroicon::OutlinedBookOpen];
 
         return [
@@ -104,7 +107,7 @@ class PrivacyAndAi extends Page
                 'viewers' => [$teacher, $admin, [...$student, 'label' => 'Zugewiesene Schüler:innen']],
                 'notes' => [
                     'Schüler:innen sehen eine Hausaufgabe erst, wenn sie veröffentlicht und ihnen zugewiesen ist.',
-                    'Der Erwartungshorizont, also was eine gute Antwort enthält, ist nur für Lehrkraft und Administration sichtbar.',
+                    'Der Erwartungshorizont, also was eine gute Antwort enthält, ist nur für Lehrkraft und Schuladministration sichtbar.',
                 ],
             ],
             [
@@ -124,12 +127,19 @@ class PrivacyAndAi extends Page
             [
                 'title' => 'Kontodaten',
                 'icon' => Heroicon::OutlinedUserCircle,
-                'stored' => 'Name, Benutzername, E-Mail-Adresse, Rolle und Klasse. Das Passwort wird nur verschlüsselt (als Hash) gespeichert.',
-                'viewers' => [$admin],
+                'stored' => 'Name, Benutzername, E-Mail-Adresse, Rolle, Schule und Klasse. Das Passwort wird nur verschlüsselt (als Hash) gespeichert.',
+                'viewers' => [$admin, [...$operator, 'label' => 'Plattform-Administration (nur Schuladministrationen)']],
                 'notes' => [
                     'Lehrkräfte sehen die Namen der Schüler:innen aus der Klasse ihrer Stunde, um Hausaufgaben zu verteilen und Abgaben zuzuordnen.',
                     'Wird ein Schülerkonto gelöscht, werden auch seine Abgaben und Gespräche gelöscht.',
                 ],
+            ],
+            [
+                'title' => 'Schule und Registrierung',
+                'icon' => Heroicon::OutlinedBuildingLibrary,
+                'stored' => 'Name, Ort und Bundesland der Schule, auf Wunsch Schulnummer, Schulform und Kontakt-E-Mail-Adresse, dazu der Zeitpunkt der Registrierung und einer möglichen Sperrung.',
+                'viewers' => [$admin, [...$operator, 'label' => 'Plattform-Administration (alle Schulen)']],
+                'notes' => ['Eine gesperrte Schule kann die Plattform nicht mehr nutzen. Ihre Daten bleiben gespeichert, bis sie gelöscht werden oder die Sperre aufgehoben wird.'],
             ],
         ];
     }

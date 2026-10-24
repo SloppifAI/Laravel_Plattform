@@ -13,8 +13,29 @@
                 Lehrkräfte tragen selbst ein, was sie festhalten möchten: Notizen, ein Tafelbild oder Arbeitsblätter als Foto oder PDF. Was nicht eingetragen wird, kennt die Plattform nicht.
             </p>
             <p>
-                Die Ergebnisse sollen Schüler:innen gezielt unterstützen. Sie sind kein Mittel, um Lehrkräfte zu kontrollieren. Lehrkräfte sehen nur die Ergebnisse zu ihren eigenen Stunden, die Administration kann alle Stunden und Ergebnisse einsehen.
+                Die Ergebnisse sollen Schüler:innen gezielt unterstützen. Sie sind kein Mittel, um Lehrkräfte zu kontrollieren. Lehrkräfte sehen nur die Ergebnisse zu ihren eigenen Stunden, die Schuladministration kann alle Stunden und Ergebnisse ihrer Schule einsehen.
             </p>
+        </div>
+    </x-filament::section>
+
+    <x-filament::section icon="heroicon-o-building-library" icon-color="primary">
+        <x-slot name="heading">Jede Schule für sich</x-slot>
+
+        <div class="max-w-3xl space-y-3 text-sm text-gray-700 dark:text-gray-300">
+            <p>
+                Alles, was zu einer Schule gehört, also Klassen, Konten, Unterrichtsstunden, Abgaben und Gespräche, sehen nur Personen dieser Schule. Schulen sehen nichts voneinander.
+            </p>
+
+            <ul class="space-y-3 pt-1">
+                @foreach ($roles as $role)
+                    <li class="flex flex-col gap-1.5 sm:flex-row sm:items-start sm:gap-3">
+                        <span class="sm:w-48 sm:shrink-0">
+                            <x-filament::badge :color="$role->getColor()">{{ $role->getLabel() }}</x-filament::badge>
+                        </span>
+                        <span>{{ $role->getDescription() }}</span>
+                    </li>
+                @endforeach
+            </ul>
         </div>
     </x-filament::section>
 
@@ -24,7 +45,7 @@
             Alles liegt auf den Servern, auf denen die Plattform betrieben wird. Sehen können es nur die genannten Rollen.
         </x-slot>
 
-        <div class="grid gap-4 md:grid-cols-2">
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
             @foreach ($dataCategories as $category)
                 <x-filament::section :icon="$category['icon']" icon-color="gray" heading-tag="h3" :heading="$category['title']" compact secondary>
                     <div class="space-y-3 text-sm text-gray-700 dark:text-gray-300">
@@ -36,7 +57,12 @@
                             <ul class="flex flex-wrap gap-2">
                                 @foreach ($category['viewers'] as $viewer)
                                     <li>
-                                        <x-filament::badge :color="$viewer['role']->getColor()" :icon="$viewer['icon']">
+                                        {{-- Long labels wrap instead of being cut off with an ellipsis. --}}
+                                        <x-filament::badge
+                                            :color="$viewer['role']->getColor()"
+                                            :icon="$viewer['icon']"
+                                            class="fi-wrapped [&_.fi-badge-label]:overflow-visible [&_.fi-badge-label]:whitespace-normal"
+                                        >
                                             {{ $viewer['label'] }}
                                         </x-filament::badge>
                                     </li>
@@ -128,31 +154,44 @@
         <x-slot name="heading">Fragen zum Datenschutz?</x-slot>
 
         <p class="max-w-3xl text-sm text-gray-700 dark:text-gray-300">
-            Ansprechpartner ist die Schulverwaltung (Administration). Dort bekommst du Auskunft darüber, welche Daten gespeichert sind, und kannst Fragen zu Berichtigung und Löschung stellen.
+            @if ($isOperator)
+                Die Schulen und ihre Schulverwaltungen wenden sich bei Fragen zum Datenschutz an dich. Die Kontaktdaten des Betreibers stehen in der Datenschutzerklärung.
+            @else
+                Ansprechpartner ist die Schulverwaltung (Schuladministration) deiner Schule. Dort bekommst du Auskunft darüber, welche Daten gespeichert sind, und kannst Fragen zu Berichtigung und Löschung stellen.
+            @endif
         </p>
     </x-filament::section>
 
-    @if ($isAdmin)
+    @if ($isAdmin || $isOperator)
         <x-filament::section icon="heroicon-o-cog-6-tooth" icon-color="danger">
-            <x-slot name="heading">Für die Administration: KI-Anbindung einschalten</x-slot>
-            <x-slot name="description">Dieser Abschnitt ist nur für die Administration sichtbar.</x-slot>
+            <x-slot name="heading">{{ $isOperator ? 'Für die Plattform-Administration: KI-Anbindung einschalten' : 'Für die Schuladministration: Vor dem Einschalten der KI-Anbindung' }}</x-slot>
+            <x-slot name="description">Dieser Abschnitt ist nur für die {{ $isOperator ? 'Plattform-Administration' : 'Schuladministration' }} sichtbar.</x-slot>
 
             <div class="max-w-3xl space-y-4 text-sm text-gray-700 dark:text-gray-300">
-                <p>
-                    @if ($aiEnabled)
-                        Die Anbindung ist eingeschaltet. Sie wird über die Umgebungsvariablen (.env) des Servers gesteuert. Mit <code>ANTHROPIC_ENABLED=false</code> läuft die Plattform wieder komplett offline.
-                    @else
-                        Die Anbindung ist vorbereitet, aber ausgeschaltet. Eingeschaltet wird sie über die Umgebungsvariablen (.env) des Servers:
-                    @endif
-                </p>
+                @if ($isOperator)
+                    <p>
+                        Die Anbindung gilt für die ganze Plattform und damit für alle Schulen.
+                        @if ($aiEnabled)
+                            Sie ist eingeschaltet und wird über die Umgebungsvariablen (.env) des Servers gesteuert. Mit <code>ANTHROPIC_ENABLED=false</code> läuft die Plattform wieder komplett offline.
+                        @else
+                            Sie ist vorbereitet, aber ausgeschaltet. Eingeschaltet wird sie über die Umgebungsvariablen (.env) des Servers:
+                        @endif
+                    </p>
 
-                <pre class="overflow-x-auto rounded-lg bg-gray-100 p-3 text-xs text-gray-950 dark:bg-white/5 dark:text-white"><code>ANTHROPIC_ENABLED=true
+                    <pre class="rounded-lg bg-gray-100 p-3 text-xs break-words whitespace-pre-wrap text-gray-950 md:overflow-x-auto md:whitespace-pre dark:bg-white/5 dark:text-white"><code>ANTHROPIC_ENABLED=true
 ANTHROPIC_API_KEY=dein-api-schluessel
 ANTHROPIC_MODEL=</code></pre>
 
-                <p>
-                    <code>ANTHROPIC_MODEL</code> ist optional. Bleibt es leer, gilt das Standardmodell der Plattform. Nach einer Änderung muss die Konfiguration der Anwendung neu geladen werden. Diese Seite zeigt dann automatisch Anbieter und Modell an.
-                </p>
+                    <p>
+                        <code>ANTHROPIC_MODEL</code> ist optional. Bleibt es leer, gilt das Standardmodell der Plattform. Nach einer Änderung muss die Konfiguration der Anwendung neu geladen werden. Diese Seite zeigt dann automatisch Anbieter und Modell an.
+                    </p>
+                @else
+                    <p>
+                        Die KI-Anbindung wird für die ganze Plattform von der Plattform-Administration geschaltet, nicht von einzelnen Schulen.
+                        {{ $aiEnabled ? 'Sie ist gerade eingeschaltet.' : 'Sie ist gerade ausgeschaltet.' }}
+                        Bevor eure Schule sie im Unterricht nutzt, solltet ihr Folgendes klären:
+                    </p>
+                @endif
 
                 <div>
                     <h3 class="mb-2 font-medium text-gray-950 dark:text-white">Checkliste vor dem Einschalten</h3>

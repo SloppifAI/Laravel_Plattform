@@ -10,6 +10,7 @@
     $legalLinks = [
         'legal.imprint' => 'Impressum',
         'legal.privacy' => 'Datenschutzerklärung',
+        'legal.dpa' => 'Auftragsverarbeitung (AVV)',
     ];
 @endphp
 <!DOCTYPE html>
@@ -23,6 +24,8 @@
         @hasSection('description')
             <meta name="description" content="@yield('description')">
         @endif
+        {{-- Extra head tags of a single page, e.g. the robots meta of the consent page. --}}
+        @stack('head')
 
         <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
         {{-- Lexend is served from public/fonts, so no request leaves for a font provider. --}}
@@ -298,7 +301,7 @@
                 padding-inline-start: 1.75rem;
             }
 
-            /* Tables scroll inside their own box, so the page itself never scrolls sideways. */
+            /* From md upwards a table scrolls inside its own box, so the page itself never scrolls sideways. */
             .legal-table-wrap {
                 overflow-x: auto;
                 border-radius: 0.75rem;
@@ -364,11 +367,87 @@
                 color: #fff;
             }
 
+            /* The column name shown inside each cell on phones; the header row does that job from md. */
+            .legal-cell-label {
+                display: none;
+            }
+
+            /*
+             * Below md nothing scrolls sideways: every row becomes a card, its first cell the card title and the
+             * header row gives way to a label in each cell. Print keeps the real table (screen only).
+             */
+            @media screen and (width < 48rem) {
+                .legal-table-wrap {
+                    overflow: visible;
+                    border-radius: 0;
+                    box-shadow: none;
+                }
+
+                .legal-table,
+                .legal-table tbody,
+                .legal-table tr,
+                .legal-table th,
+                .legal-table td {
+                    display: block;
+                    min-width: 0;
+                }
+
+                .legal-table thead {
+                    display: none;
+                }
+
+                .legal-table tbody tr {
+                    padding: 0.25rem 0;
+                    border-radius: 0.75rem;
+                    box-shadow: 0 0 0 1px var(--gray-200);
+                }
+
+                .legal-table tbody tr + tr {
+                    margin-top: 0.75rem;
+                }
+
+                .legal-table tbody th,
+                .legal-table tbody td {
+                    border-bottom: 0;
+                    overflow-wrap: anywhere;
+                }
+
+                .legal-table tbody th {
+                    padding-bottom: 0.25rem;
+                    font-weight: 600;
+                }
+
+                .legal-table tbody td {
+                    padding-block: 0.375rem;
+                }
+
+                .legal-cell-label {
+                    display: block;
+                    color: var(--gray-600);
+                    font-size: 0.8125rem;
+                    font-weight: 600;
+                    line-height: 1.4;
+                }
+
+                .dark .legal-table tbody tr {
+                    box-shadow: 0 0 0 1px rgb(255 255 255 / 0.1);
+                }
+
+                .dark .legal-cell-label {
+                    color: var(--gray-400);
+                }
+            }
+
             @media print {
                 .legal-skip,
                 header,
                 footer {
                     display: none;
+                }
+
+                /* A scroll box would cut the table off on paper. */
+                .legal-table-wrap {
+                    overflow: visible;
                 }
             }
         </style>
