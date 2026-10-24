@@ -3,6 +3,8 @@
 namespace Tests\Feature\Lessons;
 
 use App\Ai\LessonAssistant;
+use App\Filament\Pages\LessonStarter;
+use App\Filament\Pages\RecordLesson;
 use App\Filament\Resources\Lessons\Pages\EditLesson;
 use App\Filament\Resources\Lessons\RelationManagers\QuestionsRelationManager;
 use App\Filament\Resources\Lessons\RelationManagers\SubmissionsRelationManager;
@@ -18,6 +20,7 @@ use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\Testing\TestAction;
 use Filament\Actions\ViewAction;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Mockery\MockInterface;
@@ -81,7 +84,7 @@ class LessonHomeworkTest extends TestCase
     {
         $schoolClass = SchoolClass::factory()->create();
         [$first, , $third] = User::factory()->student($schoolClass)->count(3)->create();
-        $lesson = Lesson::factory()->for($schoolClass)->has(Question::factory())->create();
+        $lesson = Lesson::factory()->for($schoolClass)->for($schoolClass->teacher, 'teacher')->has(Question::factory())->create();
         $this->actingAs($lesson->teacher);
 
         Livewire::test(EditLesson::class, ['record' => $lesson->getRouteKey()])
@@ -91,7 +94,7 @@ class LessonHomeworkTest extends TestCase
                 'students' => [$first->id, $third->id],
             ])
             ->assertHasNoFormErrors()
-            ->assertNotified('Hausaufgabe verteilt');
+            ->assertNotified('Hausaufgabe freigegeben');
 
         $lesson->refresh();
         $this->assertTrue($lesson->isPublished());
@@ -104,7 +107,7 @@ class LessonHomeworkTest extends TestCase
         $schoolClass = SchoolClass::factory()->create();
         $classmate = User::factory()->student($schoolClass)->create();
         $foreignStudent = User::factory()->student()->create();
-        $lesson = Lesson::factory()->for($schoolClass)->has(Question::factory())->create();
+        $lesson = Lesson::factory()->for($schoolClass)->for($schoolClass->teacher, 'teacher')->has(Question::factory())->create();
         $this->actingAs($lesson->teacher);
 
         Livewire::test(EditLesson::class, ['record' => $lesson->getRouteKey()])
@@ -122,7 +125,7 @@ class LessonHomeworkTest extends TestCase
         $schoolClass = SchoolClass::factory()->create();
         $classStudents = User::factory()->student($schoolClass)->count(3)->create();
         User::factory()->student()->create();
-        $lesson = Lesson::factory()->for($schoolClass)->has(Question::factory())->create();
+        $lesson = Lesson::factory()->for($schoolClass)->for($schoolClass->teacher, 'teacher')->has(Question::factory())->create();
         $this->actingAs($lesson->teacher);
 
         Livewire::test(EditLesson::class, ['record' => $lesson->getRouteKey()])
@@ -189,7 +192,7 @@ class LessonHomeworkTest extends TestCase
         $schoolClass = SchoolClass::factory()->create();
         $submitted = User::factory()->student($schoolClass)->create();
         User::factory()->student($schoolClass)->create(['name' => 'Mia Muster']);
-        $lesson = Lesson::factory()->for($schoolClass)->publishedFor()->create();
+        $lesson = Lesson::factory()->for($schoolClass)->for($schoolClass->teacher, 'teacher')->publishedFor()->create();
         $submission = Submission::factory()->for($lesson)->for($submitted, 'student')->evaluated(80)->create();
         Answer::factory()->for($submission)->create(['answer' => 'Licht und Wasser', 'score' => 40, 'feedback' => 'CO2 fehlt.']);
         $this->actingAs($lesson->teacher);
@@ -205,5 +208,114 @@ class LessonHomeworkTest extends TestCase
             ->callAction(TestAction::make(DeleteAction::class)->table($submission));
 
         $this->assertModelMissing($submission);
+    }
+
+    public function test_releasing_and_withdrawing_use_the_board_wording(): void
+    {
+        $schoolClass = SchoolClass::factory()->create();
+        User::factory()->student($schoolClass)->count(2)->create();
+        $lesson = Lesson::factory()->for($schoolClass)->for($schoolClass->teacher, 'teacher')->has(Question::factory())->create();
+        $this->actingAs($lesson->teacher);
+
+        Livewire::test(EditLesson::class, ['record' => $lesson->getRouteKey()])
+            ->assertSee('Entwurf – wartet auf Freigabe')
+            ->assertActionHasLabel('delegate', 'Freigeben')
+            ->mountAction('delegate')
+            ->assertMountedActionModalSee('Hausaufgabe freigeben');
+
+        $lesson->update(['published_at' => now(), 'due_on' => today()->addDays(3)]);
+        $lesson->students()->sync($schoolClass->students()->pluck('id'));
+
+        Livewire::test(EditLesson::class, ['record' => $lesson->getRouteKey()])
+            ->assertSee('Freigegeben für 2 Schüler:innen')
+            ->assertActionHasLabel('withdraw', 'Freigabe zurücknehmen')
+            ->callAction('withdraw')
+            ->assertNotified('Freigabe zurückgenommen');
+    }
+
+    public function test_releasing_a_practice_task_preselects_its_students_and_withdrawing_keeps_them(): void
+    {
+        $schoolClass = SchoolClass::factory()->create();
+        [$first, , $third] = User::factory()->student($schoolClass)->count(3)->create();
+        $lesson = Lesson::factory()->for($schoolClass)->for($schoolClass->teacher, 'teacher')->has(Question::factory())->create(['practice_competency_id' => Competency::factory()->create()->id]);
+        $lesson->students()->sync([$first->id, $third->id]);
+        $this->actingAs($lesson->teacher);
+
+        Livewire::test(EditLesson::class, ['record' => $lesson->getRouteKey()])
+            ->assertActionHidden('draftHomework')
+            ->mountAction('delegate')
+            ->assertSchemaStateSet(['audience' => 'selected'])
+            ->callMountedAction()
+            ->assertHasNoFormErrors()
+            ->assertNotified('Hausaufgabe freigegeben');
+
+        $lesson->refresh();
+        $this->assertTrue($lesson->isPublished());
+        $this->assertEqualsCanonicalizing([$first->id, $third->id], $lesson->students()->pluck('users.id')->all());
+
+        Livewire::test(EditLesson::class, ['record' => $lesson->getRouteKey()])
+            ->callAction('withdraw');
+
+        $this->assertFalse($lesson->refresh()->isPublished());
+        $this->assertEqualsCanonicalizing([$first->id, $third->id], $lesson->students()->pluck('users.id')->all());
+    }
+
+    public function test_releasing_a_practice_task_does_not_preselect_students_who_left_the_class(): void
+    {
+        $schoolClass = SchoolClass::factory()->create();
+        [$stays, $moved] = User::factory()->student($schoolClass)->count(2)->create();
+        $lesson = Lesson::factory()->for($schoolClass)->for($schoolClass->teacher, 'teacher')->has(Question::factory())->create(['practice_competency_id' => Competency::factory()->create()->id]);
+        $lesson->students()->sync([$stays->id, $moved->id]);
+        $moved->update(['school_class_id' => SchoolClass::factory()->for($schoolClass->school)->create()->id]);
+        $this->actingAs($lesson->teacher);
+
+        // The list offers only the current class, so the preselection must not contain the student who moved away.
+        Livewire::test(EditLesson::class, ['record' => $lesson->getRouteKey()])
+            ->mountAction('delegate')
+            ->assertSchemaStateSet(['students' => [$stays->id]])
+            ->callMountedAction()
+            ->assertHasNoFormErrors()
+            ->assertNotified('Hausaufgabe freigegeben');
+
+        $this->assertSame([$stays->id], $lesson->refresh()->students()->pluck('users.id')->all());
+    }
+
+    public function test_the_ai_draft_is_offered_for_ordinary_lessons_only(): void
+    {
+        $ordinary = Lesson::factory()->create();
+        $practice = Lesson::factory()->create(['practice_competency_id' => Competency::factory()->create()->id]);
+
+        Livewire::actingAs($ordinary->teacher)->test(EditLesson::class, ['record' => $ordinary->getRouteKey()])->assertActionVisible('draftHomework');
+        Livewire::actingAs($practice->teacher)->test(EditLesson::class, ['record' => $practice->getRouteKey()])->assertActionHidden('draftHomework');
+    }
+
+    public function test_the_lessons_teacher_gets_the_starter_board_and_tuto_mikro_in_the_header(): void
+    {
+        $lesson = Lesson::factory()->publishedFor()->create();
+        $practice = Lesson::factory()->create(['practice_competency_id' => Competency::factory()->create()->id]);
+
+        Livewire::actingAs($lesson->teacher)->test(EditLesson::class, ['record' => $lesson->getRouteKey()])
+            ->assertActionVisible('starter')
+            ->assertActionHasLabel('starter', 'Einstieg nächste Stunde')
+            ->assertActionHasUrl('starter', LessonStarter::getUrl(['lesson' => $lesson]))
+            ->assertActionVisible('record')
+            ->assertActionHasLabel('record', 'Tuto-Mikro')
+            ->assertActionHasIcon('record', Heroicon::OutlinedSignal)
+            ->assertActionHasUrl('record', RecordLesson::getUrl(['lesson' => $lesson]));
+
+        // A Förderaufgabe has no class-wide results and no lesson notes to take over, so its page offers neither the starter board nor the Tuto-Mikro.
+        Livewire::actingAs($practice->teacher)->test(EditLesson::class, ['record' => $practice->getRouteKey()])
+            ->assertActionHidden('starter')
+            ->assertActionHidden('record');
+    }
+
+    public function test_the_administration_gets_neither_the_starter_board_nor_tuto_mikro(): void
+    {
+        $lesson = Lesson::factory()->publishedFor()->create();
+        $admin = User::factory()->admin()->for($lesson->schoolClass->school)->create();
+
+        Livewire::actingAs($admin)->test(EditLesson::class, ['record' => $lesson->getRouteKey()])
+            ->assertActionHidden('starter')
+            ->assertActionHidden('record');
     }
 }

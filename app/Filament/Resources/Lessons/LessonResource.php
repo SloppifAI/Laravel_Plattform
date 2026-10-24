@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Lessons;
 
+use App\Filament\NavigationGroup;
 use App\Filament\Resources\Lessons\Pages\CreateLesson;
 use App\Filament\Resources\Lessons\Pages\EditLesson;
 use App\Filament\Resources\Lessons\Pages\ListLessons;
@@ -25,7 +26,7 @@ class LessonResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedPresentationChartBar;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Unterricht';
+    protected static string|UnitEnum|null $navigationGroup = NavigationGroup::Unterricht;
 
     protected static ?int $navigationSort = 1;
 

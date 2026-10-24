@@ -41,13 +41,15 @@ class LessonsTable
                 TextColumn::make('topic')
                     ->label('Thema')
                     ->searchable()
-                    ->wrap(),
+                    ->wrap()
+                    // Right under the topic: no extra column, and the stacked cards of a phone show it too.
+                    ->description(fn (Lesson $record) => $record->isPracticeTask() ? view('filament.resources.lessons.practice-badge') : null),
                 TextColumn::make('status')
                     ->label('Status')
-                    ->state(fn (Lesson $record): string => $record->isPublished() ? 'Verteilt' : 'Entwurf')
+                    ->state(fn (Lesson $record): string => $record->isPublished() ? 'Freigegeben' : 'Wartet auf Freigabe')
                     ->badge()
-                    ->color(fn (string $state): string => $state === 'Verteilt' ? 'success' : 'gray')
-                    ->icon(fn (string $state): Heroicon => $state === 'Verteilt' ? Heroicon::OutlinedPaperAirplane : Heroicon::OutlinedPencilSquare),
+                    ->color(fn (string $state): string => $state === 'Freigegeben' ? 'primary' : 'warning')
+                    ->icon(fn (string $state): Heroicon => $state === 'Freigegeben' ? Heroicon::OutlinedCheckCircle : Heroicon::OutlinedClock),
                 TextColumn::make('submissions_count')
                     ->label('Abgegeben')
                     ->state(fn (Lesson $record): ?string => $record->isPublished() ? "{$record->submissions_count} / {$record->students_count}" : null)
@@ -70,8 +72,14 @@ class LessonsTable
                     ->label('Status')
                     ->nullable()
                     ->placeholder('Alle')
-                    ->trueLabel('Verteilt')
-                    ->falseLabel('Entwurf'),
+                    ->trueLabel('Freigegeben')
+                    ->falseLabel('Wartet auf Freigabe'),
+                TernaryFilter::make('practice_competency_id')
+                    ->label('Art')
+                    ->nullable()
+                    ->placeholder('Alle')
+                    ->trueLabel('Nur Förderaufgaben')
+                    ->falseLabel('Nur Stunden'),
             ])
             ->recordActions([
                 EditAction::make(),

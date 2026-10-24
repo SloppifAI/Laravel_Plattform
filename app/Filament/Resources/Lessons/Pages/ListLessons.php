@@ -36,7 +36,8 @@ class ListLessons extends ListRecords
     }
 
     /**
-     * Admins see the classes of their school, teachers only the classes they lead (Klassenleitung), always within their school.
+     * Admins see the classes of their school, teachers the classes they teach (Klassenleitung, assigned, substituting),
+     * always within their school.
      *
      * @return Collection<int, SchoolClass>
      */
@@ -44,8 +45,9 @@ class ListLessons extends ListRecords
     {
         $user = auth()->user();
 
-        return ($user->isAdmin() ? SchoolClass::query() : $user->ledClasses())
+        return SchoolClass::query()
             ->where('school_id', $user->school_id)
+            ->unless($user->isAdmin(), fn ($query) => $query->taughtBy($user))
             ->orderBy('name')
             ->get();
     }

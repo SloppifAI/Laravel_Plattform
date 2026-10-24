@@ -5,6 +5,7 @@ namespace Tests\Feature\Lessons;
 use App\Filament\Resources\Lessons\LessonResource;
 use App\Filament\Resources\Lessons\Pages\CreateLesson;
 use App\Filament\Resources\Lessons\Pages\ListLessons;
+use App\Models\Competency;
 use App\Models\Lesson;
 use App\Models\SchoolClass;
 use App\Models\Submission;
@@ -46,6 +47,48 @@ class LessonResourceTest extends TestCase
             ->assertOk()
             ->assertCanSeeTableRecords([$ownLesson])
             ->assertCanNotSeeTableRecords([$foreignLesson]);
+    }
+
+    public function test_the_table_shows_the_release_status_and_marks_practice_tasks(): void
+    {
+        $teacher = User::factory()->teacher()->create();
+        $waiting = Lesson::factory()->for($teacher, 'teacher')->create();
+        $released = Lesson::factory()->for($teacher, 'teacher')->publishedFor()->create();
+        $practice = Lesson::factory()->for($teacher, 'teacher')->create(['practice_competency_id' => Competency::factory()->create()->id]);
+        $this->actingAs($teacher);
+
+        $page = Livewire::test(ListLessons::class)
+            ->assertSee(['Wartet auf Freigabe', 'Freigegeben', 'Förderaufgabe'])
+            ->assertDontSee(['Verteilt', 'Entwurf'])
+            ->assertTableColumnStateSet('status', 'Wartet auf Freigabe', $waiting)
+            ->assertTableColumnStateSet('status', 'Freigegeben', $released);
+
+        // The badge sits under the topic, so it is part of every screen size, the phone cards included.
+        $topic = $page->instance()->getTable()->getColumn('topic');
+        $this->assertStringContainsString('Förderaufgabe', $topic->record($practice)->getDescriptionBelow()->toHtml());
+        $this->assertNull($topic->record($waiting)->getDescriptionBelow());
+    }
+
+    public function test_the_table_can_be_filtered_by_release_status_and_by_practice_task(): void
+    {
+        $teacher = User::factory()->teacher()->create();
+        $waiting = Lesson::factory()->for($teacher, 'teacher')->create();
+        $released = Lesson::factory()->for($teacher, 'teacher')->publishedFor()->create();
+        $practice = Lesson::factory()->for($teacher, 'teacher')->create(['practice_competency_id' => Competency::factory()->create()->id]);
+        $this->actingAs($teacher);
+
+        Livewire::test(ListLessons::class)
+            ->filterTable('practice_competency_id', true)
+            ->assertCanSeeTableRecords([$practice])
+            ->assertCanNotSeeTableRecords([$waiting, $released])
+            ->removeTableFilter('practice_competency_id')
+            ->filterTable('practice_competency_id', false)
+            ->assertCanSeeTableRecords([$waiting, $released])
+            ->assertCanNotSeeTableRecords([$practice])
+            ->removeTableFilter('practice_competency_id')
+            ->filterTable('published_at', true)
+            ->assertCanSeeTableRecords([$released])
+            ->assertCanNotSeeTableRecords([$waiting, $practice]);
     }
 
     public function test_teachers_cannot_open_another_teachers_lesson(): void
@@ -158,17 +201,23 @@ class LessonResourceTest extends TestCase
             ->assertMountedActionModalDontSee([$foreignClass->name, $foreignClass->join_code]);
     }
 
-    public function test_teachers_only_see_the_codes_of_the_classes_they_lead(): void
+    public function test_teachers_only_see_the_codes_of_the_classes_they_teach(): void
     {
         $teacher = User::factory()->teacher()->create();
         $ledClass = SchoolClass::factory()->for($teacher, 'teacher')->create();
+        $assignedClass = SchoolClass::factory()->create(['school_id' => $teacher->school_id]);
+        $assignedClass->teachers()->attach($teacher);
+        $heldOnlyClass = SchoolClass::factory()->create(['school_id' => $teacher->school_id]);
+        Lesson::factory()->for($heldOnlyClass)->for($teacher, 'teacher')->create();
         $otherClassOfSchool = SchoolClass::factory()->create(['school_id' => $teacher->school_id]);
+        $foreignClass = SchoolClass::factory()->create();
+        $foreignClass->teachers()->attach($teacher);
         $this->actingAs($teacher);
 
         Livewire::test(ListLessons::class)
             ->mountAction('classCodes')
-            ->assertMountedActionModalSee([$ledClass->name, $ledClass->join_code])
-            ->assertMountedActionModalDontSee([$otherClassOfSchool->name, $otherClassOfSchool->join_code]);
+            ->assertMountedActionModalSee([$ledClass->name, $ledClass->join_code, $assignedClass->name, $assignedClass->join_code])
+            ->assertMountedActionModalDontSee([$heldOnlyClass->join_code, $otherClassOfSchool->join_code, $foreignClass->join_code]);
     }
 
     public function test_students_cannot_use_the_lesson_resource(): void

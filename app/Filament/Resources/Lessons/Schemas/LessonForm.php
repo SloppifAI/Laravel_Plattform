@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Lessons\Schemas;
 use App\Models\Competency;
 use App\Models\Lesson;
 use App\Models\SchoolClass;
+use App\Models\User;
 use App\Support\LessonReview;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
@@ -30,8 +31,10 @@ class LessonForm
                     ->schema([
                         Select::make('school_class_id')
                             ->label('Klasse')
-                            // Only classes of the own school, also on the server: a forged id of another school fails validation.
-                            ->relationship('schoolClass', 'name', fn (Builder $query): Builder => $query->where('school_id', auth()->user()->school_id))
+                            // Admins: the classes of their school. Teachers: the classes they teach (see LessonPolicy::createFor) plus the
+                            // class an existing lesson already sits in, so it stays editable after the assignment ended. Also on the
+                            // server: a forged id fails validation.
+                            ->relationship('schoolClass', 'name', fn (Builder $query, ?Lesson $record): Builder => static::placeableClasses($query, auth()->user(), $record))
                             ->searchable()
                             ->preload()
                             ->live()
@@ -58,12 +61,12 @@ class LessonForm
                     ->visible(fn (Get $get, ?Lesson $record): bool => static::previousLessonReview($get, $record) !== null)
                     ->viewData(fn (Get $get, ?Lesson $record): array => static::previousLessonReview($get, $record) ?? []),
                 Section::make('Inhalt der Stunde')
-                    ->description('Daraus erstellt die KI Zusammenfassung und Hausaufgabe. Bitte keine Tonaufnahmen und keine personenbezogenen Daten.')
+                    ->description('Daraus erstellt die KI Zusammenfassung und Hausaufgabe. Bitte keine personenbezogenen Daten eintragen.')
                     ->columnSpanFull()
                     ->schema([
                         Textarea::make('notes')
                             ->label('Notizen')
-                            ->helperText('Stichpunkte, Tafelbild oder Transkript')
+                            ->helperText('Stichpunkte, Tafelbild oder Notizen aus der Stunde')
                             ->rows(12)
                             ->required(),
                         FileUpload::make('attachments')
@@ -80,7 +83,7 @@ class LessonForm
                             ->preventFilePathTampering(),
                     ]),
                 Section::make('Zusammenfassung')
-                    ->description('Von der KI erstellt. Du kannst sie vor dem Verteilen anpassen.')
+                    ->description('Von der KI erstellt. Die Schüler:innen lesen sie vor den Fragen, du kannst sie vor der Freigabe anpassen.')
                     ->columnSpanFull()
                     ->visible(fn (?Lesson $record): bool => filled($record?->summary))
                     ->schema([
@@ -89,6 +92,19 @@ class LessonForm
                             ->rows(8),
                     ]),
             ]);
+    }
+
+    /**
+     * @param  Builder<SchoolClass>  $query
+     * @return Builder<SchoolClass>
+     */
+    private static function placeableClasses(Builder $query, User $user, ?Lesson $record): Builder
+    {
+        return $query
+            ->where('school_classes.school_id', $user->school_id)
+            ->unless($user->isAdmin(), fn (Builder $query): Builder => $query->where(fn (Builder $query) => $query
+                ->taughtBy($user)
+                ->when($record !== null, fn (Builder $query) => $query->orWhere('school_classes.id', $record->school_class_id))));
     }
 
     /**

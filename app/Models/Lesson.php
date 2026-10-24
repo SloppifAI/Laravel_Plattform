@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 
 /**
@@ -21,6 +22,18 @@ class Lesson extends Model
 {
     /** @use HasFactory<LessonFactory> */
     use HasFactory;
+
+    /**
+     * The "Einfache Sprache" copy (`summary_simple`) belongs to the summary it was made from: when the summary changes, the copy goes.
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (Lesson $lesson): void {
+            if ($lesson->isDirty('summary') && ! $lesson->isDirty('summary_simple')) {
+                $lesson->setAttribute('summary_simple', null);
+            }
+        });
+    }
 
     /**
      * @return BelongsTo<SchoolClass, $this>
@@ -74,6 +87,16 @@ class Lesson extends Model
     public function questions(): HasMany
     {
         return $this->hasMany(Question::class)->orderBy('position');
+    }
+
+    /**
+     * The Klassenbuch entry made from this lesson, if any.
+     *
+     * @return HasOne<ClassBookEntry, $this>
+     */
+    public function classBookEntry(): HasOne
+    {
+        return $this->hasOne(ClassBookEntry::class);
     }
 
     /**
