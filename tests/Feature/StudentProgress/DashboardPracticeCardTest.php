@@ -31,7 +31,7 @@ class DashboardPracticeCardTest extends TestCase
         $this->actingAs($student);
 
         Livewire::test(StudentLearningWidget::class)
-            ->assertSeeInOrder(['Hier lohnt sich Üben', 'Biologie: Thema Eins', 'Kompetenz Eins', 'Mit Tuto üben', 'Thema Zwei', 'Kompetenz Zwei', 'Thema Drei', 'Kompetenz Drei'])
+            ->assertSeeInOrder(['Hier lohnt sich Üben', 'Biologie: Thema Eins', 'Kompetenz Eins', 'Thema Tuto erklären', 'zu Kompetenz Eins', 'Thema Zwei', 'Kompetenz Zwei', 'Thema Drei', 'Kompetenz Drei'])
             ->assertSee(ExplainIt::getUrl(['lesson' => $lessons['Eins']]), false)
             ->assertSee(ExplainIt::getUrl(['lesson' => $lessons['Zwei']]), false)
             ->assertSee(ExplainIt::getUrl(['lesson' => $lessons['Drei']]), false)
@@ -47,17 +47,55 @@ class DashboardPracticeCardTest extends TestCase
         $student = User::factory()->student(SchoolClass::factory()->create())->create();
         $this->actingAs($student);
 
+        // Nothing evaluated yet is neutral, not the green "well done" box.
         Livewire::test(StudentLearningWidget::class)
             ->assertSee('Hier lohnt sich Üben')
             ->assertSee('Sobald deine Hausaufgaben bewertet sind')
-            ->assertDontSee('Mit Tuto üben');
+            ->assertDontSee('Gut gemacht!');
 
         $this->answer($this->evaluatedHomework($student, 'Photosynthese'), Competency::factory()->create(), 90);
 
         Livewire::test(StudentLearningWidget::class)
             ->assertSee('Gut gemacht!')
-            ->assertSee('Im Moment musst du nichts dringend üben.')
-            ->assertDontSee('Mit Tuto üben');
+            ->assertSee('Im Moment läuft alles richtig gut.')
+            ->assertDontSee('Sobald deine Hausaufgaben bewertet sind')
+            ->assertDontSee('zu Kompetenz');
+    }
+
+    public function test_students_never_see_foerderbedarf_or_a_red_warning_and_scores_carry_their_unit(): void
+    {
+        $student = User::factory()->student(SchoolClass::factory()->create())->create();
+        $this->answer($this->evaluatedHomework($student, 'Photosynthese', understandingScore: 30), Competency::factory()->create(), 30);
+        $this->actingAs($student);
+
+        Livewire::test(StudentLearningWidget::class)
+            ->assertSee('30 %')
+            ->assertSee('Noch üben')
+            ->assertDontSee('Förderbedarf')
+            ->assertDontSee('danger');
+    }
+
+    public function test_a_submitted_homework_that_is_not_evaluated_yet_is_not_asked_for_again(): void
+    {
+        $student = User::factory()->student(SchoolClass::factory()->create())->create();
+        $this->evaluatedHomework($student, 'Photosynthese')->update(['evaluated_at' => null, 'understanding_score' => null]);
+        $this->actingAs($student);
+
+        Livewire::test(StudentLearningWidget::class)
+            ->assertSee('Deine Hausaufgabe ist abgegeben. Die Auswertung kommt später.')
+            ->assertDontSee('Gib deine erste Hausaufgabe ab');
+    }
+
+    public function test_withdrawn_homework_does_not_count_towards_the_average(): void
+    {
+        $student = User::factory()->student(SchoolClass::factory()->create())->create();
+        $this->evaluatedHomework($student, 'Photosynthese', understandingScore: 80);
+        $this->evaluatedHomework($student, 'Bruchrechnung', understandingScore: 40)->lesson->students()->detach($student);
+        $this->actingAs($student);
+
+        Livewire::test(StudentLearningWidget::class)
+            ->assertSeeInOrder(['80', '%', 'Durchschnitt aus 1 Hausaufgabe'])
+            ->assertDontSee('Durchschnitt aus 2');
     }
 
     public function test_the_card_never_shows_competencies_of_classmates(): void

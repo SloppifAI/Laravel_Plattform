@@ -29,7 +29,8 @@ class DashboardTest extends TestCase
         Lesson::factory()->for($schoolClass)->publishedFor([$student])->create(['topic' => 'Photosynthese', 'due_on' => today()->addDay()]);
         $handedIn = Lesson::factory()->for($schoolClass)->publishedFor([$student])->create(['topic' => 'Zellaufbau']);
         Submission::factory()->for($handedIn)->for($student, 'student')->create();
-        Submission::factory()->for($student, 'student')->evaluated(80)->create(['feedback' => 'Du hast den Ablauf klar erklärt.']);
+        $evaluated = Lesson::factory()->for($schoolClass)->publishedFor([$student])->create(['topic' => 'Atmung']);
+        Submission::factory()->for($evaluated)->for($student, 'student')->evaluated(80)->create(['feedback' => 'Du hast den Ablauf klar erklärt.']);
 
         Lesson::factory()->for($schoolClass)->publishedFor([$classmate])->create(['topic' => 'Bruchrechnung']);
         Submission::factory()->for($classmate, 'student')->evaluated(20)->create(['feedback' => 'Rückmeldung für jemand anderen.']);
@@ -44,7 +45,7 @@ class DashboardTest extends TestCase
             ->assertSee('80')
             ->assertSee('Gut verstanden')
             ->assertSee('Du hast den Ablauf klar erklärt.')
-            ->assertSee('Thema erklären')
+            ->assertSee('Thema Tuto erklären')
             ->assertSee('Hier lohnt sich Üben')
             ->assertDontSee('Zellaufbau')
             ->assertDontSee('Bruchrechnung')

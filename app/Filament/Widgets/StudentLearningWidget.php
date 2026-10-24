@@ -10,7 +10,6 @@ use App\Models\Lesson;
 use App\Models\Submission;
 use App\Models\User;
 use App\Support\LearningInsights;
-use App\UnderstandingLevel;
 use Carbon\CarbonInterface;
 use Filament\Support\Icons\Heroicon;
 use Filament\Widgets\Widget;
@@ -51,14 +50,12 @@ class StudentLearningWidget extends Widget
             ->orderBy('due_on')
             ->get();
 
-        $evaluatedSubmissions = $student->submissions()
-            ->whereNotNull('evaluated_at')
-            ->with('lesson')
-            ->latest('evaluated_at')
-            ->get();
+        $evaluatedSubmissions = LearningInsights::evaluatedSubmissions($student);
 
         $averageScore = $evaluatedSubmissions->isEmpty() ? null : (int) round($evaluatedSubmissions->avg('understanding_score'));
-        $latestFeedback = $evaluatedSubmissions->first(fn (Submission $submission): bool => filled($submission->feedback));
+        $latestFeedback = $evaluatedSubmissions
+            ->sortByDesc('evaluated_at')
+            ->first(fn (Submission $submission): bool => filled($submission->feedback));
 
         $competencies = LearningInsights::studentCompetencies($student);
 
@@ -82,10 +79,11 @@ class StudentLearningWidget extends Widget
                 'due' => $this->describeDueDate($lesson->due_on),
             ]),
             'averageScore' => $averageScore,
-            'averageLevel' => $averageScore === null ? null : UnderstandingLevel::fromScore($averageScore),
+            'averageLevel' => $averageScore === null ? null : LearningInsights::studentLevel($averageScore),
             'evaluatedCount' => $evaluatedSubmissions->count(),
+            'evaluationPending' => $student->submissions()->whereNull('evaluated_at')->exists(),
             'latestFeedback' => $latestFeedback,
-            'latestFeedbackLevel' => $latestFeedback ? UnderstandingLevel::fromScore((int) $latestFeedback->understanding_score) : null,
+            'latestFeedbackLevel' => $latestFeedback ? LearningInsights::studentLevel((int) $latestFeedback->understanding_score) : null,
             'homeworkUrl' => MyHomework::getUrl(),
             'explainItUrl' => ExplainIt::getUrl(),
         ];

@@ -1,6 +1,5 @@
 @php
     use App\Filament\Pages\ExplainIt;
-    use App\UnderstandingLevel;
     use Filament\Support\Icons\Heroicon;
     use Illuminate\Support\Str;
 
@@ -8,7 +7,6 @@
     $ringColors = [
         'success' => 'text-success-600 dark:text-success-400',
         'warning' => 'text-warning-600 dark:text-warning-400',
-        'danger' => 'text-danger-600 dark:text-danger-400',
     ];
 @endphp
 
@@ -45,7 +43,7 @@
                                 <circle
                                     cx="60" cy="60" r="50" fill="none" stroke="currentColor" stroke-width="12" stroke-linecap="round"
                                     pathLength="100" stroke-dasharray="100" stroke-dashoffset="{{ 100 - $averageScore }}"
-                                    class="lp-ring-progress {{ $ringColors[$averageLevel->getColor()] }}"
+                                    class="lp-ring-progress {{ $ringColors[$averageLevel['color']] }}"
                                 />
                             @endif
                         </svg>
@@ -61,12 +59,16 @@
                         <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Dein Verständnis</span>
 
                         @if ($averageLevel)
-                            <x-filament::badge :color="$averageLevel->getColor()" :icon="$averageLevel->getIcon()" size="lg">
-                                {{ $averageLevel->getLabel() }}
+                            <x-filament::badge :color="$averageLevel['color']" :icon="$averageLevel['icon']" size="lg">
+                                {{ $averageLevel['label'] }}
                             </x-filament::badge>
 
                             <span class="text-sm text-gray-600 dark:text-gray-400">
-                                Durchschnitt aus {{ $evaluatedCount }} {{ $evaluatedCount === 1 ? 'bewerteten Hausaufgabe' : 'bewerteten Hausaufgaben' }}
+                                Durchschnitt aus {{ $evaluatedCount }} {{ $evaluatedCount === 1 ? 'Hausaufgabe' : 'Hausaufgaben' }}
+                            </span>
+                        @elseif ($evaluationPending)
+                            <span class="text-sm text-gray-600 dark:text-gray-400">
+                                Deine Hausaufgabe ist abgegeben. Die Auswertung kommt später.
                             </span>
                         @else
                             <span class="text-sm text-gray-600 dark:text-gray-400">
@@ -142,14 +144,14 @@
             <h3 id="lp-explain-it" class="mt-4 text-xl font-semibold tracking-tight">Erklär’s mir</h3>
 
             <p class="relative mt-2 text-pretty text-primary-50">
-                Erklär ein Thema mit deinen eigenen Worten. Die KI fragt nach wie ein neugieriges Kind, und du merkst, was du schon richtig gut kannst.
+                Erklär ein Thema mit deinen eigenen Worten. {{ ExplainIt::TUTOR_NAME }}, unsere KI, fragt nach wie ein neugieriges Kind, und du merkst, was du schon richtig gut kannst.
             </p>
 
             <a
                 href="{{ $explainItUrl }}"
                 class="relative mt-6 inline-flex items-center gap-2 self-start rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-primary-800 transition hover:bg-primary-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white lg:mt-auto"
             >
-                Thema erklären
+                Thema {{ ExplainIt::TUTOR_NAME }} erklären
                 <x-filament::icon :icon="Heroicon::ArrowRight" class="size-4" />
             </a>
         </section>
@@ -165,8 +167,8 @@
                         <span class="font-medium text-gray-950 dark:text-white">{{ $latestFeedback->lesson->topic }}</span>
                     </p>
 
-                    <x-filament::badge :color="$latestFeedbackLevel->getColor()" :icon="$latestFeedbackLevel->getIcon()">
-                        {{ $latestFeedbackLevel->getLabel() }} ({{ $latestFeedback->understanding_score }} %)
+                    <x-filament::badge :color="$latestFeedbackLevel['color']" :icon="$latestFeedbackLevel['icon']">
+                        {{ $latestFeedbackLevel['label'] }} ({{ $latestFeedback->understanding_score }} %)
                     </x-filament::badge>
                 </div>
 
@@ -194,17 +196,22 @@
                 </x-filament::link>
             </div>
 
-            @if ($practiceNeeds->isEmpty())
+            @if ($practiceNeeds->isEmpty() && $hasCompetencyData)
                 <div class="mt-4 flex items-center gap-4 rounded-xl bg-success-50 p-4 dark:bg-success-400/10">
                     <x-filament::icon :icon="Heroicon::OutlinedCheckBadge" class="size-8 shrink-0 text-success-600 dark:text-success-400" />
 
                     <p class="text-sm text-gray-800 dark:text-gray-200">
-                        @if ($hasCompetencyData)
-                            <span class="font-semibold">Gut gemacht!</span>
-                            Im Moment musst du nichts dringend üben.
-                        @else
-                            Sobald deine Hausaufgaben bewertet sind, siehst du hier, wo sich Üben lohnt.
-                        @endif
+                        <span class="font-semibold">Gut gemacht!</span>
+                        Im Moment läuft alles richtig gut.
+                    </p>
+                </div>
+            @elseif ($practiceNeeds->isEmpty())
+                {{-- Nothing evaluated yet: neutral, not the green "done" look. --}}
+                <div class="mt-4 flex items-center gap-4 rounded-xl bg-gray-50 p-4 dark:bg-white/5">
+                    <x-filament::icon :icon="Heroicon::OutlinedSparkles" class="size-8 shrink-0 text-gray-500 dark:text-gray-400" />
+
+                    <p class="text-sm text-gray-800 dark:text-gray-200">
+                        Sobald deine Hausaufgaben bewertet sind, siehst du hier, wo sich Üben lohnt.
                     </p>
                 </div>
             @else
@@ -223,7 +230,7 @@
                             </span>
 
                             <x-filament::link :href="$need['url']" :icon="Heroicon::OutlinedChatBubbleLeftRight" size="sm">
-                                Mit {{ ExplainIt::TUTOR_NAME }} üben
+                                Thema {{ ExplainIt::TUTOR_NAME }} erklären<span class="sr-only"> zu {{ $need['competency']->name }}</span>
                             </x-filament::link>
                         </li>
                     @endforeach
