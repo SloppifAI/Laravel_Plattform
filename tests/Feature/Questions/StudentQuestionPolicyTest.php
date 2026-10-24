@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Questions;
 
+use App\Models\ClassSubstitution;
 use App\Models\ExplanationSession;
 use App\Models\Lesson;
 use App\Models\SchoolClass;
@@ -94,6 +95,28 @@ class StudentQuestionPolicyTest extends TestCase
         $lesson->students()->attach($student);
         $lesson->update(['published_at' => null]);
         $this->assertFalse($student->can('createFor', [StudentQuestion::class, $session]), 'lesson taken back');
+    }
+
+    public function test_asking_needs_a_teacher_who_can_still_read_the_question(): void
+    {
+        $schoolClass = SchoolClass::factory()->create();
+        $student = User::factory()->student($schoolClass)->create();
+        $substitute = User::factory()->teacher()->for($schoolClass->school)->create();
+        $substitution = ClassSubstitution::factory()->for($schoolClass, 'schoolClass')->create(['substitute_id' => $substitute->id]);
+        $lesson = Lesson::factory()->for($schoolClass)->for($substitute, 'teacher')->publishedFor([$student])->create();
+        $session = ExplanationSession::factory()->for($student, 'student')->for($lesson)->create();
+
+        $this->assertTrue($student->can('createForLesson', [StudentQuestion::class, $lesson]), 'substitution runs');
+        $this->assertTrue($student->can('createFor', [StudentQuestion::class, $session]), 'substitution runs');
+
+        $substitution->update(['starts_on' => today()->subDays(10), 'ends_on' => today()->subDays(3)]);
+
+        $this->assertFalse($student->can('createForLesson', [StudentQuestion::class, $lesson]), 'substitution is over');
+        $this->assertFalse($student->can('createFor', [StudentQuestion::class, $session]), 'substitution is over');
+
+        $schoolClass->teachers()->attach($substitute);
+
+        $this->assertTrue($student->can('createForLesson', [StudentQuestion::class, $lesson]), 'substitute teaches the class now');
     }
 
     public function test_deleting_the_lesson_deletes_its_questions_so_none_is_left_waiting_for_a_teacher(): void

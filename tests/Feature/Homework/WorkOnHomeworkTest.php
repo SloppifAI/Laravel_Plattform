@@ -12,6 +12,7 @@ use App\Models\SchoolClass;
 use App\Models\Submission;
 use App\Models\User;
 use App\QuestionType;
+use App\UnderstandingLevel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Mockery\MockInterface;
@@ -88,7 +89,7 @@ class WorkOnHomeworkTest extends TestCase
                 'In deinen Worten',
                 'Zusammenfassung in deinen Worten',
             ])
-            ->assertSee(['Verständnis', 'Reflexion'])
+            ->assertSee([QuestionType::Comprehension->getLabel(), QuestionType::Reflection->getLabel()])
             ->assertSee(QuestionType::Reflection->getDescription())
             ->assertDontSee('GEHEIMER ERWARTUNGSHORIZONT');
     }
@@ -152,7 +153,7 @@ class WorkOnHomeworkTest extends TestCase
 
         $this->get(WorkOnHomework::getUrl(['lesson' => $this->lesson]))
             ->assertOk()
-            ->assertSee(['Gut verstanden · 82 von 100', 'Darauf solltest du noch einmal schauen', 'Die Rolle von Chlorophyll'])
+            ->assertSee([UnderstandingLevel::Understood->getLabel().' · 82 von 100', 'Darauf solltest du noch einmal schauen', 'Die Rolle von Chlorophyll'])
             ->assertSee(['Licht, Wasser und Sonne', 'Richtig: Licht, Wasser und CO2.'])
             ->assertSee(['So fasst deine Lehrkraft die Stunde zusammen', $this->lesson->summary])
             ->assertDontSee('GEHEIMER ERWARTUNGSHORIZONT');

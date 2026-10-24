@@ -73,7 +73,7 @@ class StudentFlowNotificationWiringTest extends TestCase
             ->assertHasNoFormErrors();
 
         $notification = $this->teacher->unreadNotifications->sole();
-        $this->assertSame('Neue Abgabe zu „Fotosynthese“', $notification->data['title']);
+        $this->assertSame(trans_choice('Neue Abgabe zu „:topic“|:count neue Abgaben zu „:topic“', 1, ['topic' => 'Fotosynthese']), $notification->data['title']);
         $this->assertStringNotContainsString($this->student->name, json_encode($notification->data));
         $this->assertNobodyElseWasNotified();
     }
@@ -155,7 +155,7 @@ class StudentFlowNotificationWiringTest extends TestCase
             ->assertNotified('Deine Frage ist bei deiner Lehrkraft');
 
         $notification = $this->teacher->unreadNotifications->sole();
-        $this->assertSame('Neue Frage zu „Fotosynthese“', $notification->data['title']);
+        $this->assertSame(trans_choice('Neue Frage zu „:topic“|:count neue Fragen zu „:topic“', 1, ['topic' => 'Fotosynthese']), $notification->data['title']);
         $this->assertSame(QuestionInbox::getUrl(isAbsolute: false), $notification->data['actions'][0]['url']);
         $this->assertNobodyElseWasNotified();
     }
@@ -190,7 +190,7 @@ class StudentFlowNotificationWiringTest extends TestCase
             ->callAction(TestAction::make('answer')->table($question), ['answer' => 'Chlorophyll absorbiert rotes und blaues Licht.']);
 
         $notification = $this->student->notifications->sole();
-        $this->assertSame('Deine Frage zu „Fotosynthese“ wurde beantwortet', $notification->data['title']);
+        $this->assertSame(__('Deine Frage zu „:topic“ wurde beantwortet', ['topic' => 'Fotosynthese']), $notification->data['title']);
         $this->assertCount(0, $this->classmate->notifications);
         $this->assertCount(0, $this->teacher->notifications);
         $this->assertNobodyElseWasNotified();

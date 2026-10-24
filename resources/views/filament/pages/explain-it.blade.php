@@ -142,7 +142,7 @@
                         </p>
                     @elseif (! $canAskTeacher)
                         <p class="mt-3 text-sm text-gray-600 dark:text-gray-400">
-                            Diese Stunde gehört nicht mehr zu deinen Hausaufgaben. Deshalb kannst du dazu keine neue Frage an deine Lehrkraft stellen.
+                            Diese Stunde gehört nicht mehr zu deinen Hausaufgaben, oder deine Lehrkraft kann Fragen dazu nicht mehr beantworten. Deshalb kannst du dazu keine neue Frage stellen. Frag am besten deine Klassenleitung.
                         </p>
                     @endif
 

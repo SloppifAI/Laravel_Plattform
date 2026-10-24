@@ -67,7 +67,7 @@ class QuestionLevelsRelationManagerTest extends TestCase
         $without = Question::factory()->for($this->lesson)->create();
 
         $this->manager()
-            ->assertTableColumnStateSet('levels', 'Einstieg · Standard', $withLevels)
+            ->assertTableColumnStateSet('levels', QuestionLevel::Basis->getLabel().' · '.QuestionLevel::Standard->getLabel(), $withLevels)
             ->assertTableColumnStateSet('levels', null, $without);
     }
 

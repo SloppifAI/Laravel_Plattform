@@ -264,24 +264,19 @@ class WorkOnHomework extends Page
                 ->icon(Heroicon::OutlinedArrowPath)
                 ->visible(fn (): bool => $this->submission()?->isEvaluated() === false)
                 ->action(fn () => $this->evaluateAndNotify($this->submission())),
+            // A hidden action cannot be mounted or called, so no question can be asked before the evaluation.
             AskTeacher::action(function (): array {
                 Gate::authorize('createForLesson', [StudentQuestion::class, $this->lesson]);
-                // Hidden is not forbidden: the question belongs to the result page, so it is refused before the evaluation.
-                abort_unless($this->canAskTeacher(), 403);
 
                 return [$this->lesson, null];
-            })->visible(fn (): bool => $this->canAskTeacher()),
+            })->visible(fn (): bool => $this->submission()?->isEvaluated() === true
+                && $this->student()->can('createForLesson', [StudentQuestion::class, $this->lesson])),
             Action::make('explain')
                 ->label('Thema Tuto erklären')
                 ->icon(Heroicon::OutlinedChatBubbleLeftRight)
                 ->color('gray')
                 ->url(fn (): string => ExplainIt::getUrl(['lesson' => $this->lesson->getKey()])),
         ];
-    }
-
-    private function canAskTeacher(): bool
-    {
-        return $this->submission()?->isEvaluated() === true;
     }
 
     private function evaluateAndNotify(Submission $submission): void

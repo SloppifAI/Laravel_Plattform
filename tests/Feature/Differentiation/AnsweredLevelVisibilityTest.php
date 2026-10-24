@@ -11,6 +11,7 @@ use App\Models\Question;
 use App\Models\SchoolClass;
 use App\Models\Submission;
 use App\Models\User;
+use App\QuestionLevel;
 use App\Support\PersonalDataExport;
 use Filament\Actions\Testing\TestAction;
 use Filament\Actions\ViewAction;
@@ -57,7 +58,7 @@ class AnsweredLevelVisibilityTest extends TestCase
 
         Livewire::test(SubmissionsRelationManager::class, ['ownerRecord' => $this->lesson, 'pageClass' => EditLesson::class])
             ->mountAction(TestAction::make(ViewAction::class)->table($this->submission))
-            ->assertMountedActionModalSee(['Einstiegsfrage: Was braucht eine Pflanze? Tipp: Denk an Licht.', 'Einstieg', 'Zweite Frage ohne Stufen?'])
+            ->assertMountedActionModalSee(['Einstiegsfrage: Was braucht eine Pflanze? Tipp: Denk an Licht.', 'Starter', 'Zweite Frage ohne Stufen?'])
             ->assertMountedActionModalDontSee(['Standardfrage: Was braucht eine Pflanze?', 'Standard']);
     }
 
@@ -66,7 +67,7 @@ class AnsweredLevelVisibilityTest extends TestCase
         $answers = PersonalDataExport::for($this->student)['abgaben'][0]['antworten'];
 
         $this->assertSame('Einstiegsfrage: Was braucht eine Pflanze? Tipp: Denk an Licht.', $answers[0]['frage']);
-        $this->assertSame('Einstieg', $answers[0]['stufe']);
+        $this->assertSame(QuestionLevel::Basis->getLabel(), $answers[0]['stufe']);
         $this->assertSame('Zweite Frage ohne Stufen?', $answers[1]['frage']);
         $this->assertNull($answers[1]['stufe']);
     }

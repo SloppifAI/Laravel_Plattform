@@ -41,17 +41,21 @@ class StudentQuestionPolicy
     public function createFor(User $user, ExplanationSession $explanationSession): bool
     {
         return $explanationSession->student()->is($user)
-            && $explanationSession->lesson_id !== null
-            && $this->isAssignedTo($user, $explanationSession->lesson_id);
+            && $explanationSession->lesson !== null
+            && $this->createForLesson($user, $explanationSession->lesson);
     }
 
     /**
      * Whether the student may ask their teacher about a lesson directly, e.g. from its homework result page: only while
-     * the lesson is still published for them. Call it with `$user->can('createForLesson', [StudentQuestion::class, $lesson])`.
+     * the lesson is still published for them and its teacher can still read the question. A substitute whose
+     * substitution is over sees nothing of it (viewResults), so a question to them would wait unanswered and unnoticed.
+     * Call it with `$user->can('createForLesson', [StudentQuestion::class, $lesson])`.
      */
     public function createForLesson(User $user, Lesson $lesson): bool
     {
-        return $this->isAssignedTo($user, $lesson->getKey());
+        return $user->isStudent()
+            && Lesson::assignedTo($user)->whereKey($lesson->getKey())->exists()
+            && $lesson->teacher?->can('viewResults', $lesson) === true;
     }
 
     public function update(User $user, StudentQuestion $studentQuestion): bool
@@ -72,11 +76,6 @@ class StudentQuestionPolicy
     public function delete(User $user, StudentQuestion $studentQuestion): bool
     {
         return false;
-    }
-
-    private function isAssignedTo(User $user, int $lessonId): bool
-    {
-        return $user->isStudent() && Lesson::assignedTo($user)->whereKey($lessonId)->exists();
     }
 
     private function manages(User $user, StudentQuestion $studentQuestion): bool

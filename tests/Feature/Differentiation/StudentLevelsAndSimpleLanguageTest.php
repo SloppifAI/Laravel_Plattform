@@ -109,8 +109,8 @@ class StudentLevelsAndSimpleLanguageTest extends TestCase
             ->assertFormFieldVisible("levels.{$this->leveled->id}")
             ->assertFormFieldVisible("levels.{$this->basisOnly->id}")
             ->assertFormFieldHidden("levels.{$this->plain->id}")
-            ->assertFormFieldExists("levels.{$this->leveled->id}", fn (ToggleButtons $field): bool => $field->getOptions() === ['basis' => 'Einstieg', 'standard' => 'Standard', 'plus' => 'Profi'])
-            ->assertFormFieldExists("levels.{$this->basisOnly->id}", fn (ToggleButtons $field): bool => $field->getOptions() === ['basis' => 'Einstieg', 'standard' => 'Standard'])
+            ->assertFormFieldExists("levels.{$this->leveled->id}", fn (ToggleButtons $field): bool => $field->getOptions() === ['basis' => QuestionLevel::Basis->getLabel(), 'standard' => QuestionLevel::Standard->getLabel(), 'plus' => QuestionLevel::Plus->getLabel()])
+            ->assertFormFieldExists("levels.{$this->basisOnly->id}", fn (ToggleButtons $field): bool => $field->getOptions() === ['basis' => QuestionLevel::Basis->getLabel(), 'standard' => QuestionLevel::Standard->getLabel()])
             ->assertSet("data.levels.{$this->leveled->id}", 'standard')
             ->assertSee('Standardfrage: Was braucht eine Pflanze?')
             ->assertDontSee('Einstiegsfrage')
@@ -188,12 +188,12 @@ class StudentLevelsAndSimpleLanguageTest extends TestCase
         $submission->answers()->create(['question_id' => $this->plain->id, 'answer' => 'Antwort drei']);
 
         $this->page()
-            ->assertSee('Stufe Einstieg')
+            ->assertSee('Stufe '.QuestionLevel::Basis->getLabel())
             ->assertSee('Einstiegsfrage: Was braucht eine Pflanze? Tipp: Denk an Licht.')
             ->assertDontSee('Standardfrage: Was braucht eine Pflanze?')
             ->assertSee('Zweite Standardfrage: Wo wächst Wasserpest?')
-            ->assertDontSee('Stufe Standard')
-            ->assertDontSee('Stufe Profi');
+            ->assertDontSee('Stufe '.QuestionLevel::Standard->getLabel())
+            ->assertDontSee('Stufe '.QuestionLevel::Plus->getLabel());
     }
 
     public function test_the_expected_answer_is_never_rendered(): void

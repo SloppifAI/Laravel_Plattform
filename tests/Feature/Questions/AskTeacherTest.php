@@ -3,8 +3,10 @@
 namespace Tests\Feature\Questions;
 
 use App\Filament\Pages\ExplainIt;
+use App\Models\ClassSubstitution;
 use App\Models\ExplanationSession;
 use App\Models\Lesson;
+use App\Models\SchoolClass;
 use App\Models\StudentQuestion;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -147,6 +149,26 @@ class AskTeacherTest extends TestCase
         Livewire::actingAs($student)
             ->test(ExplainIt::class)
             ->call('openSession', $session->id)
+            ->callAction('askTeacher', ['question' => 'Reingeschmuggelt'])
+            ->assertForbidden();
+
+        $this->assertDatabaseCount(StudentQuestion::class, 0);
+    }
+
+    public function test_a_lesson_whose_substitute_teacher_lost_access_cannot_be_asked_about(): void
+    {
+        $schoolClass = SchoolClass::factory()->create();
+        $student = User::factory()->student($schoolClass)->create();
+        $substitute = User::factory()->teacher()->for($schoolClass->school)->create();
+        ClassSubstitution::factory()->ended()->for($schoolClass, 'schoolClass')->create(['substitute_id' => $substitute->id]);
+        $lesson = Lesson::factory()->for($schoolClass)->for($substitute, 'teacher')->publishedFor([$student])->create();
+        $session = ExplanationSession::factory()->for($student, 'student')->for($lesson)->create();
+
+        Livewire::actingAs($student)
+            ->test(ExplainIt::class)
+            ->call('openSession', $session->id)
+            ->assertDontSee('Frage an meine Lehrkraft')
+            ->assertSee('Frag am besten deine Klassenleitung')
             ->callAction('askTeacher', ['question' => 'Reingeschmuggelt'])
             ->assertForbidden();
 

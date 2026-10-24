@@ -9,6 +9,7 @@ use App\Models\ExplanationMessage;
 use App\Models\ExplanationSession;
 use App\Models\Lesson;
 use App\Models\User;
+use App\UnderstandingLevel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Mockery\MockInterface;
@@ -153,7 +154,7 @@ class ExplainItTest extends TestCase
             ->call('openSession', $session->id)
             ->callAction('finish')
             ->assertSee('Sehr anschaulich erklärt.')
-            ->assertSee('Gut verstanden');
+            ->assertSee(UnderstandingLevel::Understood->getLabel());
 
         $session->refresh();
         $this->assertSame(82, $session->understanding_score);
