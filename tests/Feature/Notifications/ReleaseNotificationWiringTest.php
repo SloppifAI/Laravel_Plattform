@@ -54,7 +54,7 @@ class ReleaseNotificationWiringTest extends TestCase
 
         Livewire::actingAs($this->teacher)->test(EditLesson::class, ['record' => $lesson->getRouteKey()])
             ->callAction('delegate', data: ['due_on' => today()->addDays(3)->toDateString(), 'audience' => 'class'])
-            ->assertNotified('Hausaufgabe freigegeben');
+            ->assertNotified('Homework released');
 
         foreach ($students as $student) {
             $this->assertSame('New homework: “Fotosynthese”', $student->notifications()->sole()->data['title']);
@@ -118,7 +118,7 @@ class ReleaseNotificationWiringTest extends TestCase
 
         Livewire::actingAs($this->teacher)->test(Today::class)
             ->callAction(TestAction::make('release')->table($lesson), data: ['due_on' => today()->addDays(3)->toDateString()])
-            ->assertNotified('Hausaufgabe freigegeben');
+            ->assertNotified('Homework released');
 
         foreach ($students as $student) {
             $this->assertSame(1, $student->notifications()->count());
@@ -137,7 +137,7 @@ class ReleaseNotificationWiringTest extends TestCase
 
         Livewire::actingAs($this->teacher)->test(Today::class)
             ->callAction('releaseAll', data: ['due_on' => today()->addDays(3)->toDateString()])
-            ->assertNotified('2 Hausaufgaben freigegeben');
+            ->assertNotified('2 homework assignments released');
 
         $this->assertSame('New homework: “Zellen”', $firstStudent->notifications()->sole()->data['title']);
         $this->assertSame('New homework: “Atmung”', $secondStudent->notifications()->sole()->data['title']);

@@ -264,6 +264,10 @@ class DemoSeederTest extends TestCase
 
     public function test_the_insight_pages_render_the_demo_data(): void
     {
+        // The demo content stays German, the pages around it follow the platform language, which the suite keeps English.
+        config(['lernplattform.locale.default' => 'en']);
+        app()->setLocale('en');
+
         $this->seed(DatabaseSeeder::class);
         $teacher = User::query()->where('username', 'lehrer')->sole();
         $mia = User::query()->where('username', 'schueler')->sole();
@@ -276,7 +280,7 @@ class DemoSeederTest extends TestCase
         $this->actingAs($teacher)
             ->get(ParentReport::getUrl(['student' => $mia]))
             ->assertOk()
-            ->assertSee(['Steigend', 'Offen', 'Noch nicht abgeschlossen', 'Probleme mathematisch lösen (Mathematik): 38 Punkte']);
+            ->assertSee(['Rising', 'Open', 'Not finished yet', 'Probleme mathematisch lösen (Mathematik): 38 points']);
     }
 
     public function test_class_7b_has_a_confirmed_and_a_draft_klassenbuch_entry_with_one_absence(): void

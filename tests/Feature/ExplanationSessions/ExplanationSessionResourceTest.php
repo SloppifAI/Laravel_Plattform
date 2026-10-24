@@ -157,7 +157,7 @@ class ExplanationSessionResourceTest extends TestCase
 
         Livewire::actingAs($teacher)
             ->test(ViewExplanationSession::class, ['record' => $session->getRouteKey()])
-            ->assertSeeInOrder(['Mia Beispiel', '7b', 'Zellkern erklärt', 'Biologie: Die Zelle', __('Beendet'), '82 % · Well understood', 'Sehr anschaulich erklärt.']);
+            ->assertSeeInOrder(['Mia Beispiel', '7b', 'Zellkern erklärt', 'Biologie: Die Zelle', 'Ended', '82 % · Well understood', 'Sehr anschaulich erklärt.']);
     }
 
     public function test_view_page_of_a_running_session_says_that_there_is_no_result_yet(): void
@@ -217,7 +217,7 @@ class ExplanationSessionResourceTest extends TestCase
 
         Livewire::actingAs($teacher)
             ->test(ListExplanationSessions::class)
-            ->assertTableColumnFormattedStateSet('status', __('Beendet'), $finished)
+            ->assertTableColumnFormattedStateSet('status', 'Ended', $finished)
             ->assertTableColumnFormattedStateSet('understanding_score', '40 % · Needs support', $finished)
             ->assertTableColumnFormattedStateSet('status', 'Running', $running)
             ->assertTableColumnStateSet('understanding_score', null, $running);

@@ -190,7 +190,7 @@ class StudentFlowNotificationWiringTest extends TestCase
             ->callAction(TestAction::make('answer')->table($question), ['answer' => 'Chlorophyll absorbiert rotes und blaues Licht.']);
 
         $notification = $this->student->notifications->sole();
-        $this->assertSame(__('Deine Frage zu „:topic“ wurde beantwortet', ['topic' => 'Fotosynthese']), $notification->data['title']);
+        $this->assertSame('Your question about “Fotosynthese” has been answered', $notification->data['title']);
         $this->assertCount(0, $this->classmate->notifications);
         $this->assertCount(0, $this->teacher->notifications);
         $this->assertNobodyElseWasNotified();

@@ -51,6 +51,15 @@ class MyHomeworkTest extends TestCase
         $this->assertSame('2', MyHomework::getNavigationBadge());
     }
 
+    public function test_the_due_date_is_shown_under_the_status(): void
+    {
+        $student = User::factory()->student()->create();
+        Lesson::factory()->publishedFor([$student])->create(['due_on' => '2026-11-05']);
+        $this->actingAs($student);
+
+        Livewire::test(MyHomework::class)->assertSee('Due 05.11.2026');
+    }
+
     public function test_a_practice_task_is_marked_on_a_phone_as_well(): void
     {
         $student = User::factory()->student()->create();
