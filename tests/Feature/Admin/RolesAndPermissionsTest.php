@@ -33,15 +33,6 @@ class RolesAndPermissionsTest extends TestCase
 {
     use RefreshDatabase;
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        // The page texts are German; the suite runs in English wherever a text is translated.
-        config(['lernplattform.locale.default' => 'de']);
-        app()->setLocale('de');
-    }
-
     public function test_every_row_names_a_known_level_for_every_role(): void
     {
         $levels = ['all', 'school', 'admins', 'own', 'class', 'read', 'none'];
@@ -63,19 +54,19 @@ class RolesAndPermissionsTest extends TestCase
                 ->get(RolesAndPermissions::getUrl())
                 ->assertOk()
                 ->assertSee(ClassSubstitution::grants())
-                ->assertSee('höchstens '.ClassSubstitution::maxDays().' Tage')
+                ->assertSee('may last '.ClassSubstitution::maxDays().' days in total at most')
                 ->assertSee([
-                    'Nur eigene Klassen',
-                    'Heute: Hausaufgaben prüfen und freigeben',
-                    'Klassenbuch führen',
-                    'Vertretung einrichten',
-                    'Rückfragen an die Lehrkraft',
-                    'Stufen und Einfache Sprache bei Hausaufgaben',
-                    'Benachrichtigungen erhalten (Glocke)',
-                    'Tuto-Mikro im Unterricht einschalten',
-                    'Einwilligungen der Eltern erfassen',
-                    'Tuto-Mikro für die Schule freischalten',
-                    'KI-Funktionen der Schule einschalten',
+                    'Own classes only',
+                    'Today: check and release homework',
+                    'Keep the class register',
+                    'Set up cover',
+                    'Questions for the teacher',
+                    'Levels and plain language in homework',
+                    'Receive notifications (bell)',
+                    'Turn on Tuto-Mikro in lessons',
+                    'Collect the parents’ consents',
+                    'Enable Tuto-Mikro for the school',
+                    'Turn on the school’s AI features',
                 ]);
         }
     }
@@ -195,8 +186,8 @@ class RolesAndPermissionsTest extends TestCase
 
         $this->assertCount(1, $export['klassenbuch_fehlzeiten']);
         $this->assertSame(['datum', 'fach', 'klasse', 'status'], array_keys($export['klassenbuch_fehlzeiten'][0]));
-        $this->assertStringContainsString('Datenauskunft', RolesAndPermissions::matrix()['classbook']['detail']);
-        $this->assertStringContainsString('nur die eigenen', RolesAndPermissions::matrix()['classbook']['detail']);
+        $this->assertStringContainsString('in their data export under “Download my data”', RolesAndPermissions::matrix()['classbook']['detail']);
+        $this->assertStringContainsString('only their own', RolesAndPermissions::matrix()['classbook']['detail']);
     }
 
     public function test_talks_on_a_free_topic_stay_with_the_student_for_teachers_and_the_administration(): void
@@ -216,7 +207,7 @@ class RolesAndPermissionsTest extends TestCase
         }
 
         $this->assertTrue($student->can('view', $freeTopic));
-        $this->assertStringContainsString('frei gewählten Thema', RolesAndPermissions::matrix()['results']['detail']);
+        $this->assertStringContainsString('freely chosen topic', RolesAndPermissions::matrix()['results']['detail']);
     }
 
     /**
@@ -245,14 +236,12 @@ class RolesAndPermissionsTest extends TestCase
 
         $detail = RolesAndPermissions::matrix()['substitutions']['detail'];
 
-        $this->assertStringContainsString('Laufende und geplante Vertretungen derselben Lehrkraft in einer Klasse dürfen zusammen höchstens '.ClassSubstitution::maxDays().' Tage dauern', $detail);
-        $this->assertStringContainsString('die die Klasse nicht ohnehin unterrichtet', $detail);
+        $this->assertStringContainsString('Running and planned cover by the same teacher in one class may last '.ClassSubstitution::maxDays().' days in total at most', $detail);
+        $this->assertStringContainsString('who does not already teach the class', $detail);
     }
 
     public function test_the_vertretung_row_is_one_sentence_in_the_language_of_the_user(): void
     {
-        app()->setLocale('en');
-
         $detail = RolesAndPermissions::matrix()['substitutions']['detail'];
 
         $this->assertStringContainsString(ClassSubstitution::grants(), $detail);
@@ -260,5 +249,62 @@ class RolesAndPermissionsTest extends TestCase
         $this->assertStringNotContainsString('Danach endet das von selbst', $detail);
         $this->assertStringNotContainsString(':grants', $detail);
         $this->assertStringNotContainsString(':days', $detail);
+
+        app()->setLocale('de');
+
+        $detail = RolesAndPermissions::matrix()['substitutions']['detail'];
+
+        $this->assertStringContainsString(ClassSubstitution::grants(), $detail);
+        $this->assertStringContainsString('Danach endet das von selbst', $detail);
+        $this->assertStringNotContainsString('It ends by itself afterwards', $detail);
+    }
+
+    /**
+     * Every statement of the matrix is translated: no row falls back to its German text under English, and the
+     * placeholders of the sentences are filled in.
+     */
+    public function test_every_row_reads_english_under_english_and_german_under_german(): void
+    {
+        $german = [];
+
+        app()->setLocale('de');
+
+        foreach (RolesAndPermissions::matrix() as $capability => $row) {
+            $german[$capability] = [$row['ability'], $row['detail']];
+        }
+
+        app()->setLocale('en');
+
+        foreach (RolesAndPermissions::matrix() as $capability => $row) {
+            $this->assertNotSame($german[$capability][0], $row['ability'], "{$capability} ability is still German.");
+            $this->assertNotSame($german[$capability][1], $row['detail'], "{$capability} detail is still German.");
+            $this->assertDoesNotMatchRegularExpression('/:(days|grants|max|read|all|subjects)\b/', $row['detail'], $capability);
+        }
+    }
+
+    /**
+     * The suite runs in English; German is the platform default, so the administration still gets the German page.
+     */
+    public function test_the_page_reads_german_when_german_is_the_default(): void
+    {
+        config(['lernplattform.locale.default' => 'de']);
+        app()->setLocale('de');
+
+        foreach ([User::factory()->admin()->create(), User::factory()->operator()->create()] as $user) {
+            $this->actingAs($user)
+                ->get(RolesAndPermissions::getUrl())
+                ->assertOk()
+                ->assertSee('Rollen & Rechte')
+                ->assertSee('Wer bei Tuto was darf.')
+                ->assertSee('Rechte-Matrix')
+                ->assertSee('Heute: Hausaufgaben prüfen und freigeben')
+                ->assertSee('Nur eigene Klassen')
+                ->assertSee('Nur ansehen')
+                ->assertSee('Die Plattform-Administration sieht keine Lerndaten.')
+                ->assertSee('höchstens '.ClassSubstitution::maxDays().' Tage')
+                ->assertDontSee('Permission matrix');
+        }
+
+        $this->assertSame('Rollen & Rechte', RolesAndPermissions::getNavigationLabel());
     }
 }

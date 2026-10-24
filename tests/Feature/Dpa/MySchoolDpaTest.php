@@ -41,11 +41,11 @@ class MySchoolDpaTest extends TestCase
         $this->actingAs($admin);
 
         Livewire::test(MySchool::class)
-            ->assertSee('Auftragsverarbeitungsvertrag (AVV)')
-            ->assertSee('Angenommen, Version '.config('lernplattform.dpa.version'))
-            ->assertSee('Angenommen am 24.10.2026 um 14:05 Uhr durch Sabine Schulleitung (Benutzername sabine.leitung).')
-            ->assertDontSee('Vertrag annehmen')
-            ->assertDontSee('Geänderte Fassung annehmen')
+            ->assertSee('Data processing agreement')
+            ->assertSee('Accepted, version '.config('lernplattform.dpa.version'))
+            ->assertSee('Accepted on 24.10.2026 at 14:05 by Sabine Schulleitung (username sabine.leitung).')
+            ->assertDontSee('Accept agreement')
+            ->assertDontSee('Accept changed version')
             ->assertSee(route('legal.dpa.school'));
     }
 
@@ -71,11 +71,11 @@ class MySchoolDpaTest extends TestCase
     }
 
     /**
-     * The path data of the first svg inside a badge that follows the Auftragsverarbeitungsvertrag heading.
+     * The path data of the first svg inside a badge that follows the data processing agreement heading.
      */
     private function badgeIcon(string $html): string
     {
-        $section = substr($html, (int) strpos($html, 'Auftragsverarbeitungsvertrag (AVV)'));
+        $section = substr($html, (int) strpos($html, 'Data processing agreement'));
 
         $this->assertSame(1, preg_match('/fi-badge.*?<svg.*?<path[^>]* d="([^"]+)"/s', $section, $matches));
 
@@ -90,14 +90,15 @@ class MySchoolDpaTest extends TestCase
         $this->actingAs($admin);
 
         Livewire::test(MySchool::class)
-            ->assertSee('Noch nicht angenommen')
-            ->assertSee('Bis zur Annahme kann deine Schule nur diese Seite nutzen.')
+            ->assertSee('Not accepted yet')
+            ->assertSee('Until it is accepted, your school can only use this page.')
+            ->assertSee('The agreement itself is in German.')
             ->assertActionVisible($this->acceptAction())
             ->assertActionDoesNotExist($this->viewAcceptedAction())
             ->callAction($this->acceptAction())
-            ->assertNotified('Vertrag angenommen')
-            ->assertSee('Angenommen, Version '.config('lernplattform.dpa.version'))
-            ->assertDontSee('Vertrag annehmen')
+            ->assertNotified('Agreement accepted')
+            ->assertSee('Accepted, version '.config('lernplattform.dpa.version'))
+            ->assertDontSee('Accept agreement')
             ->assertActionVisible($this->viewAcceptedAction());
 
         $school->refresh();
@@ -120,7 +121,8 @@ class MySchoolDpaTest extends TestCase
 
         $description = (string) $component->instance()->getMountedAction()->getModalDescription();
 
-        $this->assertStringContainsString('Vertrag zuerst lesen', $description);
+        $this->assertStringContainsString('Read the agreement first', $description);
+        $this->assertStringContainsString('The agreement itself is in German.', $description);
         $this->assertStringContainsString('href="'.route('legal.dpa.school').'" target="_blank" rel="noopener"', $description);
 
         $this->assertNull($school->refresh()->dpa_version);
@@ -132,7 +134,7 @@ class MySchoolDpaTest extends TestCase
         $this->actingAs(User::factory()->for(School::factory()->create())->admin()->create());
 
         Livewire::test(MySchool::class)
-            ->assertSeeInOrder(['Vertrag mit den Daten deiner Schule ansehen und drucken', 'Vertrag annehmen']);
+            ->assertSeeInOrder(['View and print the agreement with your school’s data', 'Accept agreement']);
     }
 
     public function test_a_newer_version_is_announced_and_accepting_it_stores_the_new_version(): void
@@ -146,14 +148,14 @@ class MySchoolDpaTest extends TestCase
         config(['lernplattform.dpa.version' => '2027-02']);
 
         Livewire::test(MySchool::class)
-            ->assertSee('Geänderte Fassung zur Annahme')
-            ->assertSee('Seitdem gibt es die neue Version 2027-02. Bis zur Annahme gilt die angenommene Fassung (Version 2026-10) weiter.')
+            ->assertSee('Changed version awaiting acceptance')
+            ->assertSee('Since then there is a new version 2027-02. Until it is accepted, the accepted version (version 2026-10) continues to apply.')
             ->assertActionVisible($this->acceptAction())
             ->assertActionVisible($this->viewAcceptedAction())
-            ->assertSee('Angenommene Fassung (Version 2026-10) ansehen')
+            ->assertSee('View accepted version (version 2026-10)')
             ->callAction($this->acceptAction())
-            ->assertNotified('Vertrag angenommen')
-            ->assertDontSee('Geänderte Fassung annehmen');
+            ->assertNotified('Agreement accepted')
+            ->assertDontSee('Accept changed version');
 
         $school->refresh();
         $this->assertSame('2027-02', $school->dpa_version);
@@ -169,14 +171,14 @@ class MySchoolDpaTest extends TestCase
         $school->acceptDpa($admin);
         $this->actingAs($admin);
 
-        Livewire::test(MySchool::class)->assertSee('Angenommen, Version '.config('lernplattform.dpa.version'));
+        Livewire::test(MySchool::class)->assertSee('Accepted, version '.config('lernplattform.dpa.version'));
 
         config(['session.lifetime' => 30]);
 
         Livewire::test(MySchool::class)
-            ->assertSee('Geänderte Fassung zur Annahme')
-            ->assertSee('Seitdem hat sich der Vertragstext geändert, zum Beispiel eine Frist oder der KI-Anbieter.')
-            ->assertDontSee('Seitdem gibt es die neue Version')
+            ->assertSee('Changed version awaiting acceptance')
+            ->assertSee('Since then the agreement text has changed, for example a deadline or the AI provider.')
+            ->assertDontSee('Since then there is a new version')
             ->assertActionVisible($this->acceptAction());
     }
 
@@ -187,13 +189,13 @@ class MySchoolDpaTest extends TestCase
         $this->actingAs($admin);
 
         Livewire::test(MySchool::class)
-            ->assertSeeInOrder(['Auftragsverarbeitungsvertrag (AVV)', 'Registriert am']);
+            ->assertSeeInOrder(['Data processing agreement', 'Registered on']);
 
         $school->acceptDpa($admin);
         $this->actingAs($admin->fresh());
 
         Livewire::test(MySchool::class)
-            ->assertSeeInOrder(['Registriert am', 'Auftragsverarbeitungsvertrag (AVV)']);
+            ->assertSeeInOrder(['Registered on', 'Data processing agreement']);
     }
 
     public function test_an_administration_only_accepts_for_its_own_school(): void
@@ -229,7 +231,7 @@ class MySchoolDpaTest extends TestCase
         $this->actingAs(User::factory()->for($school)->admin()->create());
 
         Livewire::test(MySchool::class)
-            ->assertSee('Noch nicht angenommen')
+            ->assertSee('Not accepted yet')
             ->assertDontSee('Peter Fremdleitung');
     }
 
@@ -292,8 +294,8 @@ class MySchoolDpaTest extends TestCase
 
         $this->actingAs(User::factory()->for($school)->admin()->create());
         Livewire::test(MySchool::class)
-            ->assertSee('durch Sabine Schulleitung (Benutzername sabine.leitung)')
-            ->assertDontSee('gelöschtes Konto');
+            ->assertSee('by Sabine Schulleitung (username sabine.leitung)')
+            ->assertDontSee('deleted account');
     }
 
     public function test_while_the_agreement_is_a_draft_it_can_only_be_read(): void
@@ -303,13 +305,13 @@ class MySchoolDpaTest extends TestCase
         $this->actingAs(User::factory()->for($school)->admin()->create());
 
         Livewire::test(MySchool::class)
-            ->assertSee('Entwurf, noch nicht annehmbar')
-            ->assertSee('Der Vertrag ist noch ein Entwurf. Er kann erst angenommen werden, wenn der Betreiber ihn freigegeben hat.')
-            ->assertDontSee('Noch nicht angenommen')
+            ->assertSee('Draft, cannot be accepted yet')
+            ->assertSee('The agreement is still a draft. It can only be accepted once the operator has released it.')
+            ->assertDontSee('Not accepted yet')
             ->assertActionDoesNotExist($this->acceptAction())
             ->assertActionDoesNotExist($this->viewAcceptedAction())
-            ->assertSee('Vertrag mit den Daten deiner Schule ansehen und drucken')
-            ->assertSeeInOrder(['Registriert am', 'Auftragsverarbeitungsvertrag (AVV)']);
+            ->assertSee('View and print the agreement with your school’s data')
+            ->assertSeeInOrder(['Registered on', 'Data processing agreement']);
 
         $this->assertNull($school->refresh()->dpa_version);
     }
@@ -325,9 +327,36 @@ class MySchoolDpaTest extends TestCase
         config(['lernplattform.dpa.version' => '2027-02', 'lernplattform.dpa.final' => false]);
 
         Livewire::test(MySchool::class)
-            ->assertSee('Entwurf, noch nicht annehmbar')
-            ->assertSee('Die neue Version 2027-02 ist noch ein Entwurf, bis zu ihrer Freigabe gilt Version 2026-10 weiter.')
+            ->assertSee('Draft, cannot be accepted yet')
+            ->assertSee('The new version 2027-02 is still a draft; until it is released, version 2026-10 continues to apply.')
             ->assertActionDoesNotExist($this->acceptAction())
             ->assertActionVisible($this->viewAcceptedAction());
+    }
+
+    /**
+     * The suite runs in English; German is the platform default, so the administration still gets the German page. The
+     * agreement itself is the German text whatever the language of the page.
+     */
+    public function test_the_status_card_reads_german_when_german_is_the_default(): void
+    {
+        config(['lernplattform.locale.default' => 'de']);
+        app()->setLocale('de');
+        $this->travelTo('2026-10-24 14:05:00');
+        $school = School::factory()->create();
+        $admin = User::factory()->for($school)->admin()->create(['name' => 'Sabine Schulleitung', 'username' => 'sabine.leitung']);
+        $this->actingAs($admin);
+
+        Livewire::test(MySchool::class)
+            ->assertSee('Auftragsverarbeitungsvertrag (AVV)')
+            ->assertSee('Noch nicht angenommen')
+            ->assertSee('Bis zur Annahme kann deine Schule nur diese Seite nutzen.')
+            ->assertSee('Vertrag mit den Daten deiner Schule ansehen und drucken')
+            ->assertSee('Vertrag annehmen')
+            ->assertDontSee('Accept agreement')
+            ->assertDontSee('The agreement itself is in German.')
+            ->callAction($this->acceptAction())
+            ->assertNotified('Vertrag angenommen')
+            ->assertSee('Angenommen, Version '.config('lernplattform.dpa.version'))
+            ->assertSee('Angenommen am 24.10.2026 um 14:05 Uhr durch Sabine Schulleitung (Benutzername sabine.leitung).');
     }
 }

@@ -85,7 +85,7 @@ class MobileHtmlTablesTest extends TestCase
             'schoolClasses' => collect([$schoolClass]),
             'registrationUrl' => null,
         ])
-            ->assertSeeInOrder(['Klasse</dt>', '7b</dd>', 'Klassencode</dt>', 'ABCDEF</dd>'], false);
+            ->assertSeeInOrder(['Class</dt>', '7b</dd>', 'Class code</dt>', 'ABCDEF</dd>'], false);
     }
 
     public function test_the_permission_matrix_is_stacked_with_a_label_per_value_on_phones(): void
@@ -96,7 +96,7 @@ class MobileHtmlTablesTest extends TestCase
             ->assertOk()
             ->assertSee('fi-ta-table-stacked-on-mobile');
 
-        foreach (['Was?', ...array_map(fn (Role $role): string => $role->getLabel(), Role::cases())] as $label) {
+        foreach (['What?', ...array_map(fn (Role $role): string => $role->getLabel(), Role::cases())] as $label) {
             $response->assertSee('<div class="fi-ta-cell-label">'.$label.'</div>', false);
         }
     }

@@ -33,16 +33,27 @@ class MySchool extends Page
 
     protected static ?int $navigationSort = 6;
 
-    protected static ?string $title = 'Meine Schule';
-
     protected static ?string $slug = 'meine-schule';
-
-    protected ?string $subheading = 'Die Stammdaten deiner Schule. Klassen und Konten verwaltest du unter „Klassen“ und „Benutzer“.';
 
     /**
      * @var array<string, mixed>|null
      */
     public ?array $data = [];
+
+    public static function getNavigationLabel(): string
+    {
+        return __('Meine Schule');
+    }
+
+    public function getTitle(): string
+    {
+        return __('Meine Schule');
+    }
+
+    public function getSubheading(): string
+    {
+        return __('Die Stammdaten deiner Schule. Klassen und Konten verwaltest du unter „Klassen“ und „Benutzer“.');
+    }
 
     public static function canAccess(): bool
     {
@@ -70,13 +81,13 @@ class MySchool extends Page
 
     public function content(Schema $schema): Schema
     {
-        $statusSection = Section::make('Status')
+        $statusSection = Section::make(__('Status'))
             ->schema([
-                Text::make('Aktiv')
+                Text::make(__('Aktiv'))
                     ->badge()
                     ->color('success')
                     ->icon(Heroicon::OutlinedCheckCircle),
-                Text::make(fn (): string => 'Registriert am '.$this->school()->created_at->format('d.m.Y').'. Die Plattform-Administration kann eine Schule sperren; dann kann sich niemand mehr anmelden.')
+                Text::make(fn (): string => __('Registriert am :date. Die Plattform-Administration kann eine Schule sperren; dann kann sich niemand mehr anmelden.', ['date' => $this->school()->created_at->format('d.m.Y')]))
                     ->color('gray'),
             ]);
 
@@ -94,7 +105,7 @@ class MySchool extends Page
                     ->footer([
                         Actions::make([
                             Action::make('save')
-                                ->label('Speichern')
+                                ->label(__('Speichern'))
                                 ->submit('save'),
                         ])->key('form-actions'),
                     ]),
@@ -109,7 +120,7 @@ class MySchool extends Page
 
         $school->update($this->form->getState());
 
-        Notification::make()->title('Gespeichert')->success()->send();
+        Notification::make()->title(__('Gespeichert'))->success()->send();
     }
 
     /**
@@ -120,14 +131,15 @@ class MySchool extends Page
     {
         $version = (string) config('lernplattform.dpa.version');
 
-        return Section::make('Auftragsverarbeitungsvertrag (AVV)')
-            ->description('Der Vertrag regelt, wie die Plattform die Daten deiner Schule in deinem Auftrag verarbeitet.')
+        // The key is shared with a sentence that needs the lower-case English, so the heading capitalises it.
+        return Section::make(ucfirst(__('Auftragsverarbeitungsvertrag (AVV)')))
+            ->description(__('Der Vertrag regelt, wie die Plattform die Daten deiner Schule in deinem Auftrag verarbeitet.').$this->germanTextNote())
             ->schema([
                 Text::make(fn (): string => match (true) {
-                    $this->school()->hasAcceptedCurrentDpa() => 'Angenommen, Version '.$this->school()->dpa_version,
-                    ! DpaAcceptance::isFinal() => 'Entwurf, noch nicht annehmbar',
-                    $this->school()->hasAcceptedDpa() => 'Geänderte Fassung zur Annahme',
-                    default => 'Noch nicht angenommen',
+                    $this->school()->hasAcceptedCurrentDpa() => __('Angenommen, Version :version', ['version' => $this->school()->dpa_version]),
+                    ! DpaAcceptance::isFinal() => __('Entwurf, noch nicht annehmbar'),
+                    $this->school()->hasAcceptedDpa() => __('Geänderte Fassung zur Annahme'),
+                    default => __('Noch nicht angenommen'),
                 })
                     ->badge()
                     ->color(fn (): string => match (true) {
@@ -142,26 +154,26 @@ class MySchool extends Page
                 // Reading comes first: nobody should accept a contract they were not shown.
                 Actions::make([
                     Action::make('viewDpa')
-                        ->label('Vertrag mit den Daten deiner Schule ansehen und drucken')
+                        ->label(__('Vertrag mit den Daten deiner Schule ansehen und drucken'))
                         ->icon(Heroicon::OutlinedPrinter)
                         ->color('gray')
                         ->url(fn (): string => route('legal.dpa.school'))
                         ->openUrlInNewTab(),
                     Action::make('viewAcceptedDpa')
-                        ->label(fn (): string => 'Angenommene Fassung (Version '.$this->school()->dpa_version.') ansehen')
+                        ->label(fn (): string => __('Angenommene Fassung (Version :version) ansehen', ['version' => $this->school()->dpa_version]))
                         ->icon(Heroicon::OutlinedDocumentText)
                         ->color('gray')
                         ->visible(fn (): bool => $this->school()->hasAcceptedDpa() && $this->school()->dpaAcceptances()->exists())
                         ->url(fn (): string => route('legal.dpa.school.accepted'))
                         ->openUrlInNewTab(),
                     Action::make('acceptDpa')
-                        ->label(fn (): string => $this->school()->hasAcceptedDpa() ? 'Geänderte Fassung annehmen' : 'Vertrag annehmen')
+                        ->label(fn (): string => $this->school()->hasAcceptedDpa() ? __('Geänderte Fassung annehmen') : __('Vertrag annehmen'))
                         ->icon(Heroicon::OutlinedCheckCircle)
                         ->visible(fn (): bool => DpaAcceptance::isFinal() && ! $this->school()->hasAcceptedCurrentDpa())
                         ->requiresConfirmation()
-                        ->modalHeading('Auftragsverarbeitungsvertrag annehmen')
-                        ->modalDescription(new HtmlString('Du nimmst den Vertrag in der Version '.e($version).' im Namen deiner Schule an. Gespeichert werden die Version, der Zeitpunkt, der Vertragstext, wie du ihn siehst, und dein Name mit Benutzername. <a href="'.e(route('legal.dpa.school')).'" target="_blank" rel="noopener" class="underline">Vertrag zuerst lesen</a>'))
-                        ->modalSubmitActionLabel('Im Namen der Schule annehmen')
+                        ->modalHeading(__('Auftragsverarbeitungsvertrag annehmen'))
+                        ->modalDescription(new HtmlString(e(__('Du nimmst den Vertrag in der Version :version im Namen deiner Schule an. Gespeichert werden die Version, der Zeitpunkt, der Vertragstext, wie du ihn siehst, und dein Name mit Benutzername.', ['version' => $version]).$this->germanTextNote()).' <a href="'.e(route('legal.dpa.school')).'" target="_blank" rel="noopener" class="underline">'.e(__('Vertrag zuerst lesen')).'</a>'))
+                        ->modalSubmitActionLabel(__('Im Namen der Schule annehmen'))
                         ->action(function () use ($version): void {
                             $school = $this->school();
 
@@ -174,13 +186,21 @@ class MySchool extends Page
                             $school->acceptDpa(auth()->user());
 
                             Notification::make()
-                                ->title('Vertrag angenommen')
-                                ->body('Version '.$version.' ist für deine Schule gespeichert.')
+                                ->title(__('Vertrag angenommen'))
+                                ->body(__('Version :version ist für deine Schule gespeichert.', ['version' => $version]))
                                 ->success()
                                 ->send();
                         }),
                 ])->key('dpa-actions'),
             ]);
+    }
+
+    /**
+     * The agreement is the binding German text whatever the language of the page, so everybody else is told before they accept it.
+     */
+    private function germanTextNote(): string
+    {
+        return app()->isLocale('de') ? '' : ' '.__('Der Vertrag selbst ist auf Deutsch.');
     }
 
     private function dpaStatusText(): string
@@ -191,26 +211,31 @@ class MySchool extends Page
 
         if (! $school->hasAcceptedDpa()) {
             return $isFinal
-                ? 'Deine Schule hat den Vertrag noch nicht angenommen. Ohne ihn fehlt die Grundlage dafür, dass die Plattform die Daten deiner Schule im Auftrag verarbeitet. Bis zur Annahme kann deine Schule nur diese Seite nutzen. Lies den Vertrag und nimm ihn im Namen der Schule an.'
-                : 'Der Vertrag ist noch ein Entwurf. Er kann erst angenommen werden, wenn der Betreiber ihn freigegeben hat. Bis dahin kannst du ihn lesen.';
+                ? __('Deine Schule hat den Vertrag noch nicht angenommen. Ohne ihn fehlt die Grundlage dafür, dass die Plattform die Daten deiner Schule im Auftrag verarbeitet. Bis zur Annahme kann deine Schule nur diese Seite nutzen. Lies den Vertrag und nimm ihn im Namen der Schule an.')
+                : __('Der Vertrag ist noch ein Entwurf. Er kann erst angenommen werden, wenn der Betreiber ihn freigegeben hat. Bis dahin kannst du ihn lesen.');
         }
 
-        $accepted = 'Angenommen am '.$school->dpa_accepted_at->format('d.m.Y').' um '.$school->dpa_accepted_at->format('H:i').' Uhr durch '.$school->dpa_accepted_by_name.' (Benutzername '.$school->dpa_accepted_by_username.').';
+        $accepted = __('Angenommen am :date um :time Uhr durch :name (Benutzername :username).', [
+            'date' => $school->dpa_accepted_at->format('d.m.Y'),
+            'time' => $school->dpa_accepted_at->format('H:i'),
+            'name' => $school->dpa_accepted_by_name,
+            'username' => $school->dpa_accepted_by_username,
+        ]);
 
         if ($school->hasAcceptedCurrentDpa()) {
             return $accepted;
         }
 
         if (! $isFinal) {
-            return $accepted.' Die neue Version '.$version.' ist noch ein Entwurf, bis zu ihrer Freigabe gilt Version '.$school->dpa_version.' weiter.';
+            return $accepted.' '.__('Die neue Version :version ist noch ein Entwurf, bis zu ihrer Freigabe gilt Version :accepted weiter.', ['version' => $version, 'accepted' => $school->dpa_version]);
         }
 
         // The same version number with another fingerprint: a value the text takes from the settings changed (DpaAcceptance::terms()).
         $change = $school->dpa_version === $version
-            ? ' Seitdem hat sich der Vertragstext geändert, zum Beispiel eine Frist oder der KI-Anbieter.'
-            : ' Seitdem gibt es die neue Version '.$version.'.';
+            ? __('Seitdem hat sich der Vertragstext geändert, zum Beispiel eine Frist oder der KI-Anbieter.')
+            : __('Seitdem gibt es die neue Version :version.', ['version' => $version]);
 
-        return $accepted.$change.' Bis zur Annahme gilt die angenommene Fassung (Version '.$school->dpa_version.') weiter. Lies die geänderte Fassung und nimm sie an.';
+        return $accepted.' '.$change.' '.__('Bis zur Annahme gilt die angenommene Fassung (Version :accepted) weiter. Lies die geänderte Fassung und nimm sie an.', ['accepted' => $school->dpa_version]);
     }
 
     private function school(): School

@@ -82,7 +82,7 @@ class PrivacyDocumentsTest extends TestCase
 
         $response = $this->get(PrivacyDocuments::getUrl(['document' => $key]))
             ->assertOk()
-            ->assertSee('Datenschutz-Unterlagen')
+            ->assertSee('Privacy documents')
             ->assertSee($heading)
             ->assertSee('Goethe-Gymnasium')
             ->assertDontSee($otherSchool->name);
@@ -100,7 +100,7 @@ class PrivacyDocumentsTest extends TestCase
         $this->get(PrivacyDocuments::getUrl(['document' => $key]))
             ->assertOk()
             ->assertSee('Vorlage – an die Gegebenheiten der Schule anpassen, keine Rechtsberatung')
-            ->assertSee('Vorlage drucken')
+            ->assertSee('Print template')
             ->assertSee('window.print()', false)
             ->assertSee('@media print', false);
     }
@@ -164,7 +164,7 @@ class PrivacyDocumentsTest extends TestCase
 
         $response = $this->get(PrivacyDocuments::getUrl(['document' => 'dsfa']))->assertOk();
 
-        foreach (array_keys(self::documents()) as $label) {
+        foreach (['Checklist', 'Impact assessment', 'Processing register', 'Parent information', 'Consent'] as $label) {
             $response->assertSee($label);
         }
 
@@ -340,6 +340,13 @@ class PrivacyDocumentsTest extends TestCase
         $this->get(PrivacyDocuments::getUrl(['document' => 'elterninformation']))->assertOk()
             ->assertSee('Vor jeder Übermittlung ersetzt Tuto die Namen')
             ->assertSee('Namen auf Fotos oder PDF-Arbeitsblättern werden aber nicht entfernt');
+
+        // The homework draft also sends the questions the teacher wrote or edited (SdkLessonAssistant::draftHomework): the
+        // template names them, and so does the privacy page every role reads.
+        $this->get(PrivacyDocuments::getUrl(['document' => 'dsfa']))->assertOk()
+            ->assertSee('die Fragen, die die Lehrkraft selbst geschrieben oder bearbeitet hat (damit die KI sie nicht wiederholt)');
+        $this->get('/datenschutz')->assertOk()
+            ->assertSee('the questions the teacher wrote or edited themselves (pseudonymised, so the AI does not repeat them)');
     }
 
     /**
@@ -632,7 +639,7 @@ class PrivacyDocumentsTest extends TestCase
             ->assertSee('Danach endet der Zugriff von selbst, auch auf Abgaben, Gespräche und Rückfragen zu den Stunden, die sie in der Klasse gehalten hat');
 
         $this->get(PrivacyAndAi::getUrl())->assertOk()
-            ->assertSee('danach endet der Zugriff von selbst, auch auf die Ergebnisse der Stunden, die sie gehalten hat');
+            ->assertSee('afterwards access ends by itself, including the results of the lessons the substitute taught');
     }
 
     /**
@@ -657,7 +664,7 @@ class PrivacyDocumentsTest extends TestCase
 
         $response = $this->get(PrivacyDocuments::getUrl(['document' => 'verzeichnis']))
             ->assertOk()
-            ->assertSee('Du siehst die Vorlagen ohne Angaben zu einer Schule')
+            ->assertSee('You see the templates without any details of a school')
             ->assertSee('Name der Schule')
             ->assertDontSee('Stand in der Plattform')
             ->assertSee('Softwareentwicklung Sebastian Bleuel')
@@ -693,6 +700,41 @@ class PrivacyDocumentsTest extends TestCase
     public function test_guests_are_sent_to_the_login(): void
     {
         $this->get(PrivacyDocuments::getUrl())->assertRedirect();
+    }
+
+    /**
+     * The page around the templates follows the language of the user; the templates themselves stay the German text.
+     */
+    public function test_the_page_is_english_and_the_templates_stay_german(): void
+    {
+        $this->actingAs($this->schoolAdmin());
+
+        $response = $this->get(PrivacyDocuments::getUrl(['document' => 'verzeichnis']))
+            ->assertOk()
+            ->assertSee('Templates to print and adapt')
+            ->assertSee('The templates themselves are in German.')
+            ->assertSee('Entries for the register of processing activities (Art. 30). Printing outputs only this template, without the menu.')
+            ->assertSee('Eintrag für das Verzeichnis von Verarbeitungstätigkeiten (Art. 30 DSGVO)')
+            ->assertDontSee('Vorlage drucken');
+
+        $this->assertStringContainsString('lang="de"', $response->getContent());
+        $this->assertSame('Privacy documents', PrivacyDocuments::getNavigationLabel());
+    }
+
+    public function test_the_page_reads_german_when_german_is_the_default(): void
+    {
+        config(['lernplattform.locale.default' => 'de']);
+        app()->setLocale('de');
+        $this->actingAs($this->schoolAdmin());
+
+        $this->get(PrivacyDocuments::getUrl(['document' => 'dsfa']))
+            ->assertOk()
+            ->assertSee('Datenschutz-Unterlagen')
+            ->assertSee('Vorlagen zum Ausdrucken und Anpassen: Checkliste, Folgenabschätzung, Verzeichnis, Elterninformation und Einwilligung.')
+            ->assertSee('Vorlage drucken')
+            ->assertSee('Datenschutz-Folgenabschätzung nach Art. 35 DSGVO. Drucken gibt nur diese Vorlage aus, ohne Menü.')
+            ->assertDontSee('Die Vorlagen selbst sind auf Deutsch.')
+            ->assertDontSee('Print template');
     }
 
     public function test_the_page_sits_in_the_menu_group_of_the_role(): void

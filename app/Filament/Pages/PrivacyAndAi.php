@@ -19,15 +19,26 @@ class PrivacyAndAi extends Page
 {
     protected static ?string $slug = 'datenschutz';
 
-    protected static ?string $title = 'Datenschutz & KI';
-
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedShieldCheck;
 
     protected static ?int $navigationSort = 100;
 
-    protected ?string $subheading = 'Was Tuto speichert, wer es sieht und was die KI damit macht.';
-
     protected string $view = 'filament.pages.privacy-and-ai';
+
+    public static function getNavigationLabel(): string
+    {
+        return __('Datenschutz & KI');
+    }
+
+    public function getTitle(): string
+    {
+        return __('Datenschutz & KI');
+    }
+
+    public function getSubheading(): string
+    {
+        return __('Was Tuto speichert, wer es sieht und was die KI damit macht.');
+    }
 
     /**
      * Whether the AI runs for the signed-in user: the switch of their school (School::aiEnabled(): platform switch,
@@ -49,62 +60,60 @@ class PrivacyAndAi extends Page
      */
     public static function aiFunctions(): array
     {
-        $segmentSeconds = (int) config('lernplattform.recordings.segment_seconds');
-
         return [
             'LessonAssistant::draftHomework' => [
-                'title' => 'Hausaufgabe entwerfen',
-                'sent' => 'Fach, Thema, Datum, Zusammenfassung und Notizen der Lehrkraft (auch übernommene Notizen aus der Stunde), die Kompetenzen des Fachs und angehängte Arbeitsblätter (Fotos, PDF).',
-                'notSent' => 'Texte der Schüler:innen.',
-                'result' => 'Eine Zusammenfassung und fünf Fragen als Entwurf. Die Lehrkraft prüft ihn, bevor sie ihn freigibt.',
+                'title' => __('Hausaufgabe entwerfen'),
+                'sent' => __('Fach, Thema, Datum, Zusammenfassung und Notizen der Lehrkraft (auch übernommene Notizen aus der Stunde), die Fragen, die die Lehrkraft selbst geschrieben oder bearbeitet hat (pseudonymisiert, damit die KI sie nicht wiederholt), die Kompetenzen des Fachs und angehängte Arbeitsblätter (Fotos, PDF).'),
+                'notSent' => __('Texte der Schüler:innen.'),
+                'result' => __('Eine Zusammenfassung und fünf Fragen als Entwurf. Die Lehrkraft prüft ihn, bevor sie ihn freigibt.'),
             ],
             'LessonAssistant::draftPracticeTask' => [
-                'title' => 'Förderaufgabe entwerfen',
-                'sent' => 'Fach, Kompetenz, anonyme Hinweise auf Lücken, dazu Thema, Datum und Notizen der Stunden, in denen sich die Lücke gezeigt hat.',
-                'notSent' => 'Arbeitsblätter, Antworten der Schüler:innen und wer die Lücke hatte.',
-                'result' => 'Drei bis vier Übungsfragen. Mit „Direkt freigeben“ gehen sie ohne getrennte Prüfung an die ausgewählten Schüler:innen.',
+                'title' => __('Förderaufgabe entwerfen'),
+                'sent' => __('Fach, Kompetenz, anonyme Hinweise auf Lücken, dazu Thema, Datum und Notizen der Stunden, in denen sich die Lücke gezeigt hat.'),
+                'notSent' => __('Arbeitsblätter, Antworten der Schüler:innen und wer die Lücke hatte.'),
+                'result' => __('Drei bis vier Übungsfragen. Mit „Direkt freigeben“ gehen sie ohne getrennte Prüfung an die ausgewählten Schüler:innen.'),
             ],
             'LessonAssistant::evaluateSubmission' => [
-                'title' => 'Abgabe einschätzen',
-                'sent' => 'Die Stunde wie beim Entwurf mit Arbeitsblättern, die Fragen mit Erwartungshorizont und der gewählten Stufe, die Zusammenfassung und die Antworten der Schüler:in.',
-                'notSent' => 'Andere Abgaben und alles, was zum Konto gehört.',
-                'result' => 'Verständniswert von 0 bis 100, Rückmeldung, bis zu drei Hinweise auf Lücken und Punkte je Antwort. Die Schüler:in sieht das Ergebnis gleich nach der Abgabe.',
+                'title' => __('Abgabe einschätzen'),
+                'sent' => __('Die Stunde wie beim Entwurf mit Arbeitsblättern, die Fragen mit Erwartungshorizont und der gewählten Stufe, die Zusammenfassung und die Antworten der Schüler:in.'),
+                'notSent' => __('Andere Abgaben und alles, was zum Konto gehört.'),
+                'result' => __('Verständniswert von 0 bis 100, Rückmeldung, bis zu drei Hinweise auf Lücken und Punkte je Antwort. Die Schüler:in sieht das Ergebnis gleich nach der Abgabe.'),
             ],
             'LessonAssistant::differentiateQuestion' => [
-                'title' => 'Stufen einer Frage',
-                'sent' => 'Fach, Thema, Zusammenfassung der Lehrkraft, Art und Text der Frage.',
-                'notSent' => 'Erwartungshorizont, Notizen, Arbeitsblätter und Texte der Schüler:innen.',
-                'result' => 'Eine leichtere Fassung (Einstieg) und eine anspruchsvollere (Profi). Die Lehrkraft prüft sie, bevor sie die Hausaufgabe freigibt.',
+                'title' => __('Stufen einer Frage'),
+                'sent' => __('Fach, Thema, Zusammenfassung der Lehrkraft, Art und Text der Frage.'),
+                'notSent' => __('Erwartungshorizont, Notizen, Arbeitsblätter und Texte der Schüler:innen.'),
+                'result' => __('Eine leichtere Fassung (Einstieg) und eine anspruchsvollere (Profi). Die Lehrkraft prüft sie, bevor sie die Hausaufgabe freigibt.'),
             ],
             'LessonAssistant::simplify' => [
-                'title' => 'Einfache Sprache',
-                'sent' => 'Fach, Thema und ein Text der Lehrkraft: die Zusammenfassung oder eine Frage.',
-                'notSent' => 'Antworten und Zusammenfassungen der Schüler:innen, und wer Einfache Sprache eingeschaltet hat (das merkt sich nur der Browser).',
-                'result' => 'Der Text in Einfacher Sprache. Er wird an der Stunde oder Frage gespeichert, bis die Lehrkraft den Text ändert.',
+                'title' => __('Einfache Sprache'),
+                'sent' => __('Fach, Thema und ein Text der Lehrkraft: die Zusammenfassung oder eine Frage.'),
+                'notSent' => __('Antworten und Zusammenfassungen der Schüler:innen, und wer Einfache Sprache eingeschaltet hat (das merkt sich nur der Browser).'),
+                'result' => __('Der Text in Einfacher Sprache. Er wird an der Stunde oder Frage gespeichert, bis die Lehrkraft den Text ändert.'),
             ],
             'LessonAssistant::askFollowUp' => [
-                'title' => '„Erklär’s mir“: Rückfragen von Tuto',
-                'sent' => 'Das Thema und das bisherige Gespräch, bei einer gewählten Stunde deren Zusammenfassung und Notizen als Hintergrund.',
-                'notSent' => 'Arbeitsblätter und andere Gespräche.',
-                'result' => 'Tutos nächste Rückfrage, die die Schüler:in sofort sieht.',
+                'title' => __('„Erklär’s mir“: Rückfragen von Tuto'),
+                'sent' => __('Das Thema und das bisherige Gespräch, bei einer gewählten Stunde deren Zusammenfassung und Notizen als Hintergrund.'),
+                'notSent' => __('Arbeitsblätter und andere Gespräche.'),
+                'result' => __('Tutos nächste Rückfrage, die die Schüler:in sofort sieht.'),
             ],
             'LessonAssistant::assessExplanation' => [
-                'title' => '„Erklär’s mir“: Einschätzung am Ende',
-                'sent' => 'Das Thema und das ganze Gespräch, bei einer gewählten Stunde deren Zusammenfassung und Notizen als Hintergrund.',
-                'notSent' => 'Arbeitsblätter und andere Gespräche.',
-                'result' => 'Verständniswert und Rückmeldung. Keine Note.',
+                'title' => __('„Erklär’s mir“: Einschätzung am Ende'),
+                'sent' => __('Das Thema und das ganze Gespräch, bei einer gewählten Stunde deren Zusammenfassung und Notizen als Hintergrund.'),
+                'notSent' => __('Arbeitsblätter und andere Gespräche.'),
+                'result' => __('Verständniswert und Rückmeldung. Keine Note.'),
             ],
             'Transcriber::transcribe' => [
-                'title' => 'Tuto-Mikro: Spracherkennung',
-                'sent' => "Kurze Ton-Abschnitte (etwa {$segmentSeconds} Sekunden) aus dem Mikro der Lehrkraft, nur wenn für alle angehakten Schüler:innen auch diesem Zweck zugestimmt wurde. Die Ton-Abschnitte selbst lassen sich nicht pseudonymisieren: Darin sind echte Stimmen, auch gesprochene Namen.",
-                'notSent' => 'Nichts davon wird gespeichert, weder Ton noch Text (der Server kann einen Abschnitt für die Dauer der Anfrage kurz zwischenpuffern). Ohne KI-Funktionen verlässt der Ton das Gerät der Lehrkraft nicht.',
-                'result' => 'Der erkannte Text. Er liegt nur im Browser der Lehrkraft.',
+                'title' => __('Tuto-Mikro: Spracherkennung'),
+                'sent' => __('Kurze Ton-Abschnitte (etwa :seconds Sekunden) aus dem Mikro der Lehrkraft, nur wenn für alle angehakten Schüler:innen auch diesem Zweck zugestimmt wurde. Die Ton-Abschnitte selbst lassen sich nicht pseudonymisieren: Darin sind echte Stimmen, auch gesprochene Namen.', ['seconds' => (int) config('lernplattform.recordings.segment_seconds')]),
+                'notSent' => __('Nichts davon wird gespeichert, weder Ton noch Text (der Server kann einen Abschnitt für die Dauer der Anfrage kurz zwischenpuffern). Ohne KI-Funktionen verlässt der Ton das Gerät der Lehrkraft nicht.'),
+                'result' => __('Der erkannte Text. Er liegt nur im Browser der Lehrkraft.'),
             ],
             'RecordingAnalyst::analyse' => [
-                'title' => 'Tuto-Mikro: Zusammenfassung',
-                'sent' => 'Die Notizen aus der Stunde, so wie die Lehrkraft sie gelesen hat, mit ersetzten Namen, dazu Fach und Thema.',
-                'notSent' => 'Ton.',
-                'result' => 'Zusammenfassung, Fachbegriffe, Tafelbild-Vorschlag und Fragen aus der Klasse. Gespeichert wird nur, was die Lehrkraft in die Stundennotizen übernimmt.',
+                'title' => __('Tuto-Mikro: Zusammenfassung'),
+                'sent' => __('Die Notizen aus der Stunde, so wie die Lehrkraft sie gelesen hat, mit ersetzten Namen, dazu Fach und Thema.'),
+                'notSent' => __('Ton.'),
+                'result' => __('Zusammenfassung, Fachbegriffe, Tafelbild-Vorschlag und Fragen aus der Klasse. Gespeichert wird nur, was die Lehrkraft in die Stundennotizen übernimmt.'),
             ],
         ];
     }
@@ -117,14 +126,14 @@ class PrivacyAndAi extends Page
         $isOperator = auth()->user()?->isOperator() ?? false;
 
         $callout = self::isAiEnabled()
-            ? Callout::make('KI-Funktionen eingeschaltet')
+            ? Callout::make(__('KI-Funktionen eingeschaltet'))
                 ->description($isOperator
-                    ? 'Der Schalter der Plattform ist an. Texte gehen aber nur für Schulen an '.$this->providerLabel().', deren Schuladministration die KI-Funktionen selbst eingeschaltet hat.'
-                    : 'Pseudonymisierte Texte und Arbeitsblätter deiner Schule gehen an '.$this->providerLabel().'. Namen der Klasse werden vorher ersetzt, Benutzernamen und E-Mail-Adressen gehen nie mit.')
+                    ? __('Der Schalter der Plattform ist an. Texte gehen aber nur für Schulen an :provider, deren Schuladministration die KI-Funktionen selbst eingeschaltet hat.', ['provider' => $this->providerLabel()])
+                    : __('Pseudonymisierte Texte und Arbeitsblätter deiner Schule gehen an :provider. Namen der Klasse werden vorher ersetzt, Benutzernamen und E-Mail-Adressen gehen nie mit.', ['provider' => $this->providerLabel()]))
                 ->warning()
                 ->icon(Heroicon::OutlinedCloudArrowUp)
-            : Callout::make('KI-Funktionen ausgeschaltet')
-                ->description('Alle Auswertungen laufen mit einer regelbasierten Demo-Logik auf der Plattform. Es geht nichts an einen KI-Anbieter.')
+            : Callout::make(__('KI-Funktionen ausgeschaltet'))
+                ->description(__('Alle Auswertungen laufen mit einer regelbasierten Demo-Logik auf der Plattform. Es geht nichts an einen KI-Anbieter.'))
                 ->success()
                 ->icon(Heroicon::OutlinedShieldCheck);
 
@@ -142,14 +151,14 @@ class PrivacyAndAi extends Page
             'aiEnabled' => self::isAiEnabled(),
             'platformAiEnabled' => (bool) config('lernplattform.ai.enabled'),
             'providerLabel' => $this->providerLabel(),
-            'model' => config('lernplattform.ai.model') ?: 'Standardmodell des Anbieters',
+            'model' => config('lernplattform.ai.model') ?: __('Standardmodell des Anbieters'),
             'aiFunctions' => self::aiFunctions(),
             'aiChecklist' => array_column(AiSettings::checklistItems(), 'label'),
             'aiSettingsUrl' => AiSettings::canAccess() ? AiSettings::getUrl() : null,
             'sessionKeepDays' => (int) config('lernplattform.recordings.session_keep_days'),
             'notificationReadDays' => (int) config('lernplattform.notifications.keep_read_days'),
             'notificationMaxDays' => (int) config('lernplattform.notifications.keep_days'),
-            'retention' => PrivacyDocuments::retentionText(),
+            'retention' => PrivacyDocuments::retentionText(app()->getLocale()),
             'isAdmin' => $user?->isAdmin() ?? false,
             'isOperator' => $user?->isOperator() ?? false,
             'isStudent' => $user?->isStudent() ?? false,
@@ -171,79 +180,79 @@ class PrivacyAndAi extends Page
      */
     private static function dataCategories(): array
     {
-        $teacher = ['role' => Role::Teacher, 'label' => 'Lehrkraft der Stunde', 'icon' => Heroicon::OutlinedAcademicCap];
-        $classTeachers = ['role' => Role::Teacher, 'label' => 'Lehrkräfte der Klasse', 'icon' => Heroicon::OutlinedAcademicCap];
-        $admin = ['role' => Role::Admin, 'label' => 'Schuladministration (eigene Schule)', 'icon' => Heroicon::OutlinedKey];
+        $teacher = ['role' => Role::Teacher, 'label' => __('Lehrkraft der Stunde'), 'icon' => Heroicon::OutlinedAcademicCap];
+        $classTeachers = ['role' => Role::Teacher, 'label' => __('Lehrkräfte der Klasse'), 'icon' => Heroicon::OutlinedAcademicCap];
+        $admin = ['role' => Role::Admin, 'label' => __('Schuladministration (eigene Schule)'), 'icon' => Heroicon::OutlinedKey];
         $operator = ['role' => Role::Operator, 'icon' => Heroicon::OutlinedBuildingLibrary];
         $student = ['role' => Role::Student, 'icon' => Heroicon::OutlinedBookOpen];
 
         return [
             [
-                'title' => 'Unterrichtsnotizen und Arbeitsblätter',
+                'title' => __('Unterrichtsnotizen und Arbeitsblätter'),
                 'icon' => Heroicon::OutlinedDocumentText,
-                'stored' => 'Fach, Thema, Datum, Notizen (auch aus dem Tuto-Mikro übernommene), hochgeladene Arbeitsblätter und die Zusammenfassung der Lehrkraft.',
+                'stored' => __('Fach, Thema, Datum, Notizen (auch aus dem Tuto-Mikro übernommene), hochgeladene Arbeitsblätter und die Zusammenfassung der Lehrkraft.'),
                 'viewers' => [$teacher, $admin],
-                'notes' => ['Schüler:innen sehen weder Notizen noch Arbeitsblätter, sondern nur die Zusammenfassung der Lehrkraft, sobald die Hausaufgabe freigegeben ist.'],
+                'notes' => [__('Schüler:innen sehen weder Notizen noch Arbeitsblätter, sondern nur die Zusammenfassung der Lehrkraft, sobald die Hausaufgabe freigegeben ist.')],
             ],
             [
-                'title' => 'Hausaufgaben',
+                'title' => __('Hausaufgaben'),
                 'icon' => Heroicon::OutlinedClipboardDocumentList,
-                'stored' => 'Die Fragen in bis zu drei Stufen (Einstieg, Standard, Profi) mit der zugeordneten Kompetenz, auf Wunsch auch in Einfacher Sprache. Die KI macht einen Entwurf, die Lehrkraft prüft ihn und gibt ihn für die Klasse oder ausgewählte Schüler:innen frei.',
-                'viewers' => [$teacher, $admin, [...$student, 'label' => 'Zugewiesene Schüler:innen']],
+                'stored' => __('Die Fragen in bis zu drei Stufen (Einstieg, Standard, Profi) mit der zugeordneten Kompetenz, auf Wunsch auch in Einfacher Sprache. Die KI macht einen Entwurf, die Lehrkraft prüft ihn und gibt ihn für die Klasse oder ausgewählte Schüler:innen frei.'),
+                'viewers' => [$teacher, $admin, [...$student, 'label' => __('Zugewiesene Schüler:innen')]],
                 'notes' => [
-                    'Schüler:innen sehen eine Hausaufgabe erst, wenn sie freigegeben und ihnen zugewiesen ist.',
-                    'Der Erwartungshorizont, also was eine gute Antwort enthält, ist nur für Lehrkraft und Schuladministration sichtbar.',
-                    'Ob jemand Einfache Sprache eingeschaltet hat, merkt sich nur der eigene Browser.',
+                    __('Schüler:innen sehen eine Hausaufgabe erst, wenn sie freigegeben und ihnen zugewiesen ist.'),
+                    __('Der Erwartungshorizont, also was eine gute Antwort enthält, ist nur für Lehrkraft und Schuladministration sichtbar.'),
+                    __('Ob jemand Einfache Sprache eingeschaltet hat, merkt sich nur der eigene Browser.'),
                 ],
             ],
             [
-                'title' => 'Abgaben und KI-Einschätzung',
+                'title' => __('Abgaben und KI-Einschätzung'),
                 'icon' => Heroicon::OutlinedChartBar,
-                'stored' => 'Die eigene Zusammenfassung, die Antworten mit der gewählten Stufe, der Verständniswert von 0 bis 100, das Feedback und Hinweise, was noch wiederholt werden sollte.',
-                'viewers' => [[...$student, 'label' => 'Schüler:in selbst'], $teacher, $admin],
+                'stored' => __('Die eigene Zusammenfassung, die Antworten mit der gewählten Stufe, der Verständniswert von 0 bis 100, die Rückmeldung und Hinweise, was noch wiederholt werden sollte.'),
+                'viewers' => [[...$student, 'label' => __('Schüler:in selbst')], $teacher, $admin],
                 'notes' => [
-                    'Andere Schüler:innen sehen eine Abgabe nie.',
-                    'Den Lernstand einer Klasse sehen die Lehrkräfte, die sie leiten, unterrichten oder gerade vertreten.',
+                    __('Andere Schüler:innen sehen eine Abgabe nie.'),
+                    __('Den Lernstand einer Klasse sehen die Lehrkräfte, die sie leiten, unterrichten oder gerade vertreten.'),
                 ],
             ],
             [
-                'title' => '„Erklär’s mir“-Gespräche und Rückfragen',
+                'title' => __('„Erklär’s mir“-Gespräche und Rückfragen'),
                 'icon' => Heroicon::OutlinedChatBubbleLeftRight,
-                'stored' => 'Das gewählte Thema, das Gespräch mit Tuto, Verständniswert und Feedback. Rückfragen an die Lehrkraft mit ihrer Antwort.',
-                'viewers' => [[...$student, 'label' => 'Schüler:in selbst'], $teacher, $admin],
-                'notes' => ['Lehrkraft und Schuladministration sehen nur Gespräche und Rückfragen zu einer Stunde. Gespräche zu einem frei gewählten Thema sieht nur die Schüler:in selbst.'],
+                'stored' => __('Das gewählte Thema, das Gespräch mit Tuto, Verständniswert und Rückmeldung. Rückfragen an die Lehrkraft mit ihrer Antwort.'),
+                'viewers' => [[...$student, 'label' => __('Schüler:in selbst')], $teacher, $admin],
+                'notes' => [__('Lehrkraft und Schuladministration sehen nur Gespräche und Rückfragen zu einer Stunde. Gespräche zu einem frei gewählten Thema sieht nur die Schüler:in selbst.')],
             ],
             [
-                'title' => 'Klassenbuch',
+                'title' => __('Klassenbuch'),
                 'icon' => Heroicon::OutlinedBookmarkSquare,
-                'stored' => 'Was in einer Stunde unterrichtet wurde, die Hausaufgabe, wer gefehlt hat und Bemerkungen.',
+                'stored' => __('Was in einer Stunde unterrichtet wurde, die Hausaufgabe, wer gefehlt hat und Bemerkungen.'),
                 'viewers' => [$classTeachers, $admin],
-                'notes' => ['Schüler:innen sehen das Klassenbuch nicht. Eine Vertretung sieht es nur, solange die Vertretung dauert.'],
+                'notes' => [__('Schüler:innen sehen das Klassenbuch nicht. Eine Vertretung sieht es nur, solange die Vertretung dauert.')],
             ],
             [
-                'title' => 'Einwilligungen und Tuto-Mikro',
+                'title' => __('Einwilligungen und Tuto-Mikro'),
                 'icon' => Heroicon::OutlinedPencilSquare,
-                'stored' => 'Die Einwilligungen der Eltern zum Tuto-Mikro (welche Zwecke, wann, welche Fassung) und je Sitzung ein Nachweis: wann das Mikro an war und wer angehakt war. Ton wird nie gespeichert.',
-                'viewers' => [$classTeachers, $admin, [...$student, 'label' => 'Schüler:in (eigene Einwilligung)']],
-                'notes' => ['Den Nachweis einer Sitzung sieht nur die Lehrkraft der Stunde, nicht die Schuladministration. Schüler:innen finden die eigene Anwesenheit in ihrem Datenexport.'],
+                'stored' => __('Die Einwilligungen der Eltern zum Tuto-Mikro (welche Zwecke, wann, welche Fassung) und je Sitzung ein Nachweis: wann das Mikro an war und wer angehakt war. Ton wird nie gespeichert.'),
+                'viewers' => [$classTeachers, $admin, [...$student, 'label' => __('Schüler:in (eigene Einwilligung)')]],
+                'notes' => [__('Den Nachweis einer Sitzung sieht nur die Lehrkraft der Stunde, nicht die Schuladministration. Schüler:innen finden die eigene Anwesenheit in ihrem Datenexport.')],
             ],
             [
-                'title' => 'Kontodaten',
+                'title' => __('Kontodaten'),
                 'icon' => Heroicon::OutlinedUserCircle,
-                'stored' => 'Name, Benutzername, E-Mail-Adresse, Rolle, Schule, Klasse und die gewählte Sprache. Das Passwort wird nur verschlüsselt (als Hash) gespeichert.',
-                'viewers' => [$admin, [...$operator, 'label' => 'Plattform-Administration (nur Schuladministrationen)']],
+                'stored' => __('Name, Benutzername, E-Mail-Adresse, Rolle, Schule, Klasse und die gewählte Sprache. Das Passwort wird nur verschlüsselt (als Hash) gespeichert.'),
+                'viewers' => [$admin, [...$operator, 'label' => __('Plattform-Administration (nur Schuladministrationen)')]],
                 'notes' => [
-                    'Lehrkräfte sehen die Namen der Schüler:innen der Klassen, die sie leiten, unterrichten oder vertreten.',
-                    'Hinweise in der Glocke sieht nur, wer sie bekommt.',
-                    'Wird ein Schülerkonto gelöscht, werden auch seine Abgaben, Gespräche und Einwilligungen gelöscht.',
+                    __('Lehrkräfte sehen die Namen der Schüler:innen der Klassen, die sie leiten, unterrichten oder vertreten.'),
+                    __('Hinweise in der Glocke sieht nur, wer sie bekommt.'),
+                    __('Wird ein Schülerkonto gelöscht, werden auch seine Abgaben, Gespräche und Einwilligungen gelöscht.'),
                 ],
             ],
             [
-                'title' => 'Schule und Registrierung',
+                'title' => __('Schule und Registrierung'),
                 'icon' => Heroicon::OutlinedBuildingLibrary,
-                'stored' => 'Name, Ort und Bundesland der Schule, auf Wunsch Schulnummer, Schulform und Kontakt-E-Mail-Adresse, dazu der Zeitpunkt der Registrierung und einer möglichen Sperrung, und ob, wann und von wem die KI-Funktionen eingeschaltet wurden.',
-                'viewers' => [$admin, [...$operator, 'label' => 'Plattform-Administration (alle Schulen)']],
-                'notes' => ['Eine gesperrte Schule kann die Plattform nicht mehr nutzen. Ihre Daten bleiben gespeichert, bis sie gelöscht werden oder die Sperre aufgehoben wird.'],
+                'stored' => __('Name, Ort und Bundesland der Schule, auf Wunsch Schulnummer, Schulform und Kontakt-E-Mail-Adresse, dazu der Zeitpunkt der Registrierung und einer möglichen Sperrung, und ob, wann und von wem die KI-Funktionen eingeschaltet wurden.'),
+                'viewers' => [$admin, [...$operator, 'label' => __('Plattform-Administration (alle Schulen)')]],
+                'notes' => [__('Eine gesperrte Schule kann die Plattform nicht mehr nutzen. Ihre Daten bleiben gespeichert, bis sie gelöscht werden oder die Sperre aufgehoben wird.')],
             ],
         ];
     }
@@ -256,9 +265,9 @@ class PrivacyAndAi extends Page
     private static function levels(): array
     {
         return [
-            ['level' => UnderstandingLevel::Understood, 'range' => 'ab 75 von 100'],
-            ['level' => UnderstandingLevel::Partly, 'range' => '50 bis 74 von 100'],
-            ['level' => UnderstandingLevel::NeedsSupport, 'range' => 'unter 50 von 100'],
+            ['level' => UnderstandingLevel::Understood, 'range' => __('ab 75 von 100')],
+            ['level' => UnderstandingLevel::Partly, 'range' => __('50 bis 74 von 100')],
+            ['level' => UnderstandingLevel::NeedsSupport, 'range' => __('unter 50 von 100')],
         ];
     }
 }

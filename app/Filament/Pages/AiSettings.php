@@ -31,16 +31,27 @@ class AiSettings extends Page
 
     protected static ?int $navigationSort = 9;
 
-    protected static ?string $title = 'KI-Funktionen';
-
     protected static ?string $slug = 'ki-funktionen';
-
-    protected ?string $subheading = 'Ob Texte aus dem Unterricht deiner Schule an einen KI-Anbieter gehen dürfen.';
 
     /**
      * @var array<string, mixed>|null
      */
     public ?array $settingsData = [];
+
+    public static function getNavigationLabel(): string
+    {
+        return __('KI-Funktionen');
+    }
+
+    public function getTitle(): string
+    {
+        return __('KI-Funktionen');
+    }
+
+    public function getSubheading(): string
+    {
+        return __('Ob Texte aus dem Unterricht deiner Schule an einen KI-Anbieter gehen dürfen.');
+    }
 
     public static function canAccess(): bool
     {
@@ -67,20 +78,20 @@ class AiSettings extends Page
     {
         return [
             'dpa_with_provider' => [
-                'label' => 'Auftragsverarbeitung mit dem KI-Anbieter abgeschlossen',
-                'help' => 'Der Anbieter verarbeitet Texte deiner Schule in deinem Auftrag. Dafür liegt ein Vertrag zur Auftragsverarbeitung (AVV, Art. 28 DSGVO) mit ihm vor, und er ist im AVV mit der Plattform als Unterauftragsverarbeiter genannt.',
+                'label' => __('Auftragsverarbeitung mit dem KI-Anbieter abgeschlossen'),
+                'help' => __('Der Anbieter verarbeitet Texte deiner Schule in deinem Auftrag. Dafür liegt ein Vertrag zur Auftragsverarbeitung (AVV, Art. 28 DSGVO) mit ihm vor, und er ist im AVV mit der Plattform als Unterauftragsverarbeiter genannt.'),
             ],
             'paid_tier' => [
-                'label' => 'Bezahlter Tarif, bei dem Eingaben nicht zur Produktverbesserung genutzt werden',
-                'help' => 'Im kostenlosen Tarif von Gemini darf Google Eingaben zur Verbesserung seiner Produkte nutzen. Texte von Kindern gehören dort nicht hin. Bestätige, dass die Plattform einen bezahlten Tarif nutzt, bei dem das ausgeschlossen ist.',
+                'label' => __('Bezahlter Tarif, bei dem Eingaben nicht zur Produktverbesserung genutzt werden'),
+                'help' => __('Im kostenlosen Tarif von Gemini darf Google Eingaben zur Verbesserung seiner Produkte nutzen. Texte von Kindern gehören dort nicht hin. Bestätige, dass die Plattform einen bezahlten Tarif nutzt, bei dem das ausgeschlossen ist.'),
             ],
             'dsfa_done' => [
-                'label' => 'Datenschutz-Folgenabschätzung durchgeführt',
-                'help' => 'Die KI-Funktionen sind in der Datenschutz-Folgenabschätzung der Schule (Art. 35 DSGVO) bewertet und dokumentiert, mit der oder dem Datenschutzbeauftragten abgestimmt.',
+                'label' => __('Datenschutz-Folgenabschätzung durchgeführt'),
+                'help' => __('Die KI-Funktionen sind in der Datenschutz-Folgenabschätzung der Schule (Art. 35 DSGVO) bewertet und dokumentiert, mit der oder dem Datenschutzbeauftragten abgestimmt.'),
             ],
             'parents_informed' => [
-                'label' => 'Eltern und Schüler:innen informiert',
-                'help' => 'Eltern und Schüler:innen wissen, dass Texte aus dem Unterricht pseudonymisiert an einen KI-Anbieter gehen, zum Beispiel über die Elterninformation unter „Datenschutz-Unterlagen“.',
+                'label' => __('Eltern und Schüler:innen informiert'),
+                'help' => __('Eltern und Schüler:innen wissen, dass Texte aus dem Unterricht pseudonymisiert an einen KI-Anbieter gehen, zum Beispiel über die Elterninformation unter „Datenschutz-Unterlagen“.'),
             ],
         ];
     }
@@ -122,24 +133,24 @@ class AiSettings extends Page
         if ($school->ai_enabled_at !== null && ! $school->isAiChecklistComplete()) {
             $school->disableAi();
 
-            Notification::make()->warning()->title('KI-Funktionen ausgeschaltet')->body('Eine Bestätigung der Checkliste fehlt, deshalb antwortet wieder die Demo-Logik.')->send();
+            Notification::make()->warning()->title(__('KI-Funktionen ausgeschaltet'))->body(__('Eine Bestätigung der Checkliste fehlt, deshalb antwortet wieder die Demo-Logik.'))->send();
 
             return;
         }
 
-        Notification::make()->success()->title('Gespeichert')->send();
+        Notification::make()->success()->title(__('Gespeichert'))->send();
     }
 
     public function enableAiAction(): Action
     {
         return Action::make('enableAi')
-            ->label('KI-Funktionen einschalten')
+            ->label(__('KI-Funktionen einschalten'))
             ->icon(Heroicon::OutlinedSparkles)
             ->requiresConfirmation()
-            ->modalHeading('KI-Funktionen einschalten?')
-            ->modalDescription('Danach gehen pseudonymisierte Texte und Arbeitsblätter deiner Schule an '.self::providerLabel($this->provider()).'. Du kannst die KI-Funktionen jederzeit wieder ausschalten.')
-            ->modalSubmitActionLabel('Ja, einschalten')
-            ->modalCancelActionLabel('Noch nicht')
+            ->modalHeading(__('KI-Funktionen einschalten?'))
+            ->modalDescription(__('Danach gehen pseudonymisierte Texte und Arbeitsblätter deiner Schule an :provider. Du kannst die KI-Funktionen jederzeit wieder ausschalten.', ['provider' => self::providerLabel($this->provider())]))
+            ->modalSubmitActionLabel(__('Ja, einschalten'))
+            ->modalCancelActionLabel(__('Noch nicht'))
             ->visible(fn (): bool => $this->school()->ai_enabled_at === null)
             ->disabled(fn (): bool => $this->missingSteps() !== [])
             ->action(function (): void {
@@ -148,31 +159,31 @@ class AiSettings extends Page
                 try {
                     $this->school()->enableAi($this->actor());
                 } catch (DomainException) {
-                    Notification::make()->danger()->title('Noch nicht möglich')->body('Bestätige zuerst alle Punkte der Checkliste.')->send();
+                    Notification::make()->danger()->title(__('Noch nicht möglich'))->body(__('Bestätige zuerst alle Punkte der Checkliste.'))->send();
 
                     return;
                 }
 
-                Notification::make()->success()->title('KI-Funktionen sind eingeschaltet')->send();
+                Notification::make()->success()->title(__('KI-Funktionen sind eingeschaltet'))->send();
             });
     }
 
     public function disableAiAction(): Action
     {
         return Action::make('disableAi')
-            ->label('KI-Funktionen ausschalten')
+            ->label(__('KI-Funktionen ausschalten'))
             ->icon(Heroicon::OutlinedStopCircle)
             ->color('gray')
             ->requiresConfirmation()
-            ->modalHeading('KI-Funktionen ausschalten?')
-            ->modalDescription('Danach geht nichts mehr an den KI-Anbieter. Entwürfe und Auswertungen entstehen wieder mit der Demo-Logik auf der Plattform. Bereits gespeicherte Ergebnisse bleiben bestehen.')
-            ->modalSubmitActionLabel('Ja, ausschalten')
-            ->modalCancelActionLabel('Abbrechen')
+            ->modalHeading(__('KI-Funktionen ausschalten?'))
+            ->modalDescription(__('Danach geht nichts mehr an den KI-Anbieter. Entwürfe und Auswertungen entstehen wieder mit der Demo-Logik auf der Plattform. Bereits gespeicherte Ergebnisse bleiben bestehen.'))
+            ->modalSubmitActionLabel(__('Ja, ausschalten'))
+            ->modalCancelActionLabel(__('Abbrechen'))
             ->visible(fn (): bool => $this->school()->ai_enabled_at !== null)
             ->action(function (): void {
                 $this->school()->disableAi();
 
-                Notification::make()->success()->title('KI-Funktionen sind ausgeschaltet')->send();
+                Notification::make()->success()->title(__('KI-Funktionen sind ausgeschaltet'))->send();
             });
     }
 
@@ -205,7 +216,7 @@ class AiSettings extends Page
             'aiActive' => $school->aiEnabled(),
             'platformOn' => (bool) config('lernplattform.ai.enabled'),
             'providerLabel' => self::providerLabel($provider),
-            'model' => config('lernplattform.ai.model'),
+            'model' => config('lernplattform.ai.model') ?: __('Standardmodell des Anbieters'),
             'missingSteps' => $this->missingSteps(),
         ];
     }

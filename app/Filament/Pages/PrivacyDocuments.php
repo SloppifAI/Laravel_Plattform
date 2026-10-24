@@ -62,11 +62,7 @@ class PrivacyDocuments extends Page
 
     protected static ?int $navigationSort = 7;
 
-    protected static ?string $title = 'Datenschutz-Unterlagen';
-
     protected static ?string $slug = 'datenschutz-unterlagen';
-
-    protected ?string $subheading = 'Vorlagen zum Ausdrucken und Anpassen: Checkliste, Folgenabschätzung, Verzeichnis, Elterninformation und Einwilligung.';
 
     protected string $view = 'filament.pages.privacy-documents';
 
@@ -88,24 +84,40 @@ class PrivacyDocuments extends Page
         return auth()->user()?->isOperator() ? NavigationGroup::Plattform : NavigationGroup::Verwaltung;
     }
 
+    public static function getNavigationLabel(): string
+    {
+        return __('Datenschutz-Unterlagen');
+    }
+
+    public function getTitle(): string
+    {
+        return __('Datenschutz-Unterlagen');
+    }
+
+    public function getSubheading(): string
+    {
+        return __('Vorlagen zum Ausdrucken und Anpassen: Checkliste, Folgenabschätzung, Verzeichnis, Elterninformation und Einwilligung.');
+    }
+
     /**
-     * How long lessons, hand-ins, conversations and Klassenbuch entries are kept, as one German phrase. It follows
+     * How long lessons, hand-ins, conversations and Klassenbuch entries are kept, as one phrase. It follows
      * PruneLearningData: the current school year plus `school_years_kept - 1`, and the transition to one school year.
+     * The templates are German whoever opens them, so they take the default 'de'; the privacy page passes its own language.
      */
-    public static function retentionText(): string
+    public static function retentionText(string $locale = 'de'): string
     {
         $years = (int) config('lernplattform.retention.school_years_kept');
         $starts = CarbonImmutable::createFromFormat('!m-d', (string) config('lernplattform.retention.school_year_starts'))->format('d.m.');
         $oneYearFrom = (string) config('lernplattform.retention.one_year_rule_from');
 
         if ($years > 1) {
-            return "nach {$years} Schuljahren (das laufende eingerechnet), jeweils zu Beginn eines Schuljahres am {$starts}";
+            return __('nach :years Schuljahren (das laufende eingerechnet), jeweils zu Beginn eines Schuljahres am :starts', ['years' => $years, 'starts' => $starts], $locale);
         }
 
-        $text = "zum Ende des Schuljahres, also zu Beginn des nächsten Schuljahres am {$starts}";
+        $text = __('zum Ende des Schuljahres, also zu Beginn des nächsten Schuljahres am :starts', ['starts' => $starts], $locale);
 
         return $oneYearFrom !== '' && today()->lt(CarbonImmutable::parse($oneYearFrom))
-            ? $text.' (Übergang: bis zum '.CarbonImmutable::parse($oneYearFrom)->format('d.m.Y').' bleiben noch zwei Schuljahre gespeichert)'
+            ? $text.' '.__('(Übergang: bis zum :date bleiben noch zwei Schuljahre gespeichert)', ['date' => CarbonImmutable::parse($oneYearFrom)->format('d.m.Y')], $locale)
             : $text;
     }
 
@@ -118,7 +130,7 @@ class PrivacyDocuments extends Page
         $provider = (string) config('lernplattform.ai.provider');
 
         return [
-            'documents' => collect(self::DOCUMENTS)->map(fn (array $item, string $key): array => [...$item, 'url' => self::getUrl(['document' => $key])])->all(),
+            'documents' => collect(self::DOCUMENTS)->map(fn (array $item, string $key): array => [...$item, 'label' => __($item['label']), 'description' => __($item['description']), 'url' => self::getUrl(['document' => $key])])->all(),
             'currentDocument' => array_key_exists($this->document, self::DOCUMENTS) ? $this->document : array_key_first(self::DOCUMENTS),
             'school' => $this->schoolFacts($school),
             'operator' => self::OPERATOR,

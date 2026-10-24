@@ -113,18 +113,14 @@ class AdministrationAccessTest extends TestCase
 
     public function test_the_roles_page_explains_every_role_for_admins_and_operators(): void
     {
-        // The page texts is German; the suite runs in English wherever a text is translated.
-        config(['lernplattform.locale.default' => 'de']);
-        app()->setLocale('de');
-
         foreach ([User::factory()->admin()->create(), User::factory()->operator()->create()] as $user) {
             $this->actingAs($user)
                 ->get(RolesAndPermissions::getUrl())
                 ->assertOk()
-                ->assertSee('Benutzer verwalten')
-                ->assertSee('Nur ansehen')
-                ->assertSee('Nur eigene Schule')
-                ->assertSee('keine Lerndaten')
+                ->assertSee('Manage users')
+                ->assertSee('View only')
+                ->assertSee('Own school only')
+                ->assertSee('no learning data')
                 ->assertSee(collect(Role::cases())->map->getDescription()->all());
         }
     }

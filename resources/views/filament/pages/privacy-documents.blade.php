@@ -371,11 +371,18 @@
 
     @if ($school['name'] === null)
         <p class="max-w-3xl text-sm text-gray-700 print:hidden dark:text-gray-300">
-            Du siehst die Vorlagen ohne Angaben zu einer Schule. Eine Schuladministration sieht sie mit den Stammdaten ihrer Schule und kann sie in ihrem Namen ausdrucken.
+            {{ __('Du siehst die Vorlagen ohne Angaben zu einer Schule. Eine Schuladministration sieht sie mit den Stammdaten ihrer Schule und kann sie in ihrem Namen ausdrucken.') }}
         </p>
     @endif
 
-    <nav aria-label="Unterlagen" class="print:hidden">
+    {{-- The templates are the binding German text whatever the language of the page. --}}
+    @unless (app()->isLocale('de'))
+        <p class="max-w-3xl text-sm text-gray-700 print:hidden dark:text-gray-300">
+            {{ __('Die Vorlagen selbst sind auf Deutsch.') }}
+        </p>
+    @endunless
+
+    <nav aria-label="{{ __('Unterlagen') }}" class="print:hidden">
         <ul class="flex flex-wrap gap-2">
             @foreach ($documents as $key => $item)
                 @php($isCurrent = $key === $currentDocument)
@@ -393,7 +400,7 @@
                         <x-filament::icon :icon="$item['icon']" class="size-5 shrink-0" />
                         <span>{{ $item['label'] }}</span>
                         @if ($isCurrent)
-                            <span class="sr-only">(geöffnet)</span>
+                            <span class="sr-only">{{ __('(geöffnet)') }}</span>
                         @endif
                     </a>
                 </li>
@@ -402,10 +409,10 @@
     </nav>
 
     <div class="flex flex-wrap items-center justify-between gap-3 print:hidden">
-        <p class="max-w-2xl text-sm text-gray-700 dark:text-gray-300">{{ $documents[$currentDocument]['description'] }}. Drucken gibt nur diese Vorlage aus, ohne Menü.</p>
+        <p class="max-w-2xl text-sm text-gray-700 dark:text-gray-300">{{ __(':description. Drucken gibt nur diese Vorlage aus, ohne Menü.', ['description' => $documents[$currentDocument]['description']]) }}</p>
 
         <x-filament::button color="gray" icon="heroicon-m-printer" x-data x-on:click="window.print()">
-            Vorlage drucken
+            {{ __('Vorlage drucken') }}
         </x-filament::button>
     </div>
 

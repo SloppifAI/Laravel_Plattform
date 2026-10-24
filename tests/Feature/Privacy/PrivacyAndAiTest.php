@@ -7,6 +7,7 @@ use App\Ai\RecordingAnalyst;
 use App\Ai\Transcriber;
 use App\Filament\Pages\AiSettings;
 use App\Filament\Pages\PrivacyAndAi;
+use App\Filament\Pages\PrivacyDocuments;
 use App\Models\School;
 use App\Models\SchoolClass;
 use App\Models\User;
@@ -54,19 +55,30 @@ class PrivacyAndAiTest extends TestCase
         return User::factory()->{$role->value}()->create();
     }
 
+    /**
+     * What a reader sees of the page content: no scripts (the dictation code names SpeechRecognition's `transcript`) and no
+     * markup, and without the name of the environment variable of the speech model.
+     */
+    private function visibleText(string $html): string
+    {
+        $main = (string) preg_replace('~<(script|style)\b.*?</\1>~si', '', (string) strstr($html, '<main'));
+
+        return str_replace('AI_TRANSCRIPTION_MODEL', '', strip_tags($main));
+    }
+
     #[DataProvider('roles')]
     public function test_every_role_can_open_the_page(Role $role): void
     {
         $this->actingAs($this->userWith($role))
             ->get('/datenschutz')
             ->assertOk()
-            ->assertSee('Datenschutz & KI')
-            ->assertSee('Was Tuto speichert')
-            ->assertSee('Tuto speichert keinen Ton')
-            ->assertSee('Wer sieht das?')
-            ->assertSee('Klassenbuch')
-            ->assertSee('keine Note')
-            ->assertSee('Schulverwaltung');
+            ->assertSee('Privacy & AI')
+            ->assertSee('What Tuto stores')
+            ->assertSee('Tuto does not store any audio')
+            ->assertSee('Who sees this?')
+            ->assertSee('Class register')
+            ->assertSee('not a grade')
+            ->assertSee('school office');
     }
 
     /**
@@ -75,11 +87,10 @@ class PrivacyAndAiTest extends TestCase
     #[DataProvider('roles')]
     public function test_the_page_keeps_the_wording_of_the_board(Role $role): void
     {
-        $html = $this->actingAs($this->userWith($role))->get('/datenschutz')->assertOk()->getContent();
-        $main = (string) strstr($html, '<main');
+        $text = $this->visibleText($this->actingAs($this->userWith($role))->get('/datenschutz')->assertOk()->getContent());
 
-        foreach (['Mitschnitt', 'Aufnahme', 'aufnehmen', 'abhören', 'überwach', 'Transkript', 'Lernplattform speichert', 'Anthropic', 'Claude'] as $word) {
-            $this->assertFalse(mb_stripos($main, $word) !== false, "The page says „{$word}“.");
+        foreach (['recording', 'recorded', 'transcript', 'monitor', 'listen in', 'Anthropic', 'Claude'] as $word) {
+            $this->assertFalse(mb_stripos($text, $word) !== false, "The page says “{$word}”.");
         }
 
         // Icons render as inline SVG, so the sources are checked for their names.
@@ -105,19 +116,19 @@ class PrivacyAndAiTest extends TestCase
         $this->actingAs($this->userWith($role))
             ->get('/datenschutz')
             ->assertOk()
-            ->assertSee('Jede Schule für sich')
-            ->assertSee('Schulen sehen nichts voneinander')
+            ->assertSee('Every school on its own')
+            ->assertSee('Schools see nothing of each other')
             ->assertSee(Role::Operator->getLabel())
             ->assertSee(Role::Admin->getLabel())
             ->assertSee(Role::Teacher->getLabel())
             ->assertSee(Role::Student->getLabel())
             ->assertSee(Role::Operator->getDescription())
-            ->assertSee('Schuladministration (eigene Schule)')
-            ->assertSee('Lehrkräfte der Klasse')
-            ->assertSee('Plattform-Administration (nur Schuladministrationen)')
-            ->assertSee('Plattform-Administration (alle Schulen)')
-            ->assertSee('Schule und Registrierung')
-            ->assertSee('Ergebnisse ihrer Schule');
+            ->assertSee('School administration (own school)')
+            ->assertSee('Teachers of the class')
+            ->assertSee('Platform administration (school administrations only)')
+            ->assertSee('Platform administration (all schools)')
+            ->assertSee('School and registration')
+            ->assertSee('results of its school');
     }
 
     /**
@@ -144,14 +155,16 @@ class PrivacyAndAiTest extends TestCase
         }
 
         $response
-            ->assertSee('Hausaufgabe entwerfen')
-            ->assertSee('Förderaufgabe entwerfen')
-            ->assertSee('Abgabe einschätzen')
-            ->assertSee('Stufen einer Frage')
-            ->assertSee('Einfache Sprache')
-            ->assertSee('Tuto-Mikro: Spracherkennung')
-            ->assertSee('Tuto-Mikro: Zusammenfassung')
-            ->assertSee('Benutzernamen, E-Mail-Adressen, Konto-Kennungen');
+            ->assertSee('Draft homework')
+            ->assertSee('Draft practice task')
+            ->assertSee('Assess a submission')
+            ->assertSee('Levels of a question')
+            ->assertSee('Plain language')
+            ->assertSee('Tuto-Mikro: speech recognition')
+            ->assertSee('Tuto-Mikro: summary')
+            ->assertSee('Usernames, email addresses, account identifiers')
+            // The homework draft also sends the questions the teacher wrote or edited (SdkLessonAssistant::draftHomework).
+            ->assertSee('the questions the teacher wrote or edited themselves (pseudonymised, so the AI does not repeat them)');
     }
 
     #[DataProvider('roles')]
@@ -163,11 +176,11 @@ class PrivacyAndAiTest extends TestCase
         $this->actingAs($this->userWith($role))
             ->get('/datenschutz')
             ->assertOk()
-            ->assertSee('KI-Funktionen ausgeschaltet')
-            ->assertSee('Demo-Logik')
+            ->assertSee('AI features turned off')
+            ->assertSee('demo logic')
             ->assertSee('Google Gemini')
-            ->assertDontSee('Pseudonymisierte Texte und Arbeitsblätter deiner Schule gehen an')
-            ->assertDontSee('Der Schalter der Plattform ist an.');
+            ->assertDontSee('Pseudonymised texts and worksheets of your school go to')
+            ->assertDontSee('The platform switch is on.');
     }
 
     public function test_the_switched_on_ai_names_provider_and_model_without_sending_a_request(): void
@@ -179,14 +192,14 @@ class PrivacyAndAiTest extends TestCase
         $this->actingAs(User::factory()->for($school)->teacher()->create())
             ->get('/datenschutz')
             ->assertOk()
-            ->assertSee('KI-Funktionen eingeschaltet')
+            ->assertSee('AI features turned on')
             ->assertSee('Google Gemini')
             ->assertSee('gemini-test-model')
-            ->assertSee('Benutzernamen, E-Mail-Adressen, Konto-Kennungen')
-            ->assertDontSee('KI-Funktionen ausgeschaltet');
+            ->assertSee('Usernames, email addresses, account identifiers')
+            ->assertDontSee('AI features turned off');
 
         // Another school of the same platform has not opted in.
-        $this->actingAs(User::factory()->teacher()->create())->get('/datenschutz')->assertSee('KI-Funktionen ausgeschaltet');
+        $this->actingAs(User::factory()->teacher()->create())->get('/datenschutz')->assertSee('AI features turned off');
 
         Http::assertNothingSent();
     }
@@ -196,18 +209,18 @@ class PrivacyAndAiTest extends TestCase
         $this->actingAs(User::factory()->operator()->create())
             ->get('/datenschutz')
             ->assertOk()
-            ->assertSee('Für die Plattform-Administration')
-            ->assertSee('für alle Schulen')
+            ->assertSee('For the platform administration')
+            ->assertSee('applies to all schools')
             ->assertSee('AI_ENABLED=true')
             ->assertSee('AI_PROVIDER=gemini')
             ->assertSee('GEMINI_API_KEY')
             ->assertSee('AI_MODEL')
             ->assertSee('AI_TRANSCRIPTION_MODEL')
             ->assertSee('ollama')
-            ->assertSee('selbst einschaltet')
-            ->assertSee('keine Rechtsberatung')
+            ->assertSee('turns the AI features on itself')
+            ->assertSee('not legal advice')
             ->assertDontSee('ANTHROPIC')
-            ->assertDontSee('Für die Schuladministration');
+            ->assertDontSee('For the school administration');
     }
 
     public function test_the_school_administration_gets_its_checklist_and_the_way_to_its_switch(): void
@@ -215,11 +228,11 @@ class PrivacyAndAiTest extends TestCase
         $response = $this->actingAs(User::factory()->admin()->create())
             ->get('/datenschutz')
             ->assertOk()
-            ->assertSee('Für die Schuladministration')
-            ->assertSee('entscheidest du unter „KI-Funktionen“')
+            ->assertSee('For the school administration')
+            ->assertSee('You decide under “AI features”')
             ->assertSee('href="'.AiSettings::getUrl().'"', false)
-            ->assertSee('keine Rechtsberatung')
-            ->assertDontSee('Für die Plattform-Administration')
+            ->assertSee('not legal advice')
+            ->assertDontSee('For the platform administration')
             ->assertDontSee('AI_ENABLED=true')
             ->assertDontSee('GEMINI_API_KEY');
 
@@ -234,22 +247,22 @@ class PrivacyAndAiTest extends TestCase
         $this->actingAs($this->userWith($role))
             ->get('/datenschutz')
             ->assertOk()
-            ->assertDontSee('Für die Schuladministration')
-            ->assertDontSee('Für die Plattform-Administration')
+            ->assertDontSee('For the school administration')
+            ->assertDontSee('For the platform administration')
             ->assertDontSee('GEMINI_API_KEY')
-            ->assertDontSee('Checkliste vor dem Einschalten');
+            ->assertDontSee('Checklist before turning on');
     }
 
     public function test_only_students_get_the_tips_for_their_own_data(): void
     {
         $this->actingAs(User::factory()->student()->create())
             ->get('/datenschutz')
-            ->assertSee('Tipps für dich')
-            ->assertSee('Du darfst deine Lehrkraft jederzeit fragen');
+            ->assertSee('Tips for you')
+            ->assertSee('You can ask your teacher at any time');
 
         $this->actingAs(User::factory()->teacher()->create())
             ->get('/datenschutz')
-            ->assertDontSee('Tipps für dich');
+            ->assertDontSee('Tips for you');
     }
 
     public function test_students_are_warned_that_texts_reach_the_ai_once_their_school_switched_it_on(): void
@@ -258,10 +271,10 @@ class PrivacyAndAiTest extends TestCase
         $school = School::factory()->create();
         $student = User::factory()->student(SchoolClass::factory()->create(['school_id' => $school->getKey()]))->create();
 
-        $this->actingAs($student)->get('/datenschutz')->assertDontSee('zur Auswertung an die KI gesendet');
+        $this->actingAs($student)->get('/datenschutz')->assertDontSee('sent to the AI for evaluation');
 
         $this->enableAiFor($school);
-        $this->actingAs($student->fresh())->get('/datenschutz')->assertSee('zur Auswertung an die KI gesendet');
+        $this->actingAs($student->fresh())->get('/datenschutz')->assertSee('sent to the AI for evaluation');
     }
 
     public function test_the_stated_score_ranges_match_the_understanding_levels(): void
@@ -273,9 +286,57 @@ class PrivacyAndAiTest extends TestCase
 
         $this->actingAs(User::factory()->teacher()->create())
             ->get('/datenschutz')
-            ->assertSee('ab 75 von 100')
-            ->assertSee('50 bis 74 von 100')
-            ->assertSee('unter 50 von 100')
+            ->assertSee('75 or more out of 100')
+            ->assertSee('50 to 74 out of 100')
+            ->assertSee('under 50 out of 100')
             ->assertSee(UnderstandingLevel::NeedsSupport->getLabel());
+    }
+
+    /**
+     * The suite runs in English; German is the platform default, so every role still gets the German page.
+     */
+    public function test_the_page_reads_german_when_german_is_the_default(): void
+    {
+        config(['lernplattform.locale.default' => 'de']);
+        app()->setLocale('de');
+
+        $student = $this->actingAs(User::factory()->student()->create())->get('/datenschutz')->assertOk();
+
+        foreach (['Mitschnitt', 'Aufnahme', 'aufnehmen', 'abhören', 'überwach', 'Transkript', 'Lernplattform speichert'] as $word) {
+            $this->assertFalse(mb_stripos($this->visibleText($student->getContent()), $word) !== false, "Die Seite sagt „{$word}“.");
+        }
+
+        $student
+            ->assertSee('Datenschutz & KI')
+            ->assertSee('Was Tuto speichert, wer es sieht und was die KI damit macht.')
+            ->assertSee('Tuto speichert keinen Ton')
+            ->assertSee('Jede Schule für sich')
+            ->assertSee('Schuladministration (eigene Schule)')
+            ->assertSee('ab 75 von 100')
+            ->assertSee('Tipps für dich')
+            ->assertSee('die Fragen, die die Lehrkraft selbst geschrieben oder bearbeitet hat (pseudonymisiert, damit die KI sie nicht wiederholt)')
+            ->assertDontSee('Privacy & AI')
+            ->assertDontSee('Every school on its own');
+
+        $this->actingAs(User::factory()->admin()->create())
+            ->get('/datenschutz')
+            ->assertOk()
+            ->assertSee('KI-Funktionen ausgeschaltet')
+            ->assertSee('Für die Schuladministration')
+            ->assertSee('Checkliste vor dem Einschalten')
+            ->assertSee('keine Rechtsberatung')
+            ->assertDontSee('AI features turned off');
+    }
+
+    public function test_the_retention_phrase_follows_the_language_of_the_page(): void
+    {
+        config(['lernplattform.retention.school_years_kept' => 3]);
+
+        $this->assertStringContainsString('after 3 school years (the current one included)', PrivacyDocuments::retentionText('en'));
+        $this->assertStringContainsString('nach 3 Schuljahren (das laufende eingerechnet)', PrivacyDocuments::retentionText());
+
+        $this->actingAs(User::factory()->teacher()->create())
+            ->get('/datenschutz')
+            ->assertSee('after 3 school years (the current one included)');
     }
 }

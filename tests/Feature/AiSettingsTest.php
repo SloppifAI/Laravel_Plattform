@@ -53,7 +53,7 @@ class AiSettingsTest extends TestCase
             $this->actingAs(User::factory()->{$role}()->create())->get(AiSettings::getUrl())->assertForbidden();
         }
 
-        $this->actingAs($this->admin)->get(AiSettings::getUrl())->assertOk()->assertSee('KI-Funktionen');
+        $this->actingAs($this->admin)->get(AiSettings::getUrl())->assertOk()->assertSee('AI features');
     }
 
     public function test_nobody_but_the_administration_sees_the_navigation_entry_or_runs_the_page(): void
@@ -72,10 +72,10 @@ class AiSettingsTest extends TestCase
     public function test_the_page_starts_switched_off_and_explains_what_goes_to_the_ai(): void
     {
         $this->page()
-            ->assertSee('KI-Funktionen sind ausgeschaltet')
-            ->assertSee('Was an die KI geht')
-            ->assertSee('Namen von Schüler:innen und Lehrkräften')
-            ->assertSee('Arbeitsblätter')
+            ->assertSee('AI features are turned off')
+            ->assertSee('What goes to the AI')
+            ->assertSee('Names of students and teachers')
+            ->assertSee('Worksheets')
             ->assertActionDisabled('enableAi')
             ->assertSee("mountAction('enableAi'", false)
             ->assertDontSee("mountAction('disableAi'", false);
@@ -87,11 +87,11 @@ class AiSettingsTest extends TestCase
     {
         config(['lernplattform.ai.provider' => 'gemini', 'lernplattform.ai.model' => 'gemini-test-model', 'lernplattform.ai.enabled' => true]);
 
-        $this->page()->assertSee('Google Gemini')->assertSee('gemini-test-model')->assertSee('Eingeschaltet');
+        $this->page()->assertSee('Google Gemini')->assertSee('gemini-test-model')->assertSee('Turned on');
 
         config(['lernplattform.ai.model' => null, 'lernplattform.ai.enabled' => false]);
 
-        $this->page()->assertSee('Standardmodell des Anbieters')->assertSee('Ausgeschaltet');
+        $this->page()->assertSee('The provider’s default model')->assertSee('Turned off');
     }
 
     public function test_every_checklist_item_is_explained(): void
@@ -104,8 +104,8 @@ class AiSettingsTest extends TestCase
             $page->assertSee($item['label'])->assertSee($item['help']);
         }
 
-        $page->assertSee('Auftragsverarbeitung mit dem KI-Anbieter abgeschlossen')
-            ->assertSee('Bezahlter Tarif, bei dem Eingaben nicht zur Produktverbesserung genutzt werden');
+        $page->assertSee('Data processing agreement with the AI provider concluded')
+            ->assertSee('Paid plan in which inputs are not used to improve products');
     }
 
     public function test_the_ai_needs_every_checklist_item(): void
@@ -136,8 +136,8 @@ class AiSettingsTest extends TestCase
             ->fillForm($this->checklist(), 'settingsForm')
             ->assertActionEnabled('enableAi')
             ->callAction('enableAi')
-            ->assertNotified('KI-Funktionen sind eingeschaltet')
-            ->assertSee('KI-Funktionen sind eingeschaltet')
+            ->assertNotified('AI features are turned on')
+            ->assertSee('AI features are turned on')
             ->assertSee("mountAction('disableAi'", false)
             ->assertDontSee("mountAction('enableAi'", false);
 
@@ -153,7 +153,7 @@ class AiSettingsTest extends TestCase
         $this->enableAiFor($this->school);
         config(['lernplattform.ai.enabled' => false]);
 
-        $this->page()->assertSee('Eingeschaltet, aber die Plattform hat die KI-Funktionen ausgeschaltet');
+        $this->page()->assertSee('Turned on, but the platform has turned the AI features off');
 
         $this->assertFalse($this->school->refresh()->aiEnabled());
     }
@@ -164,9 +164,9 @@ class AiSettingsTest extends TestCase
         $admin = User::factory()->for($school)->admin()->create();
 
         $this->page($admin)
-            ->assertSee('KI-Funktionen sind eingeschaltet')
+            ->assertSee('AI features are turned on')
             ->callAction('disableAi')
-            ->assertNotified('KI-Funktionen sind ausgeschaltet');
+            ->assertNotified('AI features are turned off');
 
         $school->refresh();
         $this->assertFalse($school->aiEnabled());
@@ -184,7 +184,7 @@ class AiSettingsTest extends TestCase
         $this->page($admin)
             ->fillForm(['checklist.paid_tier' => false], 'settingsForm')
             ->call('saveSettings')
-            ->assertNotified('KI-Funktionen ausgeschaltet');
+            ->assertNotified('AI features turned off');
 
         $school->refresh();
         $this->assertFalse($school->aiEnabled());
@@ -197,7 +197,7 @@ class AiSettingsTest extends TestCase
         $this->page()
             ->fillForm([...$this->checklist(false), 'checklist.dsfa_done' => true], 'settingsForm')
             ->call('saveSettings')
-            ->assertNotified('Gespeichert');
+            ->assertNotified('Saved');
 
         $school = $this->school->refresh();
         $this->assertTrue($school->ai_checklist['dsfa_done']);
@@ -235,5 +235,46 @@ class AiSettingsTest extends TestCase
         $this->assertFalse($this->school->refresh()->aiEnabled());
         $this->assertNull($this->school->ai_enabled_at);
         $this->assertNull($this->school->ai_checklist);
+    }
+
+    public function test_the_callout_says_since_when_and_by_whom_the_ai_is_turned_on(): void
+    {
+        $school = $this->enableAiFor(School::factory()->create());
+        $admin = User::factory()->for($school)->admin()->create();
+
+        $this->page($admin)
+            ->assertSee('Since '.today()->format('d.m.Y').', turned on by '.$school->aiEnabledBy->name)
+            ->assertSee('go to Google Gemini in pseudonymised form');
+    }
+
+    /**
+     * The suite runs in English; German is the platform default, so the administration still gets the German page.
+     */
+    public function test_the_page_reads_german_when_german_is_the_default(): void
+    {
+        config(['lernplattform.locale.default' => 'de']);
+        app()->setLocale('de');
+        config(['lernplattform.ai.model' => null, 'lernplattform.ai.enabled' => false]);
+
+        $this->page()
+            ->assertSee('KI-Funktionen sind ausgeschaltet')
+            ->assertSee('1. Voraussetzungen')
+            ->assertSee('Was an die KI geht')
+            ->assertSee('Auftragsverarbeitung mit dem KI-Anbieter abgeschlossen')
+            ->assertSee('Ausgeschaltet')
+            ->assertSee('Standardmodell des Anbieters')
+            ->assertDontSee('AI features are turned off');
+
+        config(['lernplattform.ai.enabled' => true]);
+
+        $this->page()
+            ->fillForm($this->checklist(), 'settingsForm')
+            ->callAction('enableAi')
+            ->assertNotified('KI-Funktionen sind eingeschaltet');
+
+        // A fresh request, as the administration reloads the page.
+        $this->page($this->admin->fresh())
+            ->assertSee('Seit '.today()->format('d.m.Y').', eingeschaltet von '.$this->admin->name)
+            ->assertSee('Texte aus dem Unterricht deiner Schule gehen pseudonymisiert an Google Gemini.');
     }
 }

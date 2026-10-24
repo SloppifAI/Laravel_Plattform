@@ -19,18 +19,14 @@ class MySchoolTest extends TestCase
 
     public function test_the_administration_sees_the_data_and_status_of_its_own_school(): void
     {
-        // The page texts is German; the suite runs in English wherever a text is translated.
-        config(['lernplattform.locale.default' => 'de']);
-        app()->setLocale('de');
-
         $school = School::factory()->create(['name' => 'Goethe-Gymnasium', 'school_number' => '111111', 'city' => 'Kassel']);
         $otherSchool = School::factory()->create(['name' => 'Schiller-Realschule']);
         $this->actingAs(User::factory()->for($school)->admin()->create());
 
         $this->get(MySchool::getUrl())
             ->assertOk()
-            ->assertSee('Meine Schule')
-            ->assertSee('Aktiv')
+            ->assertSee('My school')
+            ->assertSee('Active')
             ->assertDontSee($otherSchool->name);
 
         Livewire::test(MySchool::class)
@@ -60,7 +56,7 @@ class MySchoolTest extends TestCase
             ])
             ->call('save')
             ->assertHasNoFormErrors()
-            ->assertNotified('Gespeichert');
+            ->assertNotified('Saved');
 
         $school->refresh();
         $this->assertSame('Goethe-Gesamtschule', $school->name);
@@ -156,6 +152,27 @@ class MySchoolTest extends TestCase
 
         $this->assertTrue(MySchool::canAccess());
         $this->assertSame(NavigationGroup::Verwaltung, MySchool::getNavigationGroup());
+        $this->assertSame('My school', MySchool::getNavigationLabel());
+    }
+
+    /**
+     * The suite runs in English; German is the platform default, so the administration still gets the German page.
+     */
+    public function test_the_page_reads_german_when_german_is_the_default(): void
+    {
+        config(['lernplattform.locale.default' => 'de']);
+        app()->setLocale('de');
+        $school = School::factory()->create(['created_at' => '2026-10-24 12:00:00']);
+        $this->actingAs(User::factory()->for($school)->admin()->create());
+
+        $this->get(MySchool::getUrl())
+            ->assertOk()
+            ->assertSee('Meine Schule')
+            ->assertSee('Die Stammdaten deiner Schule.')
+            ->assertSee('Aktiv')
+            ->assertSee('Registriert am 24.10.2026.')
+            ->assertDontSee('My school');
+
         $this->assertSame('Meine Schule', MySchool::getNavigationLabel());
     }
 }

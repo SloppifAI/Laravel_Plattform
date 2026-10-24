@@ -337,7 +337,7 @@
 <h4>2.4 Was an die KI geht</h4>
 <p>Nur bei eingeschalteten KI-Funktionen der Schule. Alle Texte werden vorher pseudonymisiert.</p>
 <ul>
-    <li><strong>Hausaufgaben-Entwurf:</strong> Fach, Thema, Datum, Zusammenfassung und Notizen der Lehrkraft, die Kompetenzen des Fachs, Arbeitsblätter (Fotos, PDF). Ergebnis: Zusammenfassung und fünf Fragen als Entwurf.</li>
+    <li><strong>Hausaufgaben-Entwurf:</strong> Fach, Thema, Datum, Zusammenfassung und Notizen der Lehrkraft, die Fragen, die die Lehrkraft selbst geschrieben oder bearbeitet hat (damit die KI sie nicht wiederholt), die Kompetenzen des Fachs, Arbeitsblätter (Fotos, PDF). Ergebnis: Zusammenfassung und fünf Fragen als Entwurf.</li>
     <li><strong>Förderaufgabe:</strong> Fach, Kompetenz, anonyme Hinweise auf Lücken, Thema, Datum und Notizen der Stunden, in denen sich die Lücke zeigte. Ergebnis: drei bis vier Übungsfragen.</li>
     <li><strong>Einschätzung einer Abgabe:</strong> die Stunde wie beim Entwurf mit Arbeitsblättern, die Fragen mit Erwartungshorizont und gewählter Stufe, Zusammenfassung und Antworten der Schüler:in. Ergebnis: Verständniswert, Rückmeldung, bis zu drei Hinweise auf Lücken, Punkte je Antwort.</li>
     <li><strong>„Erklär’s mir“:</strong> Thema und Gesprächsverlauf, bei einer gewählten Stunde deren Zusammenfassung und Notizen als Hintergrund. Ergebnis: Tutos Rückfragen und zum Schluss Verständniswert und Rückmeldung.</li>
