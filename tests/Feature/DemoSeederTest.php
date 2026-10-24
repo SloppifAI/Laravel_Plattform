@@ -40,6 +40,19 @@ class DemoSeederTest extends TestCase
         $this->assertSame(6, $countsAfterFirstRun['lessons']);
     }
 
+    public function test_the_demo_schools_accept_a_released_dpa_once(): void
+    {
+        config(['lernplattform.dpa.final' => true]);
+
+        $this->seed(DatabaseSeeder::class);
+        $this->seed(DatabaseSeeder::class);
+
+        School::all()->each(function (School $school): void {
+            $this->assertFalse($school->mustAcceptDpa());
+            $this->assertSame(1, $school->dpaAcceptances()->count());
+        });
+    }
+
     public function test_the_demo_logins_exist_with_their_roles(): void
     {
         $existingAccount = User::factory()->admin()->create(['username' => 'hackathon']);

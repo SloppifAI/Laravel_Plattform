@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\MessageAuthor;
 use App\Models\Competency;
+use App\Models\DpaAcceptance;
 use App\Models\ExplanationSession;
 use App\Models\Lesson;
 use App\Models\School;
@@ -37,12 +38,17 @@ class DemoSchoolSeeder extends Seeder
         DB::transaction(function (): void {
             $school = $this->school('4711', 'Gesamtschule am Lernpark', 'Gesamtschule', 'Fulda', 'Hessen', 'sekretariat@lernpark.example');
 
-            $this->user('schulleitung', 'Petra Krause', Role::Admin, $school);
+            $admin = $this->user('schulleitung', 'Petra Krause', Role::Admin, $school);
+            $this->optIntoAi($school, $admin);
+            $this->acceptDpa($school, $admin);
             $anna = $this->user('lehrer', 'Anna Schneider', Role::Teacher, $school);
             $weber = $this->user('weber', 'Thomas Weber', Role::Teacher, $school);
 
             $class7b = $this->schoolClass($school, '7b', $anna);
             $class7a = $this->schoolClass($school, '7a', $weber);
+            // Thomas Weber leads 7a and also teaches 7b (assigned, not Klassenleitung); Anna's demo data stay the first thing
+            // she sees, which is why it is not the other way round. Re-seeding keeps assignments the administration added.
+            $class7b->teachers()->syncWithoutDetaching([$weber->id]);
 
             $students7b = collect([
                 'schueler' => 'Mia Hoffmann',
@@ -82,6 +88,31 @@ class DemoSchoolSeeder extends Seeder
     }
 
     /**
+     * The demo school has the AI switched on with the complete checklist, so the real AI can be tried right away (it still
+     * needs the platform switch, config lernplattform.ai.enabled). Only the first time: once the administration changed it, re-seeding leaves it.
+     */
+    private function optIntoAi(School $school, User $admin): void
+    {
+        if ($school->ai_checklist !== null) {
+            return;
+        }
+
+        $school->forceFill(['ai_checklist' => array_fill_keys(School::AI_CHECKLIST, true)])->save();
+        $school->enableAi($admin);
+    }
+
+    /**
+     * The demo schools accepted the released contract, so their people are not held back on "Meine Schule". Only the
+     * first time: re-seeding leaves an existing acceptance alone.
+     */
+    private function acceptDpa(School $school, User $admin): void
+    {
+        if (DpaAcceptance::isFinal() && ! $school->hasAcceptedDpa()) {
+            $school->acceptDpa($admin);
+        }
+    }
+
+    /**
      * A class of the school. A class without a school (from before the schools existed) is adopted by it.
      * The join code is set here because seeding runs without model events, which would otherwise generate it.
      */
@@ -108,7 +139,7 @@ class DemoSchoolSeeder extends Seeder
     {
         $school = $this->school('4712', 'Gymnasium Musterstadt', 'Gymnasium', 'Musterstadt', 'Niedersachsen', 'sekretariat@gymnasium-musterstadt.example');
 
-        $this->user('gym-admin', 'Stefan Brandt', Role::Admin, $school);
+        $this->acceptDpa($school, $this->user('gym-admin', 'Stefan Brandt', Role::Admin, $school));
         $teacher = $this->user('gym-lehrer', 'Julia Berger', Role::Teacher, $school);
         $schoolClass = $this->schoolClass($school, '8c', $teacher);
 
