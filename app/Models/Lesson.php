@@ -24,6 +24,11 @@ class Lesson extends Model
     use HasFactory;
 
     /**
+     * Photo formats of worksheets the upload takes and the AI receives (Gemini reads these); PDFs come on top.
+     */
+    public const array WORKSHEET_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
+
+    /**
      * The "Einfache Sprache" copy (`summary_simple`) belongs to the summary it was made from: when the summary changes, the copy goes.
      */
     protected static function booted(): void

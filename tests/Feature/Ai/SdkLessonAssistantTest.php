@@ -151,6 +151,24 @@ class SdkLessonAssistantTest extends TestCase
         });
     }
 
+    public function test_phone_photos_in_heic_reach_the_ai_and_formats_it_cannot_read_do_not(): void
+    {
+        Storage::fake('local');
+        Storage::disk('local')->put('worksheets/iphone.heic', "\x00\x00\x00\x18ftypheic\x00\x00\x00\x00mif1heic");
+        Storage::disk('local')->put('worksheets/animation.gif', base64_decode('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'));
+        $competency = Competency::factory()->create(['subject' => 'Biologie']);
+        $lesson = $this->lesson(['subject' => 'Biologie', 'attachments' => ['worksheets/iphone.heic', 'worksheets/animation.gif']]);
+        HomeworkDrafter::fake([$this->homeworkAnswer($competency->id)]);
+
+        $this->assistant()->draftHomework($lesson);
+
+        HomeworkDrafter::assertPrompted(function (AgentPrompt $prompt): bool {
+            $this->assertSame(['image/heic'], $prompt->attachments->map(fn (StoredImage $file): ?string => $file->mimeType())->all());
+
+            return true;
+        });
+    }
+
     public function test_the_agents_instructions_describe_the_five_questions_and_the_tutor(): void
     {
         $homework = (new HomeworkDrafter)->instructions();

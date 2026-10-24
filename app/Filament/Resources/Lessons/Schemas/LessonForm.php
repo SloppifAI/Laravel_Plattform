@@ -71,11 +71,14 @@ class LessonForm
                             ->required(),
                         FileUpload::make('attachments')
                             ->label('Arbeitsblätter')
-                            ->helperText('Fotos oder Scans analoger Arbeitsblätter (Bilder oder PDF, max. 10 MB je Datei)')
+                            ->helperText('Fotos oder Scans analoger Arbeitsblätter (JPG, PNG, WebP, HEIC oder PDF, max. 10 MB je Datei)')
                             ->multiple()
                             ->disk('local')
                             ->directory('worksheets')
-                            ->acceptedFileTypes(['image/*', 'application/pdf'])
+                            // Only formats the AI reads, so no worksheet is silently left out of the draft.
+                            ->acceptedFileTypes([...Lesson::WORKSHEET_IMAGE_TYPES, 'application/pdf'])
+                            // Browsers outside Apple's report HEIC photos without a type.
+                            ->mimeTypeMap(['heic' => 'image/heic', 'heif' => 'image/heif'])
                             ->maxSize(10240)
                             ->openable()
                             ->downloadable()

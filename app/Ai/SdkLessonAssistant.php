@@ -47,8 +47,6 @@ use RuntimeException;
  */
 class SdkLessonAssistant implements LessonAssistant
 {
-    private const array IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-
     public function draftHomework(Lesson $lesson): array
     {
         $pseudonymizer = $this->pseudonymizer($lesson->schoolClass);
@@ -344,7 +342,7 @@ class SdkLessonAssistant implements LessonAssistant
 
             $mimeType = $disk->mimeType($path);
 
-            if (in_array($mimeType, self::IMAGE_TYPES, true)) {
+            if (in_array($mimeType, Lesson::WORKSHEET_IMAGE_TYPES, true)) {
                 $files[] = Image::fromStorage($path, 'local');
             } elseif ($mimeType === 'application/pdf') {
                 $files[] = Document::fromStorage($path, 'local');
