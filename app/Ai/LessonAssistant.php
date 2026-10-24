@@ -1,0 +1,45 @@
+<?php
+
+namespace App\Ai;
+
+use App\Models\ExplanationSession;
+use App\Models\Lesson;
+use App\Models\Submission;
+use App\QuestionType;
+
+/**
+ * Everything the platform asks an AI to do. Implementations only compute results; callers persist them.
+ *
+ * Bound in AppServiceProvider: ClaudeLessonAssistant when `services.anthropic.enabled` is true,
+ * otherwise the offline DemoLessonAssistant, so the platform works without any API call.
+ */
+interface LessonAssistant
+{
+    /**
+     * Summarise a lesson from the teacher's notes and worksheets and draft homework questions,
+     * each mapped to one of the competencies returned by Competency::forSubject($lesson->subject).
+     *
+     * @return array{summary: string, questions: list<array{type: QuestionType, prompt: string, expected_answer: string, competency_id: int|null}>}
+     */
+    public function draftHomework(Lesson $lesson): array;
+
+    /**
+     * Check a student's own summary and answers (`$submission->answers`) against the lesson.
+     * Scores are 0–100.
+     *
+     * @return array{understanding_score: int, feedback: string, gaps: list<string>, answers: array<int, array{score: int, feedback: string}>} answers keyed by question id
+     */
+    public function evaluateSubmission(Submission $submission): array;
+
+    /**
+     * The tutor's next follow-up question after the student's latest explanation in the session.
+     */
+    public function askFollowUp(ExplanationSession $session): string;
+
+    /**
+     * Final assessment of how well the student explained the topic, once they end the session.
+     *
+     * @return array{understanding_score: int, feedback: string}
+     */
+    public function assessExplanation(ExplanationSession $session): array;
+}
