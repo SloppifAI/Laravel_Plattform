@@ -1,0 +1,11 @@
+{
+    "mcpServers": {
+        "laravel-boost": {
+            "command": "C:\\Entwicklung\\other\\php-8.4.4-nts-Win32-vs17-x64\\php.exe",
+            "args": [
+                "C:\\Users\\s.bleuel\\PhpstormProjects\\Hackathon_2026\\artisan",
+                "boost:mcp"
+            ]
+        }
+    }
+}
