@@ -3,16 +3,61 @@
 @source '../../../../app/Filament/**/*';
 @source '../../../../resources/views/filament/**/*';
 
-/* Squared exercise-book paper with a red margin line behind the login. */
-.fi-simple-layout {
-    --paper-grid: color-mix(in oklab, var(--primary-300) 30%, transparent);
-    --paper-margin: #f19aa4;
+/*
+ * Lernplattform design system: the exercise book (Heft).
+ *
+ * Ink     Königsblau primary palette (LernplattformPanelProvider::KOENIGSBLAU), the colour of every action.
+ * Paper   white surfaces on a faintly squared page; full squared paper only on "page" moments
+ *         (login, the student's hero) via .lp-paper.
+ * Margin  the red Korrekturrand line, decoration only, never carries meaning.
+ * Marker  Textmarker yellow, reserved for "what's next" (due dates) via .lp-marker.
+ *
+ * Status is never shown by colour alone: badges always carry an icon and a label.
+ * Filament already shortens every transition for prefers-reduced-motion; our own animation is opt-in below.
+ */
+:root {
+    --lp-grid: color-mix(in oklab, var(--primary-300) 30%, transparent);
+    --lp-grid-faint: color-mix(in oklab, var(--gray-300) 28%, transparent);
+    --lp-margin: #f19aa4;
+    --lp-paper-bg: #fff;
+    --lp-marker: oklch(0.94 0.11 98);
+    --lp-marker-ink: var(--gray-950);
+    --lp-radius-card: 1rem;
+    /* The first layer replaces Filament's 1px ring, which is also drawn with box-shadow. */
+    --lp-shadow-card: 0 0 0 1px oklch(0.3 0.05 267 / 0.07), 0 1px 2px oklch(0.3 0.05 267 / 0.05),
+        0 10px 24px -14px oklch(0.3 0.09 267 / 0.22);
+    --lp-shadow-raised: 0 0 0 1px oklch(0.3 0.05 267 / 0.07), 0 2px 4px oklch(0.3 0.05 267 / 0.05),
+        0 28px 56px -28px oklch(0.3 0.12 267 / 0.4);
+}
 
-    background-color: #fff;
+.dark {
+    --lp-grid: rgb(255 255 255 / 0.05);
+    --lp-grid-faint: rgb(255 255 255 / 0.025);
+    --lp-margin: rgb(241 154 164 / 0.35);
+    --lp-paper-bg: var(--gray-900);
+    --lp-marker: oklch(0.9 0.12 98 / 0.2);
+    --lp-marker-ink: oklch(0.95 0.07 98);
+    --lp-shadow-card: 0 0 0 1px rgb(255 255 255 / 0.08), 0 1px 2px rgb(0 0 0 / 0.3);
+    --lp-shadow-raised: 0 0 0 1px rgb(255 255 255 / 0.08), 0 28px 56px -28px rgb(0 0 0 / 0.7);
+}
+
+/* ---------- Paper ---------- */
+
+.lp-paper,
+.fi-simple-layout {
+    --lp-margin-offset: 3rem;
+
+    background-color: var(--lp-paper-bg);
     background-image:
-        linear-gradient(90deg, transparent 3rem, var(--paper-margin) 3rem, var(--paper-margin) calc(3rem + 2px), transparent calc(3rem + 2px)),
-        linear-gradient(var(--paper-grid) 1px, transparent 1px),
-        linear-gradient(90deg, var(--paper-grid) 1px, transparent 1px);
+        linear-gradient(
+            90deg,
+            transparent var(--lp-margin-offset),
+            var(--lp-margin) var(--lp-margin-offset),
+            var(--lp-margin) calc(var(--lp-margin-offset) + 2px),
+            transparent calc(var(--lp-margin-offset) + 2px)
+        ),
+        linear-gradient(var(--lp-grid) 1px, transparent 1px),
+        linear-gradient(90deg, var(--lp-grid) 1px, transparent 1px);
     background-size:
         100% 100%,
         1.25rem 1.25rem,
@@ -20,8 +65,196 @@
 }
 
 .dark .fi-simple-layout {
-    --paper-grid: rgb(255 255 255 / 0.05);
-    --paper-margin: rgb(241 154 164 / 0.35);
+    --lp-paper-bg: var(--gray-950);
+}
 
-    background-color: var(--gray-950);
+/* Phones need the width for text; the margin moves closer to the edge. */
+@media (width < 40rem) {
+    .lp-paper {
+        --lp-margin-offset: 1.75rem;
+    }
+}
+
+/* The rest of the app sits on a barely visible grid, so every page still feels like the same notebook. */
+.fi-body {
+    background-image:
+        linear-gradient(var(--lp-grid-faint) 1px, transparent 1px),
+        linear-gradient(90deg, var(--lp-grid-faint) 1px, transparent 1px);
+    background-size: 1.25rem 1.25rem;
+}
+
+/* The card every custom view should use, so it matches Filament's sections, tables and stats. */
+.lp-card {
+    @apply bg-white dark:bg-gray-900;
+
+    border-radius: var(--lp-radius-card);
+    box-shadow: var(--lp-shadow-card);
+}
+
+/* Textmarker swipe behind short text such as a due date. */
+.lp-marker {
+    @apply rounded-sm px-1 py-0.5 font-medium;
+
+    background-color: var(--lp-marker);
+    color: var(--lp-marker-ink);
+    box-decoration-break: clone;
+}
+
+/* ---------- Chrome: topbar and sidebar ---------- */
+
+.fi-topbar {
+    @apply border-b border-gray-200 bg-white/90 shadow-none ring-0 backdrop-blur-md dark:border-white/10 dark:bg-gray-900/90;
+}
+
+.fi-sidebar {
+    @apply lg:border-e lg:border-gray-200 lg:bg-white dark:lg:border-white/10 dark:lg:bg-gray-900;
+}
+
+.fi-sidebar-nav-groups {
+    @apply gap-y-6;
+}
+
+.fi-sidebar-group-label {
+    @apply text-xs font-semibold text-gray-500 dark:text-gray-400;
+}
+
+.fi-sidebar-item-btn {
+    @apply rounded-xl;
+}
+
+/* A bookmark ribbon in ink marks where you are. */
+.fi-sidebar-item.fi-active > .fi-sidebar-item-btn {
+    @apply bg-primary-50 dark:bg-primary-400/10;
+
+    box-shadow: inset 3px 0 0 var(--primary-600);
+}
+
+.dark .fi-sidebar-item.fi-active > .fi-sidebar-item-btn {
+    box-shadow: inset 3px 0 0 var(--primary-400);
+}
+
+.fi-sidebar-item.fi-active > .fi-sidebar-item-btn > .fi-sidebar-item-label {
+    @apply font-semibold;
+}
+
+/* ---------- Focus: always visible, always ink ---------- */
+
+.fi-sidebar-item-btn,
+.fi-sidebar-group-dropdown-trigger-btn,
+.fi-sidebar-database-notifications-btn,
+.fi-topbar-item-btn,
+.fi-wi-stats-overview-stat,
+.fi-link,
+.lp-focus {
+    &:focus-visible {
+        outline: 2px solid var(--primary-600);
+        outline-offset: 2px;
+    }
+}
+
+.dark {
+    & .fi-sidebar-item-btn,
+    & .fi-sidebar-group-dropdown-trigger-btn,
+    & .fi-sidebar-database-notifications-btn,
+    & .fi-topbar-item-btn,
+    & .fi-wi-stats-overview-stat,
+    & .fi-link,
+    & .lp-focus {
+        &:focus-visible {
+            outline-color: var(--primary-400);
+        }
+    }
+}
+
+/* ---------- Page header ---------- */
+
+.fi-header-heading {
+    @apply font-semibold;
+}
+
+.fi-header-subheading {
+    @apply text-base;
+}
+
+/* ---------- Cards: sections, tables, stats ---------- */
+
+.fi-section:not(.fi-section-not-contained):not(.fi-aside):not(.fi-compact),
+.fi-section.fi-aside:not(.fi-section-not-contained) > .fi-section-content-ctn,
+.fi-ta-ctn,
+.fi-wi-stats-overview-stat {
+    border-radius: var(--lp-radius-card);
+    box-shadow: var(--lp-shadow-card);
+}
+
+.fi-section-header-heading {
+    @apply font-semibold;
+}
+
+a.fi-wi-stats-overview-stat {
+    @apply transition-shadow;
+
+    &:hover {
+        box-shadow: var(--lp-shadow-raised);
+    }
+}
+
+.fi-wi-stats-overview-stat-value {
+    @apply font-semibold;
+}
+
+/* ---------- Tables and badges ---------- */
+
+.fi-ta-table > thead > tr:not(.fi-ta-table-stacked-header-row) {
+    @apply bg-gray-50 dark:bg-white/[0.03];
+}
+
+.fi-ta-header-cell {
+    @apply text-gray-700 dark:text-gray-200;
+}
+
+.fi-ta-row.fi-clickable {
+    @apply hover:bg-primary-50/60 dark:hover:bg-primary-400/5;
+}
+
+.fi-badge {
+    @apply rounded-full px-2.5;
+}
+
+/* ---------- Login ---------- */
+
+.fi-simple-main {
+    @apply my-8 sm:my-16 sm:rounded-2xl;
+
+    box-shadow: var(--lp-shadow-raised);
+}
+
+.fi-simple-page-content {
+    @apply gap-y-8;
+}
+
+/* With the intro on the page, large screens show it beside the card. */
+.fi-simple-layout:has(> .lp-login-intro) {
+    @apply lg:grid lg:grid-cols-[minmax(0,34rem)_minmax(0,30rem)] lg:content-center lg:justify-center lg:gap-x-20 lg:px-24;
+
+    & > .fi-simple-main-ctn > .fi-simple-main {
+        @apply lg:my-12;
+    }
+
+    & > .lp-footer {
+        @apply lg:col-span-full;
+    }
+}
+
+/* ---------- Motion: the understanding ring draws itself once ---------- */
+
+@media (prefers-reduced-motion: no-preference) {
+    .lp-ring-progress {
+        animation: lp-ring-draw 900ms cubic-bezier(0.2, 0.7, 0.2, 1) 150ms both;
+    }
+}
+
+@keyframes lp-ring-draw {
+    from {
+        stroke-dashoffset: 100;
+    }
 }

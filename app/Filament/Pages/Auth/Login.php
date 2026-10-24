@@ -2,20 +2,42 @@
 
 namespace App\Filament\Pages\Auth;
 
+use App\Role;
+use Filament\Actions\Action;
 use Filament\Auth\Pages\Login as BaseLogin;
 use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Component;
+use Filament\Schemas\Components\RenderHook;
+use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
+use Filament\View\PanelsRenderHook;
 use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\HtmlString;
 use Illuminate\Validation\ValidationException;
 use SensitiveParameter;
 
 /**
  * Login with a username instead of Filament's default email field.
  *
- * The form is prefilled with the seeded demo user's credentials (see DatabaseSeeder).
+ * The form is prefilled with the seeded demo user's credentials (see DatabaseSeeder),
+ * and the "Demo-Zugänge" below the form switch it to one of the other demo roles.
  */
 class Login extends BaseLogin
 {
+    /**
+     * The seeded demo accounts, one per role.
+     *
+     * @var array<string, Role>
+     */
+    public const array DEMO_ACCOUNTS = [
+        'hackathon' => Role::Admin,
+        'lehrer' => Role::Teacher,
+        'schueler' => Role::Student,
+    ];
+
+    public const string DEMO_PASSWORD = 'hackathon2026';
+
     public function form(Schema $schema): Schema
     {
         return $schema
@@ -26,9 +48,45 @@ class Login extends BaseLogin
                     ->required()
                     ->autocomplete('username')
                     ->autofocus(),
-                $this->getPasswordFormComponent()->default('hackathon2026'),
+                $this->getPasswordFormComponent()->default(self::DEMO_PASSWORD),
                 $this->getRememberFormComponent(),
             ]);
+    }
+
+    public function content(Schema $schema): Schema
+    {
+        return $schema
+            ->components([
+                RenderHook::make(PanelsRenderHook::AUTH_LOGIN_FORM_BEFORE),
+                $this->getFormContentComponent(),
+                $this->getMultiFactorChallengeFormContentComponent(),
+                RenderHook::make(PanelsRenderHook::AUTH_LOGIN_FORM_AFTER),
+                View::make('filament.pages.auth.demo-accounts')
+                    ->viewData(['accounts' => self::DEMO_ACCOUNTS, 'password' => self::DEMO_PASSWORD])
+                    ->visible(fn (): bool => blank($this->userUndertakingMultiFactorAuthentication)),
+            ]);
+    }
+
+    /**
+     * Filament's own "forgot password" hint is skipped by the Tab key (tabindex -1), so it is rebuilt without that.
+     */
+    protected function getPasswordFormComponent(): Component
+    {
+        return parent::getPasswordFormComponent()
+            ->label('Passwort')
+            ->hint(new HtmlString(Blade::render('<x-filament::link :href="filament()->getRequestPasswordResetUrl()">Passwort vergessen?</x-filament::link>')));
+    }
+
+    /**
+     * Fills the form with one of the demo accounts; unknown usernames are ignored.
+     */
+    public function fillDemoAccount(string $username): void
+    {
+        if (! array_key_exists($username, self::DEMO_ACCOUNTS)) {
+            return;
+        }
+
+        $this->form->fill(['username' => $username, 'password' => self::DEMO_PASSWORD]);
     }
 
     /**
@@ -50,6 +108,14 @@ class Login extends BaseLogin
         ]);
     }
 
+    /**
+     * The brand sits on the exercise-book page next to the card (see login-intro view), not inside it.
+     */
+    public function hasLogo(): bool
+    {
+        return false;
+    }
+
     public function getHeading(): string|Htmlable|null
     {
         return 'Willkommen zurück!';
@@ -57,6 +123,11 @@ class Login extends BaseLogin
 
     public function getSubheading(): string|Htmlable|null
     {
-        return 'Melde dich an und mach dort weiter, wo du aufgehört hast.';
+        return new HtmlString('Melde dich an und mach dort weiter, wo du aufgehört hast. Noch kein Konto? '.$this->registerAction->toHtml());
+    }
+
+    public function registerAction(): Action
+    {
+        return parent::registerAction()->label('Mit Klassencode registrieren');
     }
 }

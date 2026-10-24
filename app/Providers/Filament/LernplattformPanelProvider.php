@@ -2,7 +2,12 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Pages\Auth\EditProfile;
+use App\Filament\AvatarProviders\InitialsAvatarProvider;
 use App\Filament\Pages\Auth\Login;
+use App\Filament\Pages\Auth\Register;
+use App\Filament\Pages\Auth\RequestPasswordReset;
+use Filament\FontProviders\LocalFontProvider;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -10,6 +15,8 @@ use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\View\PanelsRenderHook;
+use Illuminate\Contracts\View\View;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
@@ -19,6 +26,26 @@ use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 class LernplattformPanelProvider extends PanelProvider
 {
+    /**
+     * Königsblau, the classic school fountain-pen ink. Deeper and calmer than Tailwind's blue;
+     * 600 carries white text at 7.3:1, 500 at 4.9:1 and 400 reads at 6.5:1 on the dark sidebar.
+     *
+     * @var array<int, string>
+     */
+    public const array KOENIGSBLAU = [
+        50 => 'oklch(0.97 0.015 267)',
+        100 => 'oklch(0.93 0.035 267)',
+        200 => 'oklch(0.87 0.065 267)',
+        300 => 'oklch(0.78 0.11 267)',
+        400 => 'oklch(0.68 0.16 267)',
+        500 => 'oklch(0.56 0.2 267)',
+        600 => 'oklch(0.47 0.2 267)',
+        700 => 'oklch(0.41 0.175 267)',
+        800 => 'oklch(0.355 0.145 267)',
+        900 => 'oklch(0.3 0.11 267)',
+        950 => 'oklch(0.225 0.075 267)',
+    ];
+
     public function panel(Panel $panel): Panel
     {
         return $panel
@@ -26,14 +53,25 @@ class LernplattformPanelProvider extends PanelProvider
             ->id('lernplattform')
             ->path('')
             ->login(Login::class)
+            ->registration(Register::class)
+            ->passwordReset(RequestPasswordReset::class)
+            ->profile(EditProfile::class, isSimple: false)
             ->brandName('Lernplattform')
-            ->brandLogo(fn () => view('filament.lernplattform.brand'))
+            ->brandLogo(fn (): View => view('filament.lernplattform.brand'))
             ->brandLogoHeight('2.25rem')
+            // Resolved per request so the URL picks up the HTTPS scheme behind the proxy.
+            ->favicon(fn (): string => asset('favicon.svg'))
+            ->defaultAvatarProvider(InitialsAvatarProvider::class)
             // Lexend was designed to improve reading proficiency, which suits learning content.
-            ->font('Lexend')
+            // Self-hosted (public/fonts/lexend) so pupils' browsers make no request to a third-party font CDN.
+            ->font(
+                'Lexend',
+                url: fn (): string => asset('fonts/lexend/lexend.css'),
+                provider: LocalFontProvider::class,
+                preload: fn (): array => [asset('fonts/lexend/lexend-latin-wght-normal.woff2')],
+            )
             ->colors([
-                // Close to Königsblau, the classic school fountain-pen ink.
-                'primary' => Color::Blue,
+                'primary' => self::KOENIGSBLAU,
                 'gray' => Color::Slate,
                 'success' => Color::Emerald,
                 'warning' => Color::Amber,
@@ -42,6 +80,16 @@ class LernplattformPanelProvider extends PanelProvider
             ])
             ->viteTheme('resources/css/filament/lernplattform/theme.css')
             ->sidebarCollapsibleOnDesktop()
+            ->renderHook(
+                PanelsRenderHook::SIMPLE_LAYOUT_START,
+                fn (): View => view('filament.lernplattform.login-intro'),
+                scopes: Login::class,
+            )
+            // Impressum and Datenschutzerklärung on the login page and below every panel page.
+            ->renderHook(PanelsRenderHook::FOOTER, fn (): View => view('filament.lernplattform.footer'))
+            // Every resource needs a policy, so a missing permission rule fails loudly instead of granting access.
+            ->strictAuthorization()
+            ->navigationGroups(['Unterricht', 'Lernen', 'Verwaltung'])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
