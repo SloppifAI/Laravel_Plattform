@@ -39,17 +39,31 @@ class QuestionInbox extends Page implements HasTable
 
     protected static ?string $slug = 'rueckfragen';
 
-    protected static ?string $title = 'Rückfragen';
-
     protected static string|UnitEnum|null $navigationGroup = NavigationGroup::Unterricht;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedInbox;
 
     protected static ?int $navigationSort = 2;
 
-    protected static string|Htmlable|null $navigationBadgeTooltip = 'Offene Rückfragen';
+    public static function getNavigationLabel(): string
+    {
+        return __('Rückfragen');
+    }
 
-    protected ?string $subheading = 'Fragen deiner Schüler:innen zu deinen Stunden.';
+    public function getTitle(): string
+    {
+        return __('Rückfragen');
+    }
+
+    public static function getNavigationBadgeTooltip(): string|Htmlable|null
+    {
+        return __('Offene Rückfragen');
+    }
+
+    public function getSubheading(): string|Htmlable|null
+    {
+        return __('Fragen deiner Schüler:innen zu deinen Stunden.');
+    }
 
     public static function canAccess(): bool
     {
@@ -87,50 +101,50 @@ class QuestionInbox extends Page implements HasTable
             ->defaultSort(fn (Builder $query): Builder => $query->orderByRaw('answered_at IS NULL DESC')->latest('id'))
             ->columns([
                 TextColumn::make('question')
-                    ->label('Frage')
+                    ->label(__('Frage'))
                     ->description(fn (StudentQuestion $record): string => "{$record->student->name} · {$record->lesson->subject}: {$record->lesson->topic}", position: 'above')
                     ->weight(FontWeight::Medium)
                     ->extraAttributes(['class' => 'whitespace-pre-line'])
                     ->wrap(),
                 TextColumn::make('answer')
-                    ->label('Antwort')
-                    ->state(fn (StudentQuestion $record): ?string => $record->wasMarkedDone() ? 'Als erledigt markiert' : $record->answer)
-                    ->placeholder('Noch nicht beantwortet')
+                    ->label(__('Antwort'))
+                    ->state(fn (StudentQuestion $record): ?string => $record->wasMarkedDone() ? __('Als erledigt markiert') : $record->answer)
+                    ->placeholder(__('Noch nicht beantwortet'))
                     ->description(fn (StudentQuestion $record): ?string => $record->isOpen() ? null : ($record->answeredBy?->name ?? '').' · '.$record->answered_at->format('d.m.Y'))
                     ->extraAttributes(['class' => 'whitespace-pre-line'])
                     ->wrap(),
                 TextColumn::make('status')
-                    ->label('Status')
-                    ->state(fn (StudentQuestion $record): string => $record->isOpen() ? 'Offen' : ($record->wasMarkedDone() ? 'Erledigt' : 'Beantwortet'))
+                    ->label(__('Status'))
+                    ->state(fn (StudentQuestion $record): string => $record->isOpen() ? __('Offen') : ($record->wasMarkedDone() ? __('Erledigt') : __('Beantwortet')))
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
-                        'Offen' => 'warning',
-                        'Beantwortet' => 'success',
+                        __('Offen') => 'warning',
+                        __('Beantwortet') => 'success',
                         default => 'gray',
                     })
-                    ->icon(fn (string $state): Heroicon => $state === 'Offen' ? Heroicon::OutlinedClock : Heroicon::OutlinedCheck)
-                    ->description(fn (StudentQuestion $record): string => 'Gefragt am '.$record->created_at->format('d.m.Y H:i')),
+                    ->icon(fn (string $state): Heroicon => $state === __('Offen') ? Heroicon::OutlinedClock : Heroicon::OutlinedCheck)
+                    ->description(fn (StudentQuestion $record): string => __('Gefragt am :date', ['date' => $record->created_at->format('d.m.Y H:i')])),
             ])
             ->recordActions([
                 Action::make('answer')
-                    ->label('Beantworten')
+                    ->label(__('Beantworten'))
                     ->icon(Heroicon::OutlinedPencilSquare)
                     ->authorize('answer')
-                    ->modalHeading(fn (StudentQuestion $record): string => 'Antwort an '.$record->student->name)
-                    ->modalDescription(fn (StudentQuestion $record): string => 'Frage: '.$record->question)
+                    ->modalHeading(fn (StudentQuestion $record): string => __('Antwort an :name', ['name' => $record->student->name]))
+                    ->modalDescription(fn (StudentQuestion $record): string => __('Frage: :question', ['question' => $record->question]))
                     ->schema([
                         Textarea::make('answer')
-                            ->label('Deine Antwort')
+                            ->label(__('Deine Antwort'))
                             ->rows(5)
                             ->required()
                             ->maxLength(5000)
                             ->validationMessages([
-                                'required' => 'Schreib zuerst deine Antwort.',
-                                'max' => 'Das ist zu lang. Fass dich bitte kürzer.',
+                                'required' => __('Schreib zuerst deine Antwort.'),
+                                'max' => __('Das ist zu lang. Fass dich bitte kürzer.'),
                             ]),
                     ])
-                    ->modalSubmitActionLabel('Antwort schicken')
-                    ->modalCancelActionLabel('Abbrechen')
+                    ->modalSubmitActionLabel(__('Antwort schicken'))
+                    ->modalCancelActionLabel(__('Abbrechen'))
                     ->action(function (array $data, StudentQuestion $record): void {
                         Gate::authorize('answer', $record);
 
@@ -143,18 +157,18 @@ class QuestionInbox extends Page implements HasTable
 
                         self::tellTheStudent($record);
 
-                        Notification::make()->success()->title('Antwort geschickt')->send();
+                        Notification::make()->success()->title(__('Antwort geschickt'))->send();
                     }),
                 Action::make('markDone')
-                    ->label('Erledigt')
+                    ->label(__('Erledigt'))
                     ->icon(Heroicon::OutlinedCheck)
                     ->color('gray')
                     ->authorize('answer')
                     ->requiresConfirmation()
-                    ->modalHeading('Frage als erledigt markieren?')
-                    ->modalDescription('Du schreibst keine Antwort, z. B. weil du die Frage schon im Unterricht besprochen hast. Die Schülerin oder der Schüler sieht, dass du die Frage als erledigt markiert hast.')
-                    ->modalSubmitActionLabel('Ja, erledigt')
-                    ->modalCancelActionLabel('Abbrechen')
+                    ->modalHeading(__('Frage als erledigt markieren?'))
+                    ->modalDescription(__('Du schreibst keine Antwort, z. B. weil du die Frage schon im Unterricht besprochen hast. Die Schülerin oder der Schüler sieht, dass du die Frage als erledigt markiert hast.'))
+                    ->modalSubmitActionLabel(__('Ja, erledigt'))
+                    ->modalCancelActionLabel(__('Abbrechen'))
                     ->action(function (StudentQuestion $record): void {
                         Gate::authorize('answer', $record);
 
@@ -166,21 +180,21 @@ class QuestionInbox extends Page implements HasTable
 
                         self::tellTheStudent($record);
 
-                        Notification::make()->success()->title('Frage erledigt')->send();
+                        Notification::make()->success()->title(__('Frage erledigt'))->send();
                     }),
             ])
             ->toolbarActions([
                 // Only the open questions of the selection are closed; the table query already limits it to the user's lessons.
                 BulkAction::make('markAllDone')
-                    ->label('Als erledigt markieren')
+                    ->label(__('Als erledigt markieren'))
                     ->icon(Heroicon::OutlinedCheck)
                     ->color('gray')
                     ->authorizeIndividualRecords('answer')
                     ->requiresConfirmation()
-                    ->modalHeading('Fragen als erledigt markieren?')
-                    ->modalDescription('Du schreibst keine Antwort, z. B. weil du die Fragen schon im Unterricht besprochen hast. Die Schüler:innen sehen, dass du ihre Frage als erledigt markiert hast.')
-                    ->modalSubmitActionLabel('Ja, erledigt')
-                    ->modalCancelActionLabel('Abbrechen')
+                    ->modalHeading(__('Fragen als erledigt markieren?'))
+                    ->modalDescription(__('Du schreibst keine Antwort, z. B. weil du die Fragen schon im Unterricht besprochen hast. Die Schüler:innen sehen, dass du ihre Frage als erledigt markiert hast.'))
+                    ->modalSubmitActionLabel(__('Ja, erledigt'))
+                    ->modalCancelActionLabel(__('Abbrechen'))
                     ->action(fn (Collection $records) => $records->each(function (StudentQuestion $record): void {
                         $record->update([
                             'answered_by' => self::user()->getKey(),
@@ -191,14 +205,14 @@ class QuestionInbox extends Page implements HasTable
                         self::tellTheStudent($record);
                     }))
                     ->deselectRecordsAfterCompletion()
-                    ->successNotificationTitle('Fragen erledigt')
+                    ->successNotificationTitle(__('Fragen erledigt'))
                     ->failureNotificationTitle(fn (int $successCount, int $totalCount): string => $successCount > 0
-                        ? "{$successCount} von {$totalCount} Fragen erledigt, die anderen waren schon beantwortet"
-                        : 'Diese Fragen sind schon beantwortet'),
+                        ? __(':successCount von :totalCount Fragen erledigt, die anderen waren schon beantwortet', ['successCount' => $successCount, 'totalCount' => $totalCount])
+                        : __('Diese Fragen sind schon beantwortet')),
             ])
             ->emptyStateIcon(Heroicon::OutlinedInbox)
-            ->emptyStateHeading('Keine Rückfragen')
-            ->emptyStateDescription('Wenn jemand aus deinen Klassen dir eine Frage zu einer Stunde stellt, steht sie hier.');
+            ->emptyStateHeading(__('Keine Rückfragen'))
+            ->emptyStateDescription(__('Wenn jemand aus deinen Klassen dir eine Frage zu einer Stunde stellt, steht sie hier.'));
     }
 
     /**

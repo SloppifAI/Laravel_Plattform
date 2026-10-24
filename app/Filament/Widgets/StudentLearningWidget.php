@@ -99,21 +99,21 @@ class StudentLearningWidget extends Widget
     protected function describeDueDate(?CarbonInterface $dueOn): array
     {
         if ($dueOn === null) {
-            return ['date' => null, 'day' => null, 'month' => null, 'label' => 'Ohne Abgabetermin', 'color' => 'gray', 'icon' => Heroicon::OutlinedCalendar];
+            return ['date' => null, 'day' => null, 'month' => null, 'label' => __('Ohne Abgabetermin'), 'color' => 'gray', 'icon' => Heroicon::OutlinedCalendar];
         }
 
-        $dueOn = $dueOn->copy()->locale('de');
+        $dueOn = $dueOn->copy()->locale(app()->getLocale());
         $daysLeft = (int) today()->diffInDays($dueOn, false);
 
         return [
-            'date' => $dueOn->isoFormat('dddd, D. MMMM'),
+            'date' => $dueOn->isoFormat('dddd, '.__('D. MMMM')),
             'day' => $dueOn->isoFormat('D'),
             'month' => $dueOn->isoFormat('MMM'),
             ...match (true) {
-                $daysLeft < 0 => ['label' => 'Überfällig', 'color' => 'danger', 'icon' => Heroicon::OutlinedExclamationTriangle],
-                $daysLeft === 0 => ['label' => 'Heute fällig', 'color' => 'warning', 'icon' => Heroicon::OutlinedClock],
-                $daysLeft === 1 => ['label' => 'Morgen fällig', 'color' => 'warning', 'icon' => Heroicon::OutlinedClock],
-                default => ['label' => "In {$daysLeft} Tagen fällig", 'color' => 'gray', 'icon' => Heroicon::OutlinedCalendarDays],
+                $daysLeft < 0 => ['label' => __('Überfällig'), 'color' => 'danger', 'icon' => Heroicon::OutlinedExclamationTriangle],
+                $daysLeft === 0 => ['label' => __('Heute fällig'), 'color' => 'warning', 'icon' => Heroicon::OutlinedClock],
+                $daysLeft === 1 => ['label' => __('Morgen fällig'), 'color' => 'warning', 'icon' => Heroicon::OutlinedClock],
+                default => ['label' => __('In :days Tagen fällig', ['days' => $daysLeft]), 'color' => 'gray', 'icon' => Heroicon::OutlinedCalendarDays],
             },
         ];
     }

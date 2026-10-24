@@ -26,11 +26,11 @@ class AskTeacherTest extends TestCase
         Livewire::actingAs($student)
             ->test(ExplainIt::class)
             ->call('openSession', $session->id)
-            ->assertSee('Frage an meine Lehrkraft')
+            ->assertSee('Question for my teacher')
             ->callAction('askTeacher', ['question' => '  Warum ist Chlorophyll grün?  '])
             ->assertHasNoActionErrors()
-            ->assertNotified('Deine Frage ist bei deiner Lehrkraft')
-            ->assertSee('Du hast deiner Lehrkraft dazu eine Frage gestellt.');
+            ->assertNotified('Your question has reached your teacher')
+            ->assertSee('You asked your teacher a question about this.');
 
         $question = StudentQuestion::sole();
         $this->assertTrue($question->student->is($student));
@@ -64,8 +64,8 @@ class AskTeacherTest extends TestCase
         Livewire::actingAs($student)
             ->test(ExplainIt::class)
             ->call('openSession', $session->id)
-            ->assertDontSee('Frage an meine Lehrkraft')
-            ->assertSee('Fragen an deine Lehrkraft gibt es nur bei Themen aus deinen Hausaufgaben')
+            ->assertDontSee('Question for my teacher')
+            ->assertSee('You can only ask your teacher questions about topics from your homework')
             ->callAction('askTeacher', ['question' => 'Reingeschmuggelt'])
             ->assertForbidden();
 
@@ -101,7 +101,7 @@ class AskTeacherTest extends TestCase
             ->test(ExplainIt::class)
             ->call('openSession', $session->id)
             ->callAction('askTeacher', ['question' => 'Noch eine Frage.'])
-            ->assertNotified('Du hast schon '.StudentQuestion::MAX_OPEN_PER_LESSON.' offene Fragen zu dieser Stunde');
+            ->assertNotified('You already have '.StudentQuestion::MAX_OPEN_PER_LESSON.' open questions about this lesson');
 
         $this->assertSame(StudentQuestion::MAX_OPEN_PER_LESSON, StudentQuestion::query()->where('lesson_id', $lesson->id)->count());
 
@@ -109,7 +109,7 @@ class AskTeacherTest extends TestCase
             ->test(ExplainIt::class)
             ->call('openSession', $otherSession->id)
             ->callAction('askTeacher', ['question' => 'Eine Frage zu einer anderen Stunde.'])
-            ->assertNotified('Deine Frage ist bei deiner Lehrkraft');
+            ->assertNotified('Your question has reached your teacher');
 
         $this->assertSame(1, StudentQuestion::query()->where('lesson_id', $otherLesson->id)->count());
 
@@ -120,7 +120,7 @@ class AskTeacherTest extends TestCase
             ->test(ExplainIt::class)
             ->call('openSession', $session->id)
             ->callAction('askTeacher', ['question' => 'Jetzt wieder.'])
-            ->assertNotified('Deine Frage ist bei deiner Lehrkraft');
+            ->assertNotified('Your question has reached your teacher');
 
         $this->assertSame(StudentQuestion::MAX_OPEN_PER_LESSON + 1, StudentQuestion::query()->where('lesson_id', $lesson->id)->count());
     }
@@ -136,8 +136,8 @@ class AskTeacherTest extends TestCase
         Livewire::actingAs($student)
             ->test(ExplainIt::class)
             ->call('openSession', $session->id)
-            ->assertDontSee('Frage an meine Lehrkraft')
-            ->assertSee('Diese Stunde gehört nicht mehr zu deinen Hausaufgaben')
+            ->assertDontSee('Question for my teacher')
+            ->assertSee('This lesson is no longer part of your homework')
             ->callAction('askTeacher', ['question' => 'Reingeschmuggelt'])
             ->assertForbidden();
 
@@ -167,8 +167,8 @@ class AskTeacherTest extends TestCase
         Livewire::actingAs($student)
             ->test(ExplainIt::class)
             ->call('openSession', $session->id)
-            ->assertDontSee('Frage an meine Lehrkraft')
-            ->assertSee('Frag am besten deine Klassenleitung')
+            ->assertDontSee('Question for my teacher')
+            ->assertSee('It is best to ask your form teacher')
             ->callAction('askTeacher', ['question' => 'Reingeschmuggelt'])
             ->assertForbidden();
 

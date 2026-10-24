@@ -52,19 +52,19 @@
 
     <div class="min-w-0">
         <label for="simple-language-switch" class="block cursor-pointer font-medium text-gray-950 dark:text-white">
-            Einfache Sprache
+            {{ __('Einfache Sprache') }}
         </label>
 
         <p id="simple-language-hint" class="mt-0.5 text-sm text-gray-600 dark:text-gray-400">
-            Die Zusammenfassung und die Fragen deiner Lehrkraft in kurzen Sätzen mit einfachen Wörtern.
-            Deine eigenen Antworten bleiben, wie du sie schreibst.
+            {{ __('Die Zusammenfassung und die Fragen deiner Lehrkraft in kurzen Sätzen mit einfachen Wörtern.') }}
+            {{ __('Deine eigenen Antworten bleiben, wie du sie schreibst.') }}
         </p>
 
         <p x-cloak x-show="$wire.simpleLanguage" class="mt-1 text-sm text-gray-600 dark:text-gray-400">
             @if ($aiActive)
-                Die einfache Fassung schreibt eine KI. Sie sieht nur die Texte deiner Lehrkraft, nie deine Antworten.
+                {{ __('Die einfache Fassung schreibt eine KI. Sie sieht nur die Texte deiner Lehrkraft, nie deine Antworten.') }}
             @else
-                Demo-Modus: Die einfache Fassung entsteht ohne KI und ist nur ein Beispiel.
+                {{ __('Demo-Modus: Die einfache Fassung entsteht ohne KI und ist nur ein Beispiel.') }}
             @endif
         </p>
     </div>

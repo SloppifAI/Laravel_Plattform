@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Filament\Pages\MyRecordingConsent;
 use App\Filament\Widgets\AdminStatsWidget;
 use App\Filament\Widgets\StudentLearningWidget;
+use App\Filament\Widgets\TeacherLessonsWidget;
 use App\Filament\Widgets\TeacherStatsWidget;
 use App\Models\Answer;
 use App\Models\Competency;
@@ -25,11 +26,11 @@ class DashboardTest extends TestCase
     use CreatesConsentFixtures;
     use RefreshDatabase;
 
-    protected function setUp(): void
+    /**
+     * The teacher widgets are translated by another part of the work; this test keeps to the German source texts until then.
+     */
+    private function speakGerman(): void
     {
-        parent::setUp();
-
-        // The dashboards are German; the suite runs in English wherever a text is translated.
         config(['lernplattform.locale.default' => 'de']);
         app()->setLocale('de');
     }
@@ -52,21 +53,21 @@ class DashboardTest extends TestCase
         $this->actingAs($student)
             ->get('/')
             ->assertOk()
-            ->assertSee('Hallo Mia!')
-            ->assertSee('1 offene Hausaufgabe')
+            ->assertSee('Hello Mia!')
+            ->assertSee('1 open homework assignment')
             ->assertSee('Photosynthese')
-            ->assertSee('Morgen fällig')
+            ->assertSee('Due tomorrow')
             ->assertSee('80')
-            ->assertSee('Gut verstanden')
+            ->assertSee('Well understood')
             ->assertSee('Du hast den Ablauf klar erklärt.')
-            ->assertSee('Thema Tuto erklären')
-            ->assertSee('Hier lohnt sich Üben')
+            ->assertSee('Explain a topic to Tuto')
+            ->assertSee('Practising pays off here')
             ->assertDontSee('Zellaufbau')
             ->assertDontSee('Bruchrechnung')
             ->assertDontSee('Rückmeldung für jemand anderen.')
-            ->assertDontSee('Deine letzten Unterrichtsstunden')
-            ->assertDontSee('Abgaben offener Hausaufgaben')
-            ->assertDontSee('Abgaben diese Woche');
+            ->assertDontSeeLivewire(TeacherLessonsWidget::class)
+            ->assertDontSeeLivewire(TeacherStatsWidget::class)
+            ->assertDontSeeLivewire(AdminStatsWidget::class);
     }
 
     public function test_students_without_homework_get_encouraging_empty_states(): void
@@ -74,11 +75,11 @@ class DashboardTest extends TestCase
         $this->actingAs(User::factory()->student()->create(['name' => 'Ben Krüger']))
             ->get('/')
             ->assertOk()
-            ->assertSee('Hallo Ben!')
-            ->assertSee('Gerade ist nichts offen.')
-            ->assertSee('Alles erledigt.')
-            ->assertSee('Gib deine erste Hausaufgabe ab')
-            ->assertSee('Sobald deine Hausaufgaben bewertet sind');
+            ->assertSee('Hello Ben!')
+            ->assertSee('Nothing is open right now.')
+            ->assertSee('All done.')
+            ->assertSee('Hand in your first homework')
+            ->assertSee('As soon as your homework has been scored');
     }
 
     public function test_students_find_their_consent_overview_where_their_school_asks_for_their_agreement(): void
@@ -87,10 +88,10 @@ class DashboardTest extends TestCase
 
         Livewire::actingAs($students->first())
             ->test(StudentLearningWidget::class)
-            ->assertSee(['Tuto-Mikro im Unterricht', 'Mein Einverständnis'])
+            ->assertSee(['Tuto-Mikro in lessons', 'My agreement'])
             ->assertSeeHtml('href="'.MyRecordingConsent::getUrl().'"');
 
-        $this->actingAs($students->first())->get('/')->assertOk()->assertSee('Mein Einverständnis');
+        $this->actingAs($students->first())->get('/')->assertOk()->assertSee('My agreement');
     }
 
     public function test_the_consent_link_stays_away_where_the_page_is_not_open_to_the_student(): void
@@ -104,14 +105,15 @@ class DashboardTest extends TestCase
 
             Livewire::actingAs($student)
                 ->test(StudentLearningWidget::class)
-                ->assertSee('Hallo')
-                ->assertDontSee('Mein Einverständnis')
+                ->assertSee('Hello')
+                ->assertDontSee('My agreement')
                 ->assertDontSeeHtml(MyRecordingConsent::getUrl());
         }
     }
 
     public function test_teachers_see_figures_and_recent_lessons_of_their_own_lessons(): void
     {
+        $this->speakGerman();
         $teacher = User::factory()->teacher()->create();
         $schoolClass = SchoolClass::factory()->create(['teacher_id' => $teacher->id, 'name' => '7b']);
         [$weakStudent] = User::factory()->student($schoolClass)->count(2)->create();
@@ -160,23 +162,23 @@ class DashboardTest extends TestCase
         $this->actingAs($admin)
             ->get('/')
             ->assertOk()
-            ->assertSee('Abgaben diese Woche')
-            ->assertSee('Benutzer und Klassen pflegen, das Kompetenzraster einsehen.')
-            ->assertSee('Benutzer')
-            ->assertDontSee('Deine letzten Unterrichtsstunden')
-            ->assertDontSee('Als Nächstes fällig');
+            ->assertSee('Submissions this week')
+            ->assertSee('Manage users and classes, view the competency framework.')
+            ->assertSee('Users')
+            ->assertDontSeeLivewire(TeacherLessonsWidget::class)
+            ->assertDontSeeLivewire(StudentLearningWidget::class);
 
         // Factories create class teachers and lesson teachers on the side, so per-role counts come from the database.
         $countOf = fn (Role $role): string => (string) User::query()->withRole($role)->count();
 
         Livewire::test(AdminStatsWidget::class)
             ->assertSeeTextInOrder([
-                'Schüler:innen', $countOf(Role::Student),
-                'Lehrkräfte', $countOf(Role::Teacher),
+                'Students', $countOf(Role::Student),
+                'Teachers', $countOf(Role::Teacher),
                 'Administration', '1',
-                'Klassen', (string) SchoolClass::query()->count(),
-                'Unterrichtsstunden', '1',
-                'Abgaben diese Woche', '1',
+                'Classes', (string) SchoolClass::query()->count(),
+                'Lessons', '1',
+                'Submissions this week', '1',
             ]);
     }
 }

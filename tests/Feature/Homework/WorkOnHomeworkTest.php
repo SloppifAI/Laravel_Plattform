@@ -80,14 +80,14 @@ class WorkOnHomeworkTest extends TestCase
     {
         $this->get(WorkOnHomework::getUrl(['lesson' => $this->lesson]))
             ->assertOk()
-            ->assertSee('Lies zuerst die Zusammenfassung deiner Lehrkraft')
+            ->assertSee('first read your teacher’s summary')
             ->assertSeeInOrder([
-                'Zusammenfassung der Stunde',
+                'Summary of the lesson',
                 $this->lesson->summary,
                 $this->comprehension->prompt,
                 $this->reflection->prompt,
-                'In deinen Worten',
-                'Zusammenfassung in deinen Worten',
+                'In your own words',
+                'Summary in your own words',
             ])
             ->assertSee([QuestionType::Comprehension->getLabel(), QuestionType::Reflection->getLabel()])
             ->assertSee(QuestionType::Reflection->getDescription())
@@ -100,7 +100,7 @@ class WorkOnHomeworkTest extends TestCase
         $this->assertSame(40, WorkOnHomework::MINIMUM_PRACTICE_SUMMARY_LENGTH);
 
         $this->get(WorkOnHomework::getUrl(['lesson' => $this->lesson]))
-            ->assertSee('Mindestens 80 Zeichen');
+            ->assertSee('At least 80 characters');
     }
 
     public function test_a_practice_task_names_its_competency_above_the_questions(): void
@@ -114,8 +114,8 @@ class WorkOnHomeworkTest extends TestCase
 
         $this->get(WorkOnHomework::getUrl(['lesson' => $practice]))
             ->assertOk()
-            ->assertSeeInOrder(['Zusammenfassung zu „Texte zusammenfassen“', $practice->summary, 'Was gehört in eine Zusammenfassung?', 'In deinen Worten'])
-            ->assertSee('Mindestens 40 Zeichen');
+            ->assertSeeInOrder(['Summary on “Texte zusammenfassen”', $practice->summary, 'Was gehört in eine Zusammenfassung?', 'In your own words'])
+            ->assertSee('At least 40 characters');
     }
 
     public function test_the_lesson_can_be_practised_with_erklaer_es_mir(): void
@@ -140,7 +140,7 @@ class WorkOnHomeworkTest extends TestCase
             ->fillForm($this->validFormData())
             ->call('submit')
             ->assertHasNoFormErrors()
-            ->assertNotified('Geschafft!')
+            ->assertNotified('Done!')
             ->assertRedirect(WorkOnHomework::getUrl(['lesson' => $this->lesson]));
 
         $submission = Submission::query()->sole();
@@ -153,9 +153,9 @@ class WorkOnHomeworkTest extends TestCase
 
         $this->get(WorkOnHomework::getUrl(['lesson' => $this->lesson]))
             ->assertOk()
-            ->assertSee([UnderstandingLevel::Understood->getLabel().' · 82 von 100', 'Darauf solltest du noch einmal schauen', 'Die Rolle von Chlorophyll'])
+            ->assertSee([UnderstandingLevel::Understood->getLabel().' · 82 out of 100', 'Take another look at this', 'Die Rolle von Chlorophyll'])
             ->assertSee(['Licht, Wasser und Sonne', 'Richtig: Licht, Wasser und CO2.'])
-            ->assertSee(['So fasst deine Lehrkraft die Stunde zusammen', $this->lesson->summary])
+            ->assertSee(['How your teacher summarises the lesson', $this->lesson->summary])
             ->assertDontSee('GEHEIMER ERWARTUNGSHORIZONT');
     }
 
@@ -230,7 +230,7 @@ class WorkOnHomeworkTest extends TestCase
         Livewire::test(WorkOnHomework::class, ['lesson' => $this->lesson])
             ->fillForm($this->validFormData())
             ->call('submit')
-            ->assertNotified('Abgegeben – die Auswertung kommt später');
+            ->assertNotified('Handed in – the evaluation will follow later');
 
         $submission = Submission::query()->sole();
         $this->assertFalse($submission->isEvaluated());
@@ -238,7 +238,7 @@ class WorkOnHomeworkTest extends TestCase
 
         $this->get(WorkOnHomework::getUrl(['lesson' => $this->lesson]))
             ->assertOk()
-            ->assertSee(['Deine Abgabe wird noch ausgewertet', 'Jetzt auswerten lassen', $this->lesson->summary]);
+            ->assertSee(['Your hand-in is still being evaluated', 'Evaluate now', $this->lesson->summary]);
     }
 
     public function test_an_unevaluated_submission_can_be_evaluated_later(): void
@@ -253,7 +253,7 @@ class WorkOnHomeworkTest extends TestCase
 
         Livewire::test(WorkOnHomework::class, ['lesson' => $this->lesson])
             ->callAction('evaluate')
-            ->assertNotified('Geschafft!');
+            ->assertNotified('Done!');
 
         $this->assertSame(40, $submission->refresh()->understanding_score);
         $this->assertTrue($submission->isEvaluated());

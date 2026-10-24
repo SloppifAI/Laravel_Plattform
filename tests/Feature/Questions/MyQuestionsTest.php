@@ -34,7 +34,7 @@ class MyQuestionsTest extends TestCase
 
     public function test_only_students_open_the_page(): void
     {
-        $this->actingAs($this->student)->get('/meine-rueckfragen')->assertOk()->assertSee('Meine Rückfragen');
+        $this->actingAs($this->student)->get('/meine-rueckfragen')->assertOk()->assertSee('My questions for the teacher');
         $this->actingAs($this->lesson->teacher)->get('/meine-rueckfragen')->assertForbidden();
         $this->actingAs(User::factory()->admin()->for($this->schoolClass->school)->create())->get('/meine-rueckfragen')->assertForbidden();
         $this->actingAs(User::factory()->operator()->create())->get('/meine-rueckfragen')->assertForbidden();
@@ -68,13 +68,13 @@ class MyQuestionsTest extends TestCase
         Livewire::actingAs($this->student)
             ->test(MyQuestions::class)
             ->assertSee([
-                'Wartet auf Antwort',
+                'Waiting for answer',
                 'Weil Chlorophyll rotes Licht schluckt.',
                 $this->lesson->teacher->name,
-                'Neue Antwort',
-                'Erledigt',
-                'Deine Lehrkraft hat die Frage im Unterricht besprochen oder erledigt.',
-                'Gelesen',
+                'New answer',
+                'Done',
+                'Your teacher discussed the question in the lesson or has dealt with it.',
+                'Read',
             ])
             ->assertActionHidden(TestAction::make('markAsRead')->table($open))
             ->assertActionVisible(TestAction::make('markAsRead')->table($answered))
@@ -135,8 +135,8 @@ class MyQuestionsTest extends TestCase
     {
         Livewire::actingAs($this->student)
             ->test(MyQuestions::class)
-            ->assertSee('Du hast noch keine Rückfragen gestellt')
-            ->assertSee('Zu Erklär’s mir');
+            ->assertSee('You have not asked any questions for your teacher yet')
+            ->assertSee('To “Explain it to me”');
 
         $this->assertNull(MyQuestions::getNavigationBadge());
     }

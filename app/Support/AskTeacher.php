@@ -28,26 +28,26 @@ final class AskTeacher
     public static function action(Closure $resolve): Action
     {
         return Action::make('askTeacher')
-            ->label('Frage an meine Lehrkraft')
+            ->label(__('Frage an meine Lehrkraft'))
             ->icon(Heroicon::OutlinedQuestionMarkCircle)
             ->color('gray')
             ->modalIcon(Heroicon::OutlinedQuestionMarkCircle)
-            ->modalHeading('Frage an deine Lehrkraft')
-            ->modalDescription('Deine Lehrkraft antwortet dir unter „Meine Rückfragen“. Lesen können deine Frage nur sie und die Schuladministration, deine Mitschüler:innen nicht.')
+            ->modalHeading(__('Frage an deine Lehrkraft'))
+            ->modalDescription(__('Deine Lehrkraft antwortet dir unter „Meine Rückfragen“. Lesen können deine Frage nur sie und die Schuladministration, deine Mitschüler:innen nicht.'))
             ->schema([
                 Textarea::make('question')
-                    ->label('Deine Frage')
-                    ->placeholder('Was möchtest du deine Lehrkraft fragen?')
+                    ->label(__('Deine Frage'))
+                    ->placeholder(__('Was möchtest du deine Lehrkraft fragen?'))
                     ->rows(4)
                     ->required()
                     ->maxLength(2000)
                     ->validationMessages([
-                        'required' => 'Schreib zuerst deine Frage auf.',
-                        'max' => 'Das ist zu lang. Fass dich bitte kürzer.',
+                        'required' => __('Schreib zuerst deine Frage auf.'),
+                        'max' => __('Das ist zu lang. Fass dich bitte kürzer.'),
                     ]),
             ])
-            ->modalSubmitActionLabel('Frage abschicken')
-            ->modalCancelActionLabel('Abbrechen')
+            ->modalSubmitActionLabel(__('Frage abschicken'))
+            ->modalCancelActionLabel(__('Abbrechen'))
             ->action(function (array $data) use ($resolve): void {
                 [$lesson, $session] = $resolve();
 
@@ -59,8 +59,8 @@ final class AskTeacher
                 if ($openQuestions >= StudentQuestion::MAX_OPEN_PER_LESSON) {
                     Notification::make()
                         ->warning()
-                        ->title('Du hast schon '.StudentQuestion::MAX_OPEN_PER_LESSON.' offene Fragen zu dieser Stunde')
-                        ->body('Warte auf die Antworten deiner Lehrkraft, bevor du weitere Fragen stellst.')
+                        ->title(__('Du hast schon :count offene Fragen zu dieser Stunde', ['count' => StudentQuestion::MAX_OPEN_PER_LESSON]))
+                        ->body(__('Warte auf die Antworten deiner Lehrkraft, bevor du weitere Fragen stellst.'))
                         ->send();
 
                     return;
@@ -82,9 +82,9 @@ final class AskTeacher
 
                 Notification::make()
                     ->success()
-                    ->title('Deine Frage ist bei deiner Lehrkraft')
-                    ->body('Die Antwort findest du unter „Meine Rückfragen“.')
-                    ->actions([Action::make('open')->label('Zu meinen Rückfragen')->url(MyQuestions::getUrl())])
+                    ->title(__('Deine Frage ist bei deiner Lehrkraft'))
+                    ->body(__('Die Antwort findest du unter „Meine Rückfragen“.'))
+                    ->actions([Action::make('open')->label(__('Zu meinen Rückfragen'))->url(MyQuestions::getUrl())])
                     ->send();
             });
     }

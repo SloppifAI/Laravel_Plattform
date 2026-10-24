@@ -24,12 +24,12 @@ class ExplainItDeleteSessionTest extends TestCase
         Livewire::actingAs($session->student)
             ->test(ExplainIt::class)
             ->call('openSession', $session->id)
-            ->assertSee('Gespräch löschen')
+            ->assertSee('Delete conversation')
             ->mountAction('deleteSession', ['session' => $session->id])
-            ->assertMountedActionModalSee('Das Gespräch wird endgültig gelöscht.')
+            ->assertMountedActionModalSee('The conversation will be deleted permanently.')
             ->callMountedAction()
             ->assertSet('sessionId', null)
-            ->assertSee('Los geht’s')
+            ->assertSee('Let’s go')
             ->assertSee('Bleibt erhalten')
             ->assertDontSee($session->topic);
 
@@ -85,7 +85,7 @@ class ExplainItDeleteSessionTest extends TestCase
         $this->assertSame(2, substr_count($html, 'data-read-aloud'), 'One per message.');
         $this->assertSame(
             2,
-            preg_match_all('/<div data-read-aloud[^>]*>\s*<p[^>]*>\s*(?:Du|Tuto)\s*<\/p>\s*<div[^>]*rounded-2xl(?:(?!data-read-aloud)[^>])*>/', $html),
+            preg_match_all('/<div data-read-aloud[^>]*>\s*<p[^>]*>\s*(?:You|Tuto)\s*<\/p>\s*<div[^>]*rounded-2xl(?:(?!data-read-aloud)[^>])*>/', $html),
             'The attribute sits on the wrapper that holds the name label, the bubble follows without it.',
         );
     }

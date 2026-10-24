@@ -119,8 +119,8 @@ class WorkOnHomework extends Page
     {
         return collect([
             $this->lesson->subject,
-            $this->lesson->isPracticeTask() ? "Förderaufgabe zu „{$this->competencyName()}“" : 'Stunde vom '.$this->lesson->held_on->format('d.m.Y'),
-            $this->lesson->due_on ? 'Abgabe bis '.$this->lesson->due_on->format('d.m.Y') : null,
+            $this->lesson->isPracticeTask() ? __('Förderaufgabe zu „:competency“', ['competency' => $this->competencyName()]) : __('Stunde vom :date', ['date' => $this->lesson->held_on->format('d.m.Y')]),
+            $this->lesson->due_on ? __('Abgabe bis :date', ['date' => $this->lesson->due_on->format('d.m.Y')]) : null,
         ])->filter()->implode(' · ');
     }
 
@@ -129,7 +129,7 @@ class WorkOnHomework extends Page
      */
     public function getBreadcrumbs(): array
     {
-        return [MyHomework::getUrl() => 'Meine Hausaufgaben', $this->lesson->isPracticeTask() ? 'Förderaufgabe' : 'Hausaufgabe'];
+        return [MyHomework::getUrl() => __('Meine Hausaufgaben'), $this->lesson->isPracticeTask() ? __('Förderaufgabe') : __('Hausaufgabe')];
     }
 
     /**
@@ -140,13 +140,13 @@ class WorkOnHomework extends Page
         return $schema
             ->statePath('data')
             ->components([
-                ...$this->lesson->questions->values()->map(fn (Question $question, int $index): Section => Section::make('Frage '.($index + 1))
+                ...$this->lesson->questions->values()->map(fn (Question $question, int $index): Section => Section::make(__('Frage :number', ['number' => $index + 1]))
                     ->description($question->type->getDescription())
                     ->afterHeader([$this->typeBadge($question)])
                     ->schema([
                         ToggleButtons::make("levels.{$question->id}")
-                            ->label('Stufe')
-                            ->helperText('Such dir die Fassung aus, die zu dir passt. Du kannst jederzeit wechseln.')
+                            ->label(__('Stufe'))
+                            ->helperText(__('Such dir die Fassung aus, die zu dir passt. Du kannst jederzeit wechseln.'))
                             ->options(collect($question->availableLevels())->mapWithKeys(fn (QuestionLevel $level): array => [$level->value => $level->getLabel()])->all())
                             ->default(QuestionLevel::Standard->value)
                             ->inline()
@@ -159,16 +159,16 @@ class WorkOnHomework extends Page
                             ->rows(4)
                             ->autosize()
                             ->rules([fn (): Closure => $this->notCopiedFromTheTeacherSummary()])
-                            ->validationMessages(['required' => 'Bitte beantworte diese Frage.']),
+                            ->validationMessages(['required' => __('Bitte beantworte diese Frage.')]),
                     ]))->all(),
-                Section::make('In deinen Worten')
+                Section::make(__('In deinen Worten'))
                     ->description($this->lesson->isPracticeTask()
-                        ? 'Schreib es so, dass es jemand versteht, der das Thema nicht kennt. Nicht abschreiben, sondern in deinen eigenen Worten.'
-                        : 'Was war wichtig in der Stunde? Schreib es so, dass es jemand versteht, der nicht dabei war. Nicht abschreiben, sondern in deinen eigenen Worten.')
+                        ? __('Schreib es so, dass es jemand versteht, der das Thema nicht kennt. Nicht abschreiben, sondern in deinen eigenen Worten.')
+                        : __('Was war wichtig in der Stunde? Schreib es so, dass es jemand versteht, der nicht dabei war. Nicht abschreiben, sondern in deinen eigenen Worten.'))
                     ->schema([
                         Textarea::make('summary')
-                            ->label($this->lesson->isPracticeTask() ? "Was du jetzt über „{$this->competencyName()}“ weißt" : 'Zusammenfassung in deinen Worten')
-                            ->helperText('Mindestens '.$this->minimumSummaryLength().' Zeichen. Ein paar ganze Sätze reichen.')
+                            ->label($this->lesson->isPracticeTask() ? __('Was du jetzt über „:competency“ weißt', ['competency' => $this->competencyName()]) : __('Zusammenfassung in deinen Worten'))
+                            ->helperText(__('Mindestens :count Zeichen. Ein paar ganze Sätze reichen.', ['count' => $this->minimumSummaryLength()]))
                             ->required()
                             ->minLength($this->minimumSummaryLength())
                             ->maxLength(5000)
@@ -176,8 +176,8 @@ class WorkOnHomework extends Page
                             ->autosize()
                             ->rules([fn (): Closure => $this->notCopiedFromTheTeacherSummary()])
                             ->validationMessages([
-                                'required' => 'Bitte schreib deine Zusammenfassung.',
-                                'min' => 'Schreib bitte etwas mehr, mindestens :min Zeichen.',
+                                'required' => __('Bitte schreib deine Zusammenfassung.'),
+                                'min' => __('Schreib bitte etwas mehr, mindestens :min Zeichen.'),
                             ]),
                     ]),
             ]);
@@ -194,12 +194,12 @@ class WorkOnHomework extends Page
         return $schema->components([
             $this->simpleLanguageSwitch(),
             Callout::make($this->lesson->isPracticeTask()
-                ? "Schreib in ein paar Sätzen auf, was du jetzt über „{$this->competencyName()}“ weißt – die KI prüft danach, ob du es verstanden hast."
-                : 'Fasse die Stunde in deinen eigenen Worten zusammen – die KI prüft danach, ob du alles verstanden hast.')
-                ->description('So gehst du vor: Lies zuerst die Zusammenfassung deiner Lehrkraft, beantworte dann die Fragen und schreib deine eigene Zusammenfassung ganz unten.')
+                ? __('Schreib in ein paar Sätzen auf, was du jetzt über „:competency“ weißt – die KI prüft danach, ob du es verstanden hast.', ['competency' => $this->competencyName()])
+                : __('Fasse die Stunde in deinen eigenen Worten zusammen – die KI prüft danach, ob du alles verstanden hast.'))
+                ->description(__('So gehst du vor: Lies zuerst die Zusammenfassung deiner Lehrkraft, beantworte dann die Fragen und schreib deine eigene Zusammenfassung ganz unten.'))
                 ->info()
                 ->icon(Heroicon::OutlinedLightBulb),
-            Section::make($this->lesson->isPracticeTask() ? "Zusammenfassung zu „{$this->competencyName()}“" : 'Zusammenfassung der Stunde')
+            Section::make($this->lesson->isPracticeTask() ? __('Zusammenfassung zu „:competency“', ['competency' => $this->competencyName()]) : __('Zusammenfassung der Stunde'))
                 ->icon(Heroicon::OutlinedAcademicCap)
                 ->schema([$this->teacherSummary()]),
             Form::make([EmbeddedSchema::make('form')])
@@ -208,11 +208,11 @@ class WorkOnHomework extends Page
                 ->footer([
                     Actions::make([
                         Action::make('submit')
-                            ->label('Abgeben und prüfen lassen')
+                            ->label(__('Abgeben und prüfen lassen'))
                             ->icon(Heroicon::OutlinedPaperAirplane)
                             ->submit('submit'),
                     ]),
-                    Text::make('Du kannst nur einmal abgeben. Lies deine Antworten vorher in Ruhe durch.'),
+                    Text::make(__('Du kannst nur einmal abgeben. Lies deine Antworten vorher in Ruhe durch.')),
                 ]),
         ]);
     }
@@ -260,7 +260,7 @@ class WorkOnHomework extends Page
     {
         return [
             Action::make('evaluate')
-                ->label('Jetzt auswerten lassen')
+                ->label(__('Jetzt auswerten lassen'))
                 ->icon(Heroicon::OutlinedArrowPath)
                 ->visible(fn (): bool => $this->submission()?->isEvaluated() === false)
                 ->action(fn () => $this->evaluateAndNotify($this->submission())),
@@ -272,7 +272,7 @@ class WorkOnHomework extends Page
             })->visible(fn (): bool => $this->submission()?->isEvaluated() === true
                 && $this->student()->can('createForLesson', [StudentQuestion::class, $this->lesson])),
             Action::make('explain')
-                ->label('Thema Tuto erklären')
+                ->label(__('Thema :tutor erklären', ['tutor' => ExplainIt::TUTOR_NAME]))
                 ->icon(Heroicon::OutlinedChatBubbleLeftRight)
                 ->color('gray')
                 ->url(fn (): string => ExplainIt::getUrl(['lesson' => $this->lesson->getKey()])),
@@ -283,14 +283,16 @@ class WorkOnHomework extends Page
     {
         if ($this->evaluate($submission)) {
             Notification::make()
-                ->title('Geschafft!')
-                ->body('Die KI hat deine '.($this->lesson->isPracticeTask() ? 'Förderaufgabe' : 'Hausaufgabe').' geprüft. Schau dir an, wie es gelaufen ist.')
+                ->title(__('Geschafft!'))
+                ->body($this->lesson->isPracticeTask()
+                    ? __('Die KI hat deine Förderaufgabe geprüft. Schau dir an, wie es gelaufen ist.')
+                    : __('Die KI hat deine Hausaufgabe geprüft. Schau dir an, wie es gelaufen ist.'))
                 ->success()
                 ->send();
         } else {
             Notification::make()
-                ->title('Abgegeben – die Auswertung kommt später')
-                ->body('Deine Antworten sind sicher gespeichert. Die KI konnte sie gerade nicht prüfen.')
+                ->title(__('Abgegeben – die Auswertung kommt später'))
+                ->body(__('Deine Antworten sind sicher gespeichert. Die KI konnte sie gerade nicht prüfen.'))
                 ->warning()
                 ->send();
         }
@@ -344,38 +346,38 @@ class WorkOnHomework extends Page
 
         return [
             $submission->isEvaluated()
-                ? Section::make('Deine Auswertung')
+                ? Section::make(__('Deine Auswertung'))
                     ->icon(Heroicon::OutlinedSparkles)
                     ->afterHeader([$this->scoreBadge($submission->understanding_score)])
-                    ->schema([$this->plainText('feedback', $submission->feedback, 'Rückmeldung der KI')->hiddenLabel()])
-                : Callout::make('Deine Abgabe wird noch ausgewertet')
-                    ->description('Deine Antworten sind gespeichert. Sobald die KI sie geprüft hat, siehst du hier deine Auswertung.')
+                    ->schema([$this->plainText('feedback', $submission->feedback, __('Rückmeldung der KI'))->hiddenLabel()])
+                : Callout::make(__('Deine Abgabe wird noch ausgewertet'))
+                    ->description(__('Deine Antworten sind gespeichert. Sobald die KI sie geprüft hat, siehst du hier deine Auswertung.'))
                     ->warning()
                     ->icon(Heroicon::OutlinedClock),
-            Section::make('Darauf solltest du noch einmal schauen')
+            Section::make(__('Darauf solltest du noch einmal schauen'))
                 ->icon(Heroicon::OutlinedMagnifyingGlass)
                 ->visible(filled($submission->gaps))
                 ->schema([UnorderedList::make($submission->gaps ?? [])->columns(1)]),
-            Section::make('Deine Zusammenfassung')
-                ->schema([$this->plainText('summary', $submission->summary, 'Deine Zusammenfassung')->hiddenLabel()]),
+            Section::make(__('Deine Zusammenfassung'))
+                ->schema([$this->plainText('summary', $submission->summary, __('Deine Zusammenfassung'))->hiddenLabel()]),
             ...$this->lesson->questions->values()->map(function (Question $question, int $index) use ($answers): Section {
                 $answer = $answers->get($question->getKey());
                 $level = $answer?->level === null ? QuestionLevel::Standard : $question->levelFor($answer->level);
 
-                return Section::make('Frage '.($index + 1))
+                return Section::make(__('Frage :number', ['number' => $index + 1]))
                     ->afterHeader(array_filter([
                         $this->typeBadge($question),
-                        $level === QuestionLevel::Standard ? null : Text::make("Stufe {$level->getLabel()}")->badge()->color('gray'),
+                        $level === QuestionLevel::Standard ? null : Text::make(__('Stufe :level', ['level' => $level->getLabel()]))->badge()->color('gray'),
                         $answer?->score === null ? null : $this->scoreBadge($answer->score),
                     ]))
                     ->schema([
                         Text::make($this->promptText($question, $level)),
-                        $this->plainText("answer_{$question->getKey()}", $answer?->answer, 'Deine Antwort'),
-                        $this->plainText("answer_feedback_{$question->getKey()}", $answer?->feedback, 'Rückmeldung')
+                        $this->plainText("answer_{$question->getKey()}", $answer?->answer, __('Deine Antwort')),
+                        $this->plainText("answer_feedback_{$question->getKey()}", $answer?->feedback, __('Rückmeldung'))
                             ->visible(filled($answer?->feedback)),
                     ]);
             })->all(),
-            Section::make($this->lesson->isPracticeTask() ? "So fasst deine Lehrkraft „{$this->competencyName()}“ zusammen" : 'So fasst deine Lehrkraft die Stunde zusammen')
+            Section::make($this->lesson->isPracticeTask() ? __('So fasst deine Lehrkraft „:competency“ zusammen', ['competency' => $this->competencyName()]) : __('So fasst deine Lehrkraft die Stunde zusammen'))
                 ->icon(Heroicon::OutlinedAcademicCap)
                 ->schema([$this->teacherSummary()]),
         ];
@@ -387,11 +389,11 @@ class WorkOnHomework extends Page
     private function teacherSummary(): TextEntry
     {
         return TextEntry::make('lesson_summary')
-            ->label('Zusammenfassung deiner Lehrkraft')
+            ->label(__('Zusammenfassung deiner Lehrkraft'))
             ->hiddenLabel()
             ->state(fn (): ?string => $this->simplified($this->lesson, 'summary_simple', $this->lesson->summary))
             ->markdown()
-            ->placeholder('Deine Lehrkraft hat noch keine Zusammenfassung hinterlegt.');
+            ->placeholder(__('Deine Lehrkraft hat noch keine Zusammenfassung hinterlegt.'));
     }
 
     private function simpleLanguageSwitch(): View
@@ -432,8 +434,8 @@ class WorkOnHomework extends Page
 
             Notification::make()
                 ->warning()
-                ->title('Einfache Sprache ist gerade nicht verfügbar')
-                ->body('Du siehst die Texte deiner Lehrkraft so, wie sie geschrieben sind.')
+                ->title(__('Einfache Sprache ist gerade nicht verfügbar'))
+                ->body(__('Du siehst die Texte deiner Lehrkraft so, wie sie geschrieben sind.'))
                 ->send();
 
             return $source;
@@ -471,7 +473,7 @@ class WorkOnHomework extends Page
             $quadruples = $this->quadruples($words);
 
             if (count(array_intersect_key($quadruples, $teacherQuadruples)) / count($quadruples) >= self::COPY_SHARE) {
-                $fail('Das sieht aus wie aus der Zusammenfassung deiner Lehrkraft abgeschrieben. Schreib es bitte in deinen eigenen Worten.');
+                $fail(__('Das sieht aus wie aus der Zusammenfassung deiner Lehrkraft abgeschrieben. Schreib es bitte in deinen eigenen Worten.'));
             }
         };
     }
@@ -524,7 +526,7 @@ class WorkOnHomework extends Page
     {
         $level = UnderstandingLevel::fromScore($score);
 
-        return Text::make("{$level->getLabel()} · {$score} von 100")
+        return Text::make(__(':level · :score von 100', ['level' => $level->getLabel(), 'score' => $score]))
             ->badge()
             ->color($level->getColor())
             ->icon($level->getIcon());

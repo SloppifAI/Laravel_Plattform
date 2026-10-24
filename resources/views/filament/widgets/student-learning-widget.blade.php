@@ -17,17 +17,16 @@
             <div class="grid gap-8 py-8 ps-12 pe-6 sm:ps-20 md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:pe-10">
                 <div>
                     <h2 id="lp-student-greeting" class="text-3xl font-semibold tracking-tight text-gray-950 sm:text-4xl dark:text-white">
-                        Hallo {{ $firstName }}!
+                        {{ __('Hallo :name!', ['name' => $firstName]) }}
                     </h2>
 
                     <p class="mt-3 max-w-xl text-base text-pretty text-gray-700 sm:text-lg dark:text-gray-300">
                         @if ($openCount === 0)
-                            Gerade ist nichts offen. Neue Hausaufgaben erscheinen hier, sobald deine Lehrkraft sie freigibt.
+                            {{ __('Gerade ist nichts offen. Neue Hausaufgaben erscheinen hier, sobald deine Lehrkraft sie freigibt.') }}
                         @else
-                            Du hast
-                            <strong class="font-semibold text-gray-950 dark:text-white">{{ $openCount }} {{ $openCount === 1 ? 'offene Hausaufgabe' : 'offene Hausaufgaben' }}</strong>.
+                            {!! __('Du hast :homework.', ['homework' => '<strong class="font-semibold text-gray-950 dark:text-white">'.e(trans_choice(':count offene Hausaufgabe|:count offene Hausaufgaben', $openCount)).'</strong>']) !!}
                             @if ($nextHomework->first()['due']['date'])
-                                Die nächste ist bis <mark class="lp-marker">{{ $nextHomework->first()['due']['date'] }}</mark> fällig.
+                                {!! __('Die nächste ist bis :date fällig.', ['date' => '<mark class="lp-marker">'.e($nextHomework->first()['due']['date']).'</mark>']) !!}
                             @endif
                         @endif
                     </p>
@@ -56,7 +55,7 @@
                     </div>
 
                     <figcaption class="grid min-w-44 flex-1 justify-items-start gap-1.5 md:max-w-56 md:flex-none md:justify-items-center">
-                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Dein Verständnis</span>
+                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ __('Dein Verständnis') }}</span>
 
                         @if ($averageLevel)
                             <x-filament::badge :color="$averageLevel['color']" :icon="$averageLevel['icon']" size="lg">
@@ -64,15 +63,15 @@
                             </x-filament::badge>
 
                             <span class="text-sm text-gray-600 dark:text-gray-400">
-                                Durchschnitt aus {{ $evaluatedCount }} {{ $evaluatedCount === 1 ? 'Hausaufgabe' : 'Hausaufgaben' }}
+                                {{ trans_choice('Durchschnitt aus :count Hausaufgabe|Durchschnitt aus :count Hausaufgaben', $evaluatedCount) }}
                             </span>
                         @elseif ($evaluationPending)
                             <span class="text-sm text-gray-600 dark:text-gray-400">
-                                Deine Hausaufgabe ist abgegeben. Die Auswertung kommt später.
+                                {{ __('Deine Hausaufgabe ist abgegeben. Die Auswertung kommt später.') }}
                             </span>
                         @else
                             <span class="text-sm text-gray-600 dark:text-gray-400">
-                                Gib deine erste Hausaufgabe ab, dann siehst du hier, wie gut du das Thema verstanden hast.
+                                {{ __('Gib deine erste Hausaufgabe ab, dann siehst du hier, wie gut du das Thema verstanden hast.') }}
                             </span>
                         @endif
                     </figcaption>
@@ -83,10 +82,10 @@
         {{-- What's due next. --}}
         <section class="lp-card p-6 lg:col-span-2" aria-labelledby="lp-next-homework">
             <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-                <h3 id="lp-next-homework" class="text-base font-semibold text-gray-950 dark:text-white">Als Nächstes fällig</h3>
+                <h3 id="lp-next-homework" class="text-base font-semibold text-gray-950 dark:text-white">{{ __('Als Nächstes fällig') }}</h3>
 
                 <x-filament::link :href="$homeworkUrl" :icon="Heroicon::ArrowRight" icon-position="after" size="sm">
-                    Alle Hausaufgaben
+                    {{ __('Alle Hausaufgaben') }}
                 </x-filament::link>
             </div>
 
@@ -95,8 +94,8 @@
                     <x-filament::icon :icon="Heroicon::OutlinedCheckBadge" class="size-8 shrink-0 text-success-600 dark:text-success-400" />
 
                     <p class="text-sm text-gray-800 dark:text-gray-200">
-                        <span class="font-semibold">Alles erledigt.</span>
-                        Du hast gerade keine offenen Hausaufgaben.
+                        <span class="font-semibold">{{ __('Alles erledigt.') }}</span>
+                        {{ __('Du hast gerade keine offenen Hausaufgaben.') }}
                     </p>
                 </div>
             @else
@@ -126,7 +125,7 @@
                                 </span>
 
                                 @if ($item['due']['date'])
-                                    <span class="sr-only">Fällig am {{ $item['due']['date'] }}</span>
+                                    <span class="sr-only">{{ __('Fällig am :date', ['date' => $item['due']['date']]) }}</span>
                                 @endif
                             </a>
                         </li>
@@ -141,24 +140,24 @@
 
             <x-filament::icon :icon="Heroicon::OutlinedChatBubbleLeftRight" class="size-8 text-primary-100" />
 
-            <h3 id="lp-explain-it" class="mt-4 text-xl font-semibold tracking-tight">Erklär’s mir</h3>
+            <h3 id="lp-explain-it" class="mt-4 text-xl font-semibold tracking-tight">{{ __('Erklär’s mir') }}</h3>
 
             <p class="relative mt-2 text-pretty text-primary-50">
-                Erklär ein Thema mit deinen eigenen Worten. {{ ExplainIt::TUTOR_NAME }}, unsere KI, fragt nach wie ein neugieriges Kind, und du merkst, was du schon richtig gut kannst.
+                {{ __('Erklär ein Thema mit deinen eigenen Worten. :tutor, unsere KI, fragt nach wie ein neugieriges Kind, und du merkst, was du schon richtig gut kannst.', ['tutor' => ExplainIt::TUTOR_NAME]) }}
             </p>
 
             <a
                 href="{{ $explainItUrl }}"
                 class="relative mt-6 inline-flex items-center gap-2 self-start rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-primary-800 transition hover:bg-primary-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white lg:mt-auto"
             >
-                Thema {{ ExplainIt::TUTOR_NAME }} erklären
+                {{ __('Thema :tutor erklären', ['tutor' => ExplainIt::TUTOR_NAME]) }}
                 <x-filament::icon :icon="Heroicon::ArrowRight" class="size-4" />
             </a>
         </section>
 
         {{-- Latest feedback. --}}
         <section class="lp-card p-6 lg:col-span-2" aria-labelledby="lp-latest-feedback">
-            <h3 id="lp-latest-feedback" class="text-base font-semibold text-gray-950 dark:text-white">Letzte Rückmeldung</h3>
+            <h3 id="lp-latest-feedback" class="text-base font-semibold text-gray-950 dark:text-white">{{ __('Letzte Rückmeldung') }}</h3>
 
             @if ($latestFeedback)
                 <div class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
@@ -177,11 +176,11 @@
                 </blockquote>
 
                 <x-filament::link :href="$homeworkUrl" :icon="Heroicon::ArrowRight" icon-position="after" size="sm" class="mt-4">
-                    Zu deinen Hausaufgaben
+                    {{ __('Zu deinen Hausaufgaben') }}
                 </x-filament::link>
             @else
                 <p class="mt-3 text-sm text-gray-600 dark:text-gray-400">
-                    Sobald deine erste Hausaufgabe bewertet ist, steht hier, was schon gut klappt und woran du noch arbeiten kannst.
+                    {{ __('Sobald deine erste Hausaufgabe bewertet ist, steht hier, was schon gut klappt und woran du noch arbeiten kannst.') }}
                 </p>
             @endif
         </section>
@@ -189,10 +188,10 @@
         {{-- Where practising pays off: the three weakest competencies, one next step each. --}}
         <section class="lp-card p-6 lg:col-span-3" aria-labelledby="lp-practice">
             <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-                <h3 id="lp-practice" class="text-base font-semibold text-gray-950 dark:text-white">Hier lohnt sich Üben</h3>
+                <h3 id="lp-practice" class="text-base font-semibold text-gray-950 dark:text-white">{{ __('Hier lohnt sich Üben') }}</h3>
 
                 <x-filament::link :href="$progressUrl" :icon="Heroicon::ArrowRight" icon-position="after" size="sm">
-                    Mein Lernstand
+                    {{ __('Mein Lernstand') }}
                 </x-filament::link>
             </div>
 
@@ -201,8 +200,8 @@
                     <x-filament::icon :icon="Heroicon::OutlinedCheckBadge" class="size-8 shrink-0 text-success-600 dark:text-success-400" />
 
                     <p class="text-sm text-gray-800 dark:text-gray-200">
-                        <span class="font-semibold">Gut gemacht!</span>
-                        Im Moment läuft alles richtig gut.
+                        <span class="font-semibold">{{ __('Gut gemacht!') }}</span>
+                        {{ __('Im Moment läuft alles richtig gut.') }}
                     </p>
                 </div>
             @elseif ($practiceNeeds->isEmpty())
@@ -211,7 +210,7 @@
                     <x-filament::icon :icon="Heroicon::OutlinedSparkles" class="size-8 shrink-0 text-gray-500 dark:text-gray-400" />
 
                     <p class="text-sm text-gray-800 dark:text-gray-200">
-                        Sobald deine Hausaufgaben bewertet sind, siehst du hier, wo sich Üben lohnt.
+                        {{ __('Sobald deine Hausaufgaben bewertet sind, siehst du hier, wo sich Üben lohnt.') }}
                     </p>
                 </div>
             @else
@@ -223,7 +222,7 @@
                                     @if ($need['lesson'])
                                         {{ $need['lesson']->subject }}: {{ $need['lesson']->topic }}
                                     @else
-                                        {{ $need['competency']->subject ?? 'Fachübergreifend' }}
+                                        {{ $need['competency']->subject ?? __('Fachübergreifend') }}
                                     @endif
                                 </span>
                                 <span class="block font-medium text-gray-950 dark:text-white">{{ $need['competency']->name }}</span>
@@ -232,12 +231,12 @@
                             <span class="flex flex-wrap items-center gap-x-4 gap-y-2">
                                 @if ($need['practiceTaskUrl'])
                                     <x-filament::link :href="$need['practiceTaskUrl']" :icon="Heroicon::OutlinedPencilSquare" size="sm">
-                                        Förderaufgabe bearbeiten<span class="sr-only"> zu {{ $need['competency']->name }}</span>
+                                        {{ __('Förderaufgabe bearbeiten') }}<span class="sr-only"> {{ __('zu :competency', ['competency' => $need['competency']->name]) }}</span>
                                     </x-filament::link>
                                 @endif
 
                                 <x-filament::link :href="$need['url']" :icon="Heroicon::OutlinedChatBubbleLeftRight" size="sm">
-                                    Thema {{ ExplainIt::TUTOR_NAME }} erklären<span class="sr-only"> zu {{ $need['competency']->name }}</span>
+                                    {{ __('Thema :tutor erklären', ['tutor' => ExplainIt::TUTOR_NAME]) }}<span class="sr-only"> {{ __('zu :competency', ['competency' => $need['competency']->name]) }}</span>
                                 </x-filament::link>
                             </span>
                         </li>
@@ -254,16 +253,16 @@
                         <x-filament::icon :icon="Heroicon::OutlinedHandRaised" class="size-7 shrink-0 text-primary-600 dark:text-primary-400" />
 
                         <div>
-                            <h3 id="lp-mikro-consent" class="text-base font-semibold text-gray-950 dark:text-white">Tuto-Mikro im Unterricht</h3>
+                            <h3 id="lp-mikro-consent" class="text-base font-semibold text-gray-950 dark:text-white">{{ __('Tuto-Mikro im Unterricht') }}</h3>
 
                             <p class="mt-1 text-sm text-pretty text-gray-600 dark:text-gray-400">
-                                Manchmal schaltet deine Lehrkraft im Unterricht das Tuto-Mikro ein. Hier siehst du, ob das für dich gilt, und sagst selbst, ob du einverstanden bist.
+                                {{ __('Manchmal schaltet deine Lehrkraft im Unterricht das Tuto-Mikro ein. Hier siehst du, ob das für dich gilt, und sagst selbst, ob du einverstanden bist.') }}
                             </p>
                         </div>
                     </div>
 
                     <x-filament::link :href="$consentUrl" :icon="Heroicon::ArrowRight" icon-position="after" size="sm">
-                        Mein Einverständnis
+                        {{ __('Mein Einverständnis') }}
                     </x-filament::link>
                 </div>
             </section>

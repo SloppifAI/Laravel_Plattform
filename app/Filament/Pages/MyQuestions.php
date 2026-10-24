@@ -31,17 +31,31 @@ class MyQuestions extends Page implements HasTable
 
     protected static ?string $slug = 'meine-rueckfragen';
 
-    protected static ?string $title = 'Meine Rückfragen';
-
     protected static string|UnitEnum|null $navigationGroup = NavigationGroup::Lernen;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedQuestionMarkCircle;
 
     protected static ?int $navigationSort = 3;
 
-    protected static string|Htmlable|null $navigationBadgeTooltip = 'Neues von deiner Lehrkraft';
+    public static function getNavigationLabel(): string
+    {
+        return __('Meine Rückfragen');
+    }
 
-    protected ?string $subheading = 'Fragen, die du deiner Lehrkraft gestellt hast, und ihre Antworten.';
+    public function getTitle(): string
+    {
+        return __('Meine Rückfragen');
+    }
+
+    public static function getNavigationBadgeTooltip(): string|Htmlable|null
+    {
+        return __('Neues von deiner Lehrkraft');
+    }
+
+    public function getSubheading(): string|Htmlable|null
+    {
+        return __('Fragen, die du deiner Lehrkraft gestellt hast, und ihre Antworten.');
+    }
 
     public static function canAccess(): bool
     {
@@ -68,44 +82,44 @@ class MyQuestions extends Page implements HasTable
             ->defaultSort(fn (Builder $query): Builder => $query->orderByRaw('(answered_at IS NOT NULL AND read_at IS NULL) DESC')->latest('id'))
             ->columns([
                 TextColumn::make('question')
-                    ->label('Deine Frage')
+                    ->label(__('Deine Frage'))
                     ->description(fn (StudentQuestion $record): ?string => $record->lesson ? "{$record->lesson->subject}: {$record->lesson->topic}" : null, position: 'above')
                     ->weight(FontWeight::Medium)
                     ->extraAttributes(['class' => 'whitespace-pre-line'])
                     ->wrap(),
                 TextColumn::make('answer')
-                    ->label('Antwort')
+                    ->label(__('Antwort'))
                     ->state(fn (StudentQuestion $record): string => match (true) {
-                        $record->isOpen() => 'Noch keine Antwort. Deine Lehrkraft sieht deine Frage in ihren Rückfragen.',
-                        $record->wasMarkedDone() => 'Deine Lehrkraft hat die Frage im Unterricht besprochen oder erledigt.',
+                        $record->isOpen() => __('Noch keine Antwort. Deine Lehrkraft sieht deine Frage in ihren Rückfragen.'),
+                        $record->wasMarkedDone() => __('Deine Lehrkraft hat die Frage im Unterricht besprochen oder erledigt.'),
                         default => $record->answer,
                     })
                     ->description(fn (StudentQuestion $record): ?string => $record->isOpen()
                         ? null
-                        : ($record->answeredBy?->name ?? 'Deine Lehrkraft').', '.$record->answered_at->format('d.m.Y'))
+                        : ($record->answeredBy?->name ?? __('Deine Lehrkraft')).', '.$record->answered_at->format('d.m.Y'))
                     ->extraAttributes(['class' => 'whitespace-pre-line'])
                     ->wrap(),
                 TextColumn::make('status')
-                    ->label('Status')
+                    ->label(__('Status'))
                     ->state(fn (StudentQuestion $record): string => match (true) {
-                        $record->isOpen() => 'Wartet auf Antwort',
-                        $record->wasMarkedDone() => 'Erledigt',
-                        $record->hasUnreadAnswer() => 'Neue Antwort',
-                        default => 'Gelesen',
+                        $record->isOpen() => __('Wartet auf Antwort'),
+                        $record->wasMarkedDone() => __('Erledigt'),
+                        $record->hasUnreadAnswer() => __('Neue Antwort'),
+                        default => __('Gelesen'),
                     })
                     ->badge()
-                    ->color(fn (string $state): string => $state === 'Neue Antwort' ? 'success' : 'gray')
+                    ->color(fn (string $state): string => $state === __('Neue Antwort') ? 'success' : 'gray')
                     ->icon(fn (string $state): Heroicon => match ($state) {
-                        'Wartet auf Antwort' => Heroicon::OutlinedClock,
-                        'Neue Antwort' => Heroicon::OutlinedChatBubbleLeftEllipsis,
-                        'Erledigt' => Heroicon::OutlinedCheckCircle,
+                        __('Wartet auf Antwort') => Heroicon::OutlinedClock,
+                        __('Neue Antwort') => Heroicon::OutlinedChatBubbleLeftEllipsis,
+                        __('Erledigt') => Heroicon::OutlinedCheckCircle,
                         default => Heroicon::OutlinedCheck,
                     })
-                    ->description(fn (StudentQuestion $record): string => 'Gefragt am '.$record->created_at->format('d.m.Y')),
+                    ->description(fn (StudentQuestion $record): string => __('Gefragt am :date', ['date' => $record->created_at->format('d.m.Y')])),
             ])
             ->recordActions([
                 Action::make('markAsRead')
-                    ->label('Gelesen')
+                    ->label(__('Gelesen'))
                     ->icon(Heroicon::OutlinedCheck)
                     ->color('gray')
                     ->authorize('markAsRead')
@@ -113,11 +127,11 @@ class MyQuestions extends Page implements HasTable
                     ->action(fn (StudentQuestion $record): bool => $record->update(['read_at' => now()])),
             ])
             ->emptyStateIcon(Heroicon::OutlinedQuestionMarkCircle)
-            ->emptyStateHeading('Du hast noch keine Rückfragen gestellt')
-            ->emptyStateDescription('Wenn du bei einer Hausaufgabe oder bei „Erklär’s mir“ etwas nicht verstehst, frag deine Lehrkraft. Die Antwort steht dann hier.')
+            ->emptyStateHeading(__('Du hast noch keine Rückfragen gestellt'))
+            ->emptyStateDescription(__('Wenn du bei einer Hausaufgabe oder bei „Erklär’s mir“ etwas nicht verstehst, frag deine Lehrkraft. Die Antwort steht dann hier.'))
             ->emptyStateActions([
-                Action::make('homework')->label('Zu meinen Hausaufgaben')->icon(Heroicon::OutlinedBookOpen)->url(MyHomework::getUrl()),
-                Action::make('explainIt')->label('Zu Erklär’s mir')->icon(Heroicon::OutlinedChatBubbleLeftRight)->url(ExplainIt::getUrl()),
+                Action::make('homework')->label(__('Zu meinen Hausaufgaben'))->icon(Heroicon::OutlinedBookOpen)->url(MyHomework::getUrl()),
+                Action::make('explainIt')->label(__('Zu Erklär’s mir'))->icon(Heroicon::OutlinedChatBubbleLeftRight)->url(ExplainIt::getUrl()),
             ]);
     }
 

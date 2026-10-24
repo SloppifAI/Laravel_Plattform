@@ -36,10 +36,6 @@ class ExplainIt extends Page
 
     protected static ?string $slug = 'erklaer-es-mir';
 
-    protected static ?string $title = 'Erklär’s mir';
-
-    protected static ?string $navigationLabel = 'Erklär’s mir';
-
     protected static string|UnitEnum|null $navigationGroup = NavigationGroup::Lernen;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedChatBubbleLeftRight;
@@ -58,6 +54,16 @@ class ExplainIt extends Page
 
     public string $newMessage = '';
 
+    public static function getNavigationLabel(): string
+    {
+        return __('Erklär’s mir');
+    }
+
+    public function getTitle(): string
+    {
+        return __('Erklär’s mir');
+    }
+
     public static function canAccess(): bool
     {
         return auth()->user()?->isStudent() ?? false;
@@ -75,17 +81,17 @@ class ExplainIt extends Page
         return $schema
             ->components([
                 Select::make('lesson_id')
-                    ->label('Thema aus deinen Hausaufgaben')
-                    ->placeholder('Stunde auswählen')
+                    ->label(__('Thema aus deinen Hausaufgaben'))
+                    ->placeholder(__('Stunde auswählen'))
                     ->options(fn (): array => $this->lessonOptions())
                     ->hidden(fn (Select $component): bool => $component->getOptions() === [])
-                    ->validationMessages(['in' => 'Diese Stunde gehört nicht zu deinen Hausaufgaben.']),
+                    ->validationMessages(['in' => __('Diese Stunde gehört nicht zu deinen Hausaufgaben.')]),
                 TextInput::make('topic')
-                    ->label('Oder ein eigenes Thema')
-                    ->placeholder('z. B. Fotosynthese')
+                    ->label(__('Oder ein eigenes Thema'))
+                    ->placeholder(__('z. B. Fotosynthese'))
                     ->maxLength(255)
                     ->requiredWithout('lesson_id')
-                    ->validationMessages(['required_without' => 'Wähl eine Stunde aus oder schreib ein eigenes Thema auf.']),
+                    ->validationMessages(['required_without' => __('Wähl eine Stunde aus oder schreib ein eigenes Thema auf.')]),
             ])
             ->statePath('data');
     }
@@ -105,7 +111,7 @@ class ExplainIt extends Page
 
         $session->messages()->create([
             'author' => MessageAuthor::Tutor,
-            'content' => sprintf('Hi, ich bin %s und habe von „%s“ noch nie gehört. Erklär’s mir so, dass ich es verstehe!', self::TUTOR_NAME, $session->topic),
+            'content' => __('Hi, ich bin :tutor und habe von „:topic“ noch nie gehört. Erklär’s mir so, dass ich es verstehe!', ['tutor' => self::TUTOR_NAME, 'topic' => $session->topic]),
         ]);
 
         $this->sessionId = $session->getKey();
@@ -118,7 +124,7 @@ class ExplainIt extends Page
 
         $validated = $this->validate(
             ['newMessage' => ['required', 'string', 'max:5000']],
-            ['newMessage.required' => 'Schreib zuerst deine Erklärung.', 'newMessage.max' => 'Das ist zu lang. Teil es lieber in mehrere Nachrichten auf.'],
+            ['newMessage.required' => __('Schreib zuerst deine Erklärung.'), 'newMessage.max' => __('Das ist zu lang. Teil es lieber in mehrere Nachrichten auf.')],
         );
 
         $session->messages()->create(['author' => MessageAuthor::Student, 'content' => trim($validated['newMessage'])]);
@@ -131,8 +137,8 @@ class ExplainIt extends Page
 
             Notification::make()
                 ->danger()
-                ->title(self::TUTOR_NAME.' antwortet gerade nicht.')
-                ->body('Deine Nachricht ist gespeichert. Schreib gleich weiter, dann fragt sie wieder nach.')
+                ->title(__(':tutor antwortet gerade nicht.', ['tutor' => self::TUTOR_NAME]))
+                ->body(__('Deine Nachricht ist gespeichert. Schreib gleich weiter, dann fragt sie wieder nach.'))
                 ->send();
 
             return;
@@ -144,15 +150,15 @@ class ExplainIt extends Page
     public function finishAction(): Action
     {
         return Action::make('finish')
-            ->label('Erklärung beenden')
+            ->label(__('Erklärung beenden'))
             ->icon(Heroicon::OutlinedFlag)
             ->color('gray')
             ->requiresConfirmation()
             ->modalIcon(Heroicon::OutlinedFlag)
-            ->modalHeading('Erklärung beenden?')
-            ->modalDescription(self::TUTOR_NAME.' sagt dir dann, wie gut du das Thema erklärt hast. Danach kannst du hier nichts mehr schreiben.')
-            ->modalSubmitActionLabel('Ja, beenden')
-            ->modalCancelActionLabel('Weiter erklären')
+            ->modalHeading(__('Erklärung beenden?'))
+            ->modalDescription(__(':tutor sagt dir dann, wie gut du das Thema erklärt hast. Danach kannst du hier nichts mehr schreiben.', ['tutor' => self::TUTOR_NAME]))
+            ->modalSubmitActionLabel(__('Ja, beenden'))
+            ->modalCancelActionLabel(__('Weiter erklären'))
             ->action(function (): void {
                 $session = $this->writableSession();
 
@@ -163,8 +169,8 @@ class ExplainIt extends Page
 
                     Notification::make()
                         ->danger()
-                        ->title('Die Auswertung hat gerade nicht geklappt.')
-                        ->body('Deine Erklärung ist gespeichert. Versuch es gleich noch einmal.')
+                        ->title(__('Die Auswertung hat gerade nicht geklappt.'))
+                        ->body(__('Deine Erklärung ist gespeichert. Versuch es gleich noch einmal.'))
                         ->send();
 
                     return;
@@ -200,14 +206,14 @@ class ExplainIt extends Page
     public function deleteSessionAction(): Action
     {
         return Action::make('deleteSession')
-            ->label('Gespräch löschen')
+            ->label(__('Gespräch löschen'))
             ->icon(Heroicon::OutlinedTrash)
             ->color('danger')
             ->requiresConfirmation()
-            ->modalHeading('Gespräch löschen?')
-            ->modalDescription('Das Gespräch wird endgültig gelöscht.')
-            ->modalSubmitActionLabel('Ja, löschen')
-            ->modalCancelActionLabel('Behalten')
+            ->modalHeading(__('Gespräch löschen?'))
+            ->modalDescription(__('Das Gespräch wird endgültig gelöscht.'))
+            ->modalSubmitActionLabel(__('Ja, löschen'))
+            ->modalCancelActionLabel(__('Behalten'))
             ->action(function (array $arguments): void {
                 $session = $this->student()->explanationSessions()->findOrFail($arguments['session'] ?? null);
 
@@ -216,7 +222,7 @@ class ExplainIt extends Page
                 $session->delete();
                 $this->startOver();
 
-                Notification::make()->success()->title('Gespräch gelöscht')->send();
+                Notification::make()->success()->title(__('Gespräch gelöscht'))->send();
             });
     }
 

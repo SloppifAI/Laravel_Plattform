@@ -39,10 +39,10 @@ class HomeworkResultQuestionTest extends TestCase
 
         Livewire::actingAs($this->student)
             ->test(WorkOnHomework::class, ['lesson' => $this->lesson])
-            ->assertSee('Frage an meine Lehrkraft')
+            ->assertSee('Question for my teacher')
             ->callAction('askTeacher', ['question' => '  Warum ist Chlorophyll grün?  '])
             ->assertHasNoActionErrors()
-            ->assertNotified('Deine Frage ist bei deiner Lehrkraft');
+            ->assertNotified('Your question has reached your teacher');
 
         $question = StudentQuestion::sole();
         $this->assertTrue($question->student->is($this->student));
@@ -95,7 +95,7 @@ class HomeworkResultQuestionTest extends TestCase
         Livewire::actingAs($this->student)
             ->test(WorkOnHomework::class, ['lesson' => $this->lesson])
             ->callAction('askTeacher', ['question' => 'Noch eine Frage.'])
-            ->assertNotified('Du hast schon '.StudentQuestion::MAX_OPEN_PER_LESSON.' offene Fragen zu dieser Stunde');
+            ->assertNotified('You already have '.StudentQuestion::MAX_OPEN_PER_LESSON.' open questions about this lesson');
 
         $this->assertSame(StudentQuestion::MAX_OPEN_PER_LESSON, StudentQuestion::query()->count());
 
@@ -104,7 +104,7 @@ class HomeworkResultQuestionTest extends TestCase
         Livewire::actingAs($this->student)
             ->test(WorkOnHomework::class, ['lesson' => $this->lesson])
             ->callAction('askTeacher', ['question' => 'Jetzt wieder.'])
-            ->assertNotified('Deine Frage ist bei deiner Lehrkraft');
+            ->assertNotified('Your question has reached your teacher');
 
         $this->assertSame(StudentQuestion::MAX_OPEN_PER_LESSON + 1, StudentQuestion::query()->count());
     }
@@ -135,7 +135,7 @@ class HomeworkResultQuestionTest extends TestCase
         // While the substitution runs, the substitute reads and answers the questions.
         Livewire::actingAs($this->student)
             ->test(WorkOnHomework::class, ['lesson' => $this->lesson])
-            ->assertSee('Frage an meine Lehrkraft');
+            ->assertSee('Question for my teacher');
 
         $substitution->update(['starts_on' => today()->subDays(10), 'ends_on' => today()->subDays(3)]);
 
@@ -179,13 +179,13 @@ class HomeworkResultQuestionTest extends TestCase
     {
         Livewire::actingAs($this->student)
             ->test(WorkOnHomework::class, ['lesson' => $this->lesson])
-            ->assertDontSee('Frage an meine Lehrkraft')
+            ->assertDontSee('Question for my teacher')
             ->set('mountedActions', [['name' => 'askTeacher', 'arguments' => [], 'context' => [], 'data' => ['question' => 'Zu früh.']]])
             ->call('callMountedAction');
     }
 
     /**
-     * The result page with the modal of "Frage an meine Lehrkraft" open and filled, as the student would have left it.
+     * The result page with the modal of "Question for my teacher" open and filled, as the student would have left it.
      */
     private function pageWithOpenQuestionModal(): Testable
     {

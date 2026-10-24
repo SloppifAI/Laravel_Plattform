@@ -25,7 +25,7 @@ class ExplainItTest extends TestCase
         $this->actingAs(User::factory()->student()->create())
             ->get('/erklaer-es-mir')
             ->assertOk()
-            ->assertSee('Erklär’s mir');
+            ->assertSee('Explain it to me');
 
         $this->actingAs(User::factory()->teacher()->create())->get('/erklaer-es-mir')->assertForbidden();
         $this->actingAs(User::factory()->admin()->create())->get('/erklaer-es-mir')->assertForbidden();

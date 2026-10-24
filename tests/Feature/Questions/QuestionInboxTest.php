@@ -39,7 +39,7 @@ class QuestionInboxTest extends TestCase
 
     public function test_only_teachers_and_the_administration_open_the_inbox(): void
     {
-        $this->actingAs($this->teacher)->get('/rueckfragen')->assertOk()->assertSee('Rückfragen');
+        $this->actingAs($this->teacher)->get('/rueckfragen')->assertOk()->assertSee('Questions for the teacher');
         $this->actingAs(User::factory()->admin()->for($this->school)->create())->get('/rueckfragen')->assertOk();
         $this->actingAs(User::factory()->student()->create())->get('/rueckfragen')->assertForbidden();
         $this->actingAs(User::factory()->operator()->create())->get('/rueckfragen')->assertForbidden();
@@ -83,7 +83,7 @@ class QuestionInboxTest extends TestCase
         Livewire::actingAs($this->teacher)
             ->test(QuestionInbox::class)
             ->assertCanSeeTableRecords([$open, $markedDone, $answered], inOrder: true)
-            ->assertSee(['Offen', 'Beantwortet', 'Erledigt']);
+            ->assertSee(['Open', 'Answered', 'Done']);
     }
 
     public function test_answering_stores_the_answer_and_makes_it_new_for_the_student(): void
@@ -94,7 +94,7 @@ class QuestionInboxTest extends TestCase
             ->test(QuestionInbox::class)
             ->callAction(TestAction::make('answer')->table($question), ['answer' => '  Chlorophyll absorbiert rotes und blaues Licht.  '])
             ->assertHasNoActionErrors()
-            ->assertNotified('Antwort geschickt');
+            ->assertNotified('Answer sent');
 
         $question->refresh();
         $this->assertSame('Chlorophyll absorbiert rotes und blaues Licht.', $question->answer);
@@ -130,7 +130,7 @@ class QuestionInboxTest extends TestCase
         Livewire::actingAs($this->teacher)
             ->test(QuestionInbox::class)
             ->callAction(TestAction::make('markDone')->table($question))
-            ->assertNotified('Frage erledigt');
+            ->assertNotified('Question marked as done');
 
         $question->refresh();
         $this->assertNull($question->answer);

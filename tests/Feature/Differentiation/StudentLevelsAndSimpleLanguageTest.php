@@ -188,12 +188,12 @@ class StudentLevelsAndSimpleLanguageTest extends TestCase
         $submission->answers()->create(['question_id' => $this->plain->id, 'answer' => 'Antwort drei']);
 
         $this->page()
-            ->assertSee('Stufe '.QuestionLevel::Basis->getLabel())
+            ->assertSee('Level '.QuestionLevel::Basis->getLabel())
             ->assertSee('Einstiegsfrage: Was braucht eine Pflanze? Tipp: Denk an Licht.')
             ->assertDontSee('Standardfrage: Was braucht eine Pflanze?')
             ->assertSee('Zweite Standardfrage: Wo wächst Wasserpest?')
-            ->assertDontSee('Stufe '.QuestionLevel::Standard->getLabel())
-            ->assertDontSee('Stufe '.QuestionLevel::Plus->getLabel());
+            ->assertDontSee('Level '.QuestionLevel::Standard->getLabel())
+            ->assertDontSee('Level '.QuestionLevel::Plus->getLabel());
     }
 
     public function test_the_expected_answer_is_never_rendered(): void
@@ -215,8 +215,8 @@ class StudentLevelsAndSimpleLanguageTest extends TestCase
             ->assertOk()
             ->assertSee('role="switch"', false)
             ->assertSee("tuto-einfache-sprache-{$this->student->id}", false)
-            ->assertSee('Einfache Sprache')
-            ->assertSee('Deine eigenen Antworten bleiben, wie du sie schreibst.');
+            ->assertSee('Plain language')
+            ->assertSee('Your own answers stay the way you write them.');
 
         $this->page()->assertSet('simpleLanguage', false);
     }
@@ -363,7 +363,7 @@ class StudentLevelsAndSimpleLanguageTest extends TestCase
         $this->page()
             ->set('simpleLanguage', true)
             ->assertSet('simpleLanguage', false)
-            ->assertNotified('Einfache Sprache ist gerade nicht verfügbar')
+            ->assertNotified('Plain language is not available right now')
             ->assertSee('Offizielle Zusammenfassung der Lehrkraft über die Fotosynthese.')
             ->assertSee('Standardfrage: Was braucht eine Pflanze?');
 
@@ -377,8 +377,8 @@ class StudentLevelsAndSimpleLanguageTest extends TestCase
         $this->page()
             ->set('simpleLanguage', true)
             ->assertSee('Pflanzen brauchen Licht, zum Beispiel von der Sonne. Auch brauchen sie Wasser.')
-            ->assertSee('Demo-Modus: Die einfache Fassung entsteht ohne KI und ist nur ein Beispiel.')
-            ->assertDontSee('schreibt eine KI');
+            ->assertSee('Demo mode: The plain-language version is created without AI and is only an example.')
+            ->assertDontSee('written by an AI');
 
         $this->assertSame('Pflanzen brauchen Licht, zum Beispiel von der Sonne. Auch brauchen sie Wasser.', $this->lesson->refresh()->summary_simple);
     }
@@ -389,8 +389,8 @@ class StudentLevelsAndSimpleLanguageTest extends TestCase
         $this->enableAiFor($this->lesson->schoolClass->school);
 
         $this->page()
-            ->assertSee('Die einfache Fassung schreibt eine KI. Sie sieht nur die Texte deiner Lehrkraft, nie deine Antworten.')
-            ->assertDontSee('Demo-Modus');
+            ->assertSee('The plain-language version is written by an AI. It only sees your teacher’s texts, never your answers.')
+            ->assertDontSee('Demo mode');
     }
 
     public function test_the_switch_is_also_there_once_the_homework_was_handed_in(): void
