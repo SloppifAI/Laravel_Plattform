@@ -6,6 +6,7 @@ use App\Filament\Pages\LessonStarter;
 use App\Filament\Resources\Lessons\Pages\CreateLesson;
 use App\Filament\Resources\Lessons\Pages\EditLesson;
 use App\Models\Answer;
+use App\Models\ClassSubstitution;
 use App\Models\Lesson;
 use App\Models\Question;
 use App\Models\SchoolClass;
@@ -97,6 +98,26 @@ class FollowUpPanelTest extends TestCase
 
         $this->actingAs(User::factory()->admin()->for($this->teacher->school)->create());
         Livewire::test(CreateLesson::class)->fillForm($formData)->assertSee('Frage der Kollegin');
+    }
+
+    public function test_a_substitute_whose_period_is_over_gets_no_results_through_the_panel(): void
+    {
+        $substitute = User::factory()->teacher()->for($this->teacher->school)->create();
+        $substitution = ClassSubstitution::factory()->for($this->schoolClass)->create(['substitute_id' => $substitute->id]);
+        $previous = $this->reviewedLesson($substitute, $this->schoolClass, 'Biologie', '2026-10-01', 'Was ist Mitose?');
+        $draft = Lesson::factory()->for($this->schoolClass)->for($substitute, 'teacher')->create(['subject' => 'Biologie', 'held_on' => '2026-10-08']);
+        $formData = ['school_class_id' => $this->schoolClass->id, 'subject' => 'Biologie', 'held_on' => '2026-10-08'];
+        $this->actingAs($substitute);
+
+        // In the period the panel is there, with the link to the starter board.
+        Livewire::test(EditLesson::class, ['record' => $draft->getRouteKey()])->assertSee('Was ist Mitose?')->assertSee(LessonStarter::getUrl(['lesson' => $previous]));
+
+        $substitution->end();
+
+        // Afterwards neither the lesson page nor a new lesson in that class shows what the class got wrong (the board itself answers 403).
+        Livewire::test(EditLesson::class, ['record' => $draft->getRouteKey()])->assertDontSee('Zum Einstieg wiederholen')->assertDontSee('Was ist Mitose?');
+        Livewire::test(CreateLesson::class)->fillForm($formData)->assertDontSee('Zum Einstieg wiederholen')->assertDontSee('Was ist Mitose?');
+        $this->get(LessonStarter::getUrl(['lesson' => $previous]))->assertForbidden();
     }
 
     public function test_a_class_of_another_school_stays_out_even_with_a_forged_class_id(): void

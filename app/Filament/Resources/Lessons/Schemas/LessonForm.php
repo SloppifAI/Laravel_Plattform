@@ -112,8 +112,9 @@ class LessonForm
 
     /**
      * What the class had not understood in the previous lesson of the chosen subject, to repeat at the start of this
-     * one. Only lessons the acting user may review count (LessonReview checks that); the lesson being edited is no
-     * "previous" lesson of itself.
+     * one. Only lessons the acting user may review count (LessonReview checks that) and whose results they may read
+     * (LessonPolicy::viewResults, like the starter board this panel links to); the lesson being edited is no "previous"
+     * lesson of itself.
      *
      * @return array{previous: Lesson, points: list<array<string, mixed>>}|null
      */
@@ -132,7 +133,7 @@ class LessonForm
 
         $previous = LessonReview::previousLessonFor($class, $subject, $heldOn, $user);
 
-        if ($previous === null || $previous->is($record)) {
+        if ($previous === null || $previous->is($record) || $user->cannot('viewResults', $previous)) {
             return null;
         }
 

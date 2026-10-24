@@ -36,7 +36,8 @@
                     @php($heldOn = $lesson->held_on->copy()->locale('de'))
 
                     {{-- The starter board needs enough evaluated hand-ins, is never offered for a Förderaufgabe (see LessonReview) and only to those who may read the results. --}}
-                    @php($hasStarter = ! $lesson->isPracticeTask() && $lesson->evaluated_submissions_count >= $minReviewGroup && auth()->user()->can('viewResults', $lesson))
+                    @php($canViewResults = auth()->user()->can('viewResults', $lesson))
+                    @php($hasStarter = ! $lesson->isPracticeTask() && $lesson->evaluated_submissions_count >= $minReviewGroup && $canViewResults)
 
                     <li class="-mx-3 flex flex-wrap items-center gap-x-4 rounded-xl px-3 transition hover:bg-gray-50 dark:hover:bg-white/5">
                         <a
@@ -59,9 +60,11 @@
 
                                 @if ($lesson->isPublished())
                                     <span class="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-                                        <span class="text-sm text-gray-700 tabular-nums dark:text-gray-300">
-                                            {{ $lesson->submissions_count }} / {{ $lesson->students_count }} abgegeben
-                                        </span>
+                                        @if ($canViewResults)
+                                            <span class="text-sm text-gray-700 tabular-nums dark:text-gray-300">
+                                                {{ $lesson->submissions_count }} / {{ $lesson->students_count }} abgegeben
+                                            </span>
+                                        @endif
 
                                         <x-filament::badge color="primary" :icon="Heroicon::OutlinedCheckCircle">
                                             Freigegeben{{ $lesson->due_on ? ', fällig '.$lesson->due_on->copy()->locale('de')->isoFormat('D.M.') : '' }}

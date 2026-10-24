@@ -52,10 +52,12 @@ class LessonsTable
                     ->icon(fn (string $state): Heroicon => $state === 'Freigegeben' ? Heroicon::OutlinedCheckCircle : Heroicon::OutlinedClock),
                 TextColumn::make('submissions_count')
                     ->label('Abgegeben')
-                    ->state(fn (Lesson $record): ?string => $record->isPublished() ? "{$record->submissions_count} / {$record->students_count}" : null)
+                    // Hand-in counts and the average are results: for a Förderaufgabe of one student they are that student's own.
+                    ->state(fn (Lesson $record): ?string => $record->isPublished() && auth()->user()->can('viewResults', $record) ? "{$record->submissions_count} / {$record->students_count}" : null)
                     ->placeholder('–'),
                 TextColumn::make('submissions_avg_understanding_score')
                     ->label('Ø Verständnis')
+                    ->state(fn (Lesson $record): float|string|null => auth()->user()->can('viewResults', $record) ? $record->submissions_avg_understanding_score : null)
                     ->badge()
                     ->formatStateUsing(fn (float|string $state): string => round((float) $state).' % · '.$levelOf($state)->getLabel())
                     ->color(fn (float|string $state): string => $levelOf($state)->getColor())

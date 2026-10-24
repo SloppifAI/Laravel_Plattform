@@ -140,7 +140,7 @@ class Today extends Page implements HasTable
                     ->color(fn (Lesson $record): string => $record->questions_count === 0 ? 'gray' : 'primary'),
                 TextColumn::make('submissions_count')
                     ->label('Abgegeben')
-                    ->state(fn (Lesson $record): ?string => $record->isPublished() ? "{$record->submissions_count} / {$record->students_count}" : null)
+                    ->state(fn (Lesson $record): ?string => $record->isPublished() && $this->teacher()->can('viewResults', $record) ? "{$record->submissions_count} / {$record->students_count}" : null)
                     ->placeholder('–'),
             ])
             ->recordUrl(fn (Lesson $record): string => LessonResource::getUrl('edit', ['record' => $record]))

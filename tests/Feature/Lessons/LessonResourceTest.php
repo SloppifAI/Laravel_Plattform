@@ -65,7 +65,7 @@ class LessonResourceTest extends TestCase
 
         // The badge sits under the topic, so it is part of every screen size, the phone cards included.
         $topic = $page->instance()->getTable()->getColumn('topic');
-        $this->assertStringContainsString('Förderaufgabe', $topic->record($practice)->getDescriptionBelow()->toHtml());
+        $this->assertStringContainsString('Practice task', $topic->record($practice)->getDescriptionBelow()->toHtml());
         $this->assertNull($topic->record($waiting)->getDescriptionBelow());
     }
 

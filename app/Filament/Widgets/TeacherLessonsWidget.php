@@ -3,13 +3,15 @@
 namespace App\Filament\Widgets;
 
 use App\Filament\Pages\LearningProgress;
+use App\Filament\Pages\Today;
 use App\Filament\Resources\Lessons\LessonResource;
 use App\Models\User;
 use App\Support\LessonReview;
 use Filament\Widgets\Widget;
 
 /**
- * A teacher's most recent lessons with their status, plus the way to a new lesson and to the class overview.
+ * A teacher's most recent lessons with their status, plus the way to a new lesson, to "Heute" (release the homework of
+ * today's lessons) and to the class overview.
  */
 class TeacherLessonsWidget extends Widget
 {
@@ -48,6 +50,7 @@ class TeacherLessonsWidget extends Widget
                 ->get(),
             'minReviewGroup' => LessonReview::MIN_GROUP,
             'createLessonUrl' => LessonResource::getUrl('create'),
+            'todayUrl' => Today::getUrl(),
             'learningProgressUrl' => LearningProgress::getUrl(),
         ];
     }

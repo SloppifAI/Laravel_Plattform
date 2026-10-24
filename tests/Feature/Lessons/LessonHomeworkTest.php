@@ -200,9 +200,9 @@ class LessonHomeworkTest extends TestCase
         Livewire::test(SubmissionsRelationManager::class, ['ownerRecord' => $lesson, 'pageClass' => EditLesson::class])
             ->assertCanSeeTableRecords([$submission])
             ->assertSee('Noch nicht abgegeben (1): Mia Muster')
-            ->assertSee('80 % · Gut verstanden')
+            ->assertSee('80 % · Well understood')
             ->mountAction(TestAction::make(ViewAction::class)->table($submission))
-            ->assertMountedActionModalSee(['Licht und Wasser', '40 % · Förderbedarf', 'CO2 fehlt.', $submission->gaps[0]]);
+            ->assertMountedActionModalSee(['Licht und Wasser', '40 % · Needs support', 'CO2 fehlt.', $submission->gaps[0]]);
 
         Livewire::test(SubmissionsRelationManager::class, ['ownerRecord' => $lesson, 'pageClass' => EditLesson::class])
             ->callAction(TestAction::make(DeleteAction::class)->table($submission));
@@ -292,6 +292,8 @@ class LessonHomeworkTest extends TestCase
     public function test_the_lessons_teacher_gets_the_starter_board_and_tuto_mikro_in_the_header(): void
     {
         $lesson = Lesson::factory()->publishedFor()->create();
+        // Tuto-Mikro is for a teacher who teaches the class, not for one who only holds a lesson there.
+        $lesson->schoolClass->teachers()->attach($lesson->teacher);
         $practice = Lesson::factory()->create(['practice_competency_id' => Competency::factory()->create()->id]);
 
         Livewire::actingAs($lesson->teacher)->test(EditLesson::class, ['record' => $lesson->getRouteKey()])

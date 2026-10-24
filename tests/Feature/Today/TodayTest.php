@@ -3,6 +3,7 @@
 namespace Tests\Feature\Today;
 
 use App\Ai\LessonAssistant;
+use App\Filament\NavigationGroup;
 use App\Filament\Pages\Today;
 use App\Filament\Resources\Lessons\LessonResource;
 use App\Models\Competency;
@@ -55,7 +56,7 @@ class TodayTest extends TestCase
     public function test_it_is_the_first_entry_of_the_teaching_group(): void
     {
         $this->assertSame('heute', Today::getSlug());
-        $this->assertSame('Unterricht', Today::getNavigationGroup());
+        $this->assertSame(NavigationGroup::Unterricht, Today::getNavigationGroup());
         $this->assertLessThan(LessonResource::getNavigationSort(), Today::getNavigationSort());
         $this->assertStringEndsWith('/heute', Today::getUrl());
     }

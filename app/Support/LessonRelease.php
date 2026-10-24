@@ -43,13 +43,25 @@ final class LessonRelease
             return 0;
         }
 
-        DB::transaction(function () use ($lesson, $dueOn, $recipientIds): void {
+        $released = DB::transaction(function () use ($lesson, $dueOn, $recipientIds): bool {
+            // Read fresh under a row lock: of two releases running at once (two tabs, a double click) the second sees the first one's published_at and does nothing.
+            if (Lesson::query()->lockForUpdate()->whereKey($lesson->getKey())->value('published_at') !== null) {
+                return false;
+            }
+
             $lesson->update(['published_at' => now(), 'due_on' => $dueOn ?? today()->addDays(self::DEFAULT_DUE_DAYS)]);
             $lesson->students()->sync($recipientIds->all());
+
+            return true;
         });
 
+        if (! $released) {
+            return 0;
+        }
+
         // After the commit, so nobody is told about a release that rolled back; the synced students are exactly those reached.
-        Notify::homeworkReleased($lesson, $lesson->students()->get());
+        // The release stands: a failing bell is reported, it must not turn the release into an error (and a retry into a second one).
+        rescue(fn () => Notify::homeworkReleased($lesson, $lesson->students()->get()));
 
         return $recipientIds->count();
     }

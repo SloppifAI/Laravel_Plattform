@@ -52,7 +52,10 @@ class TeacherStatsWidget extends StatsOverviewWidget
             ->published()
             ->where(fn (Builder $query) => $query->whereNull('due_on')->orWhereDate('due_on', '>=', today()))
             ->withCount(['students', 'submissions'])
-            ->get();
+            ->with('schoolClass')
+            ->get()
+            // Hand-in counts are results: not of a class whose results the teacher may no longer read (an ended substitution).
+            ->filter(fn (Lesson $lesson): bool => $teacher->can('viewResults', $lesson));
 
         [$practiceTasks, $homework] = $openLessons->partition(fn (Lesson $lesson): bool => $lesson->isPracticeTask());
 
@@ -73,7 +76,10 @@ class TeacherStatsWidget extends StatsOverviewWidget
 
     protected function lastHomeworkStat(User $teacher): Stat
     {
-        $lastLesson = $teacher->taughtLessons()->published()->whereNull('practice_competency_id')->latest('published_at')->latest('id')->first();
+        // The newest whose results the teacher may read (not one of an ended substitution); lazy, so it stops at the first match.
+        $lastLesson = $teacher->taughtLessons()->published()->whereNull('practice_competency_id')->with('schoolClass')->latest('published_at')->latest('id')
+            ->lazy(20)
+            ->first(fn (Lesson $lesson): bool => $teacher->can('viewResults', $lesson));
         $average = $lastLesson?->submissions()->whereNotNull('evaluated_at')->avg('understanding_score');
 
         $stat = Stat::make('Ø Verständnis der letzten Hausaufgabe', $average === null ? '–' : round($average).' %')
