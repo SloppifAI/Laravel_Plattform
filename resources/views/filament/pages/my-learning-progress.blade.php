@@ -12,6 +12,7 @@
         'down' => ['label' => 'Zuletzt etwas niedriger', 'icon' => Heroicon::OutlinedArrowTrendingDown, 'color' => 'warning'],
     ];
     $hasData = $strengths->isNotEmpty() || $almost->isNotEmpty() || $practice->isNotEmpty();
+    $tutor = ExplainIt::TUTOR_NAME;
 @endphp
 
 <x-filament-panels::page>
@@ -27,7 +28,7 @@
             <dl class="mt-5 flex flex-wrap gap-x-10 gap-y-4">
                 <div class="grid gap-1">
                     <dt class="text-sm text-gray-600 dark:text-gray-400">Dein Verständnis im Durchschnitt</dt>
-                    <dd>@include('filament.pages.insights.score', ['score' => $averageScore, 'withLabel' => true])</dd>
+                    <dd>@include('filament.pages.my-learning-progress.score', ['score' => $averageScore])</dd>
                 </div>
 
                 @if ($trend)
@@ -42,9 +43,9 @@
                 @endif
 
                 <div class="grid gap-1">
-                    <dt class="text-sm text-gray-600 dark:text-gray-400">Das beruht auf</dt>
+                    <dt class="text-sm text-gray-600 dark:text-gray-400">Bisher bewertet</dt>
                     <dd class="font-medium text-gray-950 dark:text-white">
-                        {{ $evaluatedCount }} {{ $evaluatedCount === 1 ? 'bewerteter Hausaufgabe' : 'bewerteten Hausaufgaben' }}
+                        {{ $evaluatedCount }} {{ $evaluatedCount === 1 ? 'Hausaufgabe' : 'Hausaufgaben' }}
                     </dd>
                 </div>
             </dl>
@@ -71,22 +72,22 @@
                         <li wire:key="strength-{{ $strength['competency']->id }}" class="grid content-start gap-1 rounded-xl p-4 ring-1 ring-gray-950/5 dark:ring-white/10">
                             <span class="text-xs text-gray-600 dark:text-gray-400">{{ $strength['competency']->subject ?? 'Fachübergreifend' }}</span>
                             <span class="font-medium text-gray-950 dark:text-white">{{ $strength['competency']->name }}</span>
-                            <span class="text-sm text-gray-600 dark:text-gray-400">{{ Str::limit($strength['competency']->description, 110) }}</span>
-                            <span class="mt-2">@include('filament.pages.insights.score', ['score' => $strength['average'], 'withLabel' => true])</span>
+                            <span class="text-sm text-gray-600 dark:text-gray-400">{{ Str::limit($strength['competency']->description, 110, preserveWords: true) }}</span>
+                            <span class="mt-2">@include('filament.pages.my-learning-progress.score', ['score' => $strength['average']])</span>
                         </li>
                     @endforeach
                 </ul>
             </x-filament::section>
         @endif
 
-        <x-filament::section heading="Hier lohnt sich Üben" description="Bei diesen Themen ist noch Luft nach oben. Mit ein bisschen Übung wird das schnell besser." :icon="Heroicon::OutlinedLightBulb" icon-color="warning">
+        <x-filament::section heading="Hier lohnt sich Üben" :description="'Hier kannst du noch besser werden. Erklär das Thema '.$tutor.', unserer KI, dann merkst du schnell, was schon sitzt.'" :icon="Heroicon::OutlinedLightBulb" icon-color="warning">
             @if ($practice->isEmpty())
                 <div class="flex items-center gap-4 rounded-xl bg-success-50 p-4 dark:bg-success-400/10">
                     <x-filament::icon :icon="Heroicon::OutlinedCheckBadge" class="size-8 shrink-0 text-success-600 dark:text-success-400" />
 
                     <p class="text-sm text-gray-800 dark:text-gray-200">
                         <span class="font-semibold">Gut gemacht!</span>
-                        Im Moment musst du nichts dringend üben.
+                        Im Moment läuft alles richtig gut.
                     </p>
                 </div>
             @else
@@ -98,14 +99,14 @@
                                     <div class="grid min-w-48 flex-1 gap-1">
                                         <span class="text-xs text-gray-600 dark:text-gray-400">{{ $need['competency']->subject ?? 'Fachübergreifend' }}</span>
                                         <h3 id="practice-title-{{ $need['competency']->id }}" class="font-medium text-gray-950 dark:text-white">{{ $need['competency']->name }}</h3>
-                                        <p class="text-sm text-gray-600 dark:text-gray-400">{{ Str::limit($need['competency']->description, 110) }}</p>
+                                        <p class="text-sm text-gray-600 dark:text-gray-400">{{ Str::limit($need['competency']->description, 110, preserveWords: true) }}</p>
                                     </div>
 
-                                    @include('filament.pages.insights.score', ['score' => $need['average'], 'withLabel' => true])
+                                    @include('filament.pages.my-learning-progress.score', ['score' => $need['average']])
                                 </div>
 
                                 @if ($need['lessons']->isNotEmpty())
-                                    <h4 class="mt-5 text-sm font-semibold text-gray-950 dark:text-white">Hier ist es dir aufgefallen</h4>
+                                    <h4 class="mt-5 text-sm font-semibold text-gray-950 dark:text-white">Bei diesen Hausaufgaben hat es noch gehakt</h4>
 
                                     <ul class="mt-2 grid gap-3">
                                         @foreach ($need['lessons'] as $lesson)
@@ -118,20 +119,27 @@
 
                                                 <span class="flex flex-wrap gap-2">
                                                     <x-filament::button tag="a" :href="WorkOnHomework::getUrl(['lesson' => $lesson])" color="gray" size="sm" :icon="Heroicon::OutlinedEye">
-                                                        Ergebnis ansehen
+                                                        Ergebnis ansehen<span class="sr-only"> zu {{ $lesson->topic }}</span>
                                                     </x-filament::button>
 
                                                     <x-filament::button tag="a" :href="ExplainIt::getUrl(['lesson' => $lesson->getKey()])" size="sm" :icon="Heroicon::OutlinedChatBubbleLeftRight">
-                                                        Mit {{ ExplainIt::TUTOR_NAME }} üben
+                                                        Thema {{ $tutor }} erklären<span class="sr-only"> zu {{ $lesson->topic }}</span>
                                                     </x-filament::button>
                                                 </span>
                                             </li>
                                         @endforeach
                                     </ul>
+                                @else
+                                    {{-- Every weak lesson was withdrawn from the student: still offer a way to start. --}}
+                                    <div class="mt-5">
+                                        <x-filament::button tag="a" :href="ExplainIt::getUrl()" size="sm" :icon="Heroicon::OutlinedChatBubbleLeftRight">
+                                            Thema {{ $tutor }} erklären<span class="sr-only"> zu {{ $need['competency']->name }}</span>
+                                        </x-filament::button>
+                                    </div>
                                 @endif
 
                                 @if ($need['gaps'])
-                                    <h4 class="mt-5 text-sm font-semibold text-gray-950 dark:text-white">Darauf solltest du noch einmal schauen</h4>
+                                    <h4 class="mt-5 text-sm font-semibold text-gray-950 dark:text-white">Das kannst du dir in diesen Hausaufgaben noch einmal anschauen</h4>
 
                                     <ul class="mt-2 list-disc ps-5 text-sm text-gray-700 dark:text-gray-300">
                                         @foreach ($need['gaps'] as $gap)
@@ -153,8 +161,12 @@
                         <li wire:key="almost-{{ $near['competency']->id }}" class="grid content-start gap-1 rounded-xl p-4 ring-1 ring-gray-950/5 dark:ring-white/10">
                             <span class="text-xs text-gray-600 dark:text-gray-400">{{ $near['competency']->subject ?? 'Fachübergreifend' }}</span>
                             <span class="font-medium text-gray-950 dark:text-white">{{ $near['competency']->name }}</span>
-                            <span class="text-sm text-gray-600 dark:text-gray-400">{{ Str::limit($near['competency']->description, 110) }}</span>
-                            <span class="mt-2">@include('filament.pages.insights.score', ['score' => $near['average'], 'withLabel' => true])</span>
+                            <span class="text-sm text-gray-600 dark:text-gray-400">{{ Str::limit($near['competency']->description, 110, preserveWords: true) }}</span>
+                            <span class="mt-2">@include('filament.pages.my-learning-progress.score', ['score' => $near['average']])</span>
+
+                            <x-filament::link :href="ExplainIt::getUrl()" :icon="Heroicon::OutlinedChatBubbleLeftRight" size="sm" class="mt-2 w-fit">
+                                Thema {{ $tutor }} erklären<span class="sr-only"> zu {{ $near['competency']->name }}</span>
+                            </x-filament::link>
                         </li>
                     @endforeach
                 </ul>
