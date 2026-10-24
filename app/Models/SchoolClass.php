@@ -4,9 +4,11 @@ namespace App\Models;
 
 use Database\Factories\SchoolClassFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
@@ -65,6 +67,50 @@ class SchoolClass extends Model
     public function teacher(): BelongsTo
     {
         return $this->belongsTo(User::class, 'teacher_id');
+    }
+
+    /**
+     * The teachers the administration assigned to the class besides the Klassenleitung, who teaches it anyway
+     * (see isTaughtBy()).
+     *
+     * @return BelongsToMany<User, $this>
+     */
+    public function teachers(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'school_class_teacher')->withTimestamps();
+    }
+
+    /**
+     * Substitutions of the class, past, current and upcoming (see ClassSubstitution).
+     *
+     * @return HasMany<ClassSubstitution, $this>
+     */
+    public function substitutions(): HasMany
+    {
+        return $this->hasMany(ClassSubstitution::class);
+    }
+
+    /**
+     * The classes a teacher teaches: the ones they lead, the ones they are assigned to and the ones they substitute in
+     * today, always within their school. This decides which classes a teacher may create lessons in and whose learning
+     * data they see; an expired or not yet started substitution grants nothing.
+     *
+     * @param  Builder<SchoolClass>  $query
+     */
+    public function scopeTaughtBy(Builder $query, User $teacher): void
+    {
+        // Both conditions together match nothing for a user without a school, instead of "school_id IS NULL".
+        $query->whereNotNull('school_classes.school_id')
+            ->where('school_classes.school_id', $teacher->school_id)
+            ->where(fn (Builder $query) => $query
+                ->where('school_classes.teacher_id', $teacher->getKey())
+                ->orWhereHas('teachers', fn (Builder $teachers) => $teachers->whereKey($teacher->getKey()))
+                ->orWhereHas('substitutions', fn (Builder $substitutions) => $substitutions->active()->where('class_substitutions.substitute_id', $teacher->getKey())));
+    }
+
+    public function isTaughtBy(User $teacher): bool
+    {
+        return static::query()->taughtBy($teacher)->whereKey($this->getKey())->exists();
     }
 
     /**

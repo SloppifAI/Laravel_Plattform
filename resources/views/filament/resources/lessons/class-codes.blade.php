@@ -30,7 +30,7 @@
         </dl>
     @empty
         <p class="text-sm text-gray-600 dark:text-gray-400">
-            Du leitest noch keine Klasse. Die Schulverwaltung kann dir einen Klassencode geben.
+            Dir ist noch keine Klasse zugeordnet. Die Schulverwaltung kann dir eine Klasse zuweisen, dann erscheint hier ihr Klassencode.
         </p>
     @endforelse
 </div>

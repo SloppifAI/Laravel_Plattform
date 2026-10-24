@@ -2,10 +2,13 @@
 
 namespace App\Filament\Resources\SchoolClasses;
 
+use App\Filament\NavigationGroup;
 use App\Filament\Resources\SchoolClasses\Pages\CreateSchoolClass;
 use App\Filament\Resources\SchoolClasses\Pages\EditSchoolClass;
 use App\Filament\Resources\SchoolClasses\Pages\ListSchoolClasses;
 use App\Filament\Resources\SchoolClasses\RelationManagers\StudentsRelationManager;
+use App\Filament\Resources\SchoolClasses\RelationManagers\SubstitutionsRelationManager;
+use App\Filament\Resources\SchoolClasses\RelationManagers\TeachersRelationManager;
 use App\Filament\Resources\SchoolClasses\Schemas\SchoolClassForm;
 use App\Filament\Resources\SchoolClasses\Tables\SchoolClassesTable;
 use App\Models\SchoolClass;
@@ -23,7 +26,7 @@ class SchoolClassResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedUserGroup;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Verwaltung';
+    protected static string|UnitEnum|null $navigationGroup = NavigationGroup::Verwaltung;
 
     protected static ?int $navigationSort = 2;
 
@@ -61,6 +64,8 @@ class SchoolClassResource extends Resource
     {
         return [
             StudentsRelationManager::class,
+            TeachersRelationManager::class,
+            SubstitutionsRelationManager::class,
         ];
     }
 

@@ -24,6 +24,10 @@ class SchoolClassesTable
                     ->placeholder('Noch keine')
                     ->searchable()
                     ->sortable(),
+                TextColumn::make('teachers_count')
+                    ->label('Weitere Lehrkräfte')
+                    ->counts('teachers')
+                    ->sortable(),
                 TextColumn::make('join_code')
                     ->label('Klassencode')
                     ->fontFamily(FontFamily::Mono)
