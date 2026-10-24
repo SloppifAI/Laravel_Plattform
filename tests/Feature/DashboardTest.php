@@ -2,7 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Filament\Pages\MyRecordingConsent;
 use App\Filament\Widgets\AdminStatsWidget;
+use App\Filament\Widgets\StudentLearningWidget;
 use App\Filament\Widgets\TeacherStatsWidget;
 use App\Models\Answer;
 use App\Models\Competency;
@@ -15,11 +17,22 @@ use App\Models\User;
 use App\Role;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
+use Tests\Feature\Consents\CreatesConsentFixtures;
 use Tests\TestCase;
 
 class DashboardTest extends TestCase
 {
+    use CreatesConsentFixtures;
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // The dashboards are German; the suite runs in English wherever a text is translated.
+        config(['lernplattform.locale.default' => 'de']);
+        app()->setLocale('de');
+    }
 
     public function test_students_see_their_own_homework_score_and_feedback_only(): void
     {
@@ -66,6 +79,35 @@ class DashboardTest extends TestCase
             ->assertSee('Alles erledigt.')
             ->assertSee('Gib deine erste Hausaufgabe ab')
             ->assertSee('Sobald deine Hausaufgaben bewertet sind');
+    }
+
+    public function test_students_find_their_consent_overview_where_their_school_asks_for_their_agreement(): void
+    {
+        [, $students] = $this->classWithStudents($this->schoolWithRecordings(requireStudentConsent: true), 1);
+
+        Livewire::actingAs($students->first())
+            ->test(StudentLearningWidget::class)
+            ->assertSee(['Tuto-Mikro im Unterricht', 'Mein Einverständnis'])
+            ->assertSeeHtml('href="'.MyRecordingConsent::getUrl().'"');
+
+        $this->actingAs($students->first())->get('/')->assertOk()->assertSee('Mein Einverständnis');
+    }
+
+    public function test_the_consent_link_stays_away_where_the_page_is_not_open_to_the_student(): void
+    {
+        $withoutStudentConsent = $this->classWithStudents($this->schoolWithRecordings(), 1)[1]->first();
+        $withoutTutoMikro = User::factory()->student()->create();
+
+        foreach ([$withoutStudentConsent, $withoutTutoMikro] as $student) {
+            $this->actingAs($student);
+            $this->assertFalse(MyRecordingConsent::canAccess());
+
+            Livewire::actingAs($student)
+                ->test(StudentLearningWidget::class)
+                ->assertSee('Hallo')
+                ->assertDontSee('Mein Einverständnis')
+                ->assertDontSeeHtml(MyRecordingConsent::getUrl());
+        }
     }
 
     public function test_teachers_see_figures_and_recent_lessons_of_their_own_lessons(): void

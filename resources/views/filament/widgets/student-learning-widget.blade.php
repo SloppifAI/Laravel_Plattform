@@ -245,5 +245,28 @@
                 </ul>
             @endif
         </section>
+
+        {{-- Only for schools that ask the students themselves: the way to their own say on Tuto-Mikro. --}}
+        @if ($consentUrl)
+            <section class="lp-card p-6 lg:col-span-3" aria-labelledby="lp-mikro-consent">
+                <div class="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+                    <div class="flex min-w-64 flex-1 items-start gap-4">
+                        <x-filament::icon :icon="Heroicon::OutlinedHandRaised" class="size-7 shrink-0 text-primary-600 dark:text-primary-400" />
+
+                        <div>
+                            <h3 id="lp-mikro-consent" class="text-base font-semibold text-gray-950 dark:text-white">Tuto-Mikro im Unterricht</h3>
+
+                            <p class="mt-1 text-sm text-pretty text-gray-600 dark:text-gray-400">
+                                Manchmal schaltet deine Lehrkraft im Unterricht das Tuto-Mikro ein. Hier siehst du, ob das für dich gilt, und sagst selbst, ob du einverstanden bist.
+                            </p>
+                        </div>
+                    </div>
+
+                    <x-filament::link :href="$consentUrl" :icon="Heroicon::ArrowRight" icon-position="after" size="sm">
+                        Mein Einverständnis
+                    </x-filament::link>
+                </div>
+            </section>
+        @endif
     </div>
 </x-filament-widgets::widget>

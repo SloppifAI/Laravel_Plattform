@@ -3,14 +3,24 @@
 namespace Tests\Feature;
 
 use App\Filament\Pages\Auth\Login;
+use App\Filament\Pages\ClassBook;
 use App\Filament\Pages\LearningProgress;
 use App\Filament\Pages\MyHomework;
+use App\Filament\Pages\MyQuestions;
 use App\Filament\Pages\ParentReport;
+use App\Filament\Pages\QuestionInbox;
+use App\Filament\Pages\Substitutions;
 use App\Filament\Pages\WorkOnHomework;
+use App\Filament\Resources\SchoolClasses\Schemas\SubstitutionForm;
+use App\Models\ClassBookEntry;
+use App\Models\ClassSubstitution;
 use App\Models\Lesson;
+use App\Models\Question;
 use App\Models\School;
 use App\Models\SchoolClass;
+use App\Models\StudentQuestion;
 use App\Models\User;
+use App\QuestionLevel;
 use App\Role;
 use App\Support\LearningInsights;
 use Database\Seeders\DatabaseSeeder;
@@ -24,7 +34,17 @@ class DemoSeederTest extends TestCase
 {
     use RefreshDatabase;
 
-    private const array TABLES = ['schools', 'users', 'school_classes', 'competencies', 'lessons', 'questions', 'lesson_user', 'submissions', 'answers', 'explanation_sessions', 'explanation_messages'];
+    private const array TABLES = ['schools', 'users', 'school_classes', 'competencies', 'lessons', 'questions', 'lesson_user', 'submissions', 'answers', 'explanation_sessions', 'explanation_messages', 'class_book_entries', 'class_substitutions', 'student_questions', 'notifications'];
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // The demo texts and the pages that show them are German; the suite runs in English wherever a text is translated,
+        // and a bell text is stored in the recipient's language when it is sent.
+        config(['lernplattform.locale.default' => 'de']);
+        app()->setLocale('de');
+    }
 
     public function test_seeding_twice_creates_no_duplicates(): void
     {
@@ -35,9 +55,13 @@ class DemoSeederTest extends TestCase
 
         $this->assertSame($countsAfterFirstRun, $this->rowCounts());
         $this->assertSame(2, $countsAfterFirstRun['schools']);
-        $this->assertSame(20, $countsAfterFirstRun['users']);
+        $this->assertSame(21, $countsAfterFirstRun['users']);
         $this->assertSame(3, $countsAfterFirstRun['school_classes']);
         $this->assertSame(6, $countsAfterFirstRun['lessons']);
+        $this->assertSame(2, $countsAfterFirstRun['class_book_entries']);
+        $this->assertSame(1, $countsAfterFirstRun['class_substitutions']);
+        $this->assertSame(2, $countsAfterFirstRun['student_questions']);
+        $this->assertSame(4, $countsAfterFirstRun['notifications']);
     }
 
     public function test_the_demo_schools_always_have_the_current_dpa_accepted_once(): void
@@ -66,6 +90,7 @@ class DemoSeederTest extends TestCase
             'schulleitung' => Role::Admin,
             'lehrer' => Role::Teacher,
             'weber' => Role::Teacher,
+            'lindner' => Role::Teacher,
             'schueler' => Role::Student,
             'gym-admin' => Role::Admin,
             'gym-lehrer' => Role::Teacher,
@@ -127,7 +152,7 @@ class DemoSeederTest extends TestCase
         $this->assertSame(['7a', '7b'], $lernpark->schoolClasses()->orderBy('name')->pluck('name')->all());
         $this->assertSame(['8c'], $gymnasium->schoolClasses()->pluck('name')->all());
         $this->assertSame(['gym-admin', 'gym-lehrer', 'gym-schueler1', 'gym-schueler2'], $gymnasium->users()->orderBy('username')->pluck('username')->all());
-        $this->assertSame(15, $lernpark->users()->count());
+        $this->assertSame(16, $lernpark->users()->count());
 
         foreach (User::query()->whereNotNull('school_class_id')->with('schoolClass')->get() as $student) {
             $this->assertSame($student->schoolClass->school_id, $student->school_id, $student->username);
@@ -254,11 +279,158 @@ class DemoSeederTest extends TestCase
             ->assertSee(['Steigend', 'Offen', 'Noch nicht abgeschlossen', 'Probleme mathematisch lösen (Mathematik): 38 Punkte']);
     }
 
+    public function test_class_7b_has_a_confirmed_and_a_draft_klassenbuch_entry_with_one_absence(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+        $anna = $this->account('lehrer');
+
+        $entries = ClassBookEntry::query()->get()->keyBy('topic');
+        $this->assertCount(2, $entries);
+
+        $confirmed = $entries['Fotosynthese'];
+        $this->assertSame('7b', $confirmed->schoolClass->name);
+        $this->assertSame($anna->id, $confirmed->teacher_id);
+        $this->assertTrue($confirmed->isConfirmed());
+        $this->assertTrue($confirmed->isComplete());
+        $this->assertSame([], $confirmed->absent_student_ids);
+
+        $draft = $entries['Satz des Pythagoras'];
+        $this->assertFalse($draft->isConfirmed());
+        $this->assertTrue($draft->isComplete());
+        $this->assertSame(['Emma Fischer'], $draft->absentStudents()->pluck('name')->all());
+
+        Livewire::actingAs($anna)
+            ->test(ClassBook::class)
+            ->assertCanSeeTableRecords($entries->values())
+            ->assertSee('Emma Fischer');
+
+        $draft->forceFill(['content' => 'Von Hand geändert.'])->save();
+        $this->seed(DatabaseSeeder::class);
+
+        $this->assertSame('Von Hand geändert.', $draft->refresh()->content);
+    }
+
+    public function test_sabine_lindner_covers_7b_for_a_few_days_from_today(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+
+        $substitution = ClassSubstitution::query()->sole();
+
+        $this->assertSame('lindner', $substitution->substitute->username);
+        $this->assertSame('7b', $substitution->schoolClass->name);
+        $this->assertSame('lehrer', $substitution->grantedBy->username);
+        $this->assertTrue($substitution->isActive());
+        $this->assertTrue($substitution->starts_on->isToday());
+        $this->assertSame(3, (int) $substitution->starts_on->diffInDays($substitution->ends_on));
+        $this->assertNotEmpty($substitution->note);
+
+        Livewire::actingAs($this->account('lindner'))->test(Substitutions::class)->assertCanSeeTableRecords([$substitution]);
+        Livewire::actingAs($this->account('lehrer'))->test(Substitutions::class)->assertCanSeeTableRecords([$substitution]);
+    }
+
+    /**
+     * The demo shows only what the form can produce: its substitute options leave out the Klassenleitung and every
+     * assigned teacher, so the demo substitute may not be one of them (Thomas Weber is, and stays that).
+     */
+    public function test_the_demo_substitute_is_a_teacher_the_form_would_offer_for_7b(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+
+        $class7b = SchoolClass::query()->where('name', '7b')->sole();
+        $lindner = $this->account('lindner');
+
+        $this->assertFalse($class7b->teachers()->whereKey($lindner->id)->exists());
+        $this->assertNotSame($lindner->id, $class7b->teacher_id);
+        $this->assertSame([$lindner->id], array_keys(SubstitutionForm::substituteOptions($class7b)));
+        $this->assertTrue($class7b->isTaughtBy($lindner));
+    }
+
+    public function test_a_running_demo_vertretung_is_left_alone_and_one_that_ran_out_is_renewed(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+        $substitution = ClassSubstitution::query()->sole();
+
+        $substitution->forceFill(['ends_on' => today()->addDay()])->save();
+        $this->seed(DatabaseSeeder::class);
+
+        $this->assertTrue($substitution->refresh()->ends_on->isTomorrow());
+
+        $substitution->forceFill(['starts_on' => today()->subDays(5), 'ends_on' => today()->subDay()])->save();
+        $this->seed(DatabaseSeeder::class);
+
+        $this->assertSame(1, ClassSubstitution::query()->count());
+        $this->assertTrue($substitution->refresh()->isActive());
+    }
+
+    public function test_mia_has_an_open_and_an_answered_rueckfrage(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+        $mia = $this->account('schueler');
+        $anna = $this->account('lehrer');
+
+        $questions = StudentQuestion::query()->with(['lesson', 'explanationSession'])->get();
+        $this->assertSame([$mia->id], $questions->pluck('student_id')->unique()->all());
+
+        $open = $questions->filter->isOpen()->sole();
+        $this->assertSame('Satz des Pythagoras', $open->lesson->topic);
+        $this->assertSame($open->lesson->topic, $open->explanationSession->topic);
+
+        $answered = $questions->reject->isOpen()->sole();
+        $this->assertSame('Fotosynthese', $answered->lesson->topic);
+        $this->assertSame($anna->id, $answered->answered_by);
+        $this->assertTrue($answered->hasUnreadAnswer());
+        $this->assertNotEmpty($answered->answer);
+
+        Livewire::actingAs($anna)->test(QuestionInbox::class)->assertCanSeeTableRecords($questions);
+        Livewire::actingAs($mia)->test(MyQuestions::class)->assertCanSeeTableRecords($questions);
+    }
+
+    public function test_the_questions_of_pythagoras_come_in_three_levels_and_those_of_other_lessons_do_not(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+
+        $pythagoras = Lesson::query()->where('topic', 'Satz des Pythagoras')->sole();
+        $this->assertCount(3, $pythagoras->questions);
+
+        foreach ($pythagoras->questions as $question) {
+            $this->assertSame([QuestionLevel::Basis, QuestionLevel::Standard, QuestionLevel::Plus], $question->availableLevels());
+        }
+
+        $this->assertFalse(Question::query()->whereNot('lesson_id', $pythagoras->id)->get()->contains->hasLevels());
+
+        $this->actingAs($this->account('schueler'))
+            ->get(WorkOnHomework::getUrl(['lesson' => $pythagoras]))
+            ->assertOk()
+            ->assertSee(['Einstieg', 'Profi']);
+    }
+
+    public function test_the_demo_teacher_and_mia_find_entries_in_their_bell_and_nobody_else_does(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+
+        $titles = fn (string $username): array => $this->account($username)->notifications->pluck('data.title')->sort()->values()->all();
+
+        $this->assertSame([
+            '3 neue Abgaben zu „Satz des Pythagoras“',
+            'Neue Frage zu „Satz des Pythagoras“',
+        ], $titles('lehrer'));
+        $this->assertSame([
+            'Deine Frage zu „Fotosynthese“ wurde beantwortet',
+            'Neue Hausaufgabe: „Satz des Pythagoras“',
+        ], $titles('schueler'));
+        $this->assertSame(4, DB::table('notifications')->count());
+    }
+
     public function test_seeders_do_not_depend_on_dev_packages(): void
     {
         foreach (glob(database_path('seeders/*.php')) as $seeder) {
             $this->assertDoesNotMatchRegularExpression('/::factory\(|\bfake\(|Faker/', file_get_contents($seeder), basename($seeder));
         }
+    }
+
+    private function account(string $username): User
+    {
+        return User::query()->where('username', $username)->sole();
     }
 
     /**

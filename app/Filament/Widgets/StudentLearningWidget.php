@@ -5,6 +5,7 @@ namespace App\Filament\Widgets;
 use App\Filament\Pages\ExplainIt;
 use App\Filament\Pages\MyHomework;
 use App\Filament\Pages\MyLearningProgress;
+use App\Filament\Pages\MyRecordingConsent;
 use App\Filament\Pages\WorkOnHomework;
 use App\Models\Lesson;
 use App\Models\Submission;
@@ -87,6 +88,8 @@ class StudentLearningWidget extends Widget
             'latestFeedbackLevel' => $latestFeedback ? LearningInsights::studentLevel((int) $latestFeedback->understanding_score) : null,
             'homeworkUrl' => MyHomework::getUrl(),
             'explainItUrl' => ExplainIt::getUrl(),
+            // Only where the school asks students for their own agreement to Tuto-Mikro; elsewhere the page is a 403.
+            'consentUrl' => MyRecordingConsent::canAccess() ? MyRecordingConsent::getUrl() : null,
         ];
     }
 

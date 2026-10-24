@@ -3,22 +3,26 @@
 namespace Database\Seeders;
 
 use App\MessageAuthor;
+use App\Models\ClassSubstitution;
 use App\Models\Competency;
 use App\Models\ExplanationSession;
 use App\Models\Lesson;
 use App\Models\School;
 use App\Models\SchoolClass;
+use App\Models\StudentQuestion;
 use App\Models\Submission;
 use App\Models\User;
 use App\QuestionType;
 use App\Role;
+use App\Support\ClassBookDraft;
+use App\Support\Notify;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Two demo schools. "Gesamtschule am Lernpark" has a school administration (schulleitung), two teachers, classes 7a and 7b
+ * Two demo schools. "Gesamtschule am Lernpark" has a school administration (schulleitung), three teachers, classes 7a and 7b
  * and lessons in every state (draft, homework with results, open homework, homework for selected students, an open
  * Förderaufgabe for the competency Emilian and Ben need support in) plus "Erklär's mir" sessions for Emilian (login schueler). "Gymnasium Musterstadt" is a small second school
  * (gym-admin, one teacher, one class, one lesson) that shows what the schools cannot see of each other.
@@ -27,6 +31,11 @@ use Illuminate\Support\Facades\DB;
  * Accounts are updated on every run, which also moves demo accounts and classes of databases from before the schools
  * existed into the demo school. Lessons and sessions are only created when missing, so changes made while trying out
  * the platform survive re-seeding.
+ *
+ * Class 7b also shows the newer features: a confirmed and a draft Klassenbuch entry (one absence), a running Vertretung
+ * by Sabine Lindner, an open and an answered Rückfrage of Emilian, Einstieg and Profi levels on the questions of "Satz des
+ * Pythagoras" and a few bell notifications for Frau Sommer and Emilian. Like the lessons, all of it is only created when
+ * missing; the notifications only for a person who has none yet, and a Vertretung that has run out is renewed from today.
  */
 class DemoSchoolSeeder extends Seeder
 {
@@ -42,6 +51,7 @@ class DemoSchoolSeeder extends Seeder
             $this->acceptDpa($school, $admin);
             $anna = $this->user('lehrer', 'Frau Sommer', Role::Teacher, $school);
             $weber = $this->user('weber', 'Thomas Weber', Role::Teacher, $school);
+            $lindner = $this->user('lindner', 'Sabine Lindner', Role::Teacher, $school);
 
             $class7b = $this->schoolClass($school, '7b', $anna);
             $class7a = $this->schoolClass($school, '7a', $weber);
@@ -70,6 +80,12 @@ class DemoSchoolSeeder extends Seeder
             $pythagoras = $this->seedPythagoras($class7b, $anna, $students7b);
             $this->seedFrenchRevolution($class7b, $anna);
             $this->seedExplanationSessions($students7b['schueler'], $photosynthesis, $pythagoras);
+
+            $this->seedLevelVariants($pythagoras);
+            $this->seedClassBook($photosynthesis, $pythagoras, $students7b['emma.fischer']);
+            $this->seedSubstitution($class7b, $anna, $lindner);
+            [$openQuestion, $answeredQuestion] = $this->seedStudentQuestions($students7b['schueler'], $photosynthesis, $pythagoras, $anna);
+            $this->seedNotifications($anna, $students7b['schueler'], $pythagoras, $openQuestion, $answeredQuestion);
 
             $this->seedGymnasium();
         });
@@ -623,6 +639,151 @@ class DemoSchoolSeeder extends Seeder
 
         foreach ($messages as [$author, $content]) {
             $session->messages()->create(['author' => $author, 'content' => $content]);
+        }
+    }
+
+    /**
+     * The questions of "Satz des Pythagoras" get an Einstieg and a Profi level next to the Standard text, with the same
+     * Erwartungshorizont. Only questions without any level are filled, so levels the teacher wrote survive re-seeding.
+     */
+    private function seedLevelVariants(Lesson $lesson): void
+    {
+        $levels = [
+            [
+                'Schreibe die Formel des Satzes des Pythagoras auf. Welche Seite im Dreieck ist die Hypotenuse, und wo liegt sie?',
+                'Formuliere den Satz des Pythagoras in Worten und als Formel. Erkläre, warum er nur für rechtwinklige Dreiecke gilt, und nenne ein Gegenbeispiel, an dem man das überprüfen kann.',
+            ],
+            [
+                'Eine 5 m lange Leiter lehnt an einer Hauswand. Ihr Fuß steht 1,40 m von der Wand entfernt. Zeichne zuerst eine Skizze und markiere den rechten Winkel. Welche Seite ist die Hypotenuse? Berechne dann, in welcher Höhe die Leiter die Wand berührt.',
+                'Eine 5 m lange Leiter lehnt an einer Hauswand, ihr Fuß steht 1,40 m von der Wand entfernt. Berechne, in welcher Höhe sie die Wand berührt, und runde auf Zentimeter. Prüfe dein Ergebnis mit einer Probe und begründe, warum die Höhe nie größer als die Leiterlänge sein kann.',
+            ],
+            [
+                'Elif dachte zuerst, die Quadrat-Regel klappt bei jedem Dreieck. Wie hat eure Gruppe das überprüft? Schreibe zwei oder drei Sätze.',
+                'Elif war zuerst sicher, dass die Quadrat-Regel bei jedem Dreieck klappt. Wie hat eure Gruppe das überprüft, und warum genügt ein einziges Gegenbeispiel, um eine allgemeine Behauptung zu widerlegen?',
+            ],
+        ];
+
+        foreach ($lesson->questions as $index => $question) {
+            if (! $question->hasLevels() && isset($levels[$index])) {
+                $question->update(['prompt_basis' => $levels[$index][0], 'prompt_plus' => $levels[$index][1]]);
+            }
+        }
+    }
+
+    /**
+     * The Klassenbuch of 7b: the Biologie lesson as a confirmed entry, the Mathe lesson as a draft that still has to be
+     * checked, with one absent student. Both are made like the lessons page makes them (ClassBookDraft) and only the
+     * first time, so confirming or editing while trying out survives re-seeding.
+     */
+    private function seedClassBook(Lesson $confirmedLesson, Lesson $draftLesson, User $absentStudent): void
+    {
+        $confirmed = ClassBookDraft::createFor($confirmedLesson);
+
+        if ($confirmed->wasRecentlyCreated) {
+            $confirmed->forceFill(['period' => 3, 'confirmed_at' => $this->daysAgo(8, '07:45')])->save();
+        }
+
+        $draft = ClassBookDraft::createFor($draftLesson);
+
+        if ($draft->wasRecentlyCreated) {
+            $draft->forceFill([
+                'period' => 2,
+                'absent_student_ids' => [$absentStudent->id],
+                'remarks' => 'Umstellen nach einer Kathete in der nächsten Stunde noch einmal üben.',
+            ])->save();
+        }
+    }
+
+    /**
+     * Sabine Lindner covers 7b for the next few days, set up by the Klassenleitung with a handover note (no names, as the form
+     * asks). She teaches no class of her own and is not assigned to 7b, which is the only state the form can produce (it
+     * leaves out the Klassenleitung and the assigned teachers). One that has run out is renewed from today, so a
+     * re-seeded demo always shows a running one.
+     */
+    private function seedSubstitution(SchoolClass $schoolClass, User $grantedBy, User $substitute): void
+    {
+        $substitution = ClassSubstitution::query()->firstOrNew(['school_class_id' => $schoolClass->id, 'substitute_id' => $substitute->id]);
+
+        if ($substitution->exists && ! $substitution->hasEnded()) {
+            return;
+        }
+
+        $substitution->forceFill([
+            'granted_by' => $grantedBy->id,
+            'starts_on' => today(),
+            'ends_on' => today()->addDays(3),
+            'note' => 'Stand im Stoff: Satz des Pythagoras, das Umstellen nach einer Kathete wird geübt. Die Förderaufgabe zu Sachaufgaben läuft noch, die Abgaben stehen in Tuto. Bei Fragen zur Klasse bin ich per Mail erreichbar.',
+        ])->save();
+    }
+
+    /**
+     * Two Rückfragen of Emilian: one about "Satz des Pythagoras" that waits for an answer, and one about "Fotosynthese" that
+     * Frau Sommer answered and Emilian has not read yet.
+     *
+     * @return array{0: StudentQuestion, 1: StudentQuestion} the open and the answered one
+     */
+    private function seedStudentQuestions(User $student, Lesson $photosynthesis, Lesson $pythagoras, User $teacher): array
+    {
+        $open = $this->studentQuestion(
+            $student,
+            $pythagoras,
+            'Ich habe bei der Leiter-Aufgabe nicht verstanden, welche Seite die Hypotenuse ist. Ist das die Leiter oder die Wand?',
+            $this->daysAgo(1, '19:20'),
+        );
+
+        $answered = $this->studentQuestion(
+            $student,
+            $photosynthesis,
+            'Wo nimmt die Pflanze nachts den Sauerstoff her, den sie für die Zellatmung braucht? Das habe ich im Tafelbild nicht ganz verstanden.',
+            $this->daysAgo(5, '16:30'),
+            [
+                'answer' => 'Gute Frage! Nachts nimmt die Pflanze den Sauerstoff aus der Luft auf, so wie wir. Er kommt über die Spaltöffnungen ins Blatt. Tagsüber stellt sie durch die Fotosynthese mehr Sauerstoff her, als sie für die Zellatmung verbraucht. Das haben wir mit den Pfeilen im Tafelbild gezeigt, wir schauen es uns in der nächsten Stunde noch einmal an.',
+                'answered_by' => $teacher->id,
+                'answered_at' => $this->daysAgo(4, '17:05'),
+            ],
+        );
+
+        return [$open, $answered];
+    }
+
+    /**
+     * @param  array<string, mixed>  $answer  answer, answered_by and answered_at of an answered question
+     */
+    private function studentQuestion(User $student, Lesson $lesson, string $question, Carbon $askedAt, array $answer = []): StudentQuestion
+    {
+        $studentQuestion = StudentQuestion::query()->firstOrNew(['student_id' => $student->id, 'lesson_id' => $lesson->id, 'question' => $question]);
+
+        if ($studentQuestion->exists) {
+            return $studentQuestion;
+        }
+
+        $session = ExplanationSession::query()->where('student_id', $student->id)->where('topic', $lesson->topic)->first();
+
+        $studentQuestion->forceFill([
+            ...$answer,
+            'explanation_session_id' => $session?->id,
+            'created_at' => $askedAt,
+            'updated_at' => $askedAt,
+        ])->save();
+
+        return $studentQuestion;
+    }
+
+    /**
+     * A few entries in the bell, made the way the platform makes them: Frau Sommer sees the new Rückfrage and the hand-ins of
+     * "Satz des Pythagoras", Emilian the new homework and the answer to his question. Only for a person without any entry,
+     * so re-seeding adds none.
+     */
+    private function seedNotifications(User $teacher, User $student, Lesson $pythagoras, StudentQuestion $openQuestion, StudentQuestion $answeredQuestion): void
+    {
+        if (! $teacher->notifications()->exists()) {
+            Notify::questionAsked($openQuestion);
+            $pythagoras->submissions()->get()->each(fn (Submission $submission): int => Notify::submissionReceived($submission));
+        }
+
+        if (! $student->notifications()->exists()) {
+            Notify::homeworkReleased($pythagoras, [$student]);
+            Notify::questionAnswered($answeredQuestion);
         }
     }
 }

@@ -3,6 +3,9 @@
 namespace App\Filament\Pages;
 
 use App\Filament\NavigationGroup;
+use App\Models\ClassSubstitution;
+use App\Models\School;
+use App\Models\StudentQuestion;
 use App\Role;
 use BackedEnum;
 use Filament\Pages\Page;
@@ -20,7 +23,8 @@ use Filament\Tables\Table;
 use UnitEnum;
 
 /**
- * Makes the permission concept visible. The matrix describes app/Policies; tests/Feature/Admin/AdministrationAccessTest keeps both in sync.
+ * Makes the permission concept visible. The matrix describes app/Policies; tests/Feature/Admin/AdministrationAccessTest
+ * and RolesAndPermissionsTest keep both in sync. What a Vertretung grants comes from ClassSubstitution::grants().
  */
 class RolesAndPermissions extends Page implements HasTable
 {
@@ -36,6 +40,7 @@ class RolesAndPermissions extends Page implements HasTable
         'school' => ['label' => 'Nur eigene Schule', 'color' => 'primary', 'icon' => Heroicon::OutlinedBuildingOffice2],
         'admins' => ['label' => 'Nur Administrationskonten', 'color' => 'primary', 'icon' => Heroicon::OutlinedKey],
         'own' => ['label' => 'Nur eigene', 'color' => 'primary', 'icon' => Heroicon::OutlinedUser],
+        'class' => ['label' => 'Nur eigene Klassen', 'color' => 'primary', 'icon' => Heroicon::OutlinedUserGroup],
         'read' => ['label' => 'Nur ansehen', 'color' => 'info', 'icon' => Heroicon::OutlinedDocumentText],
         'none' => ['label' => 'Nein', 'color' => 'gray', 'icon' => Heroicon::OutlinedMinusCircle],
     ];
@@ -82,7 +87,7 @@ class RolesAndPermissions extends Page implements HasTable
             ],
             'classes' => [
                 'ability' => 'Klassen verwalten',
-                'detail' => 'Klassen anlegen, Klassenleitung festlegen, Schüler:innen zuordnen, Schülerlisten importieren.',
+                'detail' => 'Klassen anlegen, Klassenleitung festlegen, weitere Lehrkräfte der Klasse zuordnen, Schüler:innen zuordnen, Schülerlisten importieren.',
                 'operator' => 'none', 'admin' => 'school', 'teacher' => 'none', 'student' => 'none',
             ],
             'competencies' => [
@@ -92,12 +97,35 @@ class RolesAndPermissions extends Page implements HasTable
             ],
             'lessons' => [
                 'ability' => 'Unterrichtsstunden erfassen und Hausaufgaben freigeben',
-                'detail' => 'Lehrkräfte bearbeiten nur ihre eigenen Stunden, die Schuladministration alle Stunden der eigenen Schule. Die Plattform-Administration sieht keine Lerndaten.',
+                'detail' => 'Lehrkräfte bearbeiten nur ihre eigenen Stunden und legen sie nur in Klassen an, die sie unterrichten: als Klassenleitung, zugeordnet oder als Vertretung im Zeitraum. Freigeben geht ebenfalls nur dort. Die Schuladministration verwaltet alle Stunden der eigenen Schule. Die Plattform-Administration sieht keine Lerndaten.',
                 'operator' => 'none', 'admin' => 'school', 'teacher' => 'own', 'student' => 'none',
+            ],
+            'today' => [
+                'ability' => 'Heute: Hausaufgaben prüfen und freigeben',
+                'detail' => 'Die Seite „Heute“ gibt es nur für Lehrkräfte. Sie zeigt die eigenen Stunden von heute und den letzten Schultagen. Freigeben geht auch hier nur in Klassen, die die Lehrkraft unterrichtet.',
+                'operator' => 'none', 'admin' => 'none', 'teacher' => 'own', 'student' => 'none',
             ],
             'results' => [
                 'ability' => 'Ergebnisse, Abgaben und „Erklär’s mir“-Gespräche einsehen',
-                'detail' => 'Lehrkräfte sehen alles zu ihren eigenen Stunden, die Schuladministration alles an der eigenen Schule, Schüler:innen nur ihre eigenen Abgaben und Gespräche. Die Plattform-Administration sieht keine Lerndaten.',
+                'detail' => 'Lehrkräfte sehen alles zu ihren eigenen Stunden und den Lernstand der Klassen, die sie unterrichten. Mit dem Ende einer Vertretung endet auch dieser Zugriff. Die Schuladministration sieht alles zu den Stunden der eigenen Schule, Schüler:innen nur ihre eigenen Abgaben und Gespräche. Gespräche zu einem frei gewählten Thema ohne Stunde bleiben bei der Schüler:in. Die Plattform-Administration sieht keine Lerndaten.',
+                'operator' => 'none', 'admin' => 'school', 'teacher' => 'own', 'student' => 'own',
+            ],
+            'classbook' => [
+                'ability' => 'Klassenbuch führen',
+                'detail' => 'Ein Eintrag entsteht als Entwurf aus einer Stunde. Bearbeiten und bestätigen darf ihn die Lehrkraft der Stunde, solange sie die Klasse unterrichtet, und die Schuladministration. Bestätigte Einträge sind gesperrt, nur die Schuladministration öffnet sie wieder. Lesen und als CSV exportieren dürfen die Lehrkräfte der Klasse, auch eine Vertretung im Zeitraum, und die Schuladministration. Wer gefehlt hat, sehen nur die Lehrkräfte der Klasse und die Schuladministration. Schüler:innen sehen nie die Einträge und nie die Fehltage anderer, nur die eigenen (Datum, Fach, Klasse) in ihrer Datenauskunft unter „Meine Daten herunterladen“. Die Plattform-Administration sieht das Klassenbuch nie.',
+                'operator' => 'none', 'admin' => 'school', 'teacher' => 'class', 'student' => 'none',
+            ],
+            'substitutions' => [
+                'ability' => 'Vertretung einrichten',
+                'detail' => __('Die Klassenleitung richtet für ihre Klasse eine Vertretung ein, die Schuladministration für jede Klasse der Schule. Vertreten kann jede Lehrkraft der Schule, die die Klasse nicht ohnehin unterrichtet. Laufende und geplante Vertretungen derselben Lehrkraft in einer Klasse dürfen zusammen höchstens :days Tage dauern. Im Zeitraum kann die Vertretung :grants. Danach endet das von selbst. Die Übergabe-Mappe der Klasse öffnen Klassenleitung, Schuladministration und die Vertretung, solange sie läuft.', [
+                    'days' => ClassSubstitution::maxDays(),
+                    'grants' => ClassSubstitution::grants(),
+                ]),
+                'operator' => 'none', 'admin' => 'school', 'teacher' => 'own', 'student' => 'none',
+            ],
+            'questions' => [
+                'ability' => 'Rückfragen an die Lehrkraft',
+                'detail' => __('Schüler:innen stellen aus „Erklär’s mir“ oder von der Auswertung einer Hausaufgabe eine Rückfrage zu einer Stunde, die für sie freigegeben ist (höchstens :max offene je Stunde), und lesen die Antwort. Beantworten darf die Lehrkraft der Stunde, außer eine Vertretung, deren Zeitraum vorbei ist, und die Schuladministration. Stellen lässt sich eine Frage nur, solange die Lehrkraft der Stunde sie beantworten darf. Mitschüler:innen und die Plattform-Administration sehen keine Rückfragen.', ['max' => StudentQuestion::MAX_OPEN_PER_LESSON]),
                 'operator' => 'none', 'admin' => 'school', 'teacher' => 'own', 'student' => 'own',
             ],
             'homework' => [
@@ -109,6 +137,39 @@ class RolesAndPermissions extends Page implements HasTable
                 'ability' => '„Erklär’s mir“ üben',
                 'detail' => 'Ein Thema der KI erklären, die gezielt nachfragt.',
                 'operator' => 'none', 'admin' => 'none', 'teacher' => 'none', 'student' => 'all',
+            ],
+            'levels' => [
+                'ability' => 'Stufen und Einfache Sprache bei Hausaufgaben',
+                'detail' => 'Lehrkräfte schreiben zu den Fragen ihrer Stunden optional eine Stufe „Einstieg“ und „Profi“ oder lassen sie von der KI entwerfen. Schüler:innen wählen bei jeder Frage ihre Stufe, der Erwartungshorizont bleibt für alle gleich. „Einfache Sprache“ schreibt Zusammenfassung und Fragen in kurzen Sätzen um; ob sie an ist, merkt sich nur der eigene Browser.',
+                'operator' => 'none', 'admin' => 'school', 'teacher' => 'own', 'student' => 'own',
+            ],
+            'notifications' => [
+                'ability' => 'Benachrichtigungen erhalten (Glocke)',
+                'detail' => __('Schüler:innen erfahren, wenn eine Hausaufgabe oder Förderaufgabe freigegeben wird und wenn eine Rückfrage beantwortet ist. Lehrkräfte erfahren von neuen Abgaben und neuen Rückfragen zu ihren Stunden, als Anzahl je Stunde. Die Meldungen nennen keine Namen, und jede Person sieht nur ihre eigenen. Gelesene Meldungen gehen nach :read Tagen, alle spätestens nach :all Tagen.', [
+                    'read' => config('lernplattform.notifications.keep_read_days'),
+                    'all' => config('lernplattform.notifications.keep_days'),
+                ]),
+                'operator' => 'none', 'admin' => 'none', 'teacher' => 'own', 'student' => 'own',
+            ],
+            'mikro' => [
+                'ability' => 'Tuto-Mikro im Unterricht einschalten',
+                'detail' => 'Nur die Lehrkraft der Stunde, und nur in einer Klasse, die sie unterrichtet (Klassenleitung, zugeordnet oder als Vertretung heute). Es geht nur, wenn die Schule Tuto-Mikro freigeschaltet hat, die Eltern aller anwesenden Schüler:innen eingewilligt haben (und die Schüler:innen selbst, wo die Schule das verlangt) und das Fach nicht gesperrt ist. Förderaufgaben haben nie Tuto-Mikro. Die Beamer-Ansicht mit „Mikro an“ und „Mikro aus“ öffnet ebenfalls nur die Lehrkraft der Stunde. Die Schuladministration kann es nicht einschalten.',
+                'operator' => 'none', 'admin' => 'none', 'teacher' => 'own', 'student' => 'none',
+            ],
+            'consents' => [
+                'ability' => 'Einwilligungen der Eltern erfassen',
+                'detail' => 'Briefe an die Eltern, Papiereinwilligungen und Widerrufe pflegt die Lehrkraft für die Klassen, die sie unterrichtet, die Schuladministration für alle Klassen der Schule. Schüler:innen bestätigen oder widerrufen nur ihr eigenes Einverständnis, wo die Schule es verlangt. Die Plattform-Administration sieht keine Einwilligungen.',
+                'operator' => 'none', 'admin' => 'school', 'teacher' => 'class', 'student' => 'own',
+            ],
+            'mikro_settings' => [
+                'ability' => 'Tuto-Mikro für die Schule freischalten',
+                'detail' => __('Nur die Schuladministration der eigenen Schule: Checkliste bestätigen, die Einwilligungserklärung für die Eltern veröffentlichen, bei Bedarf die Zustimmung der Schüler:innen verlangen und Fächer sperren. Sensible Fächer (:subjects) bleiben gesperrt, bis die Schule eine eigene Liste festlegt. Es läuft nur mit dem angenommenen Vertrag zur Auftragsverarbeitung.', ['subjects' => implode(', ', School::DEFAULT_MIKRO_BLOCKED_SUBJECTS)]),
+                'operator' => 'none', 'admin' => 'school', 'teacher' => 'none', 'student' => 'none',
+            ],
+            'ai' => [
+                'ability' => 'KI-Funktionen der Schule einschalten',
+                'detail' => 'Texte einer Schule gehen nur dann an einen KI-Anbieter, wenn die Plattform die KI eingeschaltet hat und die Schuladministration die Checkliste ihrer Schule bestätigt und die KI für sie freigeschaltet hat. Sonst antwortet eine Demo-Logik, ohne dass etwas die Plattform verlässt. Lehrkräfte, Schüler:innen und die Plattform-Administration können das für eine Schule nicht einschalten.',
+                'operator' => 'none', 'admin' => 'school', 'teacher' => 'none', 'student' => 'none',
             ],
         ];
     }
