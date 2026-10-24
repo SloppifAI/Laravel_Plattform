@@ -2,12 +2,15 @@
 
 namespace App\Filament\Pages\Auth;
 
+use App\Support\PersonalDataExport;
 use Filament\Actions\Action;
 use Filament\Auth\Pages\EditProfile as BaseEditProfile;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Component;
 use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
 use SensitiveParameter;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Own profile for every role. Username and role are shown but only the administration changes them,
@@ -90,6 +93,31 @@ class EditProfile extends BaseEditProfile
         $data['email'] = filled($data['email'] ?? null) ? $data['email'] : null;
 
         return $data;
+    }
+
+    /**
+     * Auskunft nach Art. 15 DSGVO: everybody can download what the platform stores about them, and only about them.
+     *
+     * @return array<Action>
+     */
+    protected function getHeaderActions(): array
+    {
+        return [
+            Action::make('downloadData')
+                ->label('Meine Daten herunterladen')
+                ->icon(Heroicon::OutlinedArrowDownTray)
+                ->color('gray')
+                ->tooltip('Alle Daten, die zu deinem Konto gespeichert sind, als Datei (JSON)')
+                ->action(function (): StreamedResponse {
+                    $user = $this->getUser();
+                    $json = json_encode(PersonalDataExport::for($user), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+                    $filename = 'lernplattform-daten-'.preg_replace('/[^A-Za-z0-9._-]/', '_', $user->username).'-'.today()->toDateString().'.json';
+
+                    return response()->streamDownload(function () use ($json): void {
+                        echo $json;
+                    }, $filename, ['Content-Type' => 'application/json; charset=UTF-8']);
+                }),
+        ];
     }
 
     protected function getSavedNotificationTitle(): ?string

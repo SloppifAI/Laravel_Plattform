@@ -99,6 +99,24 @@ class LessonHomeworkTest extends TestCase
         $this->assertEqualsCanonicalizing([$first->id, $third->id], $lesson->students()->pluck('users.id')->all());
     }
 
+    public function test_students_of_another_school_cannot_be_delegated_to(): void
+    {
+        $schoolClass = SchoolClass::factory()->create();
+        $classmate = User::factory()->student($schoolClass)->create();
+        $foreignStudent = User::factory()->student()->create();
+        $lesson = Lesson::factory()->for($schoolClass)->has(Question::factory())->create();
+        $this->actingAs($lesson->teacher);
+
+        Livewire::test(EditLesson::class, ['record' => $lesson->getRouteKey()])
+            ->callAction('delegate', data: [
+                'due_on' => today()->addDays(3)->toDateString(),
+                'audience' => 'selected',
+                'students' => [$classmate->id, $foreignStudent->id],
+            ]);
+
+        $this->assertNotContains($foreignStudent->id, $lesson->students()->pluck('users.id')->all());
+    }
+
     public function test_delegating_to_the_whole_class_syncs_all_its_students(): void
     {
         $schoolClass = SchoolClass::factory()->create();

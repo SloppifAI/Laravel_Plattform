@@ -51,8 +51,8 @@ class ExplanationSessionResource extends Resource
     }
 
     /**
-     * Teachers only see sessions about their own lessons (sessions without a lesson are not theirs), admins all of them.
-     * The policy alone does not filter records.
+     * Teachers only see sessions about their own lessons (sessions without a lesson are not theirs), admins the sessions
+     * of the students of their school. The policy alone does not filter records.
      *
      * @return Builder<ExplanationSession>
      */
@@ -61,11 +61,12 @@ class ExplanationSessionResource extends Resource
         /** @var User $user */
         $user = auth()->user();
 
-        return parent::getEloquentQuery()
-            ->unless($user->isAdmin(), fn (Builder $query) => $query->whereHas(
-                'lesson',
-                fn (Builder $lessons) => $lessons->whereBelongsTo($user, 'teacher'),
-            ));
+        return parent::getEloquentQuery()->when(
+            $user->isAdmin(),
+            // Only sessions about a lesson of the own school: free-topic sessions stay private to the student.
+            fn (Builder $query) => $query->whereHas('lesson', fn (Builder $lessons) => $lessons->whereRelation('schoolClass', 'school_id', $user->school_id)),
+            fn (Builder $query) => $query->whereHas('lesson', fn (Builder $lessons) => $lessons->whereBelongsTo($user, 'teacher')),
+        );
     }
 
     public static function getPages(): array

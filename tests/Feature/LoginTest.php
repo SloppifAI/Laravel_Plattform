@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Filament\Pages\Auth\Login;
+use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
@@ -45,7 +46,7 @@ class LoginTest extends TestCase
             ->assertHasNoFormErrors();
 
         $this->assertAuthenticated();
-        $this->get('/')->assertOk()->assertSee('Mein Lernbereich');
+        $this->get('/')->assertOk()->assertSee('Mein Lernbereich')->assertSee('Neueste Registrierungen');
     }
 
     public function test_the_login_form_is_prefilled_with_the_demo_credentials(): void
@@ -60,7 +61,7 @@ class LoginTest extends TestCase
             ->assertOk()
             ->assertSee('Vom Unterricht zur Hausaufgabe zum Verstehen.')
             ->assertSee('Demo-Zugänge')
-            ->assertSeeInOrder(['Administration', 'hackathon', 'Lehrkraft', 'lehrer', 'Schüler:in', 'schueler'])
+            ->assertSeeInOrder(['Plattform-Administration', 'hackathon', 'Schuladministration', 'schulleitung', 'Lehrkraft', 'lehrer', 'Schüler:in', 'schueler'])
             ->assertSee('hackathon2026');
     }
 
@@ -70,7 +71,30 @@ class LoginTest extends TestCase
             ->call('fillDemoAccount', 'lehrer')
             ->assertFormSet(['username' => 'lehrer', 'password' => 'hackathon2026'])
             ->call('fillDemoAccount', 'jemand-anderes')
-            ->assertFormSet(['username' => 'lehrer']);
+            ->assertFormSet(['username' => 'lehrer'])
+            ->call('fillDemoAccount', 'schulleitung')
+            ->assertFormSet(['username' => 'schulleitung', 'password' => 'hackathon2026']);
+    }
+
+    public function test_the_demo_accounts_see_the_start_page_of_their_role(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+
+        $startPages = [
+            'hackathon' => ['Neueste Registrierungen', 'Schuladministrationen'],
+            'schulleitung' => ['Abgaben diese Woche', 'Unterrichtsstunden'],
+            'lehrer' => ['Deine letzten Unterrichtsstunden'],
+            'schueler' => ['Hallo Mia!'],
+        ];
+
+        foreach ($startPages as $username => $expectedTexts) {
+            // A new session per account: AuthenticateSession would log out a second user in the same session.
+            $this->flushSession();
+            $this->actingAs(User::query()->where('username', $username)->sole())
+                ->get('/')
+                ->assertOk()
+                ->assertSee($expectedTexts);
+        }
     }
 
     public function test_the_font_is_served_locally_instead_of_from_a_font_cdn(): void

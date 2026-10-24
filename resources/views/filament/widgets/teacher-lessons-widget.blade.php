@@ -1,4 +1,5 @@
 @php
+    use App\Filament\Pages\LessonStarter;
     use App\Filament\Resources\Lessons\LessonResource;
     use Filament\Support\Icons\Heroicon;
 @endphp
@@ -30,10 +31,13 @@
                 @foreach ($lessons as $lesson)
                     @php($heldOn = $lesson->held_on->copy()->locale('de'))
 
-                    <li>
+                    {{-- The starter board needs enough evaluated hand-ins and is never offered for a Förderaufgabe (see LessonReview). --}}
+                    @php($hasStarter = ! $lesson->isPracticeTask() && $lesson->evaluated_submissions_count >= $minReviewGroup)
+
+                    <li class="-mx-3 flex flex-wrap items-center gap-x-4 rounded-xl px-3 transition hover:bg-gray-50 dark:hover:bg-white/5">
                         <a
                             href="{{ LessonResource::getUrl('edit', ['record' => $lesson]) }}"
-                            class="lp-focus -mx-3 flex items-center gap-4 rounded-xl px-3 py-3 transition hover:bg-gray-50 dark:hover:bg-white/5"
+                            class="lp-focus flex min-w-0 flex-1 basis-80 items-center gap-4 rounded-xl py-3"
                         >
                             <span class="flex size-12 shrink-0 flex-col items-center justify-center rounded-xl bg-gray-100 text-gray-700 dark:bg-white/5 dark:text-gray-200" aria-hidden="true">
                                 <span class="text-lg leading-none font-semibold tabular-nums">{{ $heldOn->isoFormat('D') }}</span>
@@ -66,6 +70,18 @@
                                 @endif
                             </span>
                         </a>
+
+                        @if ($hasStarter)
+                            <x-filament::link
+                                tag="a"
+                                :href="LessonStarter::getUrl(['lesson' => $lesson])"
+                                :icon="Heroicon::OutlinedPresentationChartBar"
+                                size="sm"
+                                class="shrink-0 pb-3 sm:pb-0"
+                            >
+                                Einstieg nächste Stunde
+                            </x-filament::link>
+                        @endif
                     </li>
                 @endforeach
             </ul>

@@ -6,6 +6,7 @@ use App\Filament\Pages\LearningProgress;
 use App\Filament\Pages\ParentReport;
 use App\Models\Answer;
 use App\Models\Competency;
+use App\Models\ExplanationSession;
 use App\Models\Lesson;
 use App\Models\Question;
 use App\Models\SchoolClass;
@@ -65,7 +66,7 @@ class InsightPagesTest extends TestCase
 
     public function test_the_report_renders_for_admins_and_the_allowed_teacher(): void
     {
-        foreach ([User::factory()->admin()->create(), $this->teacher] as $viewer) {
+        foreach ([User::factory()->admin()->for($this->schoolClass->school)->create(), $this->teacher] as $viewer) {
             $this->actingAs($viewer)
                 ->get(ParentReport::getUrl(['student' => $this->student]))
                 ->assertOk()
@@ -84,5 +85,48 @@ class InsightPagesTest extends TestCase
         $this->actingAs($this->student)->get($reportUrl)->assertForbidden();
         $this->actingAs($this->student)->get(LearningProgress::getUrl())->assertForbidden();
         $this->actingAs($this->teacher)->get(LearningProgress::getUrl(['klasse' => SchoolClass::factory()->create()->id]))->assertForbidden();
+    }
+
+    public function test_an_admin_of_another_school_is_forbidden_and_only_sees_the_classes_of_their_own_school(): void
+    {
+        $foreignAdmin = User::factory()->admin()->create();
+        $ownClass = SchoolClass::factory()->for(User::factory()->teacher()->for($foreignAdmin->school)->create(), 'teacher')->create(['name' => '5a']);
+
+        $this->actingAs($foreignAdmin)->get(ParentReport::getUrl(['student' => $this->student]))->assertForbidden();
+        $this->actingAs($foreignAdmin)->get(LearningProgress::getUrl(['klasse' => $this->schoolClass->id]))->assertForbidden();
+
+        Livewire::actingAs($foreignAdmin)
+            ->test(LearningProgress::class)
+            ->assertOk()
+            ->assertSet('schoolClassId', $ownClass->id)
+            ->assertSee('5a')
+            ->assertDontSee('7b')
+            ->assertDontSee('Mia Hoffmann')
+            ->set('schoolClassId', $this->schoolClass->id)
+            ->assertForbidden();
+    }
+
+    public function test_platform_operators_see_no_learning_data(): void
+    {
+        $operator = User::factory()->operator()->create();
+
+        $this->actingAs($operator)->get(LearningProgress::getUrl())->assertForbidden();
+        $this->actingAs($operator)->get(ParentReport::getUrl(['student' => $this->student]))->assertForbidden();
+    }
+
+    public function test_the_report_lists_sessions_about_lessons_but_never_private_free_topic_sessions(): void
+    {
+        $lesson = Lesson::query()->where('topic', 'Fotosynthese')->firstOrFail();
+        ExplanationSession::factory()->for($this->student, 'student')->finished(70)->create(['lesson_id' => $lesson->id, 'topic' => 'Fotosynthese erklärt']);
+        ExplanationSession::factory()->for($this->student, 'student')->finished(30)->create(['lesson_id' => null, 'topic' => 'Mein geheimes Hobby']);
+
+        foreach ([$this->teacher, User::factory()->admin()->for($this->schoolClass->school)->create()] as $viewer) {
+            $this->actingAs($viewer)
+                ->get(ParentReport::getUrl(['student' => $this->student]))
+                ->assertOk()
+                ->assertSee('Fotosynthese erklärt')
+                ->assertDontSee('Mein geheimes Hobby')
+                ->assertSee('Gespräche zu frei gewählten Themen sind privat');
+        }
     }
 }

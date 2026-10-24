@@ -44,7 +44,7 @@ class StudentsRelationManager extends RelationManager
                 AssociateAction::make()
                     ->label('Schüler:innen hinzufügen')
                     ->modalHeading('Schüler:innen zur Klasse hinzufügen')
-                    ->recordSelectOptionsQuery(fn (Builder $query): Builder => $query->withRole(Role::Student))
+                    ->recordSelectOptionsQuery(fn (Builder $query): Builder => $query->withRole(Role::Student)->where('school_id', $this->getOwnerRecord()->school_id))
                     ->multiple()
                     ->preloadRecordSelect(),
             ])

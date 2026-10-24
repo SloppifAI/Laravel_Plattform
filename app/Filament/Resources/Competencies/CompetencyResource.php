@@ -24,7 +24,8 @@ use Illuminate\Database\Eloquent\Builder;
 use UnitEnum;
 
 /**
- * The competency framework (Referenzrahmen). Admins maintain it, teachers look it up read-only (see CompetencyPolicy).
+ * The competency framework (Referenzrahmen), shared by all schools. The platform operator maintains it,
+ * school administrations and teachers look it up read-only (see CompetencyPolicy).
  */
 class CompetencyResource extends Resource
 {
@@ -50,11 +51,18 @@ class CompetencyResource extends Resource
     protected static ?string $recordTitleAttribute = 'name';
 
     /**
-     * Teachers only read the framework while planning lessons, so it sits with their lesson tools.
+     * The operator maintains the framework with the platform tools. School administrations look it up with their
+     * administration, teachers while planning lessons, so it sits with their lesson tools.
      */
     public static function getNavigationGroup(): string|UnitEnum|null
     {
-        return auth()->user()?->isAdmin() ? 'Verwaltung' : 'Unterricht';
+        $user = auth()->user();
+
+        return match (true) {
+            $user?->isOperator() => 'Plattform',
+            $user?->isAdmin() => 'Verwaltung',
+            default => 'Unterricht',
+        };
     }
 
     public static function form(Schema $schema): Schema

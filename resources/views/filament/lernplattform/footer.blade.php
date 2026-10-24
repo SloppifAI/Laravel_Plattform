@@ -4,6 +4,7 @@
     $legalLinks = array_filter([
         'Impressum' => Route::has('legal.imprint') ? route('legal.imprint') : null,
         'Datenschutzerklärung' => Route::has('legal.privacy') ? route('legal.privacy') : null,
+        'Auftragsverarbeitung (AVV)' => Route::has('legal.dpa') ? route('legal.dpa') : null,
     ]);
 @endphp
 

@@ -3,7 +3,6 @@
 namespace App\Filament\Resources\Lessons\Pages;
 
 use App\Filament\Resources\Lessons\LessonResource;
-use App\Filament\Resources\SchoolClasses\SchoolClassResource;
 use App\Models\SchoolClass;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
@@ -37,7 +36,7 @@ class ListLessons extends ListRecords
     }
 
     /**
-     * Admins see the classes of their school, teachers only the classes they lead (Klassenleitung).
+     * Admins see the classes of their school, teachers only the classes they lead (Klassenleitung), always within their school.
      *
      * @return Collection<int, SchoolClass>
      */
@@ -45,6 +44,9 @@ class ListLessons extends ListRecords
     {
         $user = auth()->user();
 
-        return ($user->isAdmin() ? SchoolClassResource::getEloquentQuery() : $user->ledClasses())->orderBy('name')->get();
+        return ($user->isAdmin() ? SchoolClass::query() : $user->ledClasses())
+            ->where('school_id', $user->school_id)
+            ->orderBy('name')
+            ->get();
     }
 }

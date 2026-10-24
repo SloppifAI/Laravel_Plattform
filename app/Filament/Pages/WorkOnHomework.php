@@ -40,6 +40,11 @@ class WorkOnHomework extends Page
 {
     public const int MINIMUM_SUMMARY_LENGTH = 80;
 
+    /**
+     * A Förderaufgabe is a short practice for one competency, not a whole lesson to summarise.
+     */
+    public const int MINIMUM_PRACTICE_SUMMARY_LENGTH = 40;
+
     protected static ?string $slug = 'hausaufgaben/{lesson}';
 
     protected static bool $shouldRegisterNavigation = false;
@@ -80,7 +85,7 @@ class WorkOnHomework extends Page
     {
         return collect([
             $this->lesson->subject,
-            'Stunde vom '.$this->lesson->held_on->format('d.m.Y'),
+            $this->lesson->isPracticeTask() ? "Förderaufgabe zu „{$this->competencyName()}“" : 'Stunde vom '.$this->lesson->held_on->format('d.m.Y'),
             $this->lesson->due_on ? 'Abgabe bis '.$this->lesson->due_on->format('d.m.Y') : null,
         ])->filter()->implode(' · ');
     }
@@ -90,7 +95,7 @@ class WorkOnHomework extends Page
      */
     public function getBreadcrumbs(): array
     {
-        return [MyHomework::getUrl() => 'Meine Hausaufgaben', 'Hausaufgabe'];
+        return [MyHomework::getUrl() => 'Meine Hausaufgaben', $this->lesson->isPracticeTask() ? 'Förderaufgabe' : 'Hausaufgabe'];
     }
 
     public function form(Schema $schema): Schema
@@ -99,13 +104,15 @@ class WorkOnHomework extends Page
             ->statePath('data')
             ->components([
                 Section::make('Deine Zusammenfassung')
-                    ->description('Was war wichtig in der Stunde? Schreib es so, dass es jemand versteht, der nicht dabei war.')
+                    ->description($this->lesson->isPracticeTask()
+                        ? 'Schreib es so, dass es jemand versteht, der das Thema nicht kennt.'
+                        : 'Was war wichtig in der Stunde? Schreib es so, dass es jemand versteht, der nicht dabei war.')
                     ->schema([
                         Textarea::make('summary')
-                            ->label('Zusammenfassung in deinen Worten')
-                            ->helperText('Mindestens '.self::MINIMUM_SUMMARY_LENGTH.' Zeichen. Ein paar ganze Sätze reichen.')
+                            ->label($this->lesson->isPracticeTask() ? "Was du jetzt über „{$this->competencyName()}“ weißt" : 'Zusammenfassung in deinen Worten')
+                            ->helperText('Mindestens '.$this->minimumSummaryLength().' Zeichen. Ein paar ganze Sätze reichen.')
                             ->required()
-                            ->minLength(self::MINIMUM_SUMMARY_LENGTH)
+                            ->minLength($this->minimumSummaryLength())
                             ->maxLength(5000)
                             ->rows(6)
                             ->autosize()
@@ -138,7 +145,9 @@ class WorkOnHomework extends Page
         }
 
         return $schema->components([
-            Callout::make('Fasse die Stunde in deinen eigenen Worten zusammen – die KI prüft danach, ob du alles verstanden hast.')
+            Callout::make($this->lesson->isPracticeTask()
+                ? "Schreib in ein paar Sätzen auf, was du jetzt über „{$this->competencyName()}“ weißt – die KI prüft danach, ob du es verstanden hast."
+                : 'Fasse die Stunde in deinen eigenen Worten zusammen – die KI prüft danach, ob du alles verstanden hast.')
                 ->description('Beantworte danach die Fragen. Die Zusammenfassung deiner Lehrkraft siehst du nach der Abgabe.')
                 ->info()
                 ->icon(Heroicon::OutlinedLightBulb),
@@ -214,7 +223,7 @@ class WorkOnHomework extends Page
         if ($this->evaluate($submission)) {
             Notification::make()
                 ->title('Geschafft!')
-                ->body('Die KI hat deine Hausaufgabe geprüft. Schau dir an, wie es gelaufen ist.')
+                ->body('Die KI hat deine '.($this->lesson->isPracticeTask() ? 'Förderaufgabe' : 'Hausaufgabe').' geprüft. Schau dir an, wie es gelaufen ist.')
                 ->success()
                 ->send();
         } else {
@@ -303,7 +312,7 @@ class WorkOnHomework extends Page
                             ->visible(filled($answer?->feedback)),
                     ]);
             })->all(),
-            Section::make('So fasst deine Lehrkraft die Stunde zusammen')
+            Section::make($this->lesson->isPracticeTask() ? "So fasst deine Lehrkraft „{$this->competencyName()}“ zusammen" : 'So fasst deine Lehrkraft die Stunde zusammen')
                 ->icon(Heroicon::OutlinedAcademicCap)
                 ->schema([
                     TextEntry::make('lesson_summary')
@@ -314,6 +323,19 @@ class WorkOnHomework extends Page
                         ->placeholder('Deine Lehrkraft hat noch keine Zusammenfassung hinterlegt.'),
                 ]),
         ];
+    }
+
+    private function minimumSummaryLength(): int
+    {
+        return $this->lesson->isPracticeTask() ? self::MINIMUM_PRACTICE_SUMMARY_LENGTH : self::MINIMUM_SUMMARY_LENGTH;
+    }
+
+    /**
+     * The competency a Förderaufgabe practises; the topic is only a fallback for the type.
+     */
+    private function competencyName(): string
+    {
+        return $this->lesson->practiceCompetency?->name ?? $this->lesson->topic;
     }
 
     private function typeBadge(Question $question): Text

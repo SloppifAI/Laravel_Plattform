@@ -21,7 +21,8 @@ class PrivacyAndAiTest extends TestCase
     public static function roles(): array
     {
         return [
-            'Administration' => [Role::Admin],
+            'Plattform-Administration' => [Role::Operator],
+            'Schuladministration' => [Role::Admin],
             'Lehrkraft' => [Role::Teacher],
             'Schüler:in' => [Role::Student],
         ];
@@ -30,7 +31,7 @@ class PrivacyAndAiTest extends TestCase
     /**
      * @return array<string, array{Role}>
      */
-    public static function nonAdminRoles(): array
+    public static function rolesWithoutAdministration(): array
     {
         return [
             'Lehrkraft' => [Role::Teacher],
@@ -38,10 +39,15 @@ class PrivacyAndAiTest extends TestCase
         ];
     }
 
+    private function userWith(Role $role): User
+    {
+        return User::factory()->{$role->value}()->create();
+    }
+
     #[DataProvider('roles')]
     public function test_every_role_can_open_the_page(Role $role): void
     {
-        $this->actingAs(User::factory()->create(['role' => $role]))
+        $this->actingAs($this->userWith($role))
             ->get('/datenschutz')
             ->assertOk()
             ->assertSee('Datenschutz & KI')
@@ -63,11 +69,31 @@ class PrivacyAndAiTest extends TestCase
     }
 
     #[DataProvider('roles')]
+    public function test_every_role_sees_the_role_list_and_that_schools_are_separate(Role $role): void
+    {
+        $this->actingAs($this->userWith($role))
+            ->get('/datenschutz')
+            ->assertOk()
+            ->assertSee('Jede Schule für sich')
+            ->assertSee('Schulen sehen nichts voneinander')
+            ->assertSee(Role::Operator->getLabel())
+            ->assertSee(Role::Admin->getLabel())
+            ->assertSee(Role::Teacher->getLabel())
+            ->assertSee(Role::Student->getLabel())
+            ->assertSee('Sieht keine Unterrichts- und Lerndaten')
+            ->assertSee('Schuladministration (eigene Schule)')
+            ->assertSee('Plattform-Administration (nur Schuladministrationen)')
+            ->assertSee('Plattform-Administration (alle Schulen)')
+            ->assertSee('Schule und Registrierung')
+            ->assertSee('Ergebnisse ihrer Schule');
+    }
+
+    #[DataProvider('roles')]
     public function test_the_ai_is_described_as_not_active_while_it_is_disabled(Role $role): void
     {
         config(['services.anthropic.enabled' => false, 'services.anthropic.model' => 'claude-test-modell']);
 
-        $this->actingAs(User::factory()->create(['role' => $role]))
+        $this->actingAs($this->userWith($role))
             ->get('/datenschutz')
             ->assertOk()
             ->assertSee('nicht aktiv')
@@ -93,11 +119,13 @@ class PrivacyAndAiTest extends TestCase
         Http::assertNothingSent();
     }
 
-    public function test_the_admin_section_with_setup_and_checklist_is_only_shown_to_admins(): void
+    public function test_the_operator_gets_the_setup_and_the_checklist_for_the_whole_platform(): void
     {
-        $this->actingAs(User::factory()->admin()->create())
+        $this->actingAs(User::factory()->operator()->create())
             ->get('/datenschutz')
             ->assertOk()
+            ->assertSee('Für die Plattform-Administration')
+            ->assertSee('für alle Schulen')
             ->assertSee('ANTHROPIC_ENABLED=true')
             ->assertSee('ANTHROPIC_API_KEY')
             ->assertSee('ANTHROPIC_MODEL')
@@ -105,16 +133,35 @@ class PrivacyAndAiTest extends TestCase
             ->assertSee('Datenschutz-Folgenabschätzung')
             ->assertSee('Eltern und Schüler:innen informiert')
             ->assertSee('Personalrat')
-            ->assertSee('keine Rechtsberatung');
+            ->assertSee('keine Rechtsberatung')
+            ->assertDontSee('Für die Schuladministration');
     }
 
-    #[DataProvider('nonAdminRoles')]
-    public function test_the_admin_section_is_hidden_from_other_roles(Role $role): void
+    public function test_the_school_administration_gets_the_checklist_but_no_server_setup(): void
     {
-        $this->actingAs(User::factory()->create(['role' => $role]))
+        $this->actingAs(User::factory()->admin()->create())
             ->get('/datenschutz')
             ->assertOk()
-            ->assertDontSee('Für die Administration')
+            ->assertSee('Für die Schuladministration')
+            ->assertSee('von der Plattform-Administration geschaltet, nicht von einzelnen Schulen')
+            ->assertSee('Auftragsverarbeitungsvertrag')
+            ->assertSee('Datenschutz-Folgenabschätzung')
+            ->assertSee('Eltern und Schüler:innen informiert')
+            ->assertSee('Personalrat')
+            ->assertSee('keine Rechtsberatung')
+            ->assertDontSee('Für die Plattform-Administration')
+            ->assertDontSee('ANTHROPIC_ENABLED=true')
+            ->assertDontSee('ANTHROPIC_API_KEY');
+    }
+
+    #[DataProvider('rolesWithoutAdministration')]
+    public function test_the_administration_sections_are_hidden_from_other_roles(Role $role): void
+    {
+        $this->actingAs($this->userWith($role))
+            ->get('/datenschutz')
+            ->assertOk()
+            ->assertDontSee('Für die Schuladministration')
+            ->assertDontSee('Für die Plattform-Administration')
             ->assertDontSee('ANTHROPIC_API_KEY')
             ->assertDontSee('Auftragsverarbeitungsvertrag')
             ->assertDontSee('Personalrat');

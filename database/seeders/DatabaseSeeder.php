@@ -19,9 +19,10 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        // The platform operator belongs to no school (see DemoSchoolSeeder for the demo schools).
         User::updateOrCreate(
             ['username' => 'hackathon'],
-            ['name' => 'Hackathon', 'password' => DemoSchoolSeeder::PASSWORD, 'role' => Role::Admin, 'school_class_id' => null],
+            ['name' => 'Hackathon', 'password' => DemoSchoolSeeder::PASSWORD, 'role' => Role::Operator, 'school_id' => null, 'school_class_id' => null],
         );
 
         $this->call([

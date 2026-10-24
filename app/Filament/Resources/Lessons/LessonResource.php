@@ -46,7 +46,7 @@ class LessonResource extends Resource
     }
 
     /**
-     * Teachers only ever see their own lessons, admins all of them. The policy alone does not filter records.
+     * Teachers only ever see their own lessons, admins all lessons of their school. The policy alone does not filter records.
      *
      * @return Builder<Lesson>
      */
@@ -56,7 +56,11 @@ class LessonResource extends Resource
         $user = auth()->user();
 
         return parent::getEloquentQuery()
-            ->unless($user->isAdmin(), fn (Builder $query) => $query->whereBelongsTo($user, 'teacher'));
+            ->when(
+                $user->isAdmin(),
+                fn (Builder $query) => $query->whereRelation('schoolClass', 'school_id', $user->school_id),
+                fn (Builder $query) => $query->whereBelongsTo($user, 'teacher'),
+            );
     }
 
     public static function getRelations(): array

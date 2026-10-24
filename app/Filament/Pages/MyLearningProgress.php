@@ -41,11 +41,7 @@ class MyLearningProgress extends Page
         /** @var User $student */
         $student = Filament::auth()->user();
 
-        $scores = $student->submissions()
-            ->whereNotNull('evaluated_at')
-            ->orderBy('evaluated_at')
-            ->orderBy('id')
-            ->pluck('understanding_score');
+        $scores = LearningInsights::evaluatedSubmissions($student)->pluck('understanding_score');
 
         return [
             ...LearningInsights::studentCompetencies($student),

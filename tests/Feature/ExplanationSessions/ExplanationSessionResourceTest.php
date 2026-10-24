@@ -33,17 +33,60 @@ class ExplanationSessionResourceTest extends TestCase
             ->assertCanNotSeeTableRecords([$foreign, $withoutLesson]);
     }
 
-    public function test_admin_sees_all_sessions_including_those_without_lesson(): void
+    public function test_admin_sees_lesson_sessions_of_the_own_school_but_not_free_topics(): void
     {
-        $sessions = collect([
-            ExplanationSession::factory()->for(Lesson::factory())->create(),
-            ExplanationSession::factory()->for(Lesson::factory())->create(),
-            ExplanationSession::factory()->create(),
-        ]);
+        [$admin, $schoolClass] = $this->adminWithClass();
+        $student = User::factory()->student($schoolClass)->create();
+        $aboutLesson = ExplanationSession::factory()->for($student, 'student')->for(Lesson::factory()->for($schoolClass))->create();
+        $freeTopic = ExplanationSession::factory()->for($student, 'student')->create();
 
-        Livewire::actingAs(User::factory()->admin()->create())
+        Livewire::actingAs($admin)
             ->test(ListExplanationSessions::class)
-            ->assertCanSeeTableRecords($sessions);
+            ->assertCanSeeTableRecords([$aboutLesson])
+            ->assertCanNotSeeTableRecords([$freeTopic]);
+    }
+
+    public function test_admin_does_not_see_or_open_sessions_of_another_school(): void
+    {
+        [$admin] = $this->adminWithClass();
+        $foreignLesson = Lesson::factory()->create();
+        $foreignStudent = User::factory()->student($foreignLesson->schoolClass)->create();
+        $withLesson = ExplanationSession::factory()->for($foreignStudent, 'student')->for($foreignLesson)->create();
+        $withoutLesson = ExplanationSession::factory()->for($foreignStudent, 'student')->create();
+
+        Livewire::actingAs($admin)
+            ->test(ListExplanationSessions::class)
+            ->assertCanNotSeeTableRecords([$withLesson, $withoutLesson]);
+
+        foreach ([$withLesson, $withoutLesson] as $session) {
+            $this->actingAs($admin)
+                ->get(ExplanationSessionResource::getUrl('view', ['record' => $session]))
+                ->assertNotFound();
+        }
+    }
+
+    public function test_the_lesson_filter_of_an_admin_only_offers_lessons_of_the_own_school(): void
+    {
+        [$admin, $schoolClass] = $this->adminWithClass();
+        $own = Lesson::factory()->for($schoolClass)->create();
+        $foreign = Lesson::factory()->create();
+
+        $options = Livewire::actingAs($admin)
+            ->test(ListExplanationSessions::class)
+            ->instance()
+            ->getTable()
+            ->getFilter('lesson_id')
+            ->getOptions();
+
+        $this->assertSame([$own->id], array_keys($options));
+        $this->assertArrayNotHasKey($foreign->id, $options);
+    }
+
+    public function test_operators_cannot_open_the_resource(): void
+    {
+        $this->actingAs(User::factory()->operator()->create())
+            ->get(ExplanationSessionResource::getUrl('index'))
+            ->assertForbidden();
     }
 
     public function test_students_cannot_open_the_resource(): void
@@ -137,15 +180,14 @@ class ExplanationSessionResourceTest extends TestCase
             ->assertSee('Fotosynthese');
     }
 
-    public function test_admin_opens_a_session_without_lesson(): void
+    public function test_admin_cannot_open_a_free_topic_session(): void
     {
-        $session = ExplanationSession::factory()->create(['topic' => 'Bruchrechnen']);
+        [$admin, $schoolClass] = $this->adminWithClass();
+        $session = ExplanationSession::factory()->for(User::factory()->student($schoolClass), 'student')->create(['topic' => 'Bruchrechnen']);
 
-        Livewire::actingAs(User::factory()->admin()->create())
-            ->test(ViewExplanationSession::class, ['record' => $session->getRouteKey()])
-            ->assertOk()
-            ->assertSee('Bruchrechnen')
-            ->assertSee('Ohne Unterrichtsstunde');
+        $this->actingAs($admin)
+            ->get(ExplanationSessionResource::getUrl('view', ['record' => $session]))
+            ->assertNotFound();
     }
 
     public function test_table_shows_status_and_understanding_level(): void
@@ -236,11 +278,24 @@ class ExplanationSessionResourceTest extends TestCase
 
     public function test_admin_cannot_delete_a_session_from_the_resource(): void
     {
-        $session = ExplanationSession::factory()->for(Lesson::factory())->create();
+        [$admin, $schoolClass] = $this->adminWithClass();
+        $session = ExplanationSession::factory()->for(User::factory()->student($schoolClass), 'student')->for(Lesson::factory()->for($schoolClass))->create();
 
-        Livewire::actingAs(User::factory()->admin()->create())
+        Livewire::actingAs($admin)
             ->test(ViewExplanationSession::class, ['record' => $session->getRouteKey()])
             ->assertActionDoesNotExist('delete')
             ->assertActionDoesNotExist('edit');
+    }
+
+    /**
+     * An admin together with a class of their school.
+     *
+     * @return array{User, SchoolClass}
+     */
+    private function adminWithClass(): array
+    {
+        $schoolClass = SchoolClass::factory()->create();
+
+        return [User::factory()->admin()->for($schoolClass->school)->create(), $schoolClass];
     }
 }

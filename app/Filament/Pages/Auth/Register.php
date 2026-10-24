@@ -13,6 +13,7 @@ use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Text;
 use Filament\Schemas\Schema;
 use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\HtmlString;
 use Illuminate\Support\Str;
@@ -30,7 +31,7 @@ class Register extends BaseRegister
     /**
      * Filament allows 2 attempts per minute and IP, but a whole class registers from one school IP at the same time.
      */
-    private const int MAX_ATTEMPTS_PER_MINUTE = 60;
+    protected const int MAX_ATTEMPTS_PER_MINUTE = 60;
 
     private const string UNKNOWN_CLASS_CODE_MESSAGE = 'Diesen Klassencode gibt es nicht. Frag deine Lehrkraft.';
 
@@ -116,7 +117,7 @@ class Register extends BaseRegister
 
     protected function rateLimit($maxAttempts, $decaySeconds = 60, $method = null, $component = null): void
     {
-        parent::rateLimit(self::MAX_ATTEMPTS_PER_MINUTE, $decaySeconds, $method ?? 'register', $component);
+        parent::rateLimit(static::MAX_ATTEMPTS_PER_MINUTE, $decaySeconds, $method ?? 'register', $component);
     }
 
     /**
@@ -155,12 +156,18 @@ class Register extends BaseRegister
 
     /**
      * Ignores case, spaces and dashes, so "abc-def" and "ABC DEF" both find ABCDEF.
+     * The class of a blocked school counts as unknown, so the answer says nothing about why.
      */
     private function findSchoolClass(mixed $code): ?SchoolClass
     {
         $code = Str::upper(preg_replace('/[\s-]+/', '', is_string($code) ? $code : ''));
 
-        return $code === '' ? null : SchoolClass::query()->where('join_code', $code)->first();
+        return $code === ''
+            ? null
+            : SchoolClass::query()
+                ->where('join_code', $code)
+                ->whereHas('school', fn (Builder $school): Builder => $school->whereNull('blocked_at'))
+                ->first();
     }
 
     public function loginAction(): Action
@@ -183,8 +190,16 @@ class Register extends BaseRegister
         return 'Mit Klassencode registrieren';
     }
 
+    public function registerSchoolAction(): Action
+    {
+        return Action::make('registerSchool')
+            ->link()
+            ->label('Schule registrieren')
+            ->url(route('filament.lernplattform.auth.register-school'));
+    }
+
     public function getSubheading(): string|Htmlable|null
     {
-        return new HtmlString('Du hast schon ein Konto? '.$this->loginAction->toHtml());
+        return new HtmlString('Du hast schon ein Konto? '.$this->loginAction->toHtml().'<br>Neue Schule? '.$this->registerSchoolAction->toHtml());
     }
 }

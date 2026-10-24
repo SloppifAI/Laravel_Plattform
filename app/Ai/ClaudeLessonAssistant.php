@@ -11,6 +11,7 @@ use App\Models\Lesson;
 use App\Models\Question;
 use App\Models\Submission;
 use App\QuestionType;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
@@ -68,6 +69,54 @@ class ClaudeLessonAssistant implements LessonAssistant
                 'expected_answer' => (string) $question['expected_answer'],
                 'competency_id' => in_array($question['competency_id'], $competencies->modelKeys(), true) ? $question['competency_id'] : null,
             ], $result['questions']),
+        ];
+    }
+
+    public function draftPracticeTask(Competency $competency, string $subject, Collection $sourceLessons, array $gaps): array
+    {
+        $gapList = $gaps === [] ? 'Keine konkreten Hinweise vorhanden.' : collect($gaps)->map(fn (string $gap): string => "- {$gap}")->implode("\n");
+        $lessons = $sourceLessons->map(fn (Lesson $lesson): string => implode("\n", array_filter([
+            "Thema: {$lesson->topic}",
+            'Datum der Stunde: '.($lesson->held_on?->format('d.m.Y') ?? 'unbekannt'),
+            // The caller withholds the notes of lessons the teacher may not view.
+            blank($lesson->notes) ? null : "Notizen der Lehrkraft:\n{$lesson->notes}",
+        ])))->implode("\n\n---\n\n");
+
+        $result = $this->ask(
+            system: self::ROLE_PROMPT.' Für Schülerinnen und Schüler, bei denen sich in der Hausaufgabe eine Lücke gezeigt hat, entwirfst du eine Förderaufgabe zu genau einer Kompetenz: eine kurze Zusammenfassung (2 bis 4 Sätze), die ermutigend sagt, was geübt wird, und drei bis vier Übungsfragen, die von leicht zu schwer aufgebaut sind. Die erste Frage ist eine Verständnisfrage (comprehension), genau eine Frage ist eine Anwendungsfrage (application), die das Gelernte auf eine neue Situation überträgt. Reflexionsfragen gibt es nicht. Alle Fragen üben die genannte Kompetenz und knüpfen an die Inhalte der genannten Stunden an. Greife die Hinweise auf Lücken auf, ohne sie wörtlich zu zitieren, und formuliere ermutigend und konkret. Der Erwartungshorizont (expected_answer) ist nur für die Lehrkraft bestimmt und beschreibt, was eine gute Antwort enthält.',
+            content: [[
+                'type' => 'text',
+                'text' => implode("\n\n", [
+                    "Fach: {$subject}",
+                    "Kompetenz: {$competency->area} – {$competency->name}\nBeschreibung: ".($competency->description ?: '(keine)'),
+                    "Hinweise der KI auf Lücken (anonym):\n".$gapList,
+                    "Stunden, in denen sich die Lücke gezeigt hat:\n\n".($lessons ?: '(keine)'),
+                ]),
+            ]],
+            schema: $this->objectSchema([
+                'summary' => ['type' => 'string'],
+                'questions' => ['type' => 'array', 'items' => $this->objectSchema([
+                    'type' => ['type' => 'string', 'enum' => array_column(QuestionType::cases(), 'value')],
+                    'prompt' => ['type' => 'string'],
+                    'expected_answer' => ['type' => 'string'],
+                ])],
+            ]),
+        );
+
+        $questions = array_slice($result['questions'], 0, 4);
+
+        if ($questions === []) {
+            throw new RuntimeException('Die KI hat keine Übungsfragen geliefert. Bitte versuche es erneut.');
+        }
+
+        return [
+            'summary' => (string) $result['summary'],
+            'questions' => array_map(fn (array $question): array => [
+                'type' => QuestionType::from($question['type']),
+                'prompt' => (string) $question['prompt'],
+                'expected_answer' => (string) $question['expected_answer'],
+                'competency_id' => $competency->getKey(),
+            ], $questions),
         ];
     }
 

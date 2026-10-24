@@ -6,7 +6,8 @@ use App\Models\ExplanationSession;
 use App\Models\User;
 
 /**
- * Students run their own "Erklär's mir" sessions. Teachers see sessions about their lessons, admins all.
+ * Students run their own "Erklär's mir" sessions. Sessions about a lesson are visible to whoever manages that lesson
+ * (its teacher, the school administration); sessions on a freely chosen topic stay private to the student.
  */
 class ExplanationSessionPolicy
 {
@@ -24,8 +25,7 @@ class ExplanationSessionPolicy
             return $explanationSession->student()->is($user);
         }
 
-        return $user->isAdmin()
-            || ($explanationSession->lesson !== null && $user->can('update', $explanationSession->lesson));
+        return $explanationSession->lesson !== null && $user->can('update', $explanationSession->lesson);
     }
 
     public function create(User $user): bool
@@ -43,7 +43,8 @@ class ExplanationSessionPolicy
 
     public function delete(User $user, ExplanationSession $explanationSession): bool
     {
-        return $explanationSession->student()->is($user) || $user->isAdmin();
+        return $explanationSession->student()->is($user)
+            || ($user->isAdmin() && $explanationSession->lesson !== null && $user->can('update', $explanationSession->lesson));
     }
 
     public function deleteAny(User $user): bool

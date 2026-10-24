@@ -123,7 +123,35 @@
         @if ($competencies->isEmpty())
             <p class="text-sm text-gray-600 dark:text-gray-400">Noch keine bewerteten Antworten.</p>
         @else
-            <div class="overflow-x-auto">
+            {{-- Below md cards with a label per value, from md (and in print) the table. display:none keeps the inactive variant out of the accessibility tree. --}}
+            <ul class="grid gap-3 md:hidden print:hidden">
+                @foreach ($competencies as $competency)
+                    <li class="grid gap-3 rounded-xl p-4 ring-1 ring-gray-950/5 dark:ring-white/10">
+                        <p class="font-medium text-gray-950 dark:text-white">{{ $competency->name }}</p>
+
+                        <dl class="grid gap-2 text-sm text-gray-600 dark:text-gray-400">
+                            <div class="flex items-start justify-between gap-x-4">
+                                <dt class="shrink-0">Fach</dt>
+                                <dd class="min-w-0 break-words text-end">{{ $competency->subject ?? 'Fachübergreifend' }}</dd>
+                            </div>
+                            <div class="flex items-start justify-between gap-x-4">
+                                <dt class="shrink-0">Bereich</dt>
+                                <dd class="min-w-0 break-words text-end">{{ $competency->area }}</dd>
+                            </div>
+                            <div class="flex items-start justify-between gap-x-4">
+                                <dt class="shrink-0">Antworten</dt>
+                                <dd class="min-w-0 break-words text-end">{{ $answerCounts[$competency->id] }}</dd>
+                            </div>
+                            <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+                                <dt>Durchschnitt</dt>
+                                <dd class="ms-auto">@include('filament.pages.insights.score', ['score' => $averages[$competency->id], 'withLabel' => true])</dd>
+                            </div>
+                        </dl>
+                    </li>
+                @endforeach
+            </ul>
+
+            <div class="hidden overflow-x-auto md:block print:block">
                 <table class="w-full text-sm">
                     <thead>
                         <tr class="border-b border-gray-950/5 dark:border-white/10">
@@ -154,7 +182,70 @@
         @if ($homework->isEmpty())
             <p class="text-sm text-gray-600 dark:text-gray-400">Bisher wurden keine Hausaufgaben zugewiesen.</p>
         @else
-            <div class="overflow-x-auto">
+            <ul class="grid gap-3 md:hidden print:hidden">
+                @foreach ($homework as ['lesson' => $lesson, 'submission' => $submission, 'status' => [$statusLabel, $statusColor]])
+                    <li class="grid gap-3 rounded-xl p-4 ring-1 ring-gray-950/5 dark:ring-white/10">
+                        <p class="font-medium text-gray-950 dark:text-white">{{ $lesson->topic }}</p>
+
+                        <dl class="grid gap-2 text-sm text-gray-600 dark:text-gray-400">
+                            <div class="flex items-start justify-between gap-x-4">
+                                <dt class="shrink-0">Stunde</dt>
+                                <dd class="min-w-0 break-words text-end">
+                                    {{ $lesson->held_on->format('d.m.Y') }}
+                                    @if ($lesson->due_on)
+                                        <span class="block text-xs">fällig {{ $lesson->due_on->format('d.m.Y') }}</span>
+                                    @endif
+                                </dd>
+                            </div>
+                            <div class="flex items-start justify-between gap-x-4">
+                                <dt class="shrink-0">Fach</dt>
+                                <dd class="min-w-0 break-words text-end">{{ $lesson->subject }} · {{ $lesson->teacher->name }}</dd>
+                            </div>
+                            <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+                                <dt>Abgabe</dt>
+                                <dd class="ms-auto grid justify-items-end gap-1">
+                                    <x-filament::badge :color="$statusColor" class="w-fit">{{ $statusLabel }}</x-filament::badge>
+                                    @if ($submission)
+                                        <span class="text-xs">{{ $submission->created_at->format('d.m.Y') }}</span>
+                                    @endif
+                                </dd>
+                            </div>
+                            <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+                                <dt>Bewertung</dt>
+                                <dd class="ms-auto">
+                                    @if ($submission?->understanding_score !== null)
+                                        @include('filament.pages.insights.score', ['score' => $submission->understanding_score, 'withLabel' => true])
+                                    @elseif ($submission)
+                                        noch nicht bewertet
+                                    @else
+                                        –
+                                    @endif
+                                </dd>
+                            </div>
+                            @if ($submission?->feedback || filled($submission?->gaps))
+                                <div class="grid gap-1">
+                                    <dt>Rückmeldung und Lücken</dt>
+                                    <dd class="min-w-0 break-words">
+                                        @if ($submission->feedback)
+                                            <p>{{ $submission->feedback }}</p>
+                                        @endif
+                                        @if (filled($submission->gaps))
+                                            <p class="mt-2 text-xs font-medium text-gray-950 dark:text-white">Lücken:</p>
+                                            <ul class="list-disc ps-4 text-xs">
+                                                @foreach ($submission->gaps as $gap)
+                                                    <li>{{ $gap }}</li>
+                                                @endforeach
+                                            </ul>
+                                        @endif
+                                    </dd>
+                                </div>
+                            @endif
+                        </dl>
+                    </li>
+                @endforeach
+            </ul>
+
+            <div class="hidden overflow-x-auto md:block print:block">
                 <table class="w-full text-sm">
                     <thead>
                         <tr class="border-b border-gray-950/5 dark:border-white/10">
@@ -214,11 +305,40 @@
         @endif
     </x-filament::section>
 
-    <x-filament::section :icon="Heroicon::OutlinedChatBubbleLeftRight" heading="„Erklär’s mir“-Sitzungen" description="Die Schülerin bzw. der Schüler erklärt ein Thema, die KI fragt nach und schätzt das Verständnis ein.">
+    <x-filament::section :icon="Heroicon::OutlinedChatBubbleLeftRight" heading="„Erklär’s mir“-Sitzungen" description="Die Schülerin bzw. der Schüler erklärt ein Thema aus dem Unterricht, die KI fragt nach und schätzt das Verständnis ein. Gespräche zu frei gewählten Themen sind privat und erscheinen hier nicht.">
         @if ($sessions->isEmpty())
             <p class="text-sm text-gray-600 dark:text-gray-400">Bisher keine Sitzungen.</p>
         @else
-            <div class="overflow-x-auto">
+            <ul class="grid gap-3 md:hidden print:hidden">
+                @foreach ($sessions as $session)
+                    <li class="grid gap-3 rounded-xl p-4 ring-1 ring-gray-950/5 dark:ring-white/10">
+                        <p class="font-medium text-gray-950 dark:text-white">{{ $session->topic }}</p>
+
+                        <dl class="grid gap-2 text-sm text-gray-600 dark:text-gray-400">
+                            <div class="flex items-start justify-between gap-x-4">
+                                <dt class="shrink-0">Datum</dt>
+                                <dd class="min-w-0 break-words text-end">{{ $session->created_at->format('d.m.Y') }}</dd>
+                            </div>
+                            <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+                                <dt>Bewertung</dt>
+                                <dd class="ms-auto">
+                                    @if ($session->isFinished() && $session->understanding_score !== null)
+                                        @include('filament.pages.insights.score', ['score' => $session->understanding_score, 'withLabel' => true])
+                                    @else
+                                        <x-filament::badge color="gray" :icon="Heroicon::OutlinedClock" class="w-fit">Noch nicht abgeschlossen</x-filament::badge>
+                                    @endif
+                                </dd>
+                            </div>
+                            <div class="grid gap-1">
+                                <dt>Rückmeldung</dt>
+                                <dd class="min-w-0 break-words">{{ $session->feedback ?? '–' }}</dd>
+                            </div>
+                        </dl>
+                    </li>
+                @endforeach
+            </ul>
+
+            <div class="hidden overflow-x-auto md:block print:block">
                 <table class="w-full text-sm">
                     <thead>
                         <tr class="border-b border-gray-950/5 dark:border-white/10">

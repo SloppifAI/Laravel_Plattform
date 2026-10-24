@@ -39,7 +39,7 @@ class LegalPagesTest extends TestCase
     #[DataProvider('legalPages')]
     public function test_logged_in_users_can_open_the_legal_pages(string $routeName): void
     {
-        foreach (['admin', 'teacher', 'student'] as $role) {
+        foreach (['operator', 'admin', 'teacher', 'student'] as $role) {
             $this->actingAs(User::factory()->{$role}()->create())
                 ->get(route($routeName))
                 ->assertOk();
@@ -146,6 +146,62 @@ class LegalPagesTest extends TestCase
             ->assertSee('Import einer Schülerliste')
             ->assertSee('einmalig im Klartext')
             ->assertSee('die Schule, zu der das Konto gehört');
+    }
+
+    public function test_the_privacy_policy_covers_the_registration_of_a_school(): void
+    {
+        $this->get(route('legal.privacy'))
+            ->assertSee('Registrierung einer Schule')
+            ->assertSee('Eine Schule registriert sich.')
+            ->assertSee('die Daten der Schule: Name, Ort und Bundesland')
+            ->assertSee('Kontakt-E-Mail-Adresse der Schule')
+            ->assertSee('die Daten des ersten Kontos der Schuladministration')
+            ->assertSee('Schulnummer')
+            ->assertSee('Gesperrt kann sich niemand der')
+            ->assertSee('Art. 6 Abs. 1 lit. b DSGVO, soweit die Schule mit uns die Nutzung der')
+            ->assertSee('Für die Angaben, die eine Schule bei ihrer Registrierung macht')
+            ->assertSee('Daten der Schule bei der Registrierung:');
+    }
+
+    public function test_the_privacy_policy_describes_what_the_operator_can_and_cannot_see(): void
+    {
+        $this->get(route('legal.privacy'))
+            ->assertSee('<h3>Plattform-Administration</h3>', false)
+            ->assertSee('Zugänge von Schuladministrationen anlegen')
+            ->assertSee('das gemeinsame Kompetenzraster pflegen')
+            ->assertSee('Das sieht sie in der Plattform nicht:')
+            ->assertSee('Die Plattform-Administration, die die Plattform')
+            ->assertSee('Diesen Zugriff nutzen wir nur dafür und nicht, um Unterrichts- oder')
+            ->assertSee('Rolle: Plattform-Administration, Schuladministration, Lehrkraft oder Schüler:in');
+    }
+
+    public function test_the_privacy_policy_scopes_what_the_administration_sees_to_its_own_school(): void
+    {
+        $this->get(route('legal.privacy'))
+            ->assertSee('Schuladministration (nur die eigene Schule)')
+            ->assertSee('alle Konten und Klassen der Schule')
+            ->assertSee('nur die Konten der Schuladministrationen')
+            ->assertSee('Die Daten verschiedener Schulen sind voneinander getrennt.')
+            ->assertSee('Schulen sehen nichts')
+            ->assertDontSee('Administration der Plattform')
+            ->assertDontSee('Die Administration sieht alle');
+    }
+
+    public function test_the_who_sees_what_table_has_a_cell_for_every_role_in_every_row(): void
+    {
+        $html = $this->get(route('legal.privacy'))->getContent();
+
+        preg_match('/<caption>Wer welche Daten sehen kann<\/caption>(.+?)<\/table>/s', $html, $table);
+        preg_match_all('/<th scope="col">(.+?)<\/th>/', $table[1], $headers);
+        preg_match('/<tbody>(.+?)<\/tbody>/s', $table[1], $body);
+        $rows = array_filter(explode('</tr>', $body[1]), fn (string $row): bool => str_contains($row, '<th scope="row">'));
+
+        $this->assertSame(['Daten', 'Schüler:in', 'Lehrkraft', 'Schuladministration (nur die eigene Schule)', 'Plattform-Administration'], $headers[1]);
+        $this->assertCount(8, $rows);
+
+        foreach ($rows as $row) {
+            $this->assertSame(4, substr_count($row, '<td>'), $row);
+        }
     }
 
     public function test_the_privacy_policy_and_the_panel_agree_on_self_registration(): void

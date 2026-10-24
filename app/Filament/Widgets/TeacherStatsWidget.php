@@ -4,6 +4,7 @@ namespace App\Filament\Widgets;
 
 use App\Filament\Pages\LearningProgress;
 use App\Filament\Resources\Lessons\LessonResource;
+use App\Models\Lesson;
 use App\Models\User;
 use App\Support\LearningInsights;
 use App\UnderstandingLevel;
@@ -14,7 +15,8 @@ use Illuminate\Database\Eloquent\Builder;
 
 /**
  * Key figures of a teacher's own lessons: hand-ins of running homework, how well the last one was understood
- * and how many of their students need support.
+ * and how many of their students need support. Förderaufgaben go to a few students only, so they never count as the
+ * ordinary homework here; their hand-ins are listed beside the hand-ins figure.
  */
 class TeacherStatsWidget extends StatsOverviewWidget
 {
@@ -52,18 +54,26 @@ class TeacherStatsWidget extends StatsOverviewWidget
             ->withCount(['students', 'submissions'])
             ->get();
 
-        return Stat::make('Abgaben offener Hausaufgaben', "{$openLessons->sum('submissions_count')} / {$openLessons->sum('students_count')}")
+        [$practiceTasks, $homework] = $openLessons->partition(fn (Lesson $lesson): bool => $lesson->isPracticeTask());
+
+        $description = match ($homework->count()) {
+            0 => 'Gerade läuft keine Hausaufgabe',
+            1 => 'aus 1 laufenden Hausaufgabe',
+            default => "aus {$homework->count()} laufenden Hausaufgaben",
+        };
+
+        if ($practiceTasks->isNotEmpty()) {
+            $description .= " · Förderaufgaben: {$practiceTasks->sum('submissions_count')} / {$practiceTasks->sum('students_count')}";
+        }
+
+        return Stat::make('Abgaben offener Hausaufgaben', "{$homework->sum('submissions_count')} / {$homework->sum('students_count')}")
             ->icon(Heroicon::OutlinedInboxArrowDown)
-            ->description(match ($openLessons->count()) {
-                0 => 'Gerade läuft keine Hausaufgabe',
-                1 => 'aus 1 laufenden Hausaufgabe',
-                default => "aus {$openLessons->count()} laufenden Hausaufgaben",
-            });
+            ->description($description);
     }
 
     protected function lastHomeworkStat(User $teacher): Stat
     {
-        $lastLesson = $teacher->taughtLessons()->published()->latest('published_at')->latest('id')->first();
+        $lastLesson = $teacher->taughtLessons()->published()->whereNull('practice_competency_id')->latest('published_at')->latest('id')->first();
         $average = $lastLesson?->submissions()->whereNotNull('evaluated_at')->avg('understanding_score');
 
         $stat = Stat::make('Ø Verständnis der letzten Hausaufgabe', $average === null ? '–' : round($average).' %')

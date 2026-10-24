@@ -5,6 +5,7 @@ namespace Tests\Feature\StudentProgress;
 use App\Filament\Pages\ExplainIt;
 use App\Filament\Pages\MyHomework;
 use App\Filament\Pages\MyLearningProgress;
+use App\Filament\Pages\ParentReport;
 use App\Filament\Pages\WorkOnHomework;
 use App\Models\Competency;
 use App\Models\SchoolClass;
@@ -43,10 +44,15 @@ class MyLearningProgressPageTest extends TestCase
             ->assertSee('keine Noten')
             ->assertSeeInOrder([
                 'Das kannst du schon gut', 'Fachbegriffe erklären', 'Gut verstanden',
-                'Hier lohnt sich Üben', 'Versuche planen', 'Förderbedarf',
-                'Fast geschafft', 'Diagramme lesen', 'Teilweise verstanden',
+                'Hier lohnt sich Üben', 'Versuche planen', '30 %', 'Noch üben',
+                'Fast geschafft', 'Diagramme lesen', '60 %', 'Teilweise verstanden', 'Thema Tuto erklären', 'zu Diagramme lesen',
             ])
-            ->assertDontSee('ENDE');
+            // Cut at a word boundary, never in the middle of a word.
+            ->assertSee('Beschreibung. Das ist...')
+            ->assertDontSee('Das ist ein...')
+            ->assertDontSee('ENDE')
+            // Teacher language and the red warning do not belong on the student's page.
+            ->assertDontSee('Förderbedarf');
     }
 
     public function test_practice_shows_lessons_gaps_and_the_next_steps_for_each_lesson(): void
@@ -66,12 +72,16 @@ class MyLearningProgressPageTest extends TestCase
         $this->actingAs($student)
             ->get(MyLearningProgress::getUrl())
             ->assertOk()
-            ->assertSeeInOrder(['Hier ist es dir aufgefallen', 'Biologie:', 'Bruchrechnung', '10.10.2026', 'Photosynthese', '01.10.2026'])
-            ->assertSee('Darauf solltest du noch einmal schauen')
+            ->assertSeeInOrder(['Bei diesen Hausaufgaben hat es noch gehakt', 'Biologie:', 'Bruchrechnung', '10.10.2026', 'Photosynthese', '01.10.2026'])
+            // The gaps belong to the homework, not to one competency, so the heading says so.
+            ->assertSee('Das kannst du dir in diesen Hausaufgaben noch einmal anschauen')
             ->assertSee('Wie Licht in Energie umgewandelt wird')
             ->assertSee('Brüche gleichnamig machen')
             ->assertSee('Ergebnis ansehen')
-            ->assertSee('Mit Tuto üben')
+            ->assertSee('Thema Tuto erklären')
+            // Every link says where it leads, also for screen readers.
+            ->assertSee('Ergebnis ansehen<span class="sr-only"> zu Photosynthese</span>', false)
+            ->assertSee('Thema Tuto erklären<span class="sr-only"> zu Bruchrechnung</span>', false)
             ->assertSee(WorkOnHomework::getUrl(['lesson' => $photosynthesis->lesson_id]), false)
             ->assertSee(ExplainIt::getUrl(['lesson' => $photosynthesis->lesson_id]), false)
             ->assertSee(WorkOnHomework::getUrl(['lesson' => $fractions->lesson_id]), false)
@@ -85,13 +95,51 @@ class MyLearningProgressPageTest extends TestCase
     public function test_average_trend_and_number_of_evaluated_homework_are_shown(): void
     {
         $student = User::factory()->student(SchoolClass::factory()->create())->create();
-        $this->evaluatedHomework($student, 'Photosynthese', understandingScore: 40)->update(['evaluated_at' => now()->subDays(3)]);
-        $this->evaluatedHomework($student, 'Zellaufbau', understandingScore: 80)->update(['evaluated_at' => now()->subDay()]);
+        $this->evaluatedHomework($student, 'Photosynthese', '2026-10-01', understandingScore: 40);
+        $this->evaluatedHomework($student, 'Zellaufbau', '2026-10-10', understandingScore: 80);
 
         $this->actingAs($student)
             ->get(MyLearningProgress::getUrl())
             ->assertOk()
-            ->assertSeeInOrder(['Dein Verständnis im Durchschnitt', '60', 'Teilweise verstanden', 'Entwicklung', 'Es geht aufwärts', 'Das beruht auf', '2 bewerteten Hausaufgaben']);
+            ->assertSeeInOrder(['Dein Verständnis im Durchschnitt', '60 %', 'Teilweise verstanden', 'Entwicklung', 'Es geht aufwärts', 'Bisher bewertet', '2 Hausaufgaben']);
+    }
+
+    public function test_the_trend_is_the_one_the_parent_report_shows_for_the_same_homework(): void
+    {
+        $student = User::factory()->student(SchoolClass::factory()->create())->create();
+        // Lesson order 40, 80, 60, evaluated in the opposite order: the lesson order decides, the middle score counts as newer.
+        $this->evaluatedHomework($student, 'Photosynthese', '2026-10-01', understandingScore: 40)->update(['evaluated_at' => now()->subDay()]);
+        $this->evaluatedHomework($student, 'Zellaufbau', '2026-10-10', understandingScore: 80)->update(['evaluated_at' => now()->subDays(2)]);
+        $this->evaluatedHomework($student, 'Atmung', '2026-10-20', understandingScore: 60)->update(['evaluated_at' => now()->subDays(3)]);
+
+        $this->actingAs($student)
+            ->get(MyLearningProgress::getUrl())
+            ->assertOk()
+            ->assertSee('Es geht aufwärts');
+
+        $this->actingAs(User::factory()->admin()->for($student->school)->create())
+            ->get(ParentReport::getUrl(['student' => $student]))
+            ->assertOk()
+            ->assertSee('Steigend: Die späteren Hausaufgaben liegen im Mittel 30 Punkte über den früheren.');
+    }
+
+    public function test_withdrawn_homework_does_not_count_and_its_competency_still_offers_a_way_to_start(): void
+    {
+        $student = User::factory()->student(SchoolClass::factory()->create())->create();
+        $kept = $this->evaluatedHomework($student, 'Photosynthese', '2026-10-01', understandingScore: 80);
+        $withdrawn = $this->evaluatedHomework($student, 'Bruchrechnung', '2026-10-10', understandingScore: 40);
+        $this->answer($kept, Competency::factory()->create(), 90);
+        $this->answer($withdrawn, Competency::factory()->create(['name' => 'Brüche kürzen']), 20);
+        $withdrawn->lesson->students()->detach($student);
+
+        $this->actingAs($student)
+            ->get(MyLearningProgress::getUrl())
+            ->assertOk()
+            ->assertSeeInOrder(['Dein Verständnis im Durchschnitt', '80 %', 'Bisher bewertet', '1 Hausaufgabe'])
+            ->assertSeeInOrder(['Hier lohnt sich Üben', 'Brüche kürzen', 'Thema Tuto erklären', 'zu Brüche kürzen'])
+            ->assertDontSee('Bei diesen Hausaufgaben hat es noch gehakt')
+            ->assertDontSee('Bruchrechnung')
+            ->assertDontSee(WorkOnHomework::getUrl(['lesson' => $withdrawn->lesson_id]), false);
     }
 
     public function test_a_student_whose_competencies_are_all_good_gets_a_positive_message(): void
@@ -102,7 +150,7 @@ class MyLearningProgressPageTest extends TestCase
         $this->actingAs($student)
             ->get(MyLearningProgress::getUrl())
             ->assertOk()
-            ->assertSee('Im Moment musst du nichts dringend üben.')
+            ->assertSee('Im Moment läuft alles richtig gut.')
             ->assertDontSee('Fast geschafft');
     }
 
@@ -121,8 +169,8 @@ class MyLearningProgressPageTest extends TestCase
             ->get(MyLearningProgress::getUrl())
             ->assertOk()
             ->assertSeeInOrder(['Das kannst du schon gut', 'Fachbegriffe erklären', 'Gut verstanden'])
-            ->assertSee('Im Moment musst du nichts dringend üben.')
-            ->assertSee('1 bewerteter Hausaufgabe')
+            ->assertSee('Im Moment läuft alles richtig gut.')
+            ->assertSeeInOrder(['Bisher bewertet', '1 Hausaufgabe'])
             ->assertDontSee('Nur bei der Mitschülerin')
             ->assertDontSee('Klassenarbeit der anderen')
             ->assertDontSee('Fremde Lücke')

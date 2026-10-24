@@ -98,4 +98,41 @@ class StudentCompetenciesTest extends TestCase
         $this->assertSame('steady', LearningInsights::understandingTrend(collect([64, 60])));
         $this->assertSame('up', LearningInsights::understandingTrend(collect([50, 20, 55, 80, 90])));
     }
+
+    public function test_understanding_trend_splits_and_rounds_like_the_parent_report(): void
+    {
+        // With an odd count the middle score belongs to the newer half: 40 against 70 is +30.
+        $this->assertSame('up', LearningInsights::understandingTrend(collect([40, 80, 60])));
+        $this->assertSame('steady', LearningInsights::understandingTrend(collect([60, 64, 62])));
+        // 60 against 64.5 is +4.5, which the parent report rounds to the threshold of 5.
+        $this->assertSame('up', LearningInsights::understandingTrend(collect([60, 64, 65])));
+        $this->assertSame('down', LearningInsights::understandingTrend(collect([65, 61, 60])));
+    }
+
+    public function test_evaluated_submissions_follow_the_lesson_order_and_skip_withdrawn_unpublished_and_unevaluated_homework(): void
+    {
+        $student = User::factory()->student(SchoolClass::factory()->create())->create();
+        $classmate = User::factory()->student($student->schoolClass)->create();
+
+        $later = $this->evaluatedHomework($student, 'Später', '2026-10-20');
+        $earlier = $this->evaluatedHomework($student, 'Früher', '2026-10-01');
+        $this->evaluatedHomework($student, 'Zurückgezogen', '2026-10-05')->lesson->students()->detach($student);
+        $this->evaluatedHomework($student, 'Entwurf', '2026-10-06')->lesson->update(['published_at' => null]);
+        $this->evaluatedHomework($student, 'Ausstehend', '2026-10-07')->update(['evaluated_at' => null, 'understanding_score' => null]);
+        $this->evaluatedHomework($classmate, 'Mitschülerin', '2026-10-08');
+
+        $this->assertSame(
+            [$earlier->getKey(), $later->getKey()],
+            LearningInsights::evaluatedSubmissions($student)->modelKeys(),
+        );
+    }
+
+    public function test_the_lowest_level_reads_as_noch_ueben_in_the_warning_colour_for_students(): void
+    {
+        $this->assertSame('Noch üben', LearningInsights::studentLevel(49)['label']);
+        $this->assertSame('warning', LearningInsights::studentLevel(0)['color']);
+        $this->assertSame('Teilweise verstanden', LearningInsights::studentLevel(50)['label']);
+        $this->assertSame('Gut verstanden', LearningInsights::studentLevel(75)['label']);
+        $this->assertSame('success', LearningInsights::studentLevel(100)['color']);
+    }
 }

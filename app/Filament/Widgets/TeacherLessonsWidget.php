@@ -5,6 +5,7 @@ namespace App\Filament\Widgets;
 use App\Filament\Pages\LearningProgress;
 use App\Filament\Resources\Lessons\LessonResource;
 use App\Models\User;
+use App\Support\LessonReview;
 use Filament\Widgets\Widget;
 
 /**
@@ -36,11 +37,16 @@ class TeacherLessonsWidget extends Widget
         return [
             'lessons' => $teacher->taughtLessons()
                 ->with('schoolClass')
-                ->withCount(['students', 'submissions'])
+                ->withCount([
+                    'students',
+                    'submissions',
+                    'submissions as evaluated_submissions_count' => fn ($query) => $query->whereNotNull('evaluated_at'),
+                ])
                 ->latest('held_on')
                 ->latest('id')
                 ->limit(5)
                 ->get(),
+            'minReviewGroup' => LessonReview::MIN_GROUP,
             'createLessonUrl' => LessonResource::getUrl('create'),
             'learningProgressUrl' => LearningProgress::getUrl(),
         ];

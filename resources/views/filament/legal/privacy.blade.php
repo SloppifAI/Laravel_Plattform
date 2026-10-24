@@ -15,7 +15,7 @@
         'ueberblick' => 'Überblick',
         'hosting' => 'Hosting und Server-Logfiles',
         'cookies' => 'Cookies und lokaler Speicher',
-        'benutzerkonten' => 'Benutzerkonten',
+        'benutzerkonten' => 'Schulen und Benutzerkonten',
         'lerndaten' => 'Unterrichts- und Lerndaten',
         'ki' => 'Einsatz von KI',
         'schriftarten' => 'Schriftarten und externe Inhalte',
@@ -29,6 +29,13 @@
 
     $aiEnabled = (bool) config('services.anthropic.enabled');
     $sessionMinutes = (int) config('session.lifetime');
+    $recordingDays = (int) config('lernplattform.recordings.keep_days');
+    $keptYears = (int) config('lernplattform.retention.school_years_kept');
+    $keptPhrase = match (true) {
+        $keptYears <= 1 => 'das laufende Schuljahr',
+        $keptYears === 2 => 'das laufende und das vorherige Schuljahr',
+        default => 'das laufende und die '.($keptYears - 1).' vorherigen Schuljahre',
+    };
 
     /*
      * Filament's default avatar provider builds an https://ui-avatars.com URL, so the browser asks that host for
@@ -91,6 +98,13 @@
         die Schule. Ihre Kontaktdaten und die ihrer Datenschutzbeauftragten stehen in den Datenschutzhinweisen der
         Schule.
     </p>
+    <p>
+        <strong>Registrierung einer Schule.</strong> Für die Angaben, die eine Schule bei ihrer Registrierung macht (die
+        Stammdaten der Schule und der Nachweis, dass sie den Vertrag zur Auftragsverarbeitung angenommen hat), und
+        für die Verwaltung der Schulen auf der Plattform (Abschnitt 5) sind wir selbst verantwortlich. Wir schließen damit
+        die Nutzung der Plattform mit der Schule ab und halten die Plattform sicher. Das Konto der Schuladministration
+        selbst, auch das erste, ist ein Konto der Schule: Dessen Daten verarbeiten wir im Auftrag der Schule.
+    </p>
 
     <h2 id="ueberblick">2. Überblick</h2>
     <p>
@@ -100,8 +114,12 @@
     </p>
     <ul>
         <li>
-            Der Unterricht wird nicht aufgezeichnet, weder als Ton noch als Video. Lehrkräfte tragen selbst Notizen, ein
-            Tafelbild oder einen Transkripttext ein und können Arbeitsblätter als Foto, Scan oder PDF hochladen.
+            Die Plattform zeichnet keinen Unterricht von sich aus auf, und es gibt kein Video. Lehrkräfte tragen selbst
+            Notizen, ein Tafelbild oder einen Transkripttext ein und können Arbeitsblätter als Foto, Scan oder PDF
+            hochladen. Nur wenn die Schule das optionale Aufnahme-Modul freischaltet und die nötigen Einwilligungen
+            vorliegen, kann eine Lehrkraft den Ton einer Stunde aufnehmen. Eine Aufnahme sieht nur die aufnehmende
+            Lehrkraft, und sie wird nach {{ $recordingDays }} Tagen gelöscht. Was dabei verarbeitet wird, steht im
+            <a href="{{ route('legal.dpa') }}">Vertrag zur Auftragsverarbeitung</a> (Anlage 1).
         </li>
         <li>
             Es gibt kein Tracking: keine Reichweitenmessung, keine Werbung und keine Schriftarten von fremden Servern.
@@ -112,8 +130,13 @@
             @endif
         </li>
         <li>
+            Jede Schule registriert sich selbst auf der Plattform. Alles, was zu einer Schule gehört, also Klassen,
+            Konten, Unterrichtsstunden, Abgaben und Gespräche, sehen nur Personen dieser Schule. Schulen sehen nichts
+            voneinander (siehe Abschnitt 5 und 6).
+        </li>
+        <li>
             Schüler:innen können sich mit dem Klassencode ihrer Lehrkraft selbst registrieren. Konten für Lehrkräfte und
-            für die Administration legt die Administration an (siehe Abschnitt 5).
+            weitere Personen legt die Schuladministration der Schule an (siehe Abschnitt 5).
         </li>
         <li>Zum Einsatz von KI und zu den Verständniswerten lesen Sie bitte Abschnitt 7.</li>
     </ul>
@@ -124,7 +147,7 @@
             <li>
                 Die Plattform kennt deinen Namen, deinen Benutzernamen, deine Klasse und dein Passwort. Dein Passwort wird
                 nur in verschlüsselter Form (als Hash) gespeichert, die Plattform kann es nicht nachlesen. Hat die
-                Administration dein Konto angelegt, hat sie dein Startpasswort einmal gesehen. Ändere es dann in deinem
+                Schuladministration deiner Schule dein Konto angelegt, hat sie dein Startpasswort einmal gesehen. Ändere es dann in deinem
                 Profil.
             </li>
             <li>
@@ -136,7 +159,8 @@
                 Frieda. Deine Lehrkraft sieht deine Abgaben und den Verlauf der Gespräche, die zu ihren Stunden gehören.
                 Lehrkräfte, die deine Klasse leiten oder unterrichten, sehen außerdem deine Punktwerte und zu jedem
                 Gespräch Thema, Punktwert und Rückmeldung, auch wenn du dir das Thema selbst ausgesucht hast. Auch die
-                Administration der Plattform kann alles sehen. Andere Schüler:innen sehen es nie.
+                Schuladministration deiner Schule kann alles sehen. Die Plattform-Administration, die die Plattform
+                betreut, sieht deine Daten nicht. Andere Schüler:innen und andere Schulen sehen es nie.
             </li>
             <li>Frieda ist eine Computerfigur und kein Mensch.</li>
             <li>
@@ -216,27 +240,30 @@
                 <tr>
                     <th scope="row"><code>{{ config('session.cookie') }}</code></th>
                     <td>
+                        <span class="legal-cell-label">Zweck</span>
                         Wird gesetzt, sobald Sie die Anmeldeseite, die Registrierung oder die Seite „Passwort vergessen“
                         öffnen, und hält nach der Anmeldung Ihre Anmeldung aufrecht. Das Cookie enthält nur eine zufällige
                         Sitzungskennung. Die Sitzung selbst liegt in der Datenbank auf dem Server.
                     </td>
-                    <td>{{ $sessionMinutes }} Minuten nach der letzten Aktivität, spätestens bis zur Abmeldung</td>
+                    <td><span class="legal-cell-label">Gültigkeit</span> {{ $sessionMinutes }} Minuten nach der letzten Aktivität, spätestens bis zur Abmeldung</td>
                 </tr>
                 <tr>
                     <th scope="row"><code>XSRF-TOKEN</code></th>
                     <td>
+                        <span class="legal-cell-label">Zweck</span>
                         Schützt vor gefälschten Anfragen (Cross-Site-Request-Forgery). Formulare und Aktionen werden nur
                         angenommen, wenn sie von der Plattform selbst ausgelöst wurden.
                     </td>
-                    <td>wie das Sitzungs-Cookie</td>
+                    <td><span class="legal-cell-label">Gültigkeit</span> wie das Sitzungs-Cookie</td>
                 </tr>
                 <tr>
                     <th scope="row"><code>remember_web_</code> mit angehängter Kennung</th>
                     <td>
+                        <span class="legal-cell-label">Zweck</span>
                         Nur wenn Sie bei der Anmeldung „Angemeldet bleiben“ ankreuzen. Speichert eine verschlüsselte
                         Kennung, damit Sie ohne neue Anmeldung wiedererkannt werden.
                     </td>
-                    <td>bis zu 400 Tage, spätestens bis zur Abmeldung</td>
+                    <td><span class="legal-cell-label">Gültigkeit</span> bis zu 400 Tage, spätestens bis zur Abmeldung</td>
                 </tr>
             </tbody>
         </table>
@@ -259,23 +286,24 @@
             <tbody>
                 <tr>
                     <th scope="row"><code>filament:theme:mode</code></th>
-                    <td>lokaler Speicher</td>
-                    <td>Ihre Wahl zwischen hellem, dunklem oder vom System vorgegebenem Erscheinungsbild</td>
+                    <td><span class="legal-cell-label">Speicher</span> lokaler Speicher</td>
+                    <td><span class="legal-cell-label">Zweck</span> Ihre Wahl zwischen hellem, dunklem oder vom System vorgegebenem Erscheinungsbild</td>
                 </tr>
                 <tr>
                     <th scope="row"><code>filament:sidebar:open</code>, <code>filament:sidebar:desktop_open</code></th>
-                    <td>lokaler Speicher</td>
-                    <td>Ob die Seitenleiste geöffnet oder eingeklappt ist</td>
+                    <td><span class="legal-cell-label">Speicher</span> lokaler Speicher</td>
+                    <td><span class="legal-cell-label">Zweck</span> Ob die Seitenleiste geöffnet oder eingeklappt ist</td>
                 </tr>
                 <tr>
                     <th scope="row"><code>filament:sidebar:collapsed_groups</code></th>
-                    <td>lokaler Speicher</td>
-                    <td>Welche Gruppen der Seitenleiste eingeklappt sind</td>
+                    <td><span class="legal-cell-label">Speicher</span> lokaler Speicher</td>
+                    <td><span class="legal-cell-label">Zweck</span> Welche Gruppen der Seitenleiste eingeklappt sind</td>
                 </tr>
                 <tr>
                     <th scope="row"><code>filament.notifications.redirect</code></th>
-                    <td>Sitzungsspeicher</td>
+                    <td><span class="legal-cell-label">Speicher</span> Sitzungsspeicher</td>
                     <td>
+                        <span class="legal-cell-label">Zweck</span>
                         Merkt sich kurz eine Benachrichtigung über einen Seitenwechsel hinweg und wird danach wieder
                         entfernt
                     </td>
@@ -294,25 +322,32 @@
         Sitzungs-Cookie ist keine Anmeldung möglich.
     </p>
 
-    <h2 id="benutzerkonten">5. Benutzerkonten</h2>
-    <p>Wer die Plattform nutzen will, braucht ein Konto. Es entsteht auf einem von zwei Wegen:</p>
+    <h2 id="benutzerkonten">5. Schulen und Benutzerkonten</h2>
+    <p>
+        Wer die Plattform nutzen will, braucht ein Konto, und jedes Konto gehört zu einer Schule. Nur die
+        Plattform-Administration gehört zu keiner Schule (siehe unten). Ein Konto entsteht auf einem von drei Wegen:
+    </p>
     <ul>
         <li>
-            <strong>Die Administration legt es an</strong>, einzeln oder durch den Import einer Schülerliste, die die
-            Schulsoftware als CSV-Datei exportiert. Auf diesem Weg entstehen alle Konten von Lehrkräften und der
-            Administration.
+            <strong>Eine Schule registriert sich.</strong> Dabei entstehen die Schule auf der Plattform und das erste
+            Konto ihrer Schuladministration (siehe „Registrierung einer Schule“).
+        </li>
+        <li>
+            <strong>Die Schuladministration legt es an</strong>, einzeln oder durch den Import einer Schülerliste, die
+            die Schulsoftware als CSV-Datei exportiert. Auf diesem Weg entstehen die Konten von Lehrkräften und weiteren
+            Administrationen der Schule.
         </li>
         <li>
             <strong>Schüler:innen registrieren sich selbst.</strong> Auf der Anmeldeseite geben sie unter „Mit Klassencode
             registrieren“ ihren Namen, einen Benutzernamen, ein Passwort und den Klassencode ihrer Lehrkraft ein, auf
-            Wunsch auch eine E-Mail-Adresse. Das Konto wird immer als Schüler:in angelegt und der Klasse zugeordnet, zu
-            der der Code gehört. Den Code selbst speichern wir nicht im Konto.
+            Wunsch auch eine E-Mail-Adresse. Das Konto wird immer als Schüler:in angelegt und der Klasse und der Schule
+            zugeordnet, zu denen der Code gehört. Den Code selbst speichern wir nicht im Konto.
         </li>
     </ul>
     <p>
         Bei der Selbstregistrierung prüft vorab niemand, ob die Person wirklich zur Klasse gehört. Wer den Klassencode
         kennt, kann ein Schülerkonto in dieser Klasse erstellen. Lehrkräfte geben den Code deshalb nur an ihre Klasse
-        weiter. Die Administration kann Konten, die nicht dazugehören, löschen.
+        weiter. Die Schuladministration kann Konten, die nicht dazugehören, löschen.
     </p>
     <h3>Welche Daten verarbeitet werden</h3>
     <ul>
@@ -321,7 +356,7 @@
             optional eine E-Mail-Adresse, ausschließlich für den Link zum Zurücksetzen des Passworts (siehe unten)
         </li>
         <li>das Passwort, das nur als Hash gespeichert wird und nicht lesbar ist</li>
-        <li>die Rolle: Administration, Lehrkraft oder Schüler:in</li>
+        <li>die Rolle: Plattform-Administration, Schuladministration, Lehrkraft oder Schüler:in</li>
         <li>die Schule, zu der das Konto gehört, bei Schüler:innen die Klasse, bei Lehrkräften gegebenenfalls die Klassenleitung</li>
         <li>
             technische Sitzungsdaten: Sitzungskennung, bei angemeldeten Personen die Benutzerkennung, dazu IP-Adresse,
@@ -334,9 +369,69 @@
     <h3>Wozu</h3>
     <p>
         Die Daten dienen der Anmeldung, der Zuordnung von Inhalten zu Personen und Klassen, der Vergabe von Rechten nach
-        der Rolle, dem Zurücksetzen vergessener Passwörter und der Sicherheit der Plattform. Die Administration sieht alle
-        Konten. Lehrkräfte sehen die Namen der Schüler:innen aus den Klassen ihrer Stunden. An Dritte geben wir diese
+        der Rolle, dem Zurücksetzen vergessener Passwörter und der Sicherheit der Plattform. Die Schuladministration
+        sieht alle Konten ihrer Schule. Lehrkräfte sehen die Namen der Schüler:innen aus den Klassen ihrer Stunden. Die
+        Plattform-Administration sieht nur die Konten der Schuladministrationen. An Dritte geben wir diese
         Daten nicht weiter{{ $externalAvatars ? ', abgesehen vom Platzhalter-Bild (siehe Abschnitt 8)' : '' }}.
+    </p>
+
+    <h3>Registrierung einer Schule</h3>
+    <p>
+        Eine Schule legt sich selbst auf der Plattform an. Dabei werden diese Angaben verarbeitet:
+    </p>
+    <ul>
+        <li>
+            die Daten der Schule: Name, Ort und Bundesland, auf Wunsch auch Schulnummer, Schulform und eine
+            Kontakt-E-Mail-Adresse der Schule
+        </li>
+        <li>
+            die Daten des ersten Kontos der Schuladministration: Name, Benutzername und Passwort (nur als Hash
+            gespeichert), gegebenenfalls eine E-Mail-Adresse. Dieses Konto gehört danach zur Schule, wir verarbeiten es in
+            deren Auftrag.
+        </li>
+        <li>
+            die Annahme des <a href="{{ route('legal.dpa') }}">Vertrags zur Auftragsverarbeitung</a>: Version, Zeitpunkt,
+            der Vertragstext, wie die Schule ihn gesehen hat, sowie Name und Benutzername der annehmenden Person. Dieser
+            Nachweis bleibt auch bestehen, wenn das Konto später gelöscht wird.
+        </li>
+        <li>der Zeitpunkt der Registrierung und, falls die Schule gesperrt wird, der Zeitpunkt der Sperrung</li>
+    </ul>
+    <p>
+        <strong>Wozu:</strong> Die Angaben dienen dazu, die Schule und ihre erste Schuladministration anzulegen, die
+        Daten jeder Schule von denen anderer Schulen zu trennen, die Schule bei Fragen zum Betrieb zu erreichen und eine
+        Schule sperren zu können, zum Beispiel bei Missbrauch oder auf Wunsch der Schule. Gesperrt kann sich niemand der
+        Schule mehr anmelden. Die Daten bleiben dabei gespeichert, bis sie gelöscht werden oder die Sperre aufgehoben
+        wird.
+    </p>
+    <p>
+        <strong>Rechtsgrundlage:</strong> Art. 6 Abs. 1 lit. b DSGVO, soweit die Schule mit uns die Nutzung der
+        Plattform vereinbart, und Art. 6 Abs. 1 lit. f DSGVO für den sicheren Betrieb der Plattform, die Trennung der
+        Schulen voneinander und den Nachweis des Vertrags. Die Stammdaten der Schule sehen die Plattform-Administration (alle Schulen) und die
+        Schuladministration der Schule (nur die eigene Schule).
+    </p>
+
+    <h3>Plattform-Administration</h3>
+    <p>
+        Die Plattform-Administration ist die Rolle, mit der wir als Betreiber die Plattform betreuen. Ihre Konten
+        gehören zu keiner Schule.
+    </p>
+    <ul>
+        <li>
+            <strong>Das kann sie:</strong> registrierte Schulen und ihre Stammdaten ansehen und bearbeiten, Schulen
+            sperren und wieder freigeben, Zugänge von Schuladministrationen anlegen, ändern, zurücksetzen und löschen
+            und das gemeinsame Kompetenzraster pflegen. Auf ihrer Startseite sieht sie nur Zahlen, nämlich wie viele
+            Schulen, Konten je Rolle und Klassen es gibt.
+        </li>
+        <li>
+            <strong>Das sieht sie in der Plattform nicht:</strong> Unterrichtsstunden, Notizen, Arbeitsblätter,
+            Hausaufgaben, Abgaben, Verständniswerte, „Erklär’s mir“-Gespräche, Klassen sowie die Konten von Lehrkräften
+            und Schüler:innen.
+        </li>
+    </ul>
+    <p>
+        Technisch betreiben wir die Server und die Datenbank und haben dort Zugriff, soweit es für Betrieb, Wartung und
+        Fehlersuche nötig ist (siehe Abschnitt 3). Diesen Zugriff nutzen wir nur dafür und nicht, um Unterrichts- oder
+        Lerndaten auszuwerten.
     </p>
 
     <h3>Import einer Schülerliste</h3>
@@ -414,8 +509,9 @@
         <p class="legal-note-title">Hinweis für Lehrkräfte</p>
         <p>
             Bitte tragen Sie in Notizen, Transkripten und Arbeitsblättern keine personenbezogenen Daten von Schüler:innen
-            ein, zum Beispiel Namen, Fotos oder Leistungsstände. Tonaufnahmen des Unterrichts gehören nicht auf die
-            Plattform. Bitte laden Sie Arbeitsblätter nur hoch, wenn Sie dazu berechtigt sind.
+            ein, zum Beispiel Namen, Fotos oder Leistungsstände. Tonaufnahmen des Unterrichts sind nur mit dem
+            optionalen Aufnahme-Modul Ihrer Schule und nur mit den nötigen Einwilligungen erlaubt. Bitte laden Sie
+            Arbeitsblätter nur hoch, wenn Sie dazu berechtigt sind.
         </p>
     </div>
 
@@ -428,64 +524,85 @@
                     <th scope="col">Daten</th>
                     <th scope="col">Schüler:in</th>
                     <th scope="col">Lehrkraft</th>
-                    <th scope="col">Administration</th>
+                    <th scope="col">Schuladministration (nur die eigene Schule)</th>
+                    <th scope="col">Plattform-Administration</th>
                 </tr>
             </thead>
             <tbody>
                 <tr>
                     <th scope="row">Abgaben, Verständniswerte und Feedback</th>
-                    <td>nur die eigenen</td>
-                    <td>die Abgaben zu den eigenen Stunden</td>
-                    <td>alle</td>
+                    <td><span class="legal-cell-label">Schüler:in</span> nur die eigenen</td>
+                    <td><span class="legal-cell-label">Lehrkraft</span> die Abgaben zu den eigenen Stunden</td>
+                    <td><span class="legal-cell-label">Schuladministration (nur die eigene Schule)</span> alle</td>
+                    <td><span class="legal-cell-label">Plattform-Administration</span> keine Einsicht</td>
                 </tr>
                 <tr>
                     <th scope="row">„Erklär’s mir“-Gespräche mit Verlauf</th>
-                    <td>nur die eigenen</td>
-                    <td>nur Gespräche, die zu einer eigenen Stunde gehören</td>
-                    <td>alle</td>
+                    <td><span class="legal-cell-label">Schüler:in</span> nur die eigenen</td>
+                    <td><span class="legal-cell-label">Lehrkraft</span> nur Gespräche, die zu einer eigenen Stunde gehören</td>
+                    <td><span class="legal-cell-label">Schuladministration (nur die eigene Schule)</span> alle</td>
+                    <td><span class="legal-cell-label">Plattform-Administration</span> keine Einsicht</td>
                 </tr>
                 <tr>
                     <th scope="row">Unterrichtsnotizen und Arbeitsblätter</th>
-                    <td>keine Einsicht</td>
-                    <td>die eigenen Stunden</td>
-                    <td>alle</td>
+                    <td><span class="legal-cell-label">Schüler:in</span> keine Einsicht</td>
+                    <td><span class="legal-cell-label">Lehrkraft</span> die eigenen Stunden</td>
+                    <td><span class="legal-cell-label">Schuladministration (nur die eigene Schule)</span> alle</td>
+                    <td><span class="legal-cell-label">Plattform-Administration</span> keine Einsicht</td>
                 </tr>
                 <tr>
                     <th scope="row">Hausaufgaben mit Fragen und Zusammenfassung</th>
-                    <td>nur veröffentlichte und ihnen zugewiesene, die Zusammenfassung der Lehrkraft erst nach der Abgabe</td>
-                    <td>die eigenen Stunden</td>
-                    <td>alle</td>
+                    <td><span class="legal-cell-label">Schüler:in</span> nur veröffentlichte und ihnen zugewiesene, die Zusammenfassung der Lehrkraft erst nach der Abgabe</td>
+                    <td><span class="legal-cell-label">Lehrkraft</span> die eigenen Stunden</td>
+                    <td><span class="legal-cell-label">Schuladministration (nur die eigene Schule)</span> alle</td>
+                    <td><span class="legal-cell-label">Plattform-Administration</span> keine Einsicht</td>
                 </tr>
                 <tr>
                     <th scope="row">Lernstand-Übersicht</th>
-                    <td>keine Einsicht</td>
+                    <td><span class="legal-cell-label">Schüler:in</span> keine Einsicht</td>
                     <td>
+                        <span class="legal-cell-label">Lehrkraft</span>
                         für die Klassen, die sie leiten oder in denen sie Stunden halten: Kompetenzwerte und
                         Förderbedarf aller Schüler:innen der Klasse, berechnet aus allen ausgewerteten Antworten, auch zu
                         Stunden anderer Lehrkräfte
                     </td>
-                    <td>alle</td>
+                    <td><span class="legal-cell-label">Schuladministration (nur die eigene Schule)</span> alle</td>
+                    <td><span class="legal-cell-label">Plattform-Administration</span> keine Einsicht</td>
                 </tr>
                 <tr>
                     <th scope="row">Elterngesprächs-Bericht</th>
-                    <td>keine Einsicht</td>
+                    <td><span class="legal-cell-label">Schüler:in</span> keine Einsicht</td>
                     <td>
+                        <span class="legal-cell-label">Lehrkraft</span>
                         für Schüler:innen dieser Klassen: die Punktwerte aller veröffentlichten Hausaufgaben, auch zu
                         Stunden anderer Lehrkräfte, sowie Thema, Punktwert und Feedback aller „Erklär’s mir“-Sitzungen,
                         auch zu frei gewählten Themen (ohne Gesprächsverlauf)
                     </td>
-                    <td>alle</td>
+                    <td><span class="legal-cell-label">Schuladministration (nur die eigene Schule)</span> alle</td>
+                    <td><span class="legal-cell-label">Plattform-Administration</span> keine Einsicht</td>
                 </tr>
                 <tr>
                     <th scope="row">Konten und Klassen</th>
-                    <td>keine Einsicht</td>
-                    <td>nur die Namen der Schüler:innen aus den Klassen ihrer Stunden</td>
-                    <td>alle</td>
+                    <td><span class="legal-cell-label">Schüler:in</span> keine Einsicht</td>
+                    <td><span class="legal-cell-label">Lehrkraft</span> nur die Namen der Schüler:innen aus den Klassen ihrer Stunden</td>
+                    <td><span class="legal-cell-label">Schuladministration (nur die eigene Schule)</span> alle Konten und Klassen der Schule</td>
+                    <td><span class="legal-cell-label">Plattform-Administration</span> nur die Konten der Schuladministrationen, keine Klassen und keine Konten von Lehrkräften und Schüler:innen</td>
+                </tr>
+                <tr>
+                    <th scope="row">Stammdaten der Schule und Zugänge der Schuladministration</th>
+                    <td><span class="legal-cell-label">Schüler:in</span> keine Einsicht</td>
+                    <td><span class="legal-cell-label">Lehrkraft</span> keine Einsicht</td>
+                    <td><span class="legal-cell-label">Schuladministration (nur die eigene Schule)</span> die der eigenen Schule</td>
+                    <td><span class="legal-cell-label">Plattform-Administration</span> die aller Schulen</td>
                 </tr>
             </tbody>
         </table>
     </div>
     <p>Andere Schüler:innen sehen die Abgaben und Gespräche einer Schülerin oder eines Schülers nie.</p>
+    <p>
+        Die Daten verschiedener Schulen sind voneinander getrennt. Lehrkräfte und Schuladministration einer Schule sehen
+        nie Klassen, Konten, Unterrichtsstunden, Abgaben oder Gespräche einer anderen Schule.
+    </p>
 
     <h3>Verständniswert und Förderbedarf</h3>
     <p>
@@ -627,12 +744,28 @@
             <strong>Links zum Zurücksetzen des Passworts:</strong> 60 Minuten gültig, siehe Abschnitt 5.
         </li>
         <li>
-            <strong>Konten sowie Unterrichts- und Lerndaten:</strong> Die Plattform löscht sie nicht automatisch nach
-            einer festen Frist. Sie werden gelöscht, wenn sie nicht mehr gebraucht werden, auf Anfrage oder durch die
-            Schule nach deren eigenen Aufbewahrungs- und Löschfristen. Die Administration kann Konten löschen, dabei
-            verschwinden auch die zugehörigen Abgaben und Gespräche der Schüler:innen. Lehrkräfte können Abgaben löschen,
-            etwa damit eine Hausaufgabe neu bearbeitet werden kann. Einzelne „Erklär’s mir“-Gespräche löschen wir auf
-            Anfrage. Hochgeladene Arbeitsblätter entfernen wir auf Wunsch auch vom Server.
+            <strong>Konten:</strong> Die Plattform löscht Konten nicht automatisch. Sie werden gelöscht, wenn sie nicht
+            mehr gebraucht werden, auf Anfrage oder durch die Schule nach deren eigenen Aufbewahrungs- und Löschfristen.
+            Die Schuladministration kann Konten ihrer Schule löschen, dabei verschwinden auch die zugehörigen Abgaben und
+            Gespräche der Schüler:innen.
+        </li>
+        <li>
+            <strong>Unterrichts- und Lerndaten:</strong> Unterrichtsstunden mit ihren Fragen, Abgaben und Antworten sowie
+            „Erklär’s mir“-Gespräche löscht die Plattform täglich automatisch, wenn sie älter sind als die
+            Aufbewahrungsfrist. Aufbewahrt werden {{ $keptPhrase }}. Lehrkräfte können Abgaben schon vorher löschen, etwa
+            damit eine Hausaufgabe neu bearbeitet werden kann. Einzelne „Erklär’s mir“-Gespräche löschen wir auf Anfrage.
+            Hochgeladene Arbeitsblätter entfernen wir auf Wunsch auch vom Server.
+        </li>
+        <li>
+            <strong>Tonaufnahmen (nur mit dem optionalen Aufnahme-Modul):</strong> {{ $recordingDays }} Tage nach
+            Aufnahmebeginn, dann löscht die Plattform sie automatisch. Einwilligungsnachweise der Erziehungsberechtigten
+            bleiben bis zur Löschung des Schülerkontos gespeichert.
+        </li>
+        <li>
+            <strong>Daten der Schule bei der Registrierung:</strong> solange die Schule die Plattform nutzt, der Nachweis
+            über die Annahme des Vertrags danach nur so lange, wie wir ihn zum Nachweis brauchen. Auch eine
+            gesperrte Schule bleibt gespeichert. Auf Wunsch der Schule löschen wir sie samt Konten sowie Unterrichts- und
+            Lerndaten.
         </li>
         <li><strong>E-Mails:</strong> bis die Anfrage erledigt ist, siehe Abschnitt 9.</li>
     </ul>
@@ -647,7 +780,7 @@
     <h2 id="kinder">11. Kinder und Jugendliche</h2>
     <p>
         Die Plattform ist für Schüler:innen ab etwa 10 Jahren gedacht. Die Schule stellt sie bereit, genutzt wird sie im
-        Unterricht und für Hausaufgaben. Konten entstehen durch die Administration oder durch die Registrierung mit dem
+        Unterricht und für Hausaufgaben. Konten entstehen durch die Schuladministration oder durch die Registrierung mit dem
         Klassencode der Lehrkraft (siehe Abschnitt 5). Kinder und Jugendliche brauchen besonderen Schutz. Deshalb erheben
         wir nur, was die Plattform braucht, nutzen die Daten nicht für Werbung oder für eigene geschäftliche Zwecke und
         haben mit der Kurzfassung in Abschnitt 2 für eine verständliche Sprache gesorgt.
@@ -673,7 +806,9 @@
         </li>
         <li>
             <strong>Widerruf einer Einwilligung</strong> mit Wirkung für die Zukunft (Art. 7 Abs. 3 DSGVO). Die
-            Plattform stützt derzeit keine Verarbeitung auf eine Einwilligung.
+            Nur das optionale Aufnahme-Modul stützt sich auf Einwilligungen (Art. 6 Abs. 1 lit. a DSGVO), die die Schule einholt.
+            Eltern widerrufen eine Einwilligung für Tonaufnahmen über den Link in ihrem Einwilligungsschreiben oder bei der
+            Schule.
         </li>
         <li><strong>Beschwerde</strong> bei einer Aufsichtsbehörde (siehe Abschnitt 13)</li>
     </ul>

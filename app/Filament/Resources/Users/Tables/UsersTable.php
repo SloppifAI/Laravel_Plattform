@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Users\Tables;
 
+use App\Filament\Resources\Users\UserResource;
 use App\Role;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -9,11 +10,16 @@ use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class UsersTable
 {
     public static function configure(Table $table): Table
     {
+        $actor = auth()->user();
+        $isOperator = $actor?->isOperator() ?? false;
+        $schoolId = $actor?->school_id;
+
         return $table
             ->columns([
                 TextColumn::make('name')
@@ -33,21 +39,35 @@ class UsersTable
                     ->label('Rolle')
                     ->badge()
                     ->sortable(),
+                TextColumn::make('school.name')
+                    ->label('Schule')
+                    ->placeholder('—')
+                    ->searchable()
+                    ->sortable()
+                    ->visible($isOperator),
                 TextColumn::make('schoolClass.name')
                     ->label('Klasse')
                     ->placeholder('—')
-                    ->sortable(),
+                    ->sortable()
+                    ->visible(! $isOperator),
             ])
             ->defaultSort('name')
             ->filters([
                 SelectFilter::make('role')
                     ->label('Rolle')
-                    ->options(Role::class),
+                    ->options(collect(UserResource::assignableRoles())->mapWithKeys(fn (Role $role): array => [$role->value => $role->getLabel()])->all()),
+                SelectFilter::make('school_id')
+                    ->label('Schule')
+                    ->relationship('school', 'name')
+                    ->searchable()
+                    ->preload()
+                    ->visible($isOperator),
                 SelectFilter::make('school_class_id')
                     ->label('Klasse')
-                    ->relationship('schoolClass', 'name')
+                    ->relationship('schoolClass', 'name', fn (Builder $query): Builder => $query->where('school_id', $schoolId))
                     ->searchable()
-                    ->preload(),
+                    ->preload()
+                    ->visible(! $isOperator),
             ])
             ->recordActions([
                 EditAction::make(),

@@ -8,6 +8,7 @@ use App\Models\Answer;
 use App\Models\Competency;
 use App\Models\Lesson;
 use App\Models\Question;
+use App\Models\School;
 use App\Models\SchoolClass;
 use App\Models\Submission;
 use App\Models\User;
@@ -29,7 +30,8 @@ class DashboardTest extends TestCase
         Lesson::factory()->for($schoolClass)->publishedFor([$student])->create(['topic' => 'Photosynthese', 'due_on' => today()->addDay()]);
         $handedIn = Lesson::factory()->for($schoolClass)->publishedFor([$student])->create(['topic' => 'Zellaufbau']);
         Submission::factory()->for($handedIn)->for($student, 'student')->create();
-        Submission::factory()->for($student, 'student')->evaluated(80)->create(['feedback' => 'Du hast den Ablauf klar erklärt.']);
+        $evaluated = Lesson::factory()->for($schoolClass)->publishedFor([$student])->create(['topic' => 'Atmung']);
+        Submission::factory()->for($evaluated)->for($student, 'student')->evaluated(80)->create(['feedback' => 'Du hast den Ablauf klar erklärt.']);
 
         Lesson::factory()->for($schoolClass)->publishedFor([$classmate])->create(['topic' => 'Bruchrechnung']);
         Submission::factory()->for($classmate, 'student')->evaluated(20)->create(['feedback' => 'Rückmeldung für jemand anderen.']);
@@ -44,7 +46,7 @@ class DashboardTest extends TestCase
             ->assertSee('80')
             ->assertSee('Gut verstanden')
             ->assertSee('Du hast den Ablauf klar erklärt.')
-            ->assertSee('Thema erklären')
+            ->assertSee('Thema Tuto erklären')
             ->assertSee('Hier lohnt sich Üben')
             ->assertDontSee('Zellaufbau')
             ->assertDontSee('Bruchrechnung')
@@ -106,16 +108,18 @@ class DashboardTest extends TestCase
 
     public function test_admins_see_school_wide_figures_and_shortcuts(): void
     {
-        $admin = User::factory()->admin()->create();
-        User::factory()->teacher()->count(2)->create();
-        User::factory()->student()->count(3)->create();
-        Submission::factory()->create();
+        $school = School::factory()->create();
+        $admin = User::factory()->admin()->for($school)->create();
+        $schoolClass = SchoolClass::factory()->for(User::factory()->teacher()->for($school)->create(), 'teacher')->create();
+        User::factory()->teacher()->for($school)->count(2)->create();
+        User::factory()->student($schoolClass)->count(3)->create();
+        Submission::factory()->for(Lesson::factory()->for($schoolClass))->for(User::factory()->student($schoolClass), 'student')->create();
 
         $this->actingAs($admin)
             ->get('/')
             ->assertOk()
             ->assertSee('Abgaben diese Woche')
-            ->assertSee('Benutzer, Klassen und das Kompetenzraster pflegen.')
+            ->assertSee('Benutzer und Klassen pflegen, das Kompetenzraster einsehen.')
             ->assertSee('Benutzer')
             ->assertDontSee('Deine letzten Unterrichtsstunden')
             ->assertDontSee('Als Nächstes fällig');

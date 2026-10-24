@@ -10,12 +10,13 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 
 /**
  * A held lesson. Its notes and worksheets are the source for the AI summary and homework questions;
  * once published, the homework is delegated to the students in `students`.
  */
-#[Fillable(['school_class_id', 'teacher_id', 'subject', 'topic', 'held_on', 'notes', 'attachments', 'summary', 'published_at', 'due_on'])]
+#[Fillable(['school_class_id', 'teacher_id', 'subject', 'topic', 'held_on', 'notes', 'attachments', 'summary', 'published_at', 'due_on', 'practice_competency_id'])]
 class Lesson extends Model
 {
     /** @use HasFactory<LessonFactory> */
@@ -27,6 +28,16 @@ class Lesson extends Model
     public function schoolClass(): BelongsTo
     {
         return $this->belongsTo(SchoolClass::class);
+    }
+
+    /**
+     * The school of the lesson's class.
+     *
+     * @return HasOneThrough<School, SchoolClass, $this>
+     */
+    public function school(): HasOneThrough
+    {
+        return $this->hasOneThrough(School::class, SchoolClass::class, 'id', 'id', 'school_class_id', 'school_id');
     }
 
     /**
@@ -48,6 +59,16 @@ class Lesson extends Model
     }
 
     /**
+     * The competency a Förderaufgabe practises; null for an ordinary homework.
+     *
+     * @return BelongsTo<Competency, $this>
+     */
+    public function practiceCompetency(): BelongsTo
+    {
+        return $this->belongsTo(Competency::class, 'practice_competency_id');
+    }
+
+    /**
      * @return HasMany<Question, $this>
      */
     public function questions(): HasMany
@@ -66,6 +87,11 @@ class Lesson extends Model
     public function isPublished(): bool
     {
         return $this->published_at !== null;
+    }
+
+    public function isPracticeTask(): bool
+    {
+        return $this->practice_competency_id !== null;
     }
 
     /**

@@ -175,6 +175,33 @@ class ExplainIt extends Page
             });
     }
 
+    /**
+     * Mounted from the list and from the open session with the id as argument, so the id is client-controlled:
+     * it is looked up among the student's own sessions only.
+     */
+    public function deleteSessionAction(): Action
+    {
+        return Action::make('deleteSession')
+            ->label('Gespräch löschen')
+            ->icon(Heroicon::OutlinedTrash)
+            ->color('danger')
+            ->requiresConfirmation()
+            ->modalHeading('Gespräch löschen?')
+            ->modalDescription('Das Gespräch wird endgültig gelöscht.')
+            ->modalSubmitActionLabel('Ja, löschen')
+            ->modalCancelActionLabel('Behalten')
+            ->action(function (array $arguments): void {
+                $session = $this->student()->explanationSessions()->findOrFail($arguments['session'] ?? null);
+
+                Gate::authorize('delete', $session);
+
+                $session->delete();
+                $this->startOver();
+
+                Notification::make()->success()->title('Gespräch gelöscht')->send();
+            });
+    }
+
     public function openSession(int $sessionId): void
     {
         $this->sessionId = $this->student()->explanationSessions()->findOrFail($sessionId)->getKey();

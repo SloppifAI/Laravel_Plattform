@@ -10,3 +10,10 @@ Artisan::command('inspire', function () {
 
 // Unused password reset tokens would otherwise stay in the database forever.
 Schedule::command('auth:clear-resets')->daily();
+
+// Lessons and "Erklär's mir" conversations older than the retention period (config/lernplattform.php) are deleted.
+// Daily and idempotent: a missed run only postpones the deletion, and the cut-off moves once a year.
+Schedule::command('lernplattform:prune-learning-data')->dailyAt('03:30')->withoutOverlapping();
+
+// Lesson recordings are audio of a classroom: deleted after recordings.keep_days (default 14), including orphaned files.
+Schedule::command('lernplattform:prune-recordings')->dailyAt('03:45')->withoutOverlapping();

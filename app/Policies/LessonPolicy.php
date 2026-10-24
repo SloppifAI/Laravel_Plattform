@@ -6,7 +6,8 @@ use App\Models\Lesson;
 use App\Models\User;
 
 /**
- * Teachers manage their own lessons, admins all of them. Students only see published homework delegated to them.
+ * Teachers manage their own lessons, school administrations all lessons of their school.
+ * Students only see published homework delegated to them. The platform operator sees no lessons.
  */
 class LessonPolicy
 {
@@ -46,6 +47,7 @@ class LessonPolicy
 
     private function manages(User $user, Lesson $lesson): bool
     {
-        return $user->isAdmin() || ($user->isTeacher() && $lesson->teacher()->is($user));
+        return ($user->isAdmin() && $user->isMemberOf($lesson->school))
+            || ($user->isTeacher() && $lesson->teacher()->is($user));
     }
 }
