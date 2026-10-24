@@ -17,3 +17,6 @@ Schedule::command('lernplattform:prune-learning-data')->dailyAt('03:30')->withou
 
 // Lesson recordings are audio of a classroom: deleted after recordings.keep_days (default 14), including orphaned files.
 Schedule::command('lernplattform:prune-recordings')->dailyAt('03:45')->withoutOverlapping();
+
+// Bell entries name lesson topics: read ones go after notifications.keep_read_days, all after notifications.keep_days, orphans at once.
+Schedule::command('lernplattform:prune-notifications')->dailyAt('04:00')->withoutOverlapping();
