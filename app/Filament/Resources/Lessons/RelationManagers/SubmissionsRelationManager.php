@@ -3,7 +3,9 @@
 namespace App\Filament\Resources\Lessons\RelationManagers;
 
 use App\Filament\Resources\Lessons\Pages\EditLesson;
+use App\Models\Answer;
 use App\Models\Lesson;
+use App\QuestionLevel;
 use App\UnderstandingLevel;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\ViewAction;
@@ -16,10 +18,13 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Livewire\Attributes\On;
 
 /**
  * The students' homework as handed in. Teachers only read it; returning a submission deletes it so the student can redo it.
+ * Only for those who may read the lesson's results (LessonPolicy::viewResults): a substitute whose period is over keeps
+ * the lesson as a draft, but no longer sees what the students handed in.
  */
 #[On(EditLesson::HOMEWORK_CHANGED_EVENT)]
 class SubmissionsRelationManager extends RelationManager
@@ -31,6 +36,11 @@ class SubmissionsRelationManager extends RelationManager
     protected static ?string $modelLabel = 'Abgabe';
 
     protected static ?string $pluralModelLabel = 'Abgaben';
+
+    public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
+    {
+        return parent::canViewForRecord($ownerRecord, $pageClass) && (auth()->user()?->can('viewResults', $ownerRecord) ?? false);
+    }
 
     public function infolist(Schema $schema): Schema
     {
@@ -68,7 +78,14 @@ class SubmissionsRelationManager extends RelationManager
                             ->hiddenLabel()
                             ->schema([
                                 TextEntry::make('question.prompt')
-                                    ->label('Frage'),
+                                    ->label('Frage')
+                                    ->state(fn (Answer $record): string => $record->askedPrompt()),
+                                TextEntry::make('level')
+                                    ->label('Stufe')
+                                    ->badge()
+                                    ->color('gray')
+                                    ->state(fn (Answer $record): ?string => $record->level === null ? null : $record->question->levelFor($record->level)->getLabel())
+                                    ->visible(fn (Answer $record): bool => $record->level !== null && $record->question->levelFor($record->level) !== QuestionLevel::Standard),
                                 TextEntry::make('answer')
                                     ->label('Antwort'),
                                 self::asUnderstandingBadge(TextEntry::make('score')->label('Bewertung')),
@@ -130,7 +147,7 @@ class SubmissionsRelationManager extends RelationManager
         $lesson = $this->getOwnerRecord();
 
         if (! $lesson->isPublished()) {
-            return 'Die Hausaufgabe ist noch nicht verteilt.';
+            return 'Die Hausaufgabe ist noch nicht freigegeben.';
         }
 
         $pendingNames = $lesson->students()
