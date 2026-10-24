@@ -35,6 +35,12 @@ return [
         'model' => env('ANTHROPIC_MODEL', 'claude-opus-5-5'),
     ],
 
+    // Server-side speech-to-text for lesson recordings. Prepared but off: without TRANSCRIPTION_ENABLED=true the audio
+    // never leaves the platform. See App\Ai\SpeechToTextTranscriber for what a provider has to implement.
+    'transcription' => [
+        'enabled' => env('TRANSCRIPTION_ENABLED', false),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

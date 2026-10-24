@@ -3,9 +3,11 @@
 namespace App\Filament\Resources\Lessons\Pages;
 
 use App\Ai\LessonAssistant;
+use App\Filament\Pages\RecordLesson;
 use App\Filament\Resources\Lessons\LessonResource;
 use App\Models\Competency;
 use App\Models\Lesson;
+use App\Models\LessonRecording;
 use App\QuestionType;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
@@ -47,6 +49,15 @@ class EditLesson extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            // Audio-only recording mode: reserved for the lesson's own teacher, not for the school administration.
+            // Stays reachable while the school has recordings off, so existing recordings can still be heard and deleted.
+            Action::make('record')
+                ->label('Stunde aufnehmen')
+                ->icon(Heroicon::OutlinedMicrophone)
+                ->color('gray')
+                ->tooltip(fn (Lesson $record): ?string => auth()->user()?->can('record', [LessonRecording::class, $record]) ? null : 'Aufnahmen sind für deine Schule nicht freigeschaltet.')
+                ->visible(fn (Lesson $record): bool => auth()->user()?->can('create', [LessonRecording::class, $record]) ?? false)
+                ->url(fn (Lesson $record): string => RecordLesson::getUrl(['lesson' => $record])),
             Action::make('draftHomework')
                 ->label('Hausaufgabe mit KI erstellen')
                 ->icon(Heroicon::OutlinedSparkles)
