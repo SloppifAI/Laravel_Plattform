@@ -475,10 +475,8 @@
 
         <header class="border-b border-gray-200 bg-white/90 backdrop-blur-md dark:border-white/10 dark:bg-gray-900/90">
             <div class="mx-auto flex w-full max-w-3xl items-center px-3 py-3 sm:px-4">
-                <a href="{{ url('/') }}" class="lp-focus -mx-1 inline-flex items-center gap-2.5 rounded-lg px-1 py-1">
-                    @include('filament.lernplattform.brand-mark', ['class' => 'size-8'])
-
-                    <span class="text-lg font-semibold tracking-tight text-gray-950 dark:text-white">Lernplattform</span>
+                <a href="{{ url('/') }}" class="lp-focus -mx-1 inline-flex items-center rounded-lg px-1 py-1">
+                    @include('filament.lernplattform.wordmark', ['class' => 'h-8'])
                 </a>
             </div>
         </header>
