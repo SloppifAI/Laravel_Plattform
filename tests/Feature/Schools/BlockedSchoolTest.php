@@ -39,7 +39,7 @@ class BlockedSchoolTest extends TestCase
             ->fillForm(['username' => 'gesperrt', 'password' => 'geheim-2026'])
             ->call('authenticate')
             ->assertHasFormErrors(['username'])
-            ->assertSee('Deine Schule ist derzeit gesperrt. Bitte wende dich an die Plattform-Administration.');
+            ->assertSee('Your school is currently blocked. Please contact the platform administration.');
 
         $this->assertGuest();
     }
@@ -53,13 +53,13 @@ class BlockedSchoolTest extends TestCase
             ->fillForm(['username' => 'gesperrt', 'password' => 'falsch'])
             ->call('authenticate')
             ->assertHasFormErrors(['username'])
-            ->assertDontSee('gesperrt. Bitte wende dich', false)
+            ->assertDontSee('blocked. Please contact', false)
             ->assertSee(__('filament-panels::auth/pages/login.messages.failed'));
 
         Livewire::test(Login::class)
             ->fillForm(['username' => 'gibt-es-nicht', 'password' => 'geheim-2026'])
             ->call('authenticate')
-            ->assertDontSee('gesperrt. Bitte wende dich', false);
+            ->assertDontSee('blocked. Please contact', false);
 
         $this->assertGuest();
     }
@@ -118,7 +118,7 @@ class BlockedSchoolTest extends TestCase
         $this->actingAs($user)
             ->get('/login')
             ->assertOk()
-            ->assertSee('Deine Schule ist derzeit gesperrt.');
+            ->assertSee('Your school is currently blocked.');
 
         $this->assertGuest();
     }
@@ -147,8 +147,8 @@ class BlockedSchoolTest extends TestCase
             ])
             ->call('register')
             ->assertHasFormErrors(['classCode'])
-            ->assertSee('Diesen Klassencode gibt es nicht. Frag deine Lehrkraft.')
-            ->assertDontSee('gesperrt');
+            ->assertSee('This class code does not exist. Ask your teacher.')
+            ->assertDontSee('blocked');
 
         $this->assertDatabaseMissing(User::class, ['username' => 'maxi.muster']);
         $this->assertGuest();

@@ -41,13 +41,21 @@ class Substitutions extends Page implements HasTable
 
     protected static ?int $navigationSort = 6;
 
-    protected static ?string $title = 'Vertretung';
-
     protected static ?string $slug = 'vertretung';
+
+    public static function getNavigationLabel(): string
+    {
+        return __('Vertretung');
+    }
+
+    public function getTitle(): string
+    {
+        return __('Vertretung');
+    }
 
     public function getSubheading(): string
     {
-        return 'Eine Lehrkraft übernimmt deine Klasse für einige Tage oder Wochen. Nur in diesem Zeitraum kann sie '.ClassSubstitution::grants().'.';
+        return __('Eine Lehrkraft übernimmt deine Klasse für einige Tage oder Wochen. Nur in diesem Zeitraum kann sie :grants.', ['grants' => ClassSubstitution::grants()]);
     }
 
     public static function canAccess(): bool
@@ -72,8 +80,8 @@ class Substitutions extends Page implements HasTable
             ->columns(SubstitutionsTable::columns(withClass: true))
             ->recordActions(SubstitutionsTable::recordActions())
             ->paginated([10, 25])
-            ->emptyStateHeading('Keine Vertretungen')
-            ->emptyStateDescription('Hier erscheinen Vertretungen für Klassen, die du leitest, und Klassen, die du vertrittst. Als Klassenleitung richtest du eine oben rechts ein.');
+            ->emptyStateHeading(__('Keine Vertretungen'))
+            ->emptyStateDescription(__('Hier erscheinen Vertretungen für Klassen, die du leitest, und Klassen, die du vertrittst. Als Klassenleitung richtest du eine oben rechts ein.'));
     }
 
     /**
@@ -84,15 +92,15 @@ class Substitutions extends Page implements HasTable
         return [
             ...$this->handoverSheetActions(),
             Action::make('setUp')
-                ->label('Vertretung einrichten')
+                ->label(__('Vertretung einrichten'))
                 ->icon(Heroicon::OutlinedPlus)
-                ->modalHeading('Vertretung einrichten')
-                ->modalSubmitActionLabel('Einrichten')
-                ->modalCancelActionLabel('Abbrechen')
+                ->modalHeading(__('Vertretung einrichten'))
+                ->modalSubmitActionLabel(__('Einrichten'))
+                ->modalCancelActionLabel(__('Abbrechen'))
                 ->visible(fn (): bool => $this->ledClasses()->exists())
                 ->schema([
                     Select::make('school_class_id')
-                        ->label('Für welche Klasse?')
+                        ->label(__('Für welche Klasse?'))
                         ->options(fn (): array => $this->ledClasses()->orderBy('name')->pluck('name', 'id')->all())
                         ->default(fn (): ?int => $this->ledClasses()->count() === 1 ? $this->ledClasses()->value('id') : null)
                         ->required()
@@ -115,8 +123,13 @@ class Substitutions extends Page implements HasTable
 
                     Notification::make()
                         ->success()
-                        ->title('Vertretung eingerichtet')
-                        ->body("{$substitution->substitute->name} vertritt die Klasse {$schoolClass->name} vom {$substitution->starts_on->format('d.m.Y')} bis {$substitution->ends_on->format('d.m.Y')}.")
+                        ->title(__('Vertretung eingerichtet'))
+                        ->body(__(':teacher vertritt die Klasse :class vom :start bis :end.', [
+                            'teacher' => $substitution->substitute->name,
+                            'class' => $schoolClass->name,
+                            'start' => $substitution->starts_on->format('d.m.Y'),
+                            'end' => $substitution->ends_on->format('d.m.Y'),
+                        ]))
                         ->send();
                 }),
         ];
@@ -134,14 +147,14 @@ class Substitutions extends Page implements HasTable
 
         $actions = $classes
             ->map(fn (SchoolClass $schoolClass): Action => Action::make("handoverSheet{$schoolClass->getKey()}")
-                ->label($several ? "Übergabe-Mappe {$schoolClass->name}" : 'Übergabe-Mappe')
+                ->label($several ? __('Übergabe-Mappe :class', ['class' => $schoolClass->name]) : __('Übergabe-Mappe'))
                 ->icon(Heroicon::OutlinedClipboardDocumentList)
                 ->color('gray')
                 ->url(HandoverSheet::getUrl(['schoolClass' => $schoolClass->getKey()])))
             ->all();
 
         return $several
-            ? [ActionGroup::make($actions)->label('Übergabe-Mappe')->icon(Heroicon::OutlinedClipboardDocumentList)->button()->color('gray')]
+            ? [ActionGroup::make($actions)->label(__('Übergabe-Mappe'))->icon(Heroicon::OutlinedClipboardDocumentList)->button()->color('gray')]
             : $actions;
     }
 

@@ -57,11 +57,7 @@ class ClassBook extends Page implements HasTable
 
     protected static ?int $navigationSort = 3;
 
-    protected static ?string $title = 'Klassenbuch';
-
     protected static ?string $slug = 'klassenbuch';
-
-    protected ?string $subheading = 'Was in der Klasse unterrichtet wurde, die Hausaufgaben und wer gefehlt hat. Tuto schreibt den Entwurf aus der Stunde vor, du prüfst und bestätigst ihn.';
 
     #[Url(as: 'klasse')]
     public ?int $classId = null;
@@ -72,6 +68,21 @@ class ClassBook extends Page implements HasTable
      * @var Collection<int, string>|null
      */
     private ?Collection $studentNames = null;
+
+    public static function getNavigationLabel(): string
+    {
+        return __('Klassenbuch');
+    }
+
+    public function getTitle(): string
+    {
+        return __('Klassenbuch');
+    }
+
+    public function getSubheading(): string
+    {
+        return __('Was in der Klasse unterrichtet wurde, die Hausaufgaben und wer gefehlt hat. Tuto schreibt den Entwurf aus der Stunde vor, du prüfst und bestätigst ihn.');
+    }
 
     public static function canAccess(): bool
     {
@@ -140,36 +151,36 @@ class ClassBook extends Page implements HasTable
                 ->orderByDesc('id'))
             ->columns([
                 TextColumn::make('held_on')
-                    ->label('Datum')
+                    ->label(__('Datum'))
                     ->date('d.m.Y')
                     ->weight(FontWeight::Medium)
-                    ->description(fn (ClassBookEntry $record): ?string => $record->period !== null ? "{$record->period}. Stunde" : null),
+                    ->description(fn (ClassBookEntry $record): ?string => $record->period !== null ? __(':period. Stunde', ['period' => $record->period]) : null),
                 TextColumn::make('subject')
-                    ->label('Fach und Thema')
+                    ->label(__('Fach und Thema'))
                     ->weight(FontWeight::Medium)
                     ->description(fn (ClassBookEntry $record): string => $record->topic)
                     ->wrap(),
                 TextColumn::make('content')
-                    ->label('Unterrichtsinhalt')
-                    ->placeholder('Inhalt fehlt')
+                    ->label(__('Unterrichtsinhalt'))
+                    ->placeholder(__('Inhalt fehlt'))
                     ->wrap(),
                 TextColumn::make('homework')
-                    ->label('Hausaufgabe')
+                    ->label(__('Hausaufgabe'))
                     ->placeholder('–')
                     ->wrap(),
                 TextColumn::make('absent')
-                    ->label('Fehlt')
+                    ->label(__('Fehlende Schüler:innen'))
                     ->state(fn (ClassBookEntry $record): string => $this->absentNames($record))
                     ->placeholder('–')
                     ->wrap(),
                 TextColumn::make('status')
-                    ->label('Status')
+                    ->label(__('Status'))
                     ->state(fn (ClassBookEntry $record) => $record->status())
                     ->badge(),
             ])
             ->paginated([10, 25, 50])
-            ->emptyStateHeading('Noch keine Einträge')
-            ->emptyStateDescription('Erstelle den ersten Entwurf aus einer deiner Stunden: Tuto übernimmt Fach, Thema und Datum.')
+            ->emptyStateHeading(__('Noch keine Einträge'))
+            ->emptyStateDescription(__('Erstelle den ersten Entwurf aus einer deiner Stunden: Tuto übernimmt Fach, Thema und Datum.'))
             ->recordActions([
                 $this->editAction(),
                 $this->confirmAction(),
@@ -191,16 +202,16 @@ class ClassBook extends Page implements HasTable
     public function createDraftAction(): Action
     {
         return Action::make('createDraft')
-            ->label('Entwurf aus Stunde erstellen')
+            ->label(__('Entwurf aus Stunde erstellen'))
             ->icon(Heroicon::OutlinedDocumentPlus)
             ->authorize(fn (): bool => $this->schoolClass() !== null && Gate::allows('create', ClassBookEntry::class))
-            ->modalHeading('Entwurf aus einer Stunde erstellen')
-            ->modalDescription('Tuto übernimmt Fach, Thema und Datum, schreibt den Inhalt aus der Zusammenfassung oder den Notizen vor und trägt freigegebene Hausaufgaben ein. Wer fehlt, kommt aus der bestätigten Anwesenheitsliste von Tuto-Mikro, wenn es eine gibt: Schüler:innen, die nicht angehakt waren, aber noch keine Einwilligung haben, trägt Tuto nicht als fehlend ein, das machst du von Hand. Prüfe alles, bevor du bestätigst.')
-            ->modalSubmitActionLabel('Entwurf erstellen')
-            ->modalCancelActionLabel('Abbrechen')
+            ->modalHeading(__('Entwurf aus einer Stunde erstellen'))
+            ->modalDescription(__('Tuto übernimmt Fach, Thema und Datum, schreibt den Inhalt aus der Zusammenfassung oder den Notizen vor und trägt freigegebene Hausaufgaben ein. Wer fehlt, kommt aus der bestätigten Anwesenheitsliste von Tuto-Mikro, wenn es eine gibt: Schüler:innen, die nicht angehakt waren, aber noch keine Einwilligung haben, trägt Tuto nicht als fehlend ein, das machst du von Hand. Prüfe alles, bevor du bestätigst.'))
+            ->modalSubmitActionLabel(__('Entwurf erstellen'))
+            ->modalCancelActionLabel(__('Abbrechen'))
             ->schema([
                 Select::make('lesson_id')
-                    ->label('Stunde')
+                    ->label(__('Stunde'))
                     ->options(fn (): array => $this->lessonsOfClass()
                         ->whereDoesntHave('classBookEntry')
                         ->orderByDesc('held_on')
@@ -210,7 +221,7 @@ class ClassBook extends Page implements HasTable
                         ->all())
                     ->searchable()
                     ->required()
-                    ->helperText('Es stehen die Stunden zur Auswahl, für die es noch keinen Eintrag gibt.'),
+                    ->helperText(__('Es stehen die Stunden zur Auswahl, für die es noch keinen Eintrag gibt.')),
             ])
             ->action(function (array $data): void {
                 $lesson = $this->lessonsOfClass()->find($data['lesson_id']);
@@ -218,38 +229,38 @@ class ClassBook extends Page implements HasTable
                 abort_if($lesson === null || ! Gate::allows('createFromLesson', [ClassBookEntry::class, $lesson]), 403);
 
                 if (! ClassBookDraft::createFor($lesson)->wasRecentlyCreated) {
-                    Notification::make()->warning()->title('Für diese Stunde gibt es schon einen Eintrag')->send();
+                    Notification::make()->warning()->title(__('Für diese Stunde gibt es schon einen Eintrag'))->send();
 
                     return;
                 }
 
                 $this->studentNames = null;
 
-                Notification::make()->success()->title('Entwurf erstellt')->body('Prüfe den Eintrag und bestätige ihn, wenn alles stimmt.')->send();
+                Notification::make()->success()->title(__('Entwurf erstellt'))->body(__('Prüfe den Eintrag und bestätige ihn, wenn alles stimmt.'))->send();
             });
     }
 
     public function exportAction(): Action
     {
         return Action::make('export')
-            ->label('CSV exportieren')
+            ->label(__('CSV exportieren'))
             ->icon(Heroicon::OutlinedArrowDownTray)
             ->color('gray')
             ->authorize(fn (): bool => $this->schoolClass() !== null)
-            ->modalHeading('Klassenbuch als CSV exportieren')
-            ->modalDescription('Die Datei enthält Entwürfe und bestätigte Einträge des gewählten Zeitraums, auch die Namen fehlender Schüler:innen. Gib sie nur an Berechtigte weiter.')
-            ->modalSubmitActionLabel('Exportieren')
-            ->modalCancelActionLabel('Abbrechen')
+            ->modalHeading(__('Klassenbuch als CSV exportieren'))
+            ->modalDescription(__('Die Datei enthält Entwürfe und bestätigte Einträge des gewählten Zeitraums, auch die Namen fehlender Schüler:innen. Gib sie nur an Berechtigte weiter.'))
+            ->modalSubmitActionLabel(__('Exportieren'))
+            ->modalCancelActionLabel(__('Abbrechen'))
             ->schema([
                 Grid::make(['default' => 1, 'sm' => 2])->schema([
                     DatePicker::make('from')
-                        ->label('Von')
+                        ->label(__('Von'))
                         ->default(today()->startOfMonth())
                         ->required()
                         ->native(false)
                         ->displayFormat('d.m.Y'),
                     DatePicker::make('until')
-                        ->label('Bis')
+                        ->label(__('Bis'))
                         ->default(today())
                         ->required()
                         ->native(false)
@@ -270,7 +281,7 @@ class ClassBook extends Page implements HasTable
                     function () use ($csv): void {
                         echo $csv;
                     },
-                    sprintf('klassenbuch-%s-%s-bis-%s.csv', Str::slug($schoolClass->name), $from->format('Y-m-d'), $until->format('Y-m-d')),
+                    __('klassenbuch-:class-:from-bis-:until.csv', ['class' => Str::slug($schoolClass->name), 'from' => $from->format('Y-m-d'), 'until' => $until->format('Y-m-d')]),
                     ['Content-Type' => 'text/csv; charset=UTF-8'],
                 );
             });
@@ -279,13 +290,13 @@ class ClassBook extends Page implements HasTable
     public function editAction(): Action
     {
         return Action::make('edit')
-            ->label('Bearbeiten')
+            ->label(__('Bearbeiten'))
             ->icon(Heroicon::OutlinedPencilSquare)
             ->authorize('update')
-            ->modalHeading(fn (ClassBookEntry $record): string => "Eintrag vom {$record->held_on->format('d.m.Y')} bearbeiten")
+            ->modalHeading(fn (ClassBookEntry $record): string => __('Eintrag vom :date bearbeiten', ['date' => $record->held_on->format('d.m.Y')]))
             ->modalWidth(Width::ThreeExtraLarge)
-            ->modalSubmitActionLabel('Speichern')
-            ->modalCancelActionLabel('Abbrechen')
+            ->modalSubmitActionLabel(__('Speichern'))
+            ->modalCancelActionLabel(__('Abbrechen'))
             ->fillForm(fn (ClassBookEntry $record): array => [
                 ...$record->only(['period', 'subject', 'topic', 'content', 'homework', 'remarks']),
                 'held_on' => $record->held_on->toDateString(),
@@ -294,42 +305,42 @@ class ClassBook extends Page implements HasTable
             ->schema([
                 Grid::make(['default' => 1, 'sm' => 2])->schema([
                     DatePicker::make('held_on')
-                        ->label('Datum')
+                        ->label(__('Datum'))
                         ->required()
                         ->native(false)
                         ->displayFormat('d.m.Y'),
                     TextInput::make('period')
-                        ->label('Unterrichtsstunde (1 bis 12)')
+                        ->label(__('Unterrichtsstunde (1 bis 12)'))
                         ->integer()
                         ->minValue(1)
                         ->maxValue(12),
                     TextInput::make('subject')
-                        ->label('Fach')
+                        ->label(__('Fach'))
                         ->required()
                         ->maxLength(100),
                     TextInput::make('topic')
-                        ->label('Thema')
+                        ->label(__('Thema'))
                         ->required()
                         ->maxLength(255),
                 ]),
                 Textarea::make('content')
-                    ->label('Unterrichtsinhalt')
+                    ->label(__('Unterrichtsinhalt'))
                     ->required()
                     ->rows(4)
                     ->maxLength(5000),
                 Textarea::make('homework')
-                    ->label('Hausaufgabe')
+                    ->label(__('Hausaufgabe'))
                     ->rows(2)
                     ->maxLength(2000),
                 CheckboxList::make('absent_student_ids')
-                    ->label('Fehlende Schüler:innen')
+                    ->label(__('Fehlende Schüler:innen'))
                     ->options(fn (ClassBookEntry $record): array => $this->absenceOptions($record))
                     ->nestedRecursiveRule(fn (ClassBookEntry $record): InRule => Rule::in(array_keys($this->absenceOptions($record))))
-                    ->validationMessages(['in' => 'Diese Person gehört nicht zur Klasse.'])
+                    ->validationMessages(['in' => __('Diese Person gehört nicht zur Klasse.')])
                     ->columns(['default' => 1, 'sm' => 2])
-                    ->helperText('Nur die Lehrkräfte der Klasse und die Schuladministration sehen, wer fehlt.'),
+                    ->helperText(__('Nur die Lehrkräfte der Klasse und die Schuladministration sehen, wer fehlt.')),
                 Textarea::make('remarks')
-                    ->label('Bemerkungen')
+                    ->label(__('Bemerkungen'))
                     ->rows(2)
                     ->maxLength(2000),
             ])
@@ -343,50 +354,50 @@ class ClassBook extends Page implements HasTable
 
                 $this->studentNames = null;
 
-                Notification::make()->success()->title('Eintrag gespeichert')->send();
+                Notification::make()->success()->title(__('Eintrag gespeichert'))->send();
             });
     }
 
     public function confirmAction(): Action
     {
         return Action::make('confirm')
-            ->label('Bestätigen')
+            ->label(__('Bestätigen'))
             ->icon(Heroicon::OutlinedCheckCircle)
             ->authorize('confirm')
             ->disabled(fn (ClassBookEntry $record): bool => ! $record->isComplete())
-            ->tooltip(fn (ClassBookEntry $record): ?string => $record->isComplete() ? null : 'Trage zuerst Fach, Thema und Unterrichtsinhalt ein.')
+            ->tooltip(fn (ClassBookEntry $record): ?string => $record->isComplete() ? null : __('Trage zuerst Fach, Thema und Unterrichtsinhalt ein.'))
             ->requiresConfirmation()
-            ->modalHeading('Eintrag bestätigen?')
-            ->modalDescription('Danach lässt sich der Eintrag nicht mehr ändern. Nur die Schuladministration kann ihn wieder öffnen.')
-            ->modalSubmitActionLabel('Ja, bestätigen')
-            ->modalCancelActionLabel('Noch nicht')
+            ->modalHeading(__('Eintrag bestätigen?'))
+            ->modalDescription(__('Danach lässt sich der Eintrag nicht mehr ändern. Nur die Schuladministration kann ihn wieder öffnen.'))
+            ->modalSubmitActionLabel(__('Ja, bestätigen'))
+            ->modalCancelActionLabel(__('Noch nicht'))
             ->action(function (ClassBookEntry $record): void {
                 abort_unless(Gate::allows('confirm', $record), 403);
 
                 $record->forceFill(['confirmed_at' => now()])->save();
 
-                Notification::make()->success()->title('Eintrag bestätigt')->send();
+                Notification::make()->success()->title(__('Eintrag bestätigt'))->send();
             });
     }
 
     public function reopenAction(): Action
     {
         return Action::make('reopen')
-            ->label('Wieder öffnen')
+            ->label(__('Wieder öffnen'))
             ->icon(Heroicon::OutlinedLockOpen)
             ->color('gray')
             ->authorize('reopen')
             ->requiresConfirmation()
-            ->modalHeading('Eintrag wieder öffnen?')
-            ->modalDescription('Der Eintrag wird wieder zum Entwurf. Die Lehrkraft kann ihn dann ändern und neu bestätigen.')
-            ->modalSubmitActionLabel('Ja, öffnen')
-            ->modalCancelActionLabel('Abbrechen')
+            ->modalHeading(__('Eintrag wieder öffnen?'))
+            ->modalDescription(__('Der Eintrag wird wieder zum Entwurf. Die Lehrkraft kann ihn dann ändern und neu bestätigen.'))
+            ->modalSubmitActionLabel(__('Ja, öffnen'))
+            ->modalCancelActionLabel(__('Abbrechen'))
             ->action(function (ClassBookEntry $record): void {
                 abort_unless(Gate::allows('reopen', $record), 403);
 
                 $record->forceFill(['confirmed_at' => null])->save();
 
-                Notification::make()->success()->title('Eintrag wieder geöffnet')->send();
+                Notification::make()->success()->title(__('Eintrag wieder geöffnet'))->send();
             });
     }
 

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Competencies;
 
+use App\Filament\NavigationGroup;
 use App\Filament\Resources\Competencies\Pages\ManageCompetencies;
 use App\Models\Competency;
 use BackedEnum;
@@ -40,15 +41,24 @@ class CompetencyResource extends Resource
 
     protected static ?int $navigationSort = 3;
 
-    protected static ?string $navigationLabel = 'Kompetenzraster';
-
-    protected static ?string $modelLabel = 'Kompetenz';
-
-    protected static ?string $pluralModelLabel = 'Kompetenzen';
-
     protected static ?string $slug = 'kompetenzraster';
 
     protected static ?string $recordTitleAttribute = 'name';
+
+    public static function getNavigationLabel(): string
+    {
+        return __('Kompetenzraster');
+    }
+
+    public static function getModelLabel(): string
+    {
+        return __('Kompetenz');
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return __('Kompetenzen');
+    }
 
     /**
      * The operator maintains the framework with the platform tools. School administrations look it up with their
@@ -59,9 +69,9 @@ class CompetencyResource extends Resource
         $user = auth()->user();
 
         return match (true) {
-            $user?->isOperator() => 'Plattform',
-            $user?->isAdmin() => 'Verwaltung',
-            default => 'Unterricht',
+            $user?->isOperator() => NavigationGroup::Plattform,
+            $user?->isAdmin() => NavigationGroup::Verwaltung,
+            default => NavigationGroup::Unterricht,
         };
     }
 
@@ -70,23 +80,23 @@ class CompetencyResource extends Resource
         return $schema
             ->components([
                 TextInput::make('subject')
-                    ->label('Fach')
-                    ->helperText('Leer lassen, wenn die Kompetenz fachübergreifend gilt.')
+                    ->label(__('Fach'))
+                    ->helperText(__('Leer lassen, wenn die Kompetenz fachübergreifend gilt.'))
                     ->datalist(fn (): array => self::distinctValues('subject'))
                     ->maxLength(255),
                 TextInput::make('area')
-                    ->label('Kompetenzbereich')
-                    ->placeholder('z. B. Argumentieren')
+                    ->label(__('Kompetenzbereich'))
+                    ->placeholder(__('z. B. Argumentieren'))
                     ->datalist(fn (): array => self::distinctValues('area'))
                     ->required()
                     ->maxLength(255),
                 TextInput::make('name')
-                    ->label('Kompetenz')
+                    ->label(__('Kompetenz'))
                     ->required()
                     ->maxLength(255)
                     ->columnSpanFull(),
                 Textarea::make('description')
-                    ->label('Beschreibung')
+                    ->label(__('Beschreibung'))
                     ->rows(4)
                     ->columnSpanFull(),
             ]);
@@ -97,16 +107,16 @@ class CompetencyResource extends Resource
         return $schema
             ->components([
                 TextEntry::make('subject')
-                    ->label('Fach')
-                    ->placeholder('Fachübergreifend'),
+                    ->label(__('Fach'))
+                    ->placeholder(__('Fachübergreifend')),
                 TextEntry::make('area')
-                    ->label('Kompetenzbereich'),
+                    ->label(__('Kompetenzbereich')),
                 TextEntry::make('name')
-                    ->label('Kompetenz')
+                    ->label(__('Kompetenz'))
                     ->columnSpanFull(),
                 TextEntry::make('description')
-                    ->label('Beschreibung')
-                    ->placeholder('Keine Beschreibung')
+                    ->label(__('Beschreibung'))
+                    ->placeholder(__('Keine Beschreibung'))
                     ->columnSpanFull(),
             ]);
     }
@@ -117,42 +127,42 @@ class CompetencyResource extends Resource
             ->recordTitleAttribute('name')
             ->columns([
                 TextColumn::make('name')
-                    ->label('Kompetenz')
+                    ->label(__('Kompetenz'))
                     ->description(fn (Competency $record): ?string => $record->description)
                     ->wrap()
                     ->searchable(['name', 'description']),
                 TextColumn::make('area')
-                    ->label('Kompetenzbereich')
+                    ->label(__('Kompetenzbereich'))
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('subject')
-                    ->label('Fach')
-                    ->placeholder('Fachübergreifend')
+                    ->label(__('Fach'))
+                    ->placeholder(__('Fachübergreifend'))
                     ->searchable()
                     ->sortable(),
             ])
             ->groups([
                 Group::make('subject')
-                    ->label('Fach')
-                    ->getTitleFromRecordUsing(fn (Competency $record): string => $record->subject ?? 'Fachübergreifend')
+                    ->label(__('Fach'))
+                    ->getTitleFromRecordUsing(fn (Competency $record): string => $record->subject ?? __('Fachübergreifend'))
                     ->collapsible(),
                 Group::make('area')
-                    ->label('Kompetenzbereich')
+                    ->label(__('Kompetenzbereich'))
                     ->collapsible(),
             ])
             ->defaultGroup('subject')
             ->defaultSort('area')
             ->filters([
                 SelectFilter::make('subject')
-                    ->label('Fach')
-                    ->options(fn (): array => [self::CROSS_SUBJECT => 'Fachübergreifend'] + self::distinctValues('subject'))
+                    ->label(__('Fach'))
+                    ->options(fn (): array => [self::CROSS_SUBJECT => __('Fachübergreifend')] + self::distinctValues('subject'))
                     ->query(fn (Builder $query, array $data): Builder => match ($data['value'] ?? null) {
                         null, '' => $query,
                         self::CROSS_SUBJECT => $query->whereNull('subject'),
                         default => $query->where('subject', $data['value']),
                     }),
                 SelectFilter::make('area')
-                    ->label('Kompetenzbereich')
+                    ->label(__('Kompetenzbereich'))
                     ->options(fn (): array => self::distinctValues('area')),
             ])
             ->recordActions([

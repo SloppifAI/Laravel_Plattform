@@ -32,13 +32,13 @@ class SubstitutionForm
 
         return [
             Select::make('substitute_id')
-                ->label('Wer vertritt?')
+                ->label(__('Wer vertritt?'))
                 ->options(fn (Get $get): array => static::substituteOptions($schoolClass($get)))
                 ->searchable()
                 ->required()
-                ->helperText('Lehrkräfte der Schule. Die Klassenleitung und bereits zugeordnete Lehrkräfte unterrichten die Klasse ohnehin. Im Zeitraum kann die Lehrkraft '.ClassSubstitution::grants().'.'),
+                ->helperText(__('Lehrkräfte der Schule. Die Klassenleitung und bereits zugeordnete Lehrkräfte unterrichten die Klasse ohnehin. Im Zeitraum kann die Lehrkraft :grants.', ['grants' => ClassSubstitution::grants()])),
             DatePicker::make('starts_on')
-                ->label('Erster Tag')
+                ->label(__('Erster Tag'))
                 ->default(today())
                 ->required()
                 ->native(false)
@@ -46,7 +46,7 @@ class SubstitutionForm
                 ->minDate(today())
                 ->live(),
             DatePicker::make('ends_on')
-                ->label('Letzter Tag')
+                ->label(__('Letzter Tag'))
                 ->required()
                 ->native(false)
                 ->displayFormat('d.m.Y')
@@ -64,16 +64,19 @@ class SubstitutionForm
                     $requested = ClassSubstitution::countDays($startsOn, Carbon::parse($value));
 
                     if ($planned + $requested > $maxDays) {
-                        $fail("Diese Lehrkraft vertritt die Klasse schon {$planned} Tage (laufend oder geplant). Zusammen dürfen es höchstens {$maxDays} Tage sein. Für länger kann die Schuladministration die Lehrkraft der Klasse fest zuordnen.");
+                        $fail(__('Diese Lehrkraft vertritt die Klasse schon :planned (laufend oder geplant). Zusammen dürfen es höchstens :max sein. Für länger kann die Schuladministration die Lehrkraft der Klasse fest zuordnen.', [
+                            'planned' => trans_choice(':count Tag|:count Tage', $planned),
+                            'max' => trans_choice(':count Tag|:count Tage', $maxDays),
+                        ]));
                     }
                 })
                 ->validationMessages([
-                    'after_or_equal' => 'Der letzte Tag darf nicht vor dem ersten Tag liegen.',
-                    'before_or_equal' => "Eine Vertretung kann höchstens {$maxDays} Tage dauern. Danach kann die Schuladministration die Lehrkraft der Klasse fest zuordnen.",
+                    'after_or_equal' => __('Der letzte Tag darf nicht vor dem ersten Tag liegen.'),
+                    'before_or_equal' => __('Eine Vertretung kann höchstens :days dauern. Danach kann die Schuladministration die Lehrkraft der Klasse fest zuordnen.', ['days' => trans_choice(':count Tag|:count Tage', $maxDays)]),
                 ]),
             Textarea::make('note')
-                ->label('Hinweis zur Übergabe')
-                ->helperText('Was soll die Vertretung wissen? Zum Beispiel Stand im Stoff, Absprachen, Besonderheiten der Klasse. Der Hinweis steht in der Übergabe-Mappe. Bitte keine Namen oder persönlichen Angaben zu einzelnen Schüler:innen eintragen.')
+                ->label(__('Hinweis zur Übergabe'))
+                ->helperText(__('Was soll die Vertretung wissen? Zum Beispiel Stand im Stoff, Absprachen, Besonderheiten der Klasse. Der Hinweis steht in der Übergabe-Mappe. Bitte keine Namen oder persönlichen Angaben zu einzelnen Schüler:innen eintragen.'))
                 ->rows(4)
                 ->maxLength(1000)
                 ->columnSpanFull(),

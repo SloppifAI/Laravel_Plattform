@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Schools;
 
+use App\Filament\NavigationGroup;
 use App\Filament\Resources\Schools\Pages\EditSchool;
 use App\Filament\Resources\Schools\Pages\ListSchools;
 use App\Filament\Resources\Schools\SchoolResource;
@@ -37,10 +38,29 @@ class SchoolManagementTest extends TestCase
             ->assertTableColumnStateSet('school_classes_count', 1, $school)
             ->assertTableColumnStateSet('school_number', '111111', $school)
             ->assertTableColumnStateSet('school_type', 'Gymnasium', $school)
-            ->assertTableColumnStateSet('blocked_at', 'Aktiv', $school)
-            ->assertTableColumnStateSet('blocked_at', 'Gesperrt', $blocked)
+            ->assertTableColumnStateSet('blocked_at', 'Active', $school)
+            ->assertTableColumnStateSet('blocked_at', 'Blocked', $blocked)
             ->assertSee('Kassel')
-            ->assertSee('Hessen');
+            ->assertSee('Hesse');
+    }
+
+    public function test_the_table_search_finds_a_school_by_the_state_as_shown_and_as_stored(): void
+    {
+        $bavarian = School::factory()->create(['city' => 'Kassel', 'state' => 'Bayern']);
+        $hessian = School::factory()->create(['city' => 'Fulda', 'state' => 'Hessen']);
+
+        $this->actingAs(User::factory()->operator()->create());
+
+        Livewire::test(ListSchools::class)
+            ->searchTable('Bavaria')
+            ->assertCanSeeTableRecords([$bavarian])
+            ->assertCanNotSeeTableRecords([$hessian])
+            ->searchTable('Bayern')
+            ->assertCanSeeTableRecords([$bavarian])
+            ->assertCanNotSeeTableRecords([$hessian])
+            ->searchTable('Fulda')
+            ->assertCanSeeTableRecords([$hessian])
+            ->assertCanNotSeeTableRecords([$bavarian]);
     }
 
     public function test_the_status_can_be_filtered(): void
@@ -140,7 +160,7 @@ class SchoolManagementTest extends TestCase
             ->assertActionVisible(TestAction::make('block')->table($school))
             ->assertActionHidden(TestAction::make('unblock')->table($school))
             ->callAction(TestAction::make('block')->table($school))
-            ->assertNotified('Schule gesperrt');
+            ->assertNotified('School blocked');
 
         $this->assertTrue($school->refresh()->isBlocked());
         $this->assertFalse($teacher->refresh()->canAccessPanel($panel));
@@ -150,7 +170,7 @@ class SchoolManagementTest extends TestCase
             ->assertActionHidden(TestAction::make('block')->table($school))
             ->assertActionVisible(TestAction::make('unblock')->table($school))
             ->callAction(TestAction::make('unblock')->table($school))
-            ->assertNotified('Schule entsperrt');
+            ->assertNotified('School unblocked');
 
         $this->assertFalse($school->refresh()->isBlocked());
         $this->assertTrue($teacher->refresh()->canAccessPanel($panel));
@@ -165,9 +185,9 @@ class SchoolManagementTest extends TestCase
             ->assertActionExists(
                 TestAction::make('block')->table($school),
                 fn (Action $action): bool => $action->isConfirmationRequired()
-                    && $action->getModalHeading() === 'Goethe-Gymnasium sperren?'
-                    && str_contains($action->getModalDescription(), 'Alle Konten dieser Schule')
-                    && str_contains($action->getModalDescription(), 'ausgesperrt'),
+                    && $action->getModalHeading() === 'Block Goethe-Gymnasium?'
+                    && str_contains($action->getModalDescription(), 'all accounts of this school')
+                    && str_contains($action->getModalDescription(), 'locked out'),
             );
 
         $this->assertFalse($school->refresh()->isBlocked());
@@ -179,12 +199,12 @@ class SchoolManagementTest extends TestCase
         $this->actingAs(User::factory()->operator()->create());
 
         Livewire::test(EditSchool::class, ['record' => $school->getRouteKey()])
-            ->assertSee('Status: Aktiv')
+            ->assertSee('Status: Active')
             ->callAction('block')
-            ->assertSee('Status: Gesperrt seit')
+            ->assertSee('Status: Blocked since')
             ->assertActionHidden('block')
             ->callAction('unblock')
-            ->assertSee('Status: Aktiv');
+            ->assertSee('Status: Active');
 
         $this->assertFalse($school->refresh()->isBlocked());
     }
@@ -248,7 +268,7 @@ class SchoolManagementTest extends TestCase
 
         $this->actingAs($operator);
         $this->assertTrue(SchoolResource::canViewAny());
-        $this->assertSame('Plattform', SchoolResource::getNavigationGroup());
-        $this->get(SchoolResource::getUrl())->assertOk()->assertSee('Plattform')->assertSee('Schulen');
+        $this->assertSame(NavigationGroup::Plattform, SchoolResource::getNavigationGroup());
+        $this->get(SchoolResource::getUrl())->assertOk()->assertSee('Platform')->assertSee('Schools');
     }
 }

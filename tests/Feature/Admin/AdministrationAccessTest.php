@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Filament\NavigationGroup;
 use App\Filament\Pages\ImportStudents;
 use App\Filament\Pages\RolesAndPermissions;
 use App\Filament\Resources\Competencies\CompetencyResource;
@@ -88,14 +89,14 @@ class AdministrationAccessTest extends TestCase
     public function test_operators_find_the_user_administration_and_competencies_in_the_platform_group(): void
     {
         $this->actingAs(User::factory()->operator()->create());
-        $this->assertSame('Plattform', UserResource::getNavigationGroup());
-        $this->assertSame('Plattform', CompetencyResource::getNavigationGroup());
-        $this->assertSame('Plattform', RolesAndPermissions::getNavigationGroup());
+        $this->assertSame(NavigationGroup::Plattform, UserResource::getNavigationGroup());
+        $this->assertSame(NavigationGroup::Plattform, CompetencyResource::getNavigationGroup());
+        $this->assertSame(NavigationGroup::Plattform, RolesAndPermissions::getNavigationGroup());
 
         $this->actingAs(User::factory()->admin()->create());
-        $this->assertSame('Verwaltung', UserResource::getNavigationGroup());
-        $this->assertSame('Verwaltung', CompetencyResource::getNavigationGroup());
-        $this->assertSame('Verwaltung', RolesAndPermissions::getNavigationGroup());
+        $this->assertSame(NavigationGroup::Verwaltung, UserResource::getNavigationGroup());
+        $this->assertSame(NavigationGroup::Verwaltung, CompetencyResource::getNavigationGroup());
+        $this->assertSame(NavigationGroup::Verwaltung, RolesAndPermissions::getNavigationGroup());
     }
 
     public function test_teachers_may_open_the_competency_framework_but_students_may_not(): void
@@ -103,7 +104,7 @@ class AdministrationAccessTest extends TestCase
         $this->actingAs(User::factory()->teacher()->create())
             ->get(CompetencyResource::getUrl())
             ->assertOk()
-            ->assertSee('Kompetenzraster');
+            ->assertSee('Competency framework');
 
         $this->actingAs(User::factory()->student()->create())
             ->get(CompetencyResource::getUrl())
@@ -112,6 +113,10 @@ class AdministrationAccessTest extends TestCase
 
     public function test_the_roles_page_explains_every_role_for_admins_and_operators(): void
     {
+        // The page texts is German; the suite runs in English wherever a text is translated.
+        config(['lernplattform.locale.default' => 'de']);
+        app()->setLocale('de');
+
         foreach ([User::factory()->admin()->create(), User::factory()->operator()->create()] as $user) {
             $this->actingAs($user)
                 ->get(RolesAndPermissions::getUrl())

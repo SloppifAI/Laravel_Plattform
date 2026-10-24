@@ -11,6 +11,7 @@ use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * Students of a class. Accounts themselves are created in the user management; here they are only moved in and out.
@@ -19,11 +20,20 @@ class StudentsRelationManager extends RelationManager
 {
     protected static string $relationship = 'students';
 
-    protected static ?string $title = 'Schüler:innen';
+    public static function getTitle(Model $ownerRecord, string $pageClass): string
+    {
+        return __('Schüler:innen');
+    }
 
-    protected static ?string $modelLabel = 'Schüler:in';
+    protected static function getModelLabel(): ?string
+    {
+        return __('Schüler:in');
+    }
 
-    protected static ?string $pluralModelLabel = 'Schüler:innen';
+    protected static function getPluralModelLabel(): ?string
+    {
+        return __('Schüler:innen');
+    }
 
     public function table(Table $table): Table
     {
@@ -31,32 +41,32 @@ class StudentsRelationManager extends RelationManager
             ->recordTitleAttribute('name')
             ->columns([
                 TextColumn::make('name')
-                    ->label('Name')
+                    ->label(__('Name'))
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('username')
-                    ->label('Benutzername')
+                    ->label(__('Benutzername'))
                     ->searchable(),
             ])
             ->defaultSort('name')
-            ->emptyStateHeading('Noch keine Schüler:innen in dieser Klasse')
+            ->emptyStateHeading(__('Noch keine Schüler:innen in dieser Klasse'))
             ->headerActions([
                 AssociateAction::make()
-                    ->label('Schüler:innen hinzufügen')
-                    ->modalHeading('Schüler:innen zur Klasse hinzufügen')
+                    ->label(__('Schüler:innen hinzufügen'))
+                    ->modalHeading(__('Schüler:innen zur Klasse hinzufügen'))
                     ->recordSelectOptionsQuery(fn (Builder $query): Builder => $query->withRole(Role::Student)->where('school_id', $this->getOwnerRecord()->school_id))
                     ->multiple()
                     ->preloadRecordSelect(),
             ])
             ->recordActions([
                 DissociateAction::make()
-                    ->label('Aus Klasse entfernen')
-                    ->modalHeading('Aus Klasse entfernen'),
+                    ->label(__('Aus Klasse entfernen'))
+                    ->modalHeading(__('Aus Klasse entfernen')),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
                     DissociateBulkAction::make()
-                        ->label('Aus Klasse entfernen'),
+                        ->label(__('Aus Klasse entfernen')),
                 ]),
             ]);
     }

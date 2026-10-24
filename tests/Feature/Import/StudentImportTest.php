@@ -75,12 +75,12 @@ class StudentImportTest extends TestCase
 
     public function test_parser_reports_unusable_files_instead_of_guessing(): void
     {
-        $this->assertStringContainsString('Vorname, Klasse', $this->import->parse("Nachname;Schule\nMüller;X\n")['problem']);
-        $this->assertSame('Die Datei enthält keine Zeilen.', $this->import->parse(" \n\n")['problem']);
-        $this->assertStringContainsString('keine Schüler:innen', $this->import->parse("Nachname;Vorname;Klasse\n")['problem']);
+        $this->assertStringContainsString('First name, Class', $this->import->parse("Nachname;Schule\nMüller;X\n")['problem']);
+        $this->assertSame('The file contains no rows.', $this->import->parse(" \n\n")['problem']);
+        $this->assertStringContainsString('no students', $this->import->parse("Nachname;Vorname;Klasse\n")['problem']);
 
         $tooMany = "Nachname;Vorname;Klasse\n".str_repeat("Müller;Anna;5a\n", StudentImport::MAX_ROWS + 1);
-        $this->assertStringContainsString('höchstens', $this->import->parse($tooMany)['problem']);
+        $this->assertStringContainsString('at most', $this->import->parse($tooMany)['problem']);
     }
 
     public function test_import_creates_classes_and_students_who_can_log_in_with_their_initial_password(): void
@@ -128,7 +128,7 @@ class StudentImportTest extends TestCase
         $outcome = $this->importCsv("Nachname;Vorname;Klasse;Benutzername\nMüller;Anna;6a;anna.mueller\n");
 
         $this->assertSame(['updated'], array_column($outcome['rows'], 'status'));
-        $this->assertSame('Name und Klasse aktualisiert.', $outcome['rows'][0]['message']);
+        $this->assertSame('Name and Class updated.', $outcome['rows'][0]['message']);
         $this->assertNull($outcome['rows'][0]['password']);
         $this->assertSame(['6a'], $outcome['newClasses']);
 
@@ -163,8 +163,8 @@ class StudentImportTest extends TestCase
         $outcome = $this->importCsv("Nachname;Vorname;Klasse;Benutzername\nKrause;Petra;5a;krause\nBoss;Bob;5a;chef\nMüller;Anna;5a;anna\n");
 
         $this->assertSame(['skipped', 'skipped', 'created'], array_column($outcome['rows'], 'status'));
-        $this->assertStringContainsString('Lehrkraft', $outcome['rows'][0]['message']);
-        $this->assertStringContainsString('Schuladministration', $outcome['rows'][1]['message']);
+        $this->assertStringContainsString('Teacher', $outcome['rows'][0]['message']);
+        $this->assertStringContainsString('School administration', $outcome['rows'][1]['message']);
 
         $teacher->refresh();
         $this->assertSame('Frau Krause', $teacher->name);
@@ -196,14 +196,14 @@ class StudentImportTest extends TestCase
             ['skipped', 'skipped', 'skipped', 'skipped', 'skipped', 'skipped', 'created', 'skipped', 'skipped'],
             array_column($outcome['rows'], 'status'),
         );
-        $this->assertSame('Vorname fehlt.', $outcome['rows'][0]['message']);
-        $this->assertSame('Klasse fehlt.', $outcome['rows'][1]['message']);
-        $this->assertStringContainsString('E-Mail-Adresse ist ungültig', $outcome['rows'][2]['message']);
-        $this->assertStringContainsString('Benutzername darf nur', $outcome['rows'][3]['message']);
-        $this->assertStringContainsString('E-Mail-Adresse gehört schon', $outcome['rows'][4]['message']);
-        $this->assertStringContainsString('kein Benutzername', $outcome['rows'][5]['message']);
-        $this->assertStringContainsString('mehrfach', $outcome['rows'][7]['message']);
-        $this->assertStringContainsString('E-Mail-Adresse gehört schon', $outcome['rows'][8]['message']);
+        $this->assertSame('First name is missing.', $outcome['rows'][0]['message']);
+        $this->assertSame('Class is missing.', $outcome['rows'][1]['message']);
+        $this->assertStringContainsString('email address is not valid', $outcome['rows'][2]['message']);
+        $this->assertStringContainsString('username may only contain', $outcome['rows'][3]['message']);
+        $this->assertStringContainsString('email address already belongs', $outcome['rows'][4]['message']);
+        $this->assertStringContainsString('username cannot be created', $outcome['rows'][5]['message']);
+        $this->assertStringContainsString('several times', $outcome['rows'][7]['message']);
+        $this->assertStringContainsString('email address already belongs', $outcome['rows'][8]['message']);
         $this->assertSame(['5a'], $outcome['newClasses']);
         $this->assertSame(1, User::where('username', 'eva')->count());
     }
@@ -279,7 +279,7 @@ class StudentImportTest extends TestCase
         $this->assertSame(0, $this->school->schoolClasses()->count());
 
         foreach ($outcome['rows'] as $row) {
-            $this->assertSame('Der Benutzername ist schon vergeben. Wähle in der Datei einen anderen.', $row['message']);
+            $this->assertSame('The username is already taken. Choose a different one in the file.', $row['message']);
             $this->assertNull($row['password']);
         }
 
@@ -300,7 +300,7 @@ class StudentImportTest extends TestCase
         $outcome = $this->importCsv("Nachname;Vorname;Klasse;E-Mail\nMüller;Anna;5a;anna@example.org\n");
 
         $this->assertSame('skipped', $outcome['rows'][0]['status']);
-        $this->assertSame('Die E-Mail-Adresse gehört schon zu einem anderen Konto.', $outcome['rows'][0]['message']);
+        $this->assertSame('The email address already belongs to another account.', $outcome['rows'][0]['message']);
     }
 
     public function test_generated_usernames_avoid_the_usernames_of_other_schools(): void
@@ -352,13 +352,13 @@ class StudentImportTest extends TestCase
         $lines = explode("\r\n", rtrim($csv));
 
         $this->assertStringStartsWith("\xEF\xBB\xBF", $csv);
-        $this->assertSame("\xEF\xBB\xBFName;Klasse;Benutzername;Passwort", $lines[0]);
+        $this->assertSame("\xEF\xBB\xBFName;Class;Username;Password", $lines[0]);
         $this->assertCount(3, $lines);
         $this->assertSame("\"Anna Müller\";5a;anna;{$outcome['rows'][0]['password']}", $lines[1]);
         $this->assertStringStartsWith("\"'=Lea Schmidt\";5a;lea.schmidt;", $lines[2]);
 
         $skippedOnly = $this->import->credentialsCsv($this->importCsv("Nachname;Vorname;Klasse\nMüller;Anna;5a\n")['rows']);
-        $this->assertSame("\xEF\xBB\xBFName;Klasse;Benutzername;Passwort\r\n", $skippedOnly);
+        $this->assertSame("\xEF\xBB\xBFName;Class;Username;Password\r\n", $skippedOnly);
     }
 
     /**

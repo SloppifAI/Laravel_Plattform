@@ -71,7 +71,7 @@ class ClassBookPageTest extends TestCase
 
         $this->actingAs($this->students->first())->get(ClassBook::getUrl())->assertForbidden();
         $this->actingAs(User::factory()->operator()->create())->get(ClassBook::getUrl())->assertForbidden();
-        $this->actingAs($this->teacher)->get(ClassBook::getUrl())->assertOk()->assertSee('Klassenbuch');
+        $this->actingAs($this->teacher)->get(ClassBook::getUrl())->assertOk()->assertSee('Class register');
         $this->actingAs($this->admin())->get(ClassBook::getUrl())->assertOk();
     }
 
@@ -145,7 +145,7 @@ class ClassBookPageTest extends TestCase
     {
         $lonely = User::factory()->for($this->school)->teacher()->create();
 
-        $this->page($lonely)->assertSee('Keine Klasse zugeordnet')->assertDontSee('Entwurf aus Stunde erstellen');
+        $this->page($lonely)->assertSee('No class assigned')->assertDontSee('Create draft from lesson');
     }
 
     public function test_entries_are_listed_newest_first_with_status_label_absences_and_homework(): void
@@ -160,10 +160,10 @@ class ClassBookPageTest extends TestCase
         $this->page()
             ->assertCanSeeTableRecords([$new, $old], inOrder: true)
             ->assertCanNotSeeTableRecords([$other])
-            ->assertSee('Bestätigt')
-            ->assertSee('Entwurf')
+            ->assertSee('Confirmed')
+            ->assertSee('Draft')
             ->assertSee('Seite 12')
-            ->assertSee('3. Stunde')
+            ->assertSee('Lesson 3')
             ->assertSee($anna->name)
             ->assertSee($ben->name);
     }
@@ -323,7 +323,7 @@ class ClassBookPageTest extends TestCase
         $page->fillForm(['topic' => 'Nachher'])->call('callMountedAction');
 
         $this->assertSame('Vorher', $entry->fresh()->topic);
-        $this->assertSame('Bestätigt', $entry->fresh()->status()->getLabel());
+        $this->assertSame('Confirmed', $entry->fresh()->status()->getLabel());
     }
 
     public function test_an_entry_without_content_cannot_be_confirmed_until_it_is_filled_in(): void
@@ -334,7 +334,7 @@ class ClassBookPageTest extends TestCase
         $entry = ClassBookEntry::query()->sole();
 
         $this->assertSame('', $entry->content);
-        $page->assertSee('Inhalt fehlt')->assertTableActionDisabled('confirm', $entry);
+        $page->assertSee('Content missing')->assertTableActionDisabled('confirm', $entry);
         $this->forceAction($page, 'confirm', $entry);
         $this->assertFalse($entry->fresh()->isConfirmed());
 
@@ -353,7 +353,7 @@ class ClassBookPageTest extends TestCase
         $this->entry(['absent_student_ids' => [$this->students->first()->getKey()]]);
 
         $this->page($substitute, $this->schoolClass)
-            ->assertSee('auch eine Vertretung')
+            ->assertSee('including cover')
             ->assertSee($this->students->first()->name)
             ->assertActionVisible('export');
 
@@ -414,7 +414,7 @@ class ClassBookPageTest extends TestCase
         $this->page()
             ->callAction('export', ['from' => '2026-10-01', 'until' => '2026-10-31'])
             ->assertHasNoFormErrors()
-            ->assertFileDownloaded('klassenbuch-5a-2026-10-01-bis-2026-10-31.csv', $expected);
+            ->assertFileDownloaded('class-register-5a-2026-10-01-to-2026-10-31.csv', $expected);
 
         $this->assertStringContainsString('Im Zeitraum', $expected);
         $this->assertStringNotContainsString('Außerhalb', $expected);

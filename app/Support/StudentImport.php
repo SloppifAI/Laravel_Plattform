@@ -42,6 +42,8 @@ class StudentImport
     ];
 
     /**
+     * The German names of the columns every file needs, shown (translated) in the messages that name a missing one.
+     *
      * @var array<string, string>
      */
     private const array REQUIRED_COLUMNS = ['lastName' => 'Nachname', 'firstName' => 'Vorname', 'class' => 'Klasse'];
@@ -106,11 +108,10 @@ class StudentImport
                 $missing = array_diff_key(self::REQUIRED_COLUMNS, $columns);
 
                 if ($missing !== []) {
-                    return ['rows' => [], 'problem' => sprintf(
-                        'In der ersten Zeile fehlen die Spalten %s. Gefunden wurde: %s. Erwartet werden Nachname, Vorname und Klasse, optional Benutzername und E-Mail.',
-                        implode(', ', $missing),
-                        implode(', ', array_filter($cells)),
-                    )];
+                    return ['rows' => [], 'problem' => __('In der ersten Zeile fehlen die Spalten :missing. Gefunden wurde: :found. Erwartet werden Nachname, Vorname und Klasse, optional Benutzername und E-Mail.', [
+                        'missing' => implode(', ', array_map(__(...), $missing)),
+                        'found' => implode(', ', array_filter($cells)),
+                    ])];
                 }
 
                 continue;
@@ -129,9 +130,9 @@ class StudentImport
         fclose($stream);
 
         return match (true) {
-            $columns === null => ['rows' => [], 'problem' => 'Die Datei enthält keine Zeilen.'],
-            $rows === [] => ['rows' => [], 'problem' => 'Die Datei enthält nur die Kopfzeile, aber keine Schüler:innen.'],
-            count($rows) > self::MAX_ROWS => ['rows' => [], 'problem' => sprintf('Die Datei enthält %d Schüler:innen. Pro Import sind höchstens %d möglich, teile die Datei zum Beispiel nach Klassen auf.', count($rows), self::MAX_ROWS)],
+            $columns === null => ['rows' => [], 'problem' => __('Die Datei enthält keine Zeilen.')],
+            $rows === [] => ['rows' => [], 'problem' => __('Die Datei enthält nur die Kopfzeile, aber keine Schüler:innen.')],
+            count($rows) > self::MAX_ROWS => ['rows' => [], 'problem' => __('Die Datei enthält :count Schüler:innen. Pro Import sind höchstens :max möglich, teile die Datei zum Beispiel nach Klassen auf.', ['count' => count($rows), 'max' => self::MAX_ROWS])],
             default => ['rows' => $rows, 'problem' => null],
         };
     }
@@ -168,7 +169,7 @@ class StudentImport
         $stream = fopen('php://temp', 'r+');
         fwrite($stream, "\xEF\xBB\xBF");
 
-        $lines = [['Name', 'Klasse', 'Benutzername', 'Passwort']];
+        $lines = [[__('Name'), __('Klasse'), __('Benutzername'), __('Passwort')]];
 
         foreach ($rows as $row) {
             if ($row['password'] !== null) {
@@ -224,18 +225,18 @@ class StudentImport
 
         if ($row['username'] !== '') {
             if (in_array($row['username'], $this->seenUsernames, true)) {
-                return $this->outcome($row, 'skipped', 'Der Benutzername kommt in der Datei mehrfach vor, nur die erste Zeile zählt.');
+                return $this->outcome($row, 'skipped', __('Der Benutzername kommt in der Datei mehrfach vor, nur die erste Zeile zählt.'));
             }
 
             $existing = User::where('username', $row['username'])->first();
 
             if ($existing !== null && ! $existing->isMemberOf($this->school)) {
                 // Usernames are unique across schools; which school (or role) holds it is not revealed.
-                return $this->outcome($row, 'skipped', 'Der Benutzername ist schon vergeben. Wähle in der Datei einen anderen.');
+                return $this->outcome($row, 'skipped', __('Der Benutzername ist schon vergeben. Wähle in der Datei einen anderen.'));
             }
 
             if ($existing !== null && ! $existing->isStudent()) {
-                return $this->outcome($row, 'skipped', sprintf('Der Benutzername gehört zu einem Konto mit der Rolle %s. Es bleibt unverändert.', $existing->role->getLabel()));
+                return $this->outcome($row, 'skipped', __('Der Benutzername gehört zu einem Konto mit der Rolle :role. Es bleibt unverändert.', ['role' => $existing->role->getLabel()]));
             }
         } else {
             // Without a username the same name in the same class is the same person, which keeps a repeated import from creating duplicates.
@@ -265,18 +266,18 @@ class StudentImport
 
         $changes = collect($student->getDirty())
             ->keys()
-            ->map(fn (string $attribute): string => $attribute === 'name' ? 'Name' : 'Klasse')
-            ->join(' und ');
+            ->map(fn (string $attribute): string => $attribute === 'name' ? __('Name') : __('Klasse'))
+            ->join(' '.__('und').' ');
 
         if ($changes === '') {
-            return $this->outcome($row, 'skipped', 'Ist schon mit diesen Angaben vorhanden.', $student->username);
+            return $this->outcome($row, 'skipped', __('Ist schon mit diesen Angaben vorhanden.'), $student->username);
         }
 
         if ($commit) {
             $student->save();
         }
 
-        return $this->outcome($row, 'updated', "{$changes} aktualisiert.", $student->username);
+        return $this->outcome($row, 'updated', __(':changes aktualisiert.', ['changes' => $changes]), $student->username);
     }
 
     /**
@@ -288,11 +289,11 @@ class StudentImport
         $username = $row['username'] !== '' ? $row['username'] : $this->generateUsername($row);
 
         if ($username === null) {
-            return $this->outcome($row, 'skipped', 'Aus dem Namen lässt sich kein Benutzername bilden. Trag in der Datei einen Benutzernamen ein.');
+            return $this->outcome($row, 'skipped', __('Aus dem Namen lässt sich kein Benutzername bilden. Trag in der Datei einen Benutzernamen ein.'));
         }
 
         if ($row['email'] !== '' && $this->emailIsTaken($row['email'])) {
-            return $this->outcome($row, 'skipped', 'Die E-Mail-Adresse gehört schon zu einem anderen Konto.');
+            return $this->outcome($row, 'skipped', __('Die E-Mail-Adresse gehört schon zu einem anderen Konto.'));
         }
 
         $password = $this->generatePassword();
@@ -315,7 +316,7 @@ class StudentImport
             $this->seenEmails[] = mb_strtolower($row['email']);
         }
 
-        return $this->outcome($row, 'created', 'Konto angelegt.', $username, $commit ? $password : null);
+        return $this->outcome($row, 'created', __('Konto angelegt.'), $username, $commit ? $password : null);
     }
 
     /**
@@ -327,20 +328,20 @@ class StudentImport
 
         foreach (self::REQUIRED_COLUMNS as $field => $label) {
             if ($row[$field] === '') {
-                $problems[] = "{$label} fehlt.";
+                $problems[] = __(':column fehlt.', ['column' => __($label)]);
             }
         }
 
         if (mb_strlen($this->fullName($row)) > 255 || mb_strlen($row['class']) > 255) {
-            $problems[] = 'Name oder Klasse sind länger als 255 Zeichen.';
+            $problems[] = __('Name oder Klasse sind länger als 255 Zeichen.');
         }
 
         if ($row['email'] !== '' && filter_var($row['email'], FILTER_VALIDATE_EMAIL) === false) {
-            $problems[] = 'Die E-Mail-Adresse ist ungültig.';
+            $problems[] = __('Die E-Mail-Adresse ist ungültig.');
         }
 
         if ($row['username'] !== '' && preg_match('/^[a-z0-9._@-]{1,255}$/', $row['username']) !== 1) {
-            $problems[] = 'Der Benutzername darf nur Buchstaben ohne Umlaute, Ziffern und . _ - @ enthalten.';
+            $problems[] = __('Der Benutzername darf nur Buchstaben ohne Umlaute, Ziffern und . _ - @ enthalten.');
         }
 
         return $problems === [] ? null : implode(' ', $problems);

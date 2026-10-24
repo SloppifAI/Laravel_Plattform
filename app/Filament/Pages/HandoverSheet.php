@@ -36,8 +36,6 @@ class HandoverSheet extends Page
 
     protected string $view = 'filament.pages.handover-sheet';
 
-    protected static ?string $title = 'Übergabe-Mappe';
-
     protected static ?string $slug = 'uebergabe/{schoolClass}';
 
     protected static bool $shouldRegisterNavigation = false;
@@ -67,7 +65,7 @@ class HandoverSheet extends Page
 
     public function getTitle(): string
     {
-        return 'Übergabe-Mappe: '.$this->schoolClass->name;
+        return __('Übergabe-Mappe: :class', ['class' => $this->schoolClass->name]);
     }
 
     /**
@@ -76,8 +74,8 @@ class HandoverSheet extends Page
     public function getBreadcrumbs(): array
     {
         return auth()->user()?->isAdmin()
-            ? [SchoolClassResource::getUrl('edit', ['record' => $this->schoolClass]) => 'Klasse '.$this->schoolClass->name, 'Übergabe-Mappe']
-            : [Substitutions::getUrl() => 'Vertretung', 'Übergabe-Mappe'];
+            ? [SchoolClassResource::getUrl('edit', ['record' => $this->schoolClass]) => __('Klasse :class', ['class' => $this->schoolClass->name]), __('Übergabe-Mappe')]
+            : [Substitutions::getUrl() => __('Vertretung'), __('Übergabe-Mappe')];
     }
 
     /**
@@ -87,7 +85,7 @@ class HandoverSheet extends Page
     {
         return [
             Action::make('print')
-                ->label('Drucken')
+                ->label(__('Drucken'))
                 ->icon(Heroicon::OutlinedPrinter)
                 ->alpineClickHandler('window.print()'),
         ];

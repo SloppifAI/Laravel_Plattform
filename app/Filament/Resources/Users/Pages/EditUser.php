@@ -32,10 +32,10 @@ class EditUser extends EditRecord
     private function downloadDataAction(): Action
     {
         return Action::make('downloadData')
-            ->label('Datenauskunft')
+            ->label(__('Datenauskunft'))
             ->icon(Heroicon::OutlinedArrowDownTray)
             ->color('gray')
-            ->tooltip('Alle Daten, die zu diesem Konto gespeichert sind, als Datei (JSON)')
+            ->tooltip(__('Alle Daten, die zu diesem Konto gespeichert sind, als Datei (JSON)'))
             ->visible(fn (): bool => auth()->user()->can('view', $this->getRecord()))
             ->action(function (): StreamedResponse {
                 $record = $this->getRecord();
@@ -43,7 +43,7 @@ class EditUser extends EditRecord
                 Gate::authorize('view', $record);
 
                 $json = json_encode(PersonalDataExport::for($record, auth()->user()), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
-                $filename = 'lernplattform-daten-'.preg_replace('/[^A-Za-z0-9._-]/', '_', $record->username).'-'.today()->toDateString().'.json';
+                $filename = __('lernplattform-daten-:username-:date.json', ['username' => preg_replace('/[^A-Za-z0-9._-]/', '_', $record->username), 'date' => today()->toDateString()]);
 
                 return response()->streamDownload(function () use ($json): void {
                     echo $json;

@@ -34,7 +34,7 @@ class SubstitutionsPageTest extends TestCase
 
     public function test_only_teachers_open_the_page(): void
     {
-        $this->actingAs($this->leader)->get(Substitutions::getUrl())->assertOk()->assertSee(['Vertretung', 'Keine Vertretungen']);
+        $this->actingAs($this->leader)->get(Substitutions::getUrl())->assertOk()->assertSee(['Cover', 'No cover arrangements']);
 
         foreach ([
             User::factory()->admin()->for($this->school)->create(),
@@ -59,7 +59,7 @@ class SubstitutionsPageTest extends TestCase
                 'note' => "Wir sind bei Kapitel 3.\nHausaufgaben liegen im Fach.",
             ])
             ->assertHasNoFormErrors()
-            ->assertNotified('Vertretung eingerichtet');
+            ->assertNotified('Cover set up');
 
         $substitution = $this->schoolClass->substitutions()->sole();
 
@@ -182,7 +182,14 @@ class SubstitutionsPageTest extends TestCase
     {
         $this->actingAs($this->leader)
             ->get(Substitutions::getUrl())
-            ->assertSee(['Klassenbuch mit allen Fehlzeiten', 'Einwilligungen der Eltern erfassen', 'Tuto-Mikro nutzen', 'Lernstände der Klasse sehen'], false);
+            ->assertSee(['class register with all absences', 'enter consents from parents or guardians', 'use Tuto-Mikro', 'see the class’s learning progress'], false);
+    }
+
+    public function test_what_a_substitution_grants_follows_the_locale_unless_german_is_asked_for(): void
+    {
+        $this->assertStringStartsWith('create lessons,', ClassSubstitution::grants());
+        $this->assertStringStartsWith('Stunden anlegen,', ClassSubstitution::grants('de'));
+        $this->assertStringStartsWith('create lessons,', ClassSubstitution::grants('en'));
     }
 
     public function test_the_klassenleitung_opens_the_handover_sheet_of_every_class_they_lead_before_any_substitution_exists(): void
@@ -196,14 +203,14 @@ class SubstitutionsPageTest extends TestCase
 
         $this->actingAs($this->leader)
             ->get(Substitutions::getUrl())
-            ->assertSee(['Übergabe-Mappe 7b', 'Übergabe-Mappe 8a'])
-            ->assertDontSee('Übergabe-Mappe Fremde Klasse');
+            ->assertSee(['Handover sheet 7b', 'Handover sheet 8a'])
+            ->assertDontSee('Handover sheet Fremde Klasse');
 
     }
 
     public function test_a_teacher_without_a_class_gets_no_handover_sheet_link(): void
     {
-        $this->actingAs($this->teacher())->get(Substitutions::getUrl())->assertOk()->assertDontSee('Übergabe-Mappe');
+        $this->actingAs($this->teacher())->get(Substitutions::getUrl())->assertOk()->assertDontSee('Handover sheet');
     }
 
     public function test_the_action_is_hidden_for_a_teacher_without_a_class(): void
@@ -230,7 +237,7 @@ class SubstitutionsPageTest extends TestCase
             ->test(Substitutions::class)
             ->assertCanSeeTableRecords([$mine, $iSubstitute])
             ->assertCanNotSeeTableRecords([$unrelated, $foreign])
-            ->assertSee('Du vertrittst diese Klasse');
+            ->assertSee('You are covering this class');
     }
 
     public function test_the_list_puts_active_before_upcoming_before_ended_substitutions(): void
@@ -260,7 +267,7 @@ class SubstitutionsPageTest extends TestCase
         Livewire::actingAs($this->leader)
             ->test(Substitutions::class)
             ->callAction(TestAction::make('end')->table($running))
-            ->assertNotified('Vertretung beendet');
+            ->assertNotified('Cover ended');
 
         $this->assertSame('ended', $running->fresh()->status());
         $this->assertFalse($this->schoolClass->isTaughtBy($colleague));

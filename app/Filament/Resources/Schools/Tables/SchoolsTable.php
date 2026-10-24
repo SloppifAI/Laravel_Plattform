@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Schools\Tables;
 
 use App\Filament\Resources\Schools\Actions\SchoolBlockActions;
+use App\Filament\Resources\Schools\Schemas\SchoolForm;
 use App\Models\School;
 use Filament\Actions\EditAction;
 use Filament\Support\Enums\FontFamily;
@@ -24,31 +25,34 @@ class SchoolsTable
         return $table
             ->columns([
                 TextColumn::make('name')
-                    ->label('Schule')
+                    ->label(__('Schule'))
                     ->weight(FontWeight::Medium)
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('school_number')
-                    ->label('Schulnummer')
+                    ->label(__('Schulnummer'))
                     ->fontFamily(FontFamily::Mono)
-                    ->placeholder('Keine')
+                    ->placeholder(__('Keine'))
                     ->searchable(),
                 TextColumn::make('city')
-                    ->label('Ort')
-                    ->description(fn (School $record): string => $record->state)
-                    ->searchable(['city', 'state'])
+                    ->label(__('Ort'))
+                    ->description(fn (School $record): string => __($record->state))
+                    ->searchable(query: fn (Builder $query, string $search): Builder => $query
+                        ->where('city', 'like', "%{$search}%")
+                        ->orWhereIn('state', self::statesNamed($search)))
                     ->sortable(),
                 TextColumn::make('school_type')
-                    ->label('Schulform')
-                    ->placeholder('Keine Angabe')
+                    ->label(__('Schulform'))
+                    ->formatStateUsing(fn (?string $state): ?string => filled($state) ? __($state) : $state)
+                    ->placeholder(__('Keine Angabe'))
                     ->sortable(),
                 TextColumn::make('dpa_version')
-                    ->label('AVV')
+                    ->label(__('AVV'))
                     ->badge()
                     ->state(fn (School $record): string => match (true) {
-                        $record->hasAcceptedCurrentDpa() => 'Version '.$record->dpa_version,
-                        $record->hasAcceptedDpa() => 'Veraltet ('.$record->dpa_version.')',
-                        default => 'Fehlt',
+                        $record->hasAcceptedCurrentDpa() => __('Version :version', ['version' => $record->dpa_version]),
+                        $record->hasAcceptedDpa() => __('Veraltet (:version)', ['version' => $record->dpa_version]),
+                        default => __('Fehlt'),
                     })
                     ->description(fn (School $record): ?string => $record->dpa_accepted_at?->format('d.m.Y'))
                     ->color(fn (School $record): string => match (true) {
@@ -59,38 +63,38 @@ class SchoolsTable
                     ->icon(fn (School $record): Heroicon => $record->hasAcceptedCurrentDpa() ? Heroicon::OutlinedCheckCircle : Heroicon::OutlinedExclamationTriangle)
                     ->sortable(['dpa_accepted_at']),
                 TextColumn::make('users_count')
-                    ->label('Konten')
+                    ->label(__('Konten'))
                     ->counts('users')
                     ->sortable(),
                 TextColumn::make('school_classes_count')
-                    ->label('Klassen')
+                    ->label(__('Klassen'))
                     ->counts('schoolClasses')
                     ->sortable(),
                 TextColumn::make('created_at')
-                    ->label('Registriert am')
+                    ->label(__('Registriert am'))
                     ->date('d.m.Y')
                     ->sortable(),
                 TextColumn::make('blocked_at')
-                    ->label('Status')
+                    ->label(__('Status'))
                     ->badge()
-                    ->state(fn (School $record): string => $record->isBlocked() ? 'Gesperrt' : 'Aktiv')
+                    ->state(fn (School $record): string => $record->isBlocked() ? __('Gesperrt') : __('Aktiv'))
                     ->color(fn (School $record): string => $record->isBlocked() ? 'danger' : 'success')
                     ->icon(fn (School $record): Heroicon => $record->isBlocked() ? Heroicon::OutlinedLockClosed : Heroicon::OutlinedCheckCircle)
                     ->sortable(),
             ])
             ->filters([
                 TernaryFilter::make('blocked_at')
-                    ->label('Status')
-                    ->placeholder('Alle')
-                    ->trueLabel('Gesperrt')
-                    ->falseLabel('Aktiv')
+                    ->label(__('Status'))
+                    ->placeholder(__('Alle'))
+                    ->trueLabel(__('Gesperrt'))
+                    ->falseLabel(__('Aktiv'))
                     ->nullable(),
                 SelectFilter::make('dpa')
-                    ->label('AVV')
+                    ->label(__('AVV'))
                     ->options([
-                        'current' => 'Aktuelle Version angenommen',
-                        'outdated' => 'Veraltet, neue Version offen',
-                        'missing' => 'Fehlt',
+                        'current' => __('Aktuelle Version angenommen'),
+                        'outdated' => __('Veraltet, neue Version offen'),
+                        'missing' => __('Fehlt'),
                     ])
                     ->query(fn (Builder $query, array $data): Builder => match ($data['value'] ?? null) {
                         'current' => $query->withCurrentDpa(),
@@ -105,5 +109,19 @@ class SchoolsTable
                 SchoolBlockActions::block(),
                 SchoolBlockActions::unblock(),
             ]);
+    }
+
+    /**
+     * The stored (German) names of the states whose name, as shown in the current language or as stored, contains the
+     * search term: the table shows the translated name, so searching for it has to find the school.
+     *
+     * @return list<string>
+     */
+    private static function statesNamed(string $search): array
+    {
+        return array_values(array_filter(
+            SchoolForm::STATES,
+            fn (string $state): bool => mb_stripos($state, $search) !== false || mb_stripos(__($state), $search) !== false,
+        ));
     }
 }

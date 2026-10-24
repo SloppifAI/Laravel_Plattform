@@ -29,8 +29,8 @@ class ImportStudentsPageTest extends TestCase
         $this->actingAs(User::factory()->admin()->create())
             ->get(self::PAGE_URL)
             ->assertOk()
-            ->assertSee('Schülerliste importieren')
-            ->assertSee('Vorschau erstellen');
+            ->assertSee('Import student list')
+            ->assertSee('Create preview');
     }
 
     public function test_the_page_is_only_listed_in_the_navigation_for_administrators(): void
@@ -61,6 +61,17 @@ class ImportStudentsPageTest extends TestCase
         $page->call('_startUpload', 'imported', $file, false)->assertForbidden();
     }
 
+    public function test_the_confirmation_announces_what_will_happen_before_anything_is_imported(): void
+    {
+        $this->actingAs(User::factory()->admin()->create());
+
+        Livewire::test(ImportStudents::class)
+            ->fillForm(['file' => $this->upload("Nachname;Vorname;Klasse\nMüller;Anna;5a\nÖztürk;Mehmet;5b\n;Leer;5a\n")])
+            ->call('createPreview')
+            ->mountAction('import')
+            ->assertMountedActionModalSee('This will create 2 accounts, update 0 and skip 1 rows.');
+    }
+
     public function test_a_file_is_previewed_first_and_imported_only_after_confirming(): void
     {
         $this->actingAs(User::factory()->admin()->create());
@@ -71,23 +82,23 @@ class ImportStudentsPageTest extends TestCase
             ->call('createPreview')
             ->assertHasNoFormErrors()
             ->assertSet('imported', false)
-            ->assertSee('Das ist nur eine Vorschau')
-            ->assertSee('Wird angelegt')
+            ->assertSee('This is only a preview')
+            ->assertSee('Will be created')
             ->assertSee('anna.mueller')
-            ->assertSee('Nachname fehlt.')
+            ->assertSee('Last name is missing.')
             ->assertSee('5a, 5b')
-            ->assertSee('Import ausführen')
-            ->assertDontSee('Startpasswort');
+            ->assertSee('Run import')
+            ->assertDontSee('Initial password');
 
         $this->assertSame($adminCount, User::count());
         $this->assertDatabaseCount(SchoolClass::class, 0);
 
         $page->callAction('import')
             ->assertSet('imported', true)
-            ->assertSee('Der Import ist abgeschlossen.')
-            ->assertSee('Die Startpasswörter siehst du nur jetzt.')
-            ->assertSee('Zugangsdaten als CSV herunterladen')
-            ->assertSee('Startpasswort');
+            ->assertSee('The import is complete.')
+            ->assertSee('You only see the initial passwords now.')
+            ->assertSee('Download login details as CSV')
+            ->assertSee('Initial password');
 
         $this->assertSame(2, User::withRole(Role::Student)->count());
         $this->assertDatabaseCount(SchoolClass::class, 2);
@@ -135,9 +146,9 @@ class ImportStudentsPageTest extends TestCase
             ->test(ImportStudents::class)
             ->fillForm(['file' => $this->upload("Nachname;Vorname;Klasse;Benutzername\nKrause;Petra;5a;krause\n")])
             ->call('createPreview')
-            ->assertSee('Der Benutzername ist schon vergeben.')
+            ->assertSee('The username is already taken.')
             ->assertDontSee('Geheimschule Nord')
-            ->assertDontSee('Lehrkraft');
+            ->assertDontSee('Teacher');
 
         $this->assertSame('skipped', $page->get('outcome')['rows'][0]['status']);
         $this->assertSame(0, SchoolClass::count());
@@ -174,7 +185,7 @@ class ImportStudentsPageTest extends TestCase
         $password = $page->get('outcome')['rows'][0]['password'];
 
         $page->call('downloadCredentials')
-            ->assertFileDownloaded(content: "\xEF\xBB\xBFName;Klasse;Benutzername;Passwort\r\n\"Anna Müller\";5a;anna.mueller;{$password}\r\n");
+            ->assertFileDownloaded(content: "\xEF\xBB\xBFName;Class;Username;Password\r\n\"Anna Müller\";5a;anna.mueller;{$password}\r\n");
     }
 
     public function test_credentials_cannot_be_downloaded_before_an_import_ran(): void
@@ -193,7 +204,7 @@ class ImportStudentsPageTest extends TestCase
             ->test(ImportStudents::class)
             ->fillForm(['file' => $this->upload("Nachname;Schule\nMüller;X\n")])
             ->call('createPreview')
-            ->assertNotified('Die Datei lässt sich nicht importieren.')
+            ->assertNotified('The file cannot be imported.')
             ->assertSet('outcome', null);
     }
 
@@ -219,7 +230,7 @@ class ImportStudentsPageTest extends TestCase
             ->call('startOver')
             ->assertSet('outcome', null)
             ->assertSet('imported', false)
-            ->assertSee('Vorschau erstellen');
+            ->assertSee('Create preview');
     }
 
     private function upload(string $content): UploadedFile

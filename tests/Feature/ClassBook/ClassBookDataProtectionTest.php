@@ -140,6 +140,7 @@ class ClassBookDataProtectionTest extends TestCase
         $this->entryOf($schoolClass, $teacher, ['held_on' => '2026-10-06', 'absent_student_ids' => [$ben->getKey()]]);
         $this->entryOf($schoolClass, $teacher, ['held_on' => '2026-10-08', 'absent_student_ids' => null]);
 
+        app()->setLocale('de');
         $export = PersonalDataExport::for($anna);
 
         $this->assertSame([
@@ -181,6 +182,7 @@ class ClassBookDataProtectionTest extends TestCase
         [$otherClass, , $colleague] = $this->classWithStudents(1, $schoolClass->school, '5b');
         $this->entryOf($otherClass, $colleague, ['topic' => 'Von der Kollegin']);
 
+        app()->setLocale('de');
         $export = PersonalDataExport::for($teacher);
 
         $this->assertCount(1, $export['klassenbuch_eintraege']);

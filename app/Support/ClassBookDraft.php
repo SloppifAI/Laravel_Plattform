@@ -67,7 +67,7 @@ class ClassBookDraft
 
     /**
      * Only the released homework of the whole class counts; a Förderaufgabe goes to a few students and is no
-     * homework of the class.
+     * homework of the class. The line is worded in the language of whoever makes the draft and stored as written.
      */
     private static function homeworkFor(Lesson $lesson): ?string
     {
@@ -77,11 +77,11 @@ class ClassBookDraft
 
         $questions = $lesson->questions()->count();
         $details = array_filter([
-            $questions > 0 ? ($questions === 1 ? '1 Frage' : "{$questions} Fragen") : null,
-            $lesson->due_on !== null ? 'fällig am '.$lesson->due_on->format('d.m.Y') : null,
+            $questions > 0 ? trans_choice(':count Frage|:count Fragen', $questions) : null,
+            $lesson->due_on !== null ? __('fällig am :date', ['date' => $lesson->due_on->format('d.m.Y')]) : null,
         ]);
 
-        return 'Hausaufgabe in Tuto'.($details !== [] ? ': '.implode(', ', $details) : '').'.';
+        return $details !== [] ? __('Hausaufgabe in Tuto: :details.', ['details' => implode(', ', $details)]) : __('Hausaufgabe in Tuto.');
     }
 
     /**

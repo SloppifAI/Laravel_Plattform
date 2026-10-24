@@ -30,13 +30,19 @@ class SchoolClassResource extends Resource
 
     protected static ?int $navigationSort = 2;
 
-    protected static ?string $modelLabel = 'Klasse';
-
-    protected static ?string $pluralModelLabel = 'Klassen';
-
     protected static ?string $slug = 'klassen';
 
     protected static ?string $recordTitleAttribute = 'name';
+
+    public static function getModelLabel(): string
+    {
+        return __('Klasse');
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return __('Klassen');
+    }
 
     /**
      * A school administration sees only the classes of its own school, because a class code is all it takes to join.

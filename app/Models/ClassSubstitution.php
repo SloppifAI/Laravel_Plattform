@@ -31,13 +31,14 @@ class ClassSubstitution extends Model
     }
 
     /**
-     * What a substitution grants, as a German clause for every text that asks somebody to set one up or end it. It is
-     * everything SchoolClass::taughtBy() gives a teacher of the class: lessons, the students' results, the whole
-     * Klassenbuch with the absences, the consents of the parents and Tuto-Mikro. Keep the texts in step with it.
+     * What a substitution grants, as a clause in the language of the user for every text that asks somebody to set
+     * one up or end it. It is everything SchoolClass::taughtBy() gives a teacher of the class: lessons, the students'
+     * results, the whole Klassenbuch with the absences, the consents of the parents and Tuto-Mikro. Keep the texts in
+     * step with it. The German legal documents pass 'de': they stay German whoever opens or accepts them.
      */
-    public static function grants(): string
+    public static function grants(?string $locale = null): string
     {
-        return 'Stunden anlegen, die Lernstände der Klasse sehen, das Klassenbuch mit allen Fehlzeiten lesen und exportieren, Einwilligungen der Eltern erfassen und Tuto-Mikro nutzen';
+        return __('Stunden anlegen, die Lernstände der Klasse sehen, das Klassenbuch mit allen Fehlzeiten lesen und exportieren, Einwilligungen der Eltern erfassen und Tuto-Mikro nutzen', [], $locale);
     }
 
     /**

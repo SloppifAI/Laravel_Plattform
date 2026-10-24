@@ -225,6 +225,6 @@ class OperatorAccountManagementTest extends TestCase
 
     public function test_the_page_calls_the_accounts_by_what_they_are(): void
     {
-        Livewire::test(ListUsers::class)->assertSee('Administrationskonten');
+        Livewire::test(ListUsers::class)->assertSee('Administration accounts');
     }
 }

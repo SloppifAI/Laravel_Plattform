@@ -77,7 +77,7 @@ class ClassBookDraftTest extends TestCase
         $lesson = Lesson::factory()->publishedFor($students)->create(['school_class_id' => $schoolClass->getKey(), 'teacher_id' => $teacher->getKey(), 'due_on' => '2026-10-12']);
         Question::factory()->count(3)->for($lesson)->create();
 
-        $this->assertSame('Hausaufgabe in Tuto: 3 Fragen, fällig am 12.10.2026.', ClassBookDraft::createFor($lesson)->homework);
+        $this->assertSame('Homework in Tuto: 3 questions, due 12.10.2026.', ClassBookDraft::createFor($lesson)->homework);
     }
 
     public function test_the_homework_text_copes_with_one_question_and_with_a_missing_due_date_or_questions(): void
@@ -87,8 +87,8 @@ class ClassBookDraftTest extends TestCase
         Question::factory()->for($single)->create();
         $bare = Lesson::factory()->publishedFor($students)->create(['school_class_id' => $schoolClass->getKey(), 'teacher_id' => $teacher->getKey(), 'due_on' => null]);
 
-        $this->assertSame('Hausaufgabe in Tuto: 1 Frage.', ClassBookDraft::createFor($single)->homework);
-        $this->assertSame('Hausaufgabe in Tuto.', ClassBookDraft::createFor($bare)->homework);
+        $this->assertSame('Homework in Tuto: 1 question.', ClassBookDraft::createFor($single)->homework);
+        $this->assertSame('Homework in Tuto.', ClassBookDraft::createFor($bare)->homework);
     }
 
     public function test_a_lesson_without_released_homework_and_a_foerderaufgabe_leave_the_homework_empty(): void

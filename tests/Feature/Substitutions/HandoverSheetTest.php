@@ -53,7 +53,7 @@ class HandoverSheetTest extends TestCase
         $admin = User::factory()->admin()->for($this->school)->create();
 
         foreach ([$this->leader, $admin, $this->substitute] as $allowed) {
-            $this->actingAs($allowed)->get($this->url())->assertOk()->assertSee(['Übergabe-Mappe', 'Klasse 7b', 'Gutenberg-Schule']);
+            $this->actingAs($allowed)->get($this->url())->assertOk()->assertSee(['Handover sheet', 'Class 7b', 'Gutenberg-Schule']);
         }
     }
 
@@ -98,7 +98,7 @@ class HandoverSheetTest extends TestCase
 
         $page = Livewire::actingAs($this->substitute)->test(HandoverSheet::class, ['schoolClass' => $this->schoolClass]);
 
-        $page->assertSee('Klasse 7b');
+        $page->assertSee('Class 7b');
 
         $this->travel(1)->days();
 
@@ -110,7 +110,7 @@ class HandoverSheetTest extends TestCase
         $this->actingAs($this->substitute);
         ClassSubstitution::factory()->for($this->schoolClass)->create(['substitute_id' => $this->substitute->id]);
 
-        $this->get($this->url())->assertSee(['Wen du fragen kannst', 'Frau Lindner', 'lindner@gutenberg.example']);
+        $this->get($this->url())->assertSee(['Who you can ask', 'Frau Lindner', 'lindner@gutenberg.example']);
     }
 
     public function test_it_lists_the_last_five_lessons_with_topic_date_and_released_summary(): void
@@ -135,7 +135,7 @@ class HandoverSheetTest extends TestCase
 
         $this->actingAs($this->leader)
             ->get($this->url())
-            ->assertSeeInOrder(['Die letzten Stunden', '07.10.2026', 'Noch ein Entwurf', 'Die Zusammenfassung ist noch nicht freigegeben.', '06.10.2026', 'Thema Nummer 6', 'Zusammenfassung Nummer 6', 'Thema Nummer 3', 'Zusammenfassung Nummer 3', 'Offene Hausaufgaben'])
+            ->assertSeeInOrder(['The last lessons', '07.10.2026', 'Noch ein Entwurf', 'The summary has not been released yet.', '06.10.2026', 'Thema Nummer 6', 'Zusammenfassung Nummer 6', 'Thema Nummer 3', 'Zusammenfassung Nummer 3', 'Open homework'])
             ->assertDontSee(['Thema Nummer 2', 'Thema Nummer 1', 'Zusammenfassung Nummer 2', 'Geheimer Entwurf der Zusammenfassung']);
     }
 
@@ -169,8 +169,8 @@ class HandoverSheetTest extends TestCase
         $this->actingAs($this->leader)
             ->get($this->url())
             ->assertDontSee(['Stunde der anderen Klasse', 'Übungsaufgabe für Mia'])
-            ->assertSee('In dieser Klasse wurde noch keine Stunde angelegt.')
-            ->assertSee('Zurzeit ist keine Hausaufgabe offen.');
+            ->assertSee('No lesson has been created in this class yet.')
+            ->assertSee('No homework is open at the moment.');
     }
 
     public function test_it_lists_open_homework_with_the_number_of_hand_ins(): void
@@ -188,7 +188,7 @@ class HandoverSheetTest extends TestCase
 
         $html = $this->actingAs($this->leader)
             ->get($this->url())
-            ->assertSeeInOrder(['Offene Hausaufgaben', 'Fällige Hausaufgabe', 'Abgabe bis '.today()->format('d.m.Y'), '0 von 3 abgegeben', 'Offene Zellenlehre', 'Abgabe bis '.today()->addDays(3)->format('d.m.Y'), '2 von 3 abgegeben'])
+            ->assertSeeInOrder(['Open homework', 'Fällige Hausaufgabe', 'Due '.today()->format('d.m.Y'), '0 of 3 handed in', 'Offene Zellenlehre', 'Due '.today()->addDays(3)->format('d.m.Y'), '2 of 3 handed in'])
             ->getContent();
 
         // Expired and unreleased lessons still appear among the last lessons, just not as open homework.
@@ -211,7 +211,7 @@ class HandoverSheetTest extends TestCase
 
         $this->actingAs($this->leader)
             ->get($this->url())
-            ->assertSeeInOrder(['Einstieg für die nächste Stunde', 'Biologie', 'Fotosynthese', '01.10.2026', 'Warum brauchen Pflanzen Licht?', 'Im Schnitt 20 %', 'Chlorophyll verwechselt', 'In 3 von 3 Abgaben als Lücke genannt'])
+            ->assertSeeInOrder(['Starter for the next lesson', 'Biologie', 'Fotosynthese', '01.10.2026', 'Warum brauchen Pflanzen Licht?', 'On average 20 %', 'Chlorophyll verwechselt', 'Named as a gap in 3 of 3 hand-ins'])
             ->assertDontSee(['Mia', 'Hoffmann', 'Ben', 'Schneider', 'Lena', 'Becker', 'Geheime Lösung', 'Persönliche Rückmeldung', 'Weil es hell ist']);
     }
 
@@ -224,7 +224,7 @@ class HandoverSheetTest extends TestCase
 
         $this->actingAs($this->leader)
             ->get($this->url())
-            ->assertSee('Noch nichts zu wiederholen')
+            ->assertSee('Nothing to revise yet')
             ->assertDontSee('Einzelne Frage');
     }
 
@@ -237,22 +237,22 @@ class HandoverSheetTest extends TestCase
 
         $this->actingAs($this->leader)
             ->get($this->url())
-            ->assertSee(['Vertretung und Hinweis zur Übergabe', 'Herr Vogel', 'Bitte den Beamer vorher testen.', 'Frau Falk', 'Notiz nur für Frau Falk.', '(geplant)'])
+            ->assertSee(['Cover and handover note', 'Herr Vogel', 'Bitte den Beamer vorher testen.', 'Frau Falk', 'Notiz nur für Frau Falk.', '(planned)'])
             ->assertDontSee('Alte Notiz einer früheren Vertretung.');
 
         $this->actingAs($this->substitute)
             ->get($this->url())
-            ->assertSee(['Hinweis zur Übergabe', 'Bitte den Beamer vorher testen.'])
-            ->assertDontSee(['Notiz nur für Frau Falk.', 'Alte Notiz einer früheren Vertretung.', 'Vertretung und Hinweis zur Übergabe']);
+            ->assertSee(['Handover note', 'Bitte den Beamer vorher testen.'])
+            ->assertDontSee(['Notiz nur für Frau Falk.', 'Alte Notiz einer früheren Vertretung.', 'Cover and handover note']);
     }
 
     public function test_it_says_so_when_there_is_no_note_or_no_substitution(): void
     {
-        $this->actingAs($this->leader)->get($this->url())->assertSee('Zurzeit ist keine Vertretung eingerichtet.');
+        $this->actingAs($this->leader)->get($this->url())->assertSee('No cover is set up at the moment.');
 
         ClassSubstitution::factory()->for($this->schoolClass)->create(['substitute_id' => $this->substitute->id, 'note' => null]);
 
-        $this->actingAs($this->substitute)->get($this->url())->assertSee('Kein Hinweis hinterlegt.');
+        $this->actingAs($this->substitute)->get($this->url())->assertSee('No note provided.');
     }
 
     public function test_the_sheet_names_no_student_and_no_individual_result_anywhere(): void
@@ -268,7 +268,7 @@ class HandoverSheetTest extends TestCase
             $this->actingAs($viewer)
                 ->get($this->url())
                 ->assertOk()
-                ->assertSee(['3 von 3 abgegeben', 'Die Klasse hat Zellen behandelt.', 'keine Namen und keine Einzelergebnisse'])
+                ->assertSee(['3 of 3 handed in', 'Die Klasse hat Zellen behandelt.', 'no names and no individual results'])
                 ->assertDontSee(['Mia', 'Hoffmann', 'Ben Schneider', 'Lena', 'Becker', 'Persönliches Feedback', '35 %']);
         }
     }

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\NavigationGroup;
 use App\Support\StudentImport;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -37,17 +38,13 @@ class ImportStudents extends Page implements HasTable
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedArrowUpTray;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Verwaltung';
+    protected static string|UnitEnum|null $navigationGroup = NavigationGroup::Verwaltung;
 
     protected static ?int $navigationSort = 5;
-
-    protected static ?string $title = 'Schülerliste importieren';
 
     protected static ?string $slug = 'schuelerliste-importieren';
 
     protected string $view = 'filament.pages.import-students';
-
-    protected ?string $subheading = 'Übernimm Klassen und Schüler:innen aus der Schulverwaltung, zum Beispiel aus SchILD-NRW, WebUntis oder IServ.';
 
     /**
      * @var array<string, mixed>|null
@@ -67,6 +64,21 @@ class ImportStudents extends Page implements HasTable
      */
     #[Locked]
     public bool $imported = false;
+
+    public static function getNavigationLabel(): string
+    {
+        return __('Schülerliste importieren');
+    }
+
+    public function getTitle(): string
+    {
+        return __('Schülerliste importieren');
+    }
+
+    public function getSubheading(): string
+    {
+        return __('Übernimm Klassen und Schüler:innen aus der Schulverwaltung, zum Beispiel aus SchILD-NRW, WebUntis oder IServ.');
+    }
 
     /**
      * Only a school administration imports, and only into its own school. Operators see no student records.
@@ -88,8 +100,8 @@ class ImportStudents extends Page implements HasTable
         return $schema
             ->components([
                 FileUpload::make('file')
-                    ->label('CSV-Datei')
-                    ->helperText('Eine CSV- oder Textdatei bis 1 MB. Das Trennzeichen (Semikolon, Komma oder Tabulator) und die Zeichenkodierung erkennt die Plattform selbst.')
+                    ->label(__('CSV-Datei'))
+                    ->helperText(__('Eine CSV- oder Textdatei bis 1 MB. Das Trennzeichen (Semikolon, Komma oder Tabulator) und die Zeichenkodierung erkennt die Plattform selbst.'))
                     ->acceptedFileTypes(['text/csv', 'text/plain', 'application/csv', 'application/vnd.ms-excel'])
                     ->maxSize(1024)
                     ->required()
@@ -108,7 +120,7 @@ class ImportStudents extends Page implements HasTable
         if ($outcome['problem'] !== null) {
             Notification::make()
                 ->danger()
-                ->title('Die Datei lässt sich nicht importieren.')
+                ->title(__('Die Datei lässt sich nicht importieren.'))
                 ->body($outcome['problem'])
                 ->persistent()
                 ->send();
@@ -123,17 +135,14 @@ class ImportStudents extends Page implements HasTable
     public function importAction(): Action
     {
         return Action::make('import')
-            ->label('Import ausführen')
+            ->label(__('Import ausführen'))
             ->icon(Heroicon::OutlinedPlay)
             ->requiresConfirmation()
             ->modalIcon(Heroicon::OutlinedUserPlus)
-            ->modalHeading('Import ausführen?')
-            ->modalDescription(fn (): string => sprintf(
-                '%d Konten werden angelegt und %d aktualisiert, %d Zeilen werden übersprungen. Die Startpasswörter siehst du danach nur ein einziges Mal.',
-                ...array_values($this->counts()),
-            ))
-            ->modalSubmitActionLabel('Ja, importieren')
-            ->modalCancelActionLabel('Noch nicht')
+            ->modalHeading(__('Import ausführen?'))
+            ->modalDescription(fn (): string => __(':created Konten werden angelegt und :updated aktualisiert, :skipped Zeilen werden übersprungen. Die Startpasswörter siehst du danach nur ein einziges Mal.', $this->counts()))
+            ->modalSubmitActionLabel(__('Ja, importieren'))
+            ->modalCancelActionLabel(__('Noch nicht'))
             ->visible(fn (): bool => $this->outcome !== null && ! $this->imported && ($this->counts()['created'] + $this->counts()['updated']) > 0)
             ->action(function (): void {
                 abort_unless(static::canAccess(), 403);
@@ -147,8 +156,8 @@ class ImportStudents extends Page implements HasTable
 
                     Notification::make()
                         ->danger()
-                        ->title('Der Import hat nicht geklappt.')
-                        ->body('Es wurde nichts gespeichert. Versuch es gleich noch einmal.')
+                        ->title(__('Der Import hat nicht geklappt.'))
+                        ->body(__('Es wurde nichts gespeichert. Versuch es gleich noch einmal.'))
                         ->send();
 
                     return;
@@ -175,7 +184,7 @@ class ImportStudents extends Page implements HasTable
             function () use ($csv): void {
                 echo $csv;
             },
-            'zugangsdaten-'.now()->format('Y-m-d-His').'.csv',
+            __('zugangsdaten-:timestamp.csv', ['timestamp' => now()->format('Y-m-d-His')]),
             ['Content-Type' => 'text/csv; charset=UTF-8'],
         );
     }
@@ -195,23 +204,23 @@ class ImportStudents extends Page implements HasTable
             ->records(fn (): array => $this->outcome['rows'] ?? [])
             ->columns([
                 TextColumn::make('line')
-                    ->label('Zeile')
+                    ->label(__('Zeile'))
                     ->visibleFrom('md'),
                 TextColumn::make('name')
-                    ->label('Name')
+                    ->label(__('Name'))
                     ->weight(FontWeight::Medium),
                 TextColumn::make('class')
-                    ->label('Klasse'),
+                    ->label(__('Klasse')),
                 TextColumn::make('username')
-                    ->label('Benutzername')
+                    ->label(__('Benutzername'))
                     ->placeholder('–'),
                 TextColumn::make('status')
-                    ->label('Ergebnis')
+                    ->label(__('Ergebnis'))
                     ->badge()
                     ->formatStateUsing(fn (string $state): string => match ($state) {
-                        'created' => $this->imported ? 'Angelegt' : 'Wird angelegt',
-                        'updated' => $this->imported ? 'Aktualisiert' : 'Wird aktualisiert',
-                        default => 'Übersprungen',
+                        'created' => $this->imported ? __('Angelegt') : __('Wird angelegt'),
+                        'updated' => $this->imported ? __('Aktualisiert') : __('Wird aktualisiert'),
+                        default => __('Übersprungen'),
                     })
                     ->color(fn (string $state): string => match ($state) {
                         'created' => 'success',
@@ -224,10 +233,10 @@ class ImportStudents extends Page implements HasTable
                         default => Heroicon::OutlinedExclamationTriangle,
                     }),
                 TextColumn::make('message')
-                    ->label('Hinweis')
+                    ->label(__('Hinweis'))
                     ->wrap(),
                 TextColumn::make('password')
-                    ->label('Startpasswort')
+                    ->label(__('Startpasswort'))
                     ->fontFamily(FontFamily::Mono)
                     ->copyable()
                     ->placeholder('–')

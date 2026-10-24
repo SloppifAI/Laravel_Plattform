@@ -54,10 +54,21 @@ class SchoolForm
     {
         return $schema
             ->components([
-                Section::make('Stammdaten')
+                Section::make(__('Stammdaten'))
                     ->schema(self::fields())
                     ->columns(2),
             ]);
+    }
+
+    /**
+     * The German names are what gets stored, the labels follow the language of the user.
+     *
+     * @param  list<string>  $values
+     * @return array<string, string>
+     */
+    private static function translatedOptions(array $values): array
+    {
+        return array_combine($values, array_map(fn (string $value): string => __($value), $values));
     }
 
     /**
@@ -67,31 +78,31 @@ class SchoolForm
     {
         return [
             TextInput::make('name')
-                ->label('Schulname')
+                ->label(__('Schulname'))
                 ->required()
                 ->maxLength(255),
             TextInput::make('school_number')
-                ->label('Amtliche Schulnummer')
-                ->helperText('Freiwillig. Sie hilft uns, Doppelungen zu vermeiden.')
+                ->label(__('Amtliche Schulnummer'))
+                ->helperText(__('Freiwillig. Sie hilft uns, Doppelungen zu vermeiden.'))
                 ->trim()
                 ->maxLength(30)
                 ->unique(School::class, 'school_number', ignoreRecord: true)
                 ->dehydrateStateUsing(fn (?string $state): ?string => filled($state) ? $state : null)
-                ->validationMessages(['unique' => 'Zu dieser Schulnummer gibt es schon eine Schule auf der Plattform.']),
+                ->validationMessages(['unique' => __('Zu dieser Schulnummer gibt es schon eine Schule auf der Plattform.')]),
             Select::make('school_type')
-                ->label('Schulform')
-                ->options(array_combine(self::SCHOOL_TYPES, self::SCHOOL_TYPES))
+                ->label(__('Schulform'))
+                ->options(self::translatedOptions(self::SCHOOL_TYPES))
                 ->required(),
             TextInput::make('city')
-                ->label('Ort')
+                ->label(__('Ort'))
                 ->required()
                 ->maxLength(255),
             Select::make('state')
-                ->label('Bundesland')
-                ->options(array_combine(self::STATES, self::STATES))
+                ->label(__('Bundesland'))
+                ->options(self::translatedOptions(self::STATES))
                 ->required(),
             TextInput::make('contact_email')
-                ->label('Kontakt-E-Mail der Schule')
+                ->label(__('Kontakt-E-Mail der Schule'))
                 ->email()
                 ->required()
                 ->maxLength(255),

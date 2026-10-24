@@ -14,6 +14,7 @@ use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 
 /**
  * Teachers who teach the class besides the Klassenleitung. Only they and the Klassenleitung may hold lessons in the
@@ -24,11 +25,20 @@ class TeachersRelationManager extends RelationManager
 {
     protected static string $relationship = 'teachers';
 
-    protected static ?string $title = 'Unterrichtende Lehrkräfte';
+    public static function getTitle(Model $ownerRecord, string $pageClass): string
+    {
+        return __('Unterrichtende Lehrkräfte');
+    }
 
-    protected static ?string $modelLabel = 'Lehrkraft';
+    protected static function getModelLabel(): ?string
+    {
+        return __('Lehrkraft');
+    }
 
-    protected static ?string $pluralModelLabel = 'Lehrkräfte';
+    protected static function getPluralModelLabel(): ?string
+    {
+        return __('Lehrkräfte');
+    }
 
     public function table(Table $table): Table
     {
@@ -39,28 +49,28 @@ class TeachersRelationManager extends RelationManager
             ->recordTitleAttribute('name')
             ->inverseRelationship('taughtClasses')
             ->description($schoolClass->teacher
-                ? "Klassenleitung ist {$schoolClass->teacher->name}. Sie unterrichtet die Klasse immer und muss hier nicht eingetragen werden."
-                : 'Die Klasse hat noch keine Klassenleitung.')
+                ? __('Klassenleitung ist :name. Sie unterrichtet die Klasse immer und muss hier nicht eingetragen werden.', ['name' => $schoolClass->teacher->name])
+                : __('Die Klasse hat noch keine Klassenleitung.'))
             ->columns([
                 TextColumn::make('name')
-                    ->label('Name')
+                    ->label(__('Name'))
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('username')
-                    ->label('Benutzername')
+                    ->label(__('Benutzername'))
                     ->searchable(),
                 IconColumn::make('is_klassenleitung')
-                    ->label('Klassenleitung')
+                    ->label(__('Klassenleitung'))
                     ->boolean()
                     ->state(fn (User $record): bool => $record->is($schoolClass->teacher)),
             ])
             ->defaultSort('name')
-            ->emptyStateHeading('Noch keine weiteren Lehrkräfte zugeordnet')
-            ->emptyStateDescription('Nur die Klassenleitung und hier zugeordnete Lehrkräfte können in dieser Klasse Unterricht anlegen und die Lernstände der Klasse sehen.')
+            ->emptyStateHeading(__('Noch keine weiteren Lehrkräfte zugeordnet'))
+            ->emptyStateDescription(__('Nur die Klassenleitung und hier zugeordnete Lehrkräfte können in dieser Klasse Unterricht anlegen und die Lernstände der Klasse sehen.'))
             ->headerActions([
                 AttachAction::make()
-                    ->label('Lehrkräfte hinzufügen')
-                    ->modalHeading('Lehrkräfte der Klasse zuordnen')
+                    ->label(__('Lehrkräfte hinzufügen'))
+                    ->modalHeading(__('Lehrkräfte der Klasse zuordnen'))
                     // Also applied when the action runs: a forged id of another school's teacher, or of one already assigned, is dropped.
                     ->recordSelectOptionsQuery(fn (Builder $query): Builder => $query
                         ->withRole(Role::Teacher)
@@ -71,13 +81,13 @@ class TeachersRelationManager extends RelationManager
             ])
             ->recordActions([
                 DetachAction::make()
-                    ->label('Nicht mehr zuordnen')
-                    ->modalHeading('Lehrkraft nicht mehr zuordnen'),
+                    ->label(__('Nicht mehr zuordnen'))
+                    ->modalHeading(__('Lehrkraft nicht mehr zuordnen')),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
                     DetachBulkAction::make()
-                        ->label('Nicht mehr zuordnen'),
+                        ->label(__('Nicht mehr zuordnen')),
                 ]),
             ]);
     }

@@ -16,26 +16,26 @@ class SchoolClassesTable
         return $table
             ->columns([
                 TextColumn::make('name')
-                    ->label('Klasse')
+                    ->label(__('Klasse'))
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('teacher.name')
-                    ->label('Klassenleitung')
-                    ->placeholder('Noch keine')
+                    ->label(__('Klassenleitung'))
+                    ->placeholder(__('Noch keine'))
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('teachers_count')
-                    ->label('Weitere Lehrkräfte')
+                    ->label(__('Weitere Lehrkräfte'))
                     ->counts('teachers')
                     ->sortable(),
                 TextColumn::make('join_code')
-                    ->label('Klassencode')
+                    ->label(__('Klassencode'))
                     ->fontFamily(FontFamily::Mono)
                     ->copyable()
-                    ->copyMessage('Code kopiert')
+                    ->copyMessage(__('Code kopiert'))
                     ->searchable(),
                 TextColumn::make('students_count')
-                    ->label('Schüler:innen')
+                    ->label(__('Schüler:innen'))
                     ->counts('students')
                     ->sortable(),
             ])

@@ -259,7 +259,7 @@ class SubstitutionsRelationManagerTest extends TestCase
         $upcoming = ClassSubstitution::factory()->for($this->schoolClass)->upcoming()->create();
 
         $this->substitutions()
-            ->assertTableActionHasLabel('end', 'Zurückziehen', $upcoming)
+            ->assertTableActionHasLabel('end', 'Withdraw', $upcoming)
             ->callAction(TestAction::make('end')->table($upcoming));
 
         $this->assertModelMissing($upcoming);

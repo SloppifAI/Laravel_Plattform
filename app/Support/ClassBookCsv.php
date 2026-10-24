@@ -30,7 +30,7 @@ class ClassBookCsv
             ->whereKey($entries->pluck('absent_student_ids')->flatten()->unique()->all())
             ->pluck('name', 'id');
 
-        $lines = [['Datum', 'Stunde', 'Fach', 'Thema', 'Unterrichtsinhalt', 'Hausaufgabe', 'Fehlende Schüler:innen', 'Bemerkungen', 'Lehrkraft', 'Status']];
+        $lines = [[__('Datum'), __('Stunde'), __('Fach'), __('Thema'), __('Unterrichtsinhalt'), __('Hausaufgabe'), __('Fehlende Schüler:innen'), __('Bemerkungen'), __('Lehrkraft'), __('Status')]];
 
         foreach ($entries as $entry) {
             $lines[] = [
@@ -42,7 +42,7 @@ class ClassBookCsv
                 (string) $entry->homework,
                 collect($entry->absent_student_ids ?? [])->map(fn (int $id): ?string => $studentNames->get($id))->filter()->sort()->implode(', '),
                 (string) $entry->remarks,
-                $entry->teacher?->name ?? 'gelöschtes Konto',
+                $entry->teacher?->name ?? __('gelöschtes Konto'),
                 $entry->status()->getLabel(),
             ];
         }

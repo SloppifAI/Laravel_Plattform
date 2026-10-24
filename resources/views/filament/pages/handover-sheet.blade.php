@@ -42,26 +42,26 @@
         }
     </style>
 
-    <article id="lp-handover" lang="de" class="lp-card lp-paper" aria-labelledby="lp-handover-class">
+    <article id="lp-handover" lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="lp-card lp-paper" aria-labelledby="lp-handover-class">
         <div class="space-y-8 py-8 ps-10 pe-4 sm:py-10 sm:ps-20 sm:pe-10">
             <header class="min-w-0">
-                <p class="text-base font-medium text-primary-700 dark:text-primary-400">Übergabe-Mappe</p>
+                <p class="text-base font-medium text-primary-700 dark:text-primary-400">{{ __('Übergabe-Mappe') }}</p>
 
                 <h2 id="lp-handover-class" class="mt-1 min-w-0 text-3xl font-semibold tracking-tight break-words text-gray-950 sm:text-4xl dark:text-white">
-                    Klasse {{ $class->name }}
+                    {{ __('Klasse :class', ['class' => $class->name]) }}
                 </h2>
 
                 <p class="mt-2 text-base break-words text-gray-700 dark:text-gray-300">
-                    {{ collect([$class->school?->name, 'Stand '.today()->format('d.m.Y')])->filter()->implode(' · ') }}
+                    {{ collect([$class->school?->name, __('Stand :date', ['date' => today()->format('d.m.Y')])])->filter()->implode(' · ') }}
                 </p>
             </header>
 
             <section aria-labelledby="lp-handover-contact">
-                <h3 id="lp-handover-contact" class="{{ $heading }}">Wen du fragen kannst</h3>
+                <h3 id="lp-handover-contact" class="{{ $heading }}">{{ __('Wen du fragen kannst') }}</h3>
 
                 <dl class="mt-3 grid gap-x-8 gap-y-3 text-base sm:grid-cols-2">
                     <div>
-                        <dt class="{{ $muted }}">Klassenleitung</dt>
+                        <dt class="{{ $muted }}">{{ __('Klassenleitung') }}</dt>
                         <dd class="font-medium break-words text-gray-950 dark:text-white">
                             @if ($leader)
                                 {{ $leader->name }}
@@ -69,20 +69,20 @@
                                     <span class="block text-sm font-normal break-all text-gray-700 dark:text-gray-300">{{ $leader->email }}</span>
                                 @endif
                             @else
-                                Noch keine Klassenleitung eingetragen. Die Schuladministration weiß, wer die Klasse betreut.
+                                {{ __('Noch keine Klassenleitung eingetragen. Die Schuladministration weiß, wer die Klasse betreut.') }}
                             @endif
                         </dd>
                     </div>
 
                     <div>
-                        <dt class="{{ $muted }}">Schüler:innen in der Klasse</dt>
+                        <dt class="{{ $muted }}">{{ __('Schüler:innen in der Klasse') }}</dt>
                         <dd class="font-medium text-gray-950 dark:text-white">{{ $studentCount }}</dd>
                     </div>
                 </dl>
             </section>
 
             <section aria-labelledby="lp-handover-note">
-                <h3 id="lp-handover-note" class="{{ $heading }}">{{ $isManager ? 'Vertretung und Hinweis zur Übergabe' : 'Hinweis zur Übergabe' }}</h3>
+                <h3 id="lp-handover-note" class="{{ $heading }}">{{ $isManager ? __('Vertretung und Hinweis zur Übergabe') : __('Hinweis zur Übergabe') }}</h3>
 
                 @forelse ($substitutions as $substitution)
                     <div class="mt-3 min-w-0">
@@ -90,24 +90,24 @@
                             @if ($isManager)
                                 {{ $substitution->substitute->name }},
                             @endif
-                            {{ $substitution->starts_on->format('d.m.Y') }} bis {{ $substitution->ends_on->format('d.m.Y') }}
+                            {{ __(':start bis :end', ['start' => $substitution->starts_on->format('d.m.Y'), 'end' => $substitution->ends_on->format('d.m.Y')]) }}
                             @if ($substitution->isUpcoming())
-                                <span class="{{ $muted }}">(geplant)</span>
+                                <span class="{{ $muted }}">{{ __('(geplant)') }}</span>
                             @endif
                         </p>
 
-                        <p class="mt-1 text-base break-words whitespace-pre-line text-gray-800 dark:text-gray-200">{{ filled($substitution->note) ? $substitution->note : 'Kein Hinweis hinterlegt.' }}</p>
+                        <p class="mt-1 text-base break-words whitespace-pre-line text-gray-800 dark:text-gray-200">{{ filled($substitution->note) ? $substitution->note : __('Kein Hinweis hinterlegt.') }}</p>
                     </div>
                 @empty
-                    <p class="mt-3 text-base text-gray-700 dark:text-gray-300">Zurzeit ist keine Vertretung eingerichtet.</p>
+                    <p class="mt-3 text-base text-gray-700 dark:text-gray-300">{{ __('Zurzeit ist keine Vertretung eingerichtet.') }}</p>
                 @endforelse
             </section>
 
             <section aria-labelledby="lp-handover-lessons">
-                <h3 id="lp-handover-lessons" class="{{ $heading }}">Die letzten Stunden</h3>
+                <h3 id="lp-handover-lessons" class="{{ $heading }}">{{ __('Die letzten Stunden') }}</h3>
 
                 @if ($lessons->isEmpty())
-                    <p class="mt-3 text-base text-gray-700 dark:text-gray-300">In dieser Klasse wurde noch keine Stunde angelegt.</p>
+                    <p class="mt-3 text-base text-gray-700 dark:text-gray-300">{{ __('In dieser Klasse wurde noch keine Stunde angelegt.') }}</p>
                 @else
                     <ul class="mt-3 grid list-none gap-4 p-0">
                         @foreach ($lessons as $lesson)
@@ -121,7 +121,7 @@
                                 @if ($lesson->isPublished() && filled($lesson->summary))
                                     <p class="mt-1 text-base break-words whitespace-pre-line text-gray-800 dark:text-gray-200">{{ $lesson->summary }}</p>
                                 @else
-                                    <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Die Zusammenfassung ist noch nicht freigegeben.</p>
+                                    <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ __('Die Zusammenfassung ist noch nicht freigegeben.') }}</p>
                                 @endif
                             </li>
                         @endforeach
@@ -130,10 +130,10 @@
             </section>
 
             <section aria-labelledby="lp-handover-homework">
-                <h3 id="lp-handover-homework" class="{{ $heading }}">Offene Hausaufgaben</h3>
+                <h3 id="lp-handover-homework" class="{{ $heading }}">{{ __('Offene Hausaufgaben') }}</h3>
 
                 @if ($openHomework->isEmpty())
-                    <p class="mt-3 text-base text-gray-700 dark:text-gray-300">Zurzeit ist keine Hausaufgabe offen.</p>
+                    <p class="mt-3 text-base text-gray-700 dark:text-gray-300">{{ __('Zurzeit ist keine Hausaufgabe offen.') }}</p>
                 @else
                     <ul class="mt-3 grid list-none gap-4 p-0">
                         @foreach ($openHomework as $homework)
@@ -144,10 +144,10 @@
                                     <span>{{ $homework->subject }}</span>
 
                                     @if ($homework->due_on)
-                                        <span class="lp-marker">Abgabe bis {{ $homework->due_on->format('d.m.Y') }}</span>
+                                        <span class="lp-marker">{{ __('Abgabe bis :date', ['date' => $homework->due_on->format('d.m.Y')]) }}</span>
                                     @endif
 
-                                    <span>{{ $homework->submissions_count }} von {{ $homework->students_count }} abgegeben</span>
+                                    <span>{{ __(':count von :total abgegeben', ['count' => $homework->submissions_count, 'total' => $homework->students_count]) }}</span>
                                 </p>
                             </li>
                         @endforeach
@@ -156,18 +156,18 @@
             </section>
 
             <section aria-labelledby="lp-handover-starter">
-                <h3 id="lp-handover-starter" class="{{ $heading }}">Einstieg für die nächste Stunde</h3>
+                <h3 id="lp-handover-starter" class="{{ $heading }}">{{ __('Einstieg für die nächste Stunde') }}</h3>
 
                 @if ($reviews->isEmpty())
                     <p class="mt-3 text-base text-gray-700 dark:text-gray-300">
-                        Noch nichts zu wiederholen: Es liegen noch nicht genug ausgewertete Abgaben vor, um zu sagen, was die Klasse noch nicht sicher kann.
+                        {{ __('Noch nichts zu wiederholen: Es liegen noch nicht genug ausgewertete Abgaben vor, um zu sagen, was die Klasse noch nicht sicher kann.') }}
                     </p>
                 @else
                     <div class="mt-3 grid gap-5">
                         @foreach ($reviews as $item)
                             <div class="min-w-0">
                                 <p class="{{ $muted }}">
-                                    {{ $item['lesson']->subject }}: Auswertung zur Stunde „{{ $item['lesson']->topic }}“ vom {{ $item['lesson']->held_on->format('d.m.Y') }}
+                                    {{ __(':subject: Auswertung zur Stunde „:topic“ vom :date', ['subject' => $item['lesson']->subject, 'topic' => $item['lesson']->topic, 'date' => $item['lesson']->held_on->format('d.m.Y')]) }}
                                 </p>
 
                                 <ol class="mt-2 grid list-decimal gap-2 ps-6 text-base text-gray-950 dark:text-white">
@@ -176,9 +176,9 @@
                                             <span class="font-medium">{{ $point['title'] }}</span>
                                             <span class="{{ $muted }}">
                                                 @if ($point['kind'] === 'question')
-                                                    Im Schnitt {{ $point['average'] }} %
+                                                    {{ __('Im Schnitt :average %', ['average' => $point['average']]) }}
                                                 @else
-                                                    In {{ $point['count'] }} von {{ $item['review']['evaluatedCount'] }} Abgaben als Lücke genannt
+                                                    {{ __('In :count von :total Abgaben als Lücke genannt', ['count' => $point['count'], 'total' => $item['review']['evaluatedCount']]) }}
                                                 @endif
                                             </span>
                                         </li>
@@ -192,7 +192,7 @@
 
             <p class="max-w-3xl text-sm text-pretty text-gray-600 dark:text-gray-400">
                 <x-filament::icon :icon="Heroicon::OutlinedInformationCircle" class="me-1 inline size-4 align-text-bottom" />
-                Diese Mappe zeigt nur Zahlen zur ganzen Klasse, keine Namen und keine Einzelergebnisse von Schüler:innen. Die Punkte zum Einstieg sind KI-gestützte Einschätzungen aus den Hausaufgaben, keine Noten.
+                {{ __('Diese Mappe zeigt nur Zahlen zur ganzen Klasse, keine Namen und keine Einzelergebnisse von Schüler:innen. Die Punkte zum Einstieg sind KI-gestützte Einschätzungen aus den Hausaufgaben, keine Noten.') }}
             </p>
         </div>
     </article>

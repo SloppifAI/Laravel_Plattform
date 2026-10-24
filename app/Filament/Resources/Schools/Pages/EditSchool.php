@@ -24,7 +24,7 @@ class EditSchool extends EditRecord
         $school = $this->getRecord();
 
         return $school->isBlocked()
-            ? 'Status: Gesperrt seit '.$school->blocked_at->format('d.m.Y').'. Niemand aus dieser Schule kann sich anmelden.'
-            : 'Status: Aktiv';
+            ? __('Status: Gesperrt seit :date. Niemand aus dieser Schule kann sich anmelden.', ['date' => $school->blocked_at->format('d.m.Y')])
+            : __('Status: Aktiv');
     }
 }

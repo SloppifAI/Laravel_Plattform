@@ -23,30 +23,30 @@ class UsersTable
         return $table
             ->columns([
                 TextColumn::make('name')
-                    ->label('Name')
+                    ->label(__('Name'))
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('username')
-                    ->label('Benutzername')
+                    ->label(__('Benutzername'))
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('email')
-                    ->label('E-Mail')
+                    ->label(__('E-Mail'))
                     ->placeholder('—')
                     ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('role')
-                    ->label('Rolle')
+                    ->label(__('Rolle'))
                     ->badge()
                     ->sortable(),
                 TextColumn::make('school.name')
-                    ->label('Schule')
+                    ->label(__('Schule'))
                     ->placeholder('—')
                     ->searchable()
                     ->sortable()
                     ->visible($isOperator),
                 TextColumn::make('schoolClass.name')
-                    ->label('Klasse')
+                    ->label(__('Klasse'))
                     ->placeholder('—')
                     ->sortable()
                     ->visible(! $isOperator),
@@ -54,16 +54,16 @@ class UsersTable
             ->defaultSort('name')
             ->filters([
                 SelectFilter::make('role')
-                    ->label('Rolle')
+                    ->label(__('Rolle'))
                     ->options(collect(UserResource::assignableRoles())->mapWithKeys(fn (Role $role): array => [$role->value => $role->getLabel()])->all()),
                 SelectFilter::make('school_id')
-                    ->label('Schule')
+                    ->label(__('Schule'))
                     ->relationship('school', 'name')
                     ->searchable()
                     ->preload()
                     ->visible($isOperator),
                 SelectFilter::make('school_class_id')
-                    ->label('Klasse')
+                    ->label(__('Klasse'))
                     ->relationship('schoolClass', 'name', fn (Builder $query): Builder => $query->where('school_id', $schoolId))
                     ->searchable()
                     ->preload()

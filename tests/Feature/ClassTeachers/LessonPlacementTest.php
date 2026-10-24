@@ -157,6 +157,10 @@ class LessonPlacementTest extends TestCase
 
     public function test_a_teacher_publishes_a_draft_in_a_class_they_teach(): void
     {
+        // The notification is German; the suite runs in English wherever a text is translated.
+        config(['lernplattform.locale.default' => 'de']);
+        app()->setLocale('de');
+
         $student = User::factory()->student($this->ownClass)->create();
         $draft = Lesson::factory()->for($this->ownClass)->for($this->teacher, 'teacher')->has(Question::factory())->create();
         $this->actingAs($this->teacher);

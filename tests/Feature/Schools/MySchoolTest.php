@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Schools;
 
+use App\Filament\NavigationGroup;
 use App\Filament\Pages\MySchool;
 use App\Filament\Resources\Schools\SchoolResource;
 use App\Models\School;
@@ -18,6 +19,10 @@ class MySchoolTest extends TestCase
 
     public function test_the_administration_sees_the_data_and_status_of_its_own_school(): void
     {
+        // The page texts is German; the suite runs in English wherever a text is translated.
+        config(['lernplattform.locale.default' => 'de']);
+        app()->setLocale('de');
+
         $school = School::factory()->create(['name' => 'Goethe-Gymnasium', 'school_number' => '111111', 'city' => 'Kassel']);
         $otherSchool = School::factory()->create(['name' => 'Schiller-Realschule']);
         $this->actingAs(User::factory()->for($school)->admin()->create());
@@ -150,7 +155,7 @@ class MySchoolTest extends TestCase
         $this->actingAs(User::factory()->admin()->create());
 
         $this->assertTrue(MySchool::canAccess());
-        $this->assertSame('Verwaltung', MySchool::getNavigationGroup());
+        $this->assertSame(NavigationGroup::Verwaltung, MySchool::getNavigationGroup());
         $this->assertSame('Meine Schule', MySchool::getNavigationLabel());
     }
 }

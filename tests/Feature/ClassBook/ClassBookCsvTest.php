@@ -52,13 +52,13 @@ class ClassBookCsvTest extends TestCase
         $csv = ClassBookCsv::render($schoolClass, Carbon::parse('2026-10-01'), Carbon::parse('2026-10-31'));
         $rows = $this->parse($csv);
 
-        $this->assertStringStartsWith("\xEF\xBB\xBFDatum;Stunde;Fach;Thema;", $csv);
+        $this->assertStringStartsWith("\xEF\xBB\xBFDate;Lesson;Subject;Topic;", $csv);
         $this->assertStringContainsString("\r\n", $csv);
         $this->assertCount(3, $rows);
-        $this->assertSame(['Datum', 'Stunde', 'Fach', 'Thema', 'Unterrichtsinhalt', 'Hausaufgabe', 'Fehlende Schüler:innen', 'Bemerkungen', 'Lehrkraft', 'Status'], $rows[0]);
-        $this->assertSame(['02.10.2026', '', 'Mathe', 'Brüche', 'Kürzen', '', '', '', 'Frau Schmidt', 'Entwurf'], $rows[1]);
+        $this->assertSame(['Date', 'Lesson', 'Subject', 'Topic', 'Lesson content', 'Homework', 'Absent students', 'Remarks', 'Teacher', 'Status'], $rows[0]);
+        $this->assertSame(['02.10.2026', '', 'Mathe', 'Brüche', 'Kürzen', '', '', '', 'Frau Schmidt', 'Draft'], $rows[1]);
         $this->assertSame(
-            ['05.10.2026', '2', 'Biologie', 'Das Herz', 'Aufbau des Herzens', 'Arbeitsblatt 3', collect([$anna->name, $ben->name])->sort()->implode(', '), 'Gute Mitarbeit', 'Frau Schmidt', 'Bestätigt'],
+            ['05.10.2026', '2', 'Biologie', 'Das Herz', 'Aufbau des Herzens', 'Arbeitsblatt 3', collect([$anna->name, $ben->name])->sort()->implode(', '), 'Gute Mitarbeit', 'Frau Schmidt', 'Confirmed'],
             $rows[2],
         );
         $this->assertStringNotContainsString('Zu früh', $csv);
@@ -121,7 +121,20 @@ class ClassBookCsvTest extends TestCase
         $row = $this->parse(ClassBookCsv::render($schoolClass, Carbon::parse('2026-10-01'), Carbon::parse('2026-10-31')))[1];
 
         $this->assertSame('Das Herz', $row[3]);
-        $this->assertSame(['gelöschtes Konto', 'Bestätigt'], array_slice($row, 8));
+        $this->assertSame(['deleted account', 'Confirmed'], array_slice($row, 8));
+    }
+
+    public function test_the_columns_and_status_follow_the_language_of_the_user(): void
+    {
+        app()->setLocale('de');
+        [$schoolClass, , $teacher] = $this->classWithStudents();
+        ClassBookEntry::factory()->confirmed()->create(['school_class_id' => $schoolClass->getKey(), 'teacher_id' => $teacher->getKey(), 'held_on' => '2026-10-05']);
+        ClassBookEntry::factory()->create(['school_class_id' => $schoolClass->getKey(), 'teacher_id' => $teacher->getKey(), 'held_on' => '2026-10-06']);
+
+        $rows = $this->parse(ClassBookCsv::render($schoolClass, Carbon::parse('2026-10-01'), Carbon::parse('2026-10-31')));
+
+        $this->assertSame(['Datum', 'Stunde', 'Fach', 'Thema', 'Unterrichtsinhalt', 'Hausaufgabe', 'Fehlende Schüler:innen', 'Bemerkungen', 'Lehrkraft', 'Status'], $rows[0]);
+        $this->assertSame(['Bestätigt', 'Entwurf'], array_column(array_slice($rows, 1), 9));
     }
 
     public function test_an_empty_range_gives_the_header_only(): void

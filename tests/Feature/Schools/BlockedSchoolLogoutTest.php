@@ -51,14 +51,14 @@ class BlockedSchoolLogoutTest extends TestCase
         $this->withSession([EnsureSchoolIsActive::BLOCKED_SCHOOL_FLASH_KEY => true])
             ->get(route('filament.lernplattform.auth.login'))
             ->assertOk()
-            ->assertSee(Login::BLOCKED_SCHOOL_MESSAGE);
+            ->assertSee(Login::blockedSchoolMessage());
     }
 
     public function test_the_login_page_shows_no_blocked_message_to_everyone_else(): void
     {
         $this->get(route('filament.lernplattform.auth.login'))
             ->assertOk()
-            ->assertDontSee(Login::BLOCKED_SCHOOL_MESSAGE);
+            ->assertDontSee(Login::blockedSchoolMessage());
     }
 
     public function test_a_livewire_request_of_a_page_opened_before_the_block_signs_the_user_out(): void

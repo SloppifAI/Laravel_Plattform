@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Users;
 
+use App\Filament\NavigationGroup;
 use App\Filament\Resources\Users\Pages\CreateUser;
 use App\Filament\Resources\Users\Pages\EditUser;
 use App\Filament\Resources\Users\Pages\ListUsers;
@@ -29,27 +30,23 @@ class UserResource extends Resource
 
     protected static ?int $navigationSort = 1;
 
-    protected static ?string $modelLabel = 'Benutzer';
-
-    protected static ?string $pluralModelLabel = 'Benutzer';
-
     protected static ?string $slug = 'benutzer';
 
     protected static ?string $recordTitleAttribute = 'name';
 
     public static function getNavigationGroup(): string|UnitEnum|null
     {
-        return auth()->user()?->isOperator() ? 'Plattform' : 'Verwaltung';
+        return auth()->user()?->isOperator() ? NavigationGroup::Plattform : NavigationGroup::Verwaltung;
     }
 
     public static function getModelLabel(): string
     {
-        return auth()->user()?->isOperator() ? 'Administrationskonto' : parent::getModelLabel();
+        return auth()->user()?->isOperator() ? __('Administrationskonto') : trans_choice('Benutzer|Benutzer', 1);
     }
 
     public static function getPluralModelLabel(): string
     {
-        return auth()->user()?->isOperator() ? 'Administrationskonten' : parent::getPluralModelLabel();
+        return auth()->user()?->isOperator() ? __('Administrationskonten') : trans_choice('Benutzer|Benutzer', 2);
     }
 
     /**
