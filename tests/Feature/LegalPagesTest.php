@@ -112,6 +112,8 @@ class LegalPagesTest extends TestCase
             ->assertSee('filament:sidebar:desktop_open')
             ->assertSee('filament:sidebar:collapsed_groups')
             ->assertSee('filament.notifications.redirect')
+            ->assertSee('tuto-einfache-sprache-')
+            ->assertSee('tuto-mikro-hide-names')
             ->assertSee('Sitzungsspeicher')
             ->assertSee(config('session.lifetime').' Minuten');
     }
@@ -197,7 +199,7 @@ class LegalPagesTest extends TestCase
         $rows = array_filter(explode('</tr>', $body[1]), fn (string $row): bool => str_contains($row, '<th scope="row">'));
 
         $this->assertSame(['Daten', 'Schüler:in', 'Lehrkraft', 'Schuladministration (nur die eigene Schule)', 'Plattform-Administration'], $headers[1]);
-        $this->assertCount(8, $rows);
+        $this->assertCount(12, $rows);
 
         foreach ($rows as $row) {
             $this->assertSame(4, substr_count($row, '<td>'), $row);
@@ -246,8 +248,8 @@ class LegalPagesTest extends TestCase
         preg_match_all('/<li><a href="#([a-z-]+)">(.+?)<\/a><\/li>/u', $html, $contents, PREG_SET_ORDER);
         preg_match_all('/<h2 id="([a-z-]+)">(\d+)\. (.+?)<\/h2>/u', $html, $headings, PREG_SET_ORDER);
 
-        $this->assertCount(14, $contents);
-        $this->assertCount(14, $headings);
+        $this->assertCount(15, $contents);
+        $this->assertCount(15, $headings);
 
         foreach ($contents as $index => [, $id, $title]) {
             $this->assertSame($id, $headings[$index][1]);
@@ -258,26 +260,131 @@ class LegalPagesTest extends TestCase
 
     public function test_the_privacy_policy_says_the_ai_connection_is_off_while_it_is_disabled(): void
     {
-        config(['services.anthropic.enabled' => false]);
+        config(['lernplattform.ai.enabled' => false]);
 
         $this->get(route('legal.privacy'))
-            ->assertSee('Die KI-Anbindung ist abgeschaltet.')
+            ->assertSee('Die KI-Anbindung der Plattform ist abgeschaltet.')
             ->assertSee('werden keine Daten an Dritte übermittelt')
-            ->assertSee('Anthropic PBC')
-            ->assertDontSee('Die KI-Anbindung ist aktiviert.');
+            ->assertSee('Jede Schule entscheidet selbst')
+            ->assertDontSee('Die KI-Anbindung der Plattform ist eingeschaltet.');
     }
 
-    public function test_the_privacy_policy_says_the_ai_connection_is_on_while_it_is_enabled(): void
+    public function test_the_privacy_policy_names_google_once_the_platform_offers_the_ai(): void
     {
-        config(['services.anthropic.enabled' => true]);
+        config(['lernplattform.ai.enabled' => true, 'lernplattform.ai.provider' => 'gemini']);
 
-        $this->get(route('legal.privacy'))
-            ->assertSee('Die KI-Anbindung ist aktiviert.')
-            ->assertSee('Anthropic PBC')
-            ->assertSee('Namen, Benutzernamen und Benutzerkennungen werden nicht übermittelt.')
-            ->assertSee('Eine Kopie der')
-            ->assertDontSee('wurde erst eingeschaltet')
-            ->assertDontSee('Die KI-Anbindung ist abgeschaltet.');
+        $text = $this->text(route('legal.privacy'));
+
+        foreach ([
+            'Die KI-Anbindung der Plattform ist eingeschaltet.',
+            'Anbieter ist Google mit der Gemini API im kostenpflichtigen Tarif',
+            'Google Cloud EMEA Limited',
+            'EU-US Data Privacy Framework',
+            'Benutzernamen, E-Mail-Adressen, Benutzerkennungen, Klassen- und Schulnamen werden nicht übermittelt.',
+            'Schüler:in A',
+            'Text in Fotos und PDF-Dateien kann es nicht ersetzen',
+            'nicht für spätere Abrufe zu speichern',
+            'Es greift dann nicht unbemerkt auf die Offline-Logik',
+            'Eine Kopie der Garantien',
+        ] as $phrase) {
+            $this->assertStringContainsString($phrase, $text);
+        }
+        $this->assertStringNotContainsString('Die KI-Anbindung der Plattform ist abgeschaltet.', $text);
+    }
+
+    public function test_a_local_model_sends_nothing_to_a_third_country(): void
+    {
+        config(['lernplattform.ai.enabled' => true, 'lernplattform.ai.provider' => 'ollama']);
+
+        $text = $this->text(route('legal.privacy'));
+
+        $this->assertStringContainsString('Das Sprachmodell läuft auf unseren eigenen Servern', $text);
+        $this->assertStringNotContainsString('Google', $text);
+        $this->assertStringNotContainsString('Übermittlung in Drittländer', $text);
+    }
+
+    #[DataProvider('legalPages')]
+    public function test_the_legal_pages_name_neither_anthropic_nor_the_old_names(string $routeName): void
+    {
+        foreach ([false, true] as $aiEnabled) {
+            config(['lernplattform.ai.enabled' => $aiEnabled]);
+            $html = $this->get(route($routeName))->assertOk()->getContent();
+
+            foreach (['Anthropic', 'Claude', 'Frieda', '– Lernplattform', 'Aufnahme-Modul', 'Transkripttext'] as $gone) {
+                $this->assertStringNotContainsString($gone, $html);
+            }
+        }
+
+        $this->get(route($routeName))->assertSee('– Tuto</title>', false);
+    }
+
+    public function test_the_privacy_policy_takes_the_retention_periods_from_the_configuration(): void
+    {
+        config([
+            'lernplattform.retention.school_years_kept' => 1,
+            'lernplattform.retention.one_year_rule_from' => '2027-08-01',
+            'lernplattform.recordings.session_keep_days' => 200,
+            'lernplattform.recordings.max_session_hours' => 5,
+            'lernplattform.notifications.keep_read_days' => 9,
+            'lernplattform.notifications.keep_days' => 45,
+            'lernplattform.substitutions.max_days' => 30,
+        ]);
+
+        $text = $this->text(route('legal.privacy'));
+
+        foreach ([
+            'Aufbewahrt wird das laufende Schuljahr.',
+            'Übergangsweise bleiben bis zum 01.08.2027 noch zwei Schuljahre gespeichert',
+            'Der Nachweis über eine Sitzung wird 200 Tage nach ihrem Beginn automatisch gelöscht.',
+            'nach 5 Stunden nicht beendet ist',
+            '9 Tage nachdem sie gelesen wurden, ungelesene spätestens 45 Tage nach dem Eingang',
+            'höchstens 30 Tage',
+        ] as $phrase) {
+            $this->assertStringContainsString($phrase, $text);
+        }
+
+        config(['lernplattform.retention.one_year_rule_from' => '']);
+
+        $this->assertStringNotContainsString('Übergangsweise', $this->text(route('legal.privacy')));
+    }
+
+    public function test_the_privacy_policy_describes_the_tuto_mikro_without_stored_sound(): void
+    {
+        $text = $this->text(route('legal.privacy'));
+
+        foreach ([
+            'Der Ton wird nie gespeichert: nicht als Datei, nicht in einer Warteschlange und nicht in der Datenbank.',
+            'Ohne KI-Funktionen verlässt der Ton das Gerät der Lehrkraft nicht.',
+            'Diese Abschnitte sind nicht pseudonymisiert',
+            'Der erkannte Text bleibt nur im Browser der Lehrkraft',
+            'Nur die Lehrkraft der Stunde sieht ihn, auch nicht die Schuladministration.',
+            'Religion, Ethik, Philosophie, Sexualkunde, Sexualerziehung, Werte und Normen, LER',
+            'keine Namen und keinen Text',
+            'Die öffentliche Einwilligungsseite setzt kein Cookie',
+            'Code ebenfalls in diesem Zugriffsprotokoll',
+        ] as $phrase) {
+            $this->assertStringContainsString($phrase, $text);
+        }
+    }
+
+    public function test_the_privacy_policy_covers_class_book_substitutions_questions_and_notifications(): void
+    {
+        $text = $this->text(route('legal.privacy'));
+
+        foreach ([
+            'die fehlenden Schüler:innen (ohne Gründe)',
+            'Die Ergebnisse einer Stunde (Abgaben, Gespräche und Rückfragen) sieht dagegen die Lehrkraft, die die Stunde angelegt hat, auch dann noch, wenn sie der Klasse nicht mehr zugeordnet ist.',
+            'Wer nur vertreten hat, verliert die Ergebnisse der Stunden aus der Vertretung mit dem Ende der Vertretung.',
+            'Stunden anlegen, die Lernstände der Klasse sehen, das Klassenbuch mit allen Fehlzeiten lesen und exportieren, Einwilligungen der Eltern erfassen und Tuto-Mikro nutzen',
+            'Rückfragen an die Lehrkraft',
+            'nicht per E-Mail verschickt',
+            'die gewählte Sprache der Oberfläche',
+            'Antworten auf die Fragen mit der gewählten Stufe',
+            'Sie enthält nur Texte der Lehrkraft.',
+            'Schüler:innen sehen die Zusammenfassung der Lehrkraft vor den Fragen.',
+        ] as $phrase) {
+            $this->assertStringContainsString($phrase, $text);
+        }
     }
 
     public function test_the_legal_pages_link_to_each_other_and_to_the_login(): void
@@ -320,5 +427,13 @@ class LegalPagesTest extends TestCase
             '/<(?:link|script|img|iframe|source)\b[^>]*\b(?:src|href)="(?:https?:)?\/\/(?!'.$ownHost.'[:\/"])/',
             $html,
         );
+    }
+
+    /**
+     * The visible text of a page, with whitespace and entities normalised.
+     */
+    private function text(string $url): string
+    {
+        return html_entity_decode(preg_replace('/\s+/', ' ', strip_tags($this->get($url)->assertOk()->getContent())));
     }
 }

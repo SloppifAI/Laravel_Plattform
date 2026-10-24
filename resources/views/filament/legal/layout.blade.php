@@ -20,7 +20,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="color-scheme" content="light dark">
 
-        <title>@yield('title') – Lernplattform</title>
+        <title>@yield('title') – Tuto</title>
         @hasSection('description')
             <meta name="description" content="@yield('description')">
         @endif

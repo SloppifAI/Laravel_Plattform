@@ -15,13 +15,13 @@ class DpaPageTest extends TestCase
 {
     use RefreshDatabase;
 
-    private const string NOT_ACTIVE = 'vorbereitet, nicht aktiv – wird erst nach Mitteilung mit Widerspruchsrecht eingesetzt';
-
     protected function setUp(): void
     {
         parent::setUp();
 
         $this->withoutVite();
+        // The panel's own labels (login page, footer link) are asserted in German, the default language.
+        config(['lernplattform.locale.default' => 'de']);
     }
 
     public function test_guests_can_open_the_agreement_without_getting_a_cookie(): void
@@ -140,7 +140,7 @@ class DpaPageTest extends TestCase
             'mindestens 30 Tage vorher',
             'Einspruch',
             'Meine Daten herunterladen',
-            'meldet er sie dem Auftraggeber unverzüglich (Art. 33 Abs. 2 DSGVO), spätestens innerhalb von',
+            'meldet er sie dem Auftraggeber unverzüglich (Art. 33 Abs. 2 DSGVO), spätestens innerhalb von 24 Stunden nach Kenntnis',
             'Datenschutz-Folgenabschätzung',
             'löscht der Auftragnehmer nach Wahl des Auftraggebers',
             'Überprüfungen einschließlich Inspektionen',
@@ -168,9 +168,9 @@ class DpaPageTest extends TestCase
     {
         $html = $this->get(route('legal.dpa'))
             ->assertSee('Optionale Module')
-            ->assertSee('Tonaufnahmen und Transkripte')
+            ->assertSee('Tuto-Mikro')
             ->assertSee('Einwilligungsnachweise')
-            ->assertSee('KI-Auswertung')
+            ->assertSee('KI-Funktionen')
             ->assertSee('Erziehungsberechtigte')
             ->getContent();
 
@@ -182,88 +182,128 @@ class DpaPageTest extends TestCase
         config([
             'lernplattform.retention.school_years_kept' => 3,
             'lernplattform.retention.school_year_starts' => '09-15',
-            'lernplattform.recordings.keep_days' => 9,
+            'lernplattform.recordings.session_keep_days' => 200,
+            'lernplattform.recordings.max_session_hours' => 5,
+            'lernplattform.notifications.keep_read_days' => 9,
+            'lernplattform.notifications.keep_days' => 45,
+            'lernplattform.substitutions.max_days' => 30,
             'session.lifetime' => 45,
         ]);
 
-        $this->get(route('legal.dpa'))
-            ->assertSee('das laufende und die 2 vorherigen Schuljahre')
-            ->assertSee('15. September')
-            ->assertSee('9 Tage nach Aufnahmebeginn')
-            ->assertSee('nach 45 Minuten ohne Aktivität');
+        $text = $this->text();
+
+        foreach ([
+            'das laufende und die 2 vorherigen Schuljahre',
+            '15. September',
+            '200 Tage nach Beginn, dann automatische Löschung',
+            'Nachweise über Sitzungen des Tuto-Mikros löscht die Plattform täglich 200 Tage nach Beginn',
+            'nach 5 Stunden nichts mehr an',
+            '9 Tage nach dem Lesen, höchstens 45 Tage nach dem Eingang',
+            'höchstens 30 Tage',
+            'nach 45 Minuten ohne Aktivität',
+        ] as $phrase) {
+            $this->assertStringContainsString($phrase, $text);
+        }
+        $this->assertStringNotContainsString('Übergang:', $text, 'The transition only matters for one kept school year.');
 
         config(['lernplattform.retention.school_years_kept' => 2, 'lernplattform.retention.school_year_starts' => '08-01']);
 
         $this->get(route('legal.dpa'))
             ->assertSee('das laufende und das vorherige Schuljahr')
             ->assertSee('1. August');
+
+        config(['lernplattform.retention.school_years_kept' => 1, 'lernplattform.retention.one_year_rule_from' => '2027-08-01']);
+
+        $this->assertStringContainsString('Übergang: Bis zum 01.08.2027 bleiben noch zwei Schuljahre gespeichert', $this->text());
     }
 
     public function test_annex_two_names_real_measures_and_marks_the_facts_the_operator_must_add(): void
     {
         $html = $this->get(route('legal.dpa'))
             ->assertSee('Trennung der Schulen')
-            ->assertSee('Die Plattform-Administration sieht keine Unterrichts- und Lerndaten')
+            ->assertSee('die Plattform-Administration keine Unterrichts-')
             ->assertSee('nur als Hash')
             ->assertSee('werden je IP-Adresse begrenzt')
             ->assertSee('Tägliche automatische Löschung')
             ->assertSee('Kein Tracking')
-            ->assertSee('[vom Auftragnehmer vor Vertragsschluss zu ergänzen: Schutz der Räume und Server', false)
-            ->assertSee('[vom Auftragnehmer vor Vertragsschluss zu ergänzen: Verschlüsselung der Verbindung (TLS)', false)
-            ->assertSee('[vom Auftragnehmer vor Vertragsschluss zu ergänzen: Zeitplan, Aufbewahrungsdauer, Speicherort und Verschlüsselung der Backups', false)
-            ->assertSee('[vom Auftragnehmer vor Vertragsschluss zu ergänzen: Verpflichtung zur Vertraulichkeit, Datenschutzschulung', false)
+            ->assertSee('[vom Auftragnehmer zu ergänzen: Schutz der Räume und Server', false)
+            ->assertSee('[vom Auftragnehmer zu ergänzen: Verschlüsselung der Verbindung (TLS)', false)
+            ->assertSee('[vom Auftragnehmer zu ergänzen: Zeitplan, Aufbewahrungsdauer, Speicherort und Verschlüsselung der Backups', false)
+            ->assertSee('[vom Auftragnehmer zu ergänzen: Verpflichtung zur Vertraulichkeit, Datenschutzschulung', false)
+            ->assertDontSee('vor Vertragsschluss zu ergänzen')
             ->getContent();
 
         $this->assertStringContainsString('class="avv-placeholder"', $html);
     }
 
+    /**
+     * The released contract leaves open only what the operator alone knows: who hosts and mails, and how the servers
+     * are run. Everything the code decides (AI provider, retention, Tuto-Mikro, breach deadline) is written out.
+     */
+    public function test_only_the_operators_own_facts_are_left_open(): void
+    {
+        config(['lernplattform.ai.enabled' => true, 'lernplattform.ai.provider' => 'gemini']);
+
+        preg_match_all('/\[vom Auftragnehmer zu ergänzen: ([^\]]+)\]/u', html_entity_decode($this->get(route('legal.dpa'))->getContent()), $matches);
+
+        $this->assertNotEmpty($matches[1]);
+
+        foreach ($matches[1] as $placeholder) {
+            $this->assertMatchesRegularExpression('/Hosting|E-Mail|Standort und Vertrag|im Einsatz oder entfällt|Vertrag nach Art\. 28 DSGVO mit dem Anbieter|Logfiles|Räume und Server|at rest|Server- und Datenbankzugangs|TLS|Backups|Wiederherstellung|Vertraulichkeit, Datenschutzschulung/u', $placeholder);
+            $this->assertDoesNotMatchRegularExpression('/KI|Google|Frist in Stunden|Aufbewahrungsdauer beim/u', $placeholder);
+        }
+    }
+
     public function test_annex_three_lists_the_hosting_and_mail_provider_as_placeholders(): void
     {
         $this->get(route('legal.dpa'))
-            ->assertSee('[vom Auftragnehmer vor Vertragsschluss zu ergänzen: Name und Anschrift des Hosting-Anbieters', false)
-            ->assertSee('[vom Auftragnehmer vor Vertragsschluss zu ergänzen: Name des E-Mail-Dienstes', false);
+            ->assertSee('[vom Auftragnehmer zu ergänzen: Name und Anschrift des Hosting-Anbieters', false)
+            ->assertSee('[vom Auftragnehmer zu ergänzen: Name des E-Mail-Dienstes', false);
     }
 
-    public function test_ai_and_transcription_providers_are_prepared_but_not_active_by_default(): void
+    public function test_google_is_the_ai_sub_processor_and_not_in_use_while_the_platform_switch_is_off(): void
     {
-        $this->assertFalse((bool) config('services.anthropic.enabled'));
-        $this->assertFalse((bool) config('services.transcription.enabled'));
+        $this->assertFalse((bool) config('lernplattform.ai.enabled'));
+        $this->assertSame('gemini', config('lernplattform.ai.provider'));
 
-        $html = $this->get(route('legal.dpa'))
-            ->assertSee('Anthropic PBC, USA (KI-Auswertung)')
-            ->assertSee('Anbieter der Sprachverarbeitung')
-            ->assertDontSee('konkrete Garantie, Datum und Fundstelle des Vertrags mit dem Anbieter')
-            ->getContent();
-
-        $this->assertSame(2, substr_count($html, self::NOT_ACTIVE));
+        $this->get(route('legal.dpa'))
+            ->assertSee('Google LLC, 1600 Amphitheatre Parkway, Mountain View, CA 94043, USA')
+            ->assertSee('Google Cloud EMEA Limited')
+            ->assertSee('Gemini API im kostenpflichtigen Tarif')
+            ->assertSee('EU-US Data Privacy Framework')
+            ->assertSee('nicht im Einsatz: Die KI-Anbindung der Plattform ist abgeschaltet')
+            ->assertSee('Derzeit ist die KI-Anbindung der Plattform abgeschaltet.')
+            ->assertDontSee('Name und Anschrift des Anbieters')
+            ->assertDontSee('Anthropic')
+            ->assertDontSee('Claude')
+            ->assertDontSee('Sprachverarbeitung');
     }
 
-    public function test_an_active_ai_provider_is_listed_as_active_with_a_placeholder_for_the_safeguards(): void
+    public function test_with_the_platform_switch_on_google_works_only_for_schools_that_switched_the_ai_on(): void
     {
-        config(['services.anthropic.enabled' => true]);
+        config(['lernplattform.ai.enabled' => true]);
 
-        $html = $this->get(route('legal.dpa'))
-            ->assertSee('Anthropic PBC, USA (KI-Auswertung)')
-            ->assertSee('[vom Auftragnehmer vor Vertragsschluss zu ergänzen: konkrete Garantie, Datum und Fundstelle des Vertrags mit dem Anbieter', false)
-            ->getContent();
-
-        $this->assertSame(1, substr_count($html, self::NOT_ACTIVE), 'Only the transcription provider is still inactive.');
+        $this->get(route('legal.dpa'))
+            ->assertSee('im Einsatz nur für Auftraggeber, deren Schuladministration die KI-Funktionen eingeschaltet hat')
+            ->assertDontSee('nicht im Einsatz')
+            ->assertDontSee('Derzeit ist die KI-Anbindung der Plattform abgeschaltet.');
     }
 
-    public function test_an_active_transcription_provider_is_listed_as_active_with_placeholders(): void
+    public function test_a_local_model_needs_no_sub_processor_and_another_provider_leaves_its_details_to_the_operator(): void
     {
-        config(['services.transcription.enabled' => true]);
+        config(['lernplattform.ai.enabled' => true, 'lernplattform.ai.provider' => 'ollama']);
 
-        $html = $this->get(route('legal.dpa'))
-            ->assertSee('[vom Auftragnehmer vor Vertragsschluss zu ergänzen: Name und Anschrift des Anbieters', false)
-            ->assertSee('[vom Auftragnehmer vor Vertragsschluss zu ergänzen: Standort, Garantien und Vertrag mit dem Anbieter', false)
-            ->getContent();
+        $text = $this->text();
 
-        $this->assertSame(1, substr_count($html, self::NOT_ACTIVE), 'Only the AI provider is still inactive.');
+        $this->assertStringContainsString('Dafür setzt der Auftragnehmer keinen Unterauftragsverarbeiter ein.', $text);
+        $this->assertStringContainsString('Eine Übermittlung in ein Drittland findet dafür nicht statt.', $text);
+        $this->assertStringNotContainsString('Google', $text);
 
-        config(['services.anthropic.enabled' => true]);
+        config(['lernplattform.ai.provider' => 'mistral']);
 
-        $this->assertSame(0, substr_count($this->get(route('legal.dpa'))->getContent(), self::NOT_ACTIVE));
+        $this->get(route('legal.dpa'))
+            ->assertSee('Mistral AI: <mark class="avv-placeholder">[vom Auftragnehmer zu ergänzen: Name und Anschrift des Anbieters]</mark>', false)
+            ->assertDontSee('Google');
     }
 
     public function test_every_cell_of_the_tables_names_its_column_for_phones(): void
@@ -372,26 +412,27 @@ class DpaPageTest extends TestCase
         $this->get(route('legal.dpa'))->assertSeeInOrder(['id="inhaltsverzeichnis"', 'id="parteien"', 'id="gegenstand"'], false);
     }
 
-    public function test_ai_and_transcription_are_switched_on_for_the_whole_platform_and_the_text_says_so(): void
+    public function test_each_school_switches_the_ai_on_for_itself_and_the_text_says_so(): void
     {
-        $text = html_entity_decode(preg_replace('/\s+/', ' ', strip_tags($this->get(route('legal.dpa'))->getContent())));
+        $text = $this->text();
 
         foreach ([
-            'schaltet der Auftragnehmer für die Plattform insgesamt ein',
-            'Eine Freischaltung nur für einzelne Auftraggeber sieht die Plattform derzeit nicht vor',
-            'nach einer Mitteilung nach Nummer 8.2 und nach Ablauf der Einspruchsfrist ein',
-            'schaltet er sie nicht ein, solange ein Einspruch eines Auftraggebers offen ist',
-            'stimmt der Übermittlung nach Nummer 11.2 zu, indem er der Mitteilung nach Nummer 8.2 in Textform zustimmt oder ihr nicht innerhalb der Frist widerspricht',
+            'Das Tuto-Mikro und die KI-Funktionen schaltet die Schuladministration jeweils für ihre Schule ein und jederzeit wieder aus',
+            'Der Auftragnehmer setzt ihn nur für Auftraggeber ein, deren Schuladministration die KI-Funktionen eingeschaltet hat',
+            'nur in einem kostenpflichtigen Tarif, in dem der Anbieter Eingaben und Ergebnisse nicht zur Verbesserung seiner Produkte oder zum Training nutzt',
+            'indem seine Schuladministration die KI-Funktionen einschaltet',
+            'Solange die KI-Funktionen ausgeschaltet sind, übermittelt der Auftragnehmer keine Daten des Auftraggebers in ein Drittland',
+            'Ohne Einschalten beantwortet eine regelbasierte Logik auf dem Server des Auftragnehmers alle Anfragen',
         ] as $phrase) {
             $this->assertStringContainsString($phrase, $text);
         }
 
         foreach ([
-            'nur für Auftraggeber, die das Modul aktiviert haben',
-            'wenn der Auftraggeber sie für seine Schule aktiviert hat',
-            'indem er das Modul nach Mitteilung nach Nummer 8.2 aktiviert',
-        ] as $promise) {
-            $this->assertStringNotContainsString($promise, $text, 'The code has no activation per school for AI and transcription.');
+            'für die Plattform insgesamt ein',
+            'Eine Freischaltung nur für einzelne Auftraggeber sieht die Plattform derzeit nicht vor',
+            'vorbereitet, nicht aktiv',
+        ] as $outdated) {
+            $this->assertStringNotContainsString($outdated, $text, 'The AI is switched on per school (School::aiEnabled()).');
         }
     }
 
@@ -405,26 +446,37 @@ class DpaPageTest extends TestCase
         $this->assertStringContainsString('die die Plattform mit ihrem Text aufbewahrt', $text);
     }
 
-    public function test_the_transcripts_of_recordings_are_named_for_the_ai_provider_and_the_people_in_them(): void
+    public function test_the_tuto_mikro_stores_no_sound_and_names_the_voices_that_reach_the_provider(): void
     {
-        $html = $this->get(route('legal.dpa'))
-            ->assertSee('Weitere Personen, die bei einer Aufnahme anwesend sind und sprechen')
-            ->assertSee('weitere Anwesende, soweit sie in Texten oder Transkripten vorkommen')
-            ->assertSee('Namen außerhalb der Klasse können enthalten sein')
-            ->getContent();
+        $text = $this->text();
 
-        $this->assertSame(2, substr_count($html, 'pseudonymisierte Transkripte von'), 'Annex 1 and annex 3 name the transcripts.');
+        foreach ([
+            'Weitere Personen, deren Stimme beim Tuto-Mikro zu hören ist',
+            'Die Plattform speichert keinen Ton, sondern nur einen Nachweis über die Sitzung',
+            'wird dort nur im Arbeitsspeicher an den KI-Anbieter weitergereicht und mit dem Ende der Anfrage verworfen',
+            'Ohne KI-Funktionen verlässt er das Gerät der Lehrkraft nicht',
+            'Stimmen im Ton, Namen außerhalb der Klasse und Text in Bildern und PDF sind nicht pseudonymisiert',
+            'Ton des Tuto-Mikros wird weder als Datei noch in einer Warteschlange oder der Datenbank gespeichert',
+            'Religion, Ethik, Philosophie, Sexualkunde, Sexualerziehung, Werte und Normen, LER',
+            'Die Anzeige für den Beamer zeigt nur „Mikro an“ oder „Mikro aus“ und das Thema der Stunde',
+        ] as $phrase) {
+            $this->assertStringContainsString($phrase, $text);
+        }
+
+        foreach (['Tonaufnahme', 'Transkript', 'Audiodatei', 'aufnehmende Lehrkraft'] as $gone) {
+            $this->assertStringNotContainsString($gone, $text);
+        }
     }
 
     public function test_the_consent_records_are_described_with_their_real_fields_and_retention(): void
     {
-        $text = html_entity_decode(preg_replace('/\s+/', ' ', strip_tags($this->get(route('legal.dpa'))->getContent())));
+        $text = $this->text();
 
         foreach ([
             'erteilte und widerrufene Einwilligungen mit Zeitpunkten, Fassung des Einwilligungstextes, Art der Erklärung (digital oder auf Papier), erfassende Person, Bestätigung durch die Schüler:in, Prüfwert des Links',
             'bis das Konto der Schüler:in gelöscht wird',
-            'Sie werden verarbeitet, sobald die Schule das Einwilligungsverfahren beginnt, also schon vor dem Freischalten der Aufnahmen',
-            'Erziehungsberechtigte, die die Seite für ihre Einwilligung aufrufen',
+            'Sie werden verarbeitet, sobald die Schule das Einwilligungsverfahren beginnt, also schon vor dem Freischalten des Tuto-Mikros',
+            'auch Erziehungsberechtigte auf der Einwilligungsseite',
         ] as $phrase) {
             $this->assertStringContainsString($phrase, $text);
         }
@@ -434,21 +486,28 @@ class DpaPageTest extends TestCase
 
     public function test_the_measures_say_only_what_the_code_does(): void
     {
-        $text = html_entity_decode(preg_replace('/\s+/', ' ', strip_tags($this->get(route('legal.dpa'))->getContent())));
+        $text = $this->text();
 
         foreach ([
             'Rollen und Schulzuordnung lassen sich nur aus einer serverseitig geprüften Auswahl setzen',
             'wer sich mit einem Klassencode selbst registriert, wird immer Schüler:in dieser Schule',
             'Änderungen und Löschungen von Daten werden nicht protokolliert',
-            'Die Anwendung verschlüsselt die Datenbank, die Arbeitsblätter und die Audiodateien nicht zusätzlich',
-            '[vom Auftragnehmer vor Vertragsschluss zu ergänzen: Verschlüsselung der Datenträger, der Datenbank und des Speichers (at rest)',
-            'Die Daten der optionalen Module, also Tonaufnahmen, Transkripte und Einwilligungsnachweise, enthält diese Datei nicht',
+            'Die Anwendung verschlüsselt die Datenbank und die Arbeitsblätter nicht zusätzlich',
+            '[vom Auftragnehmer zu ergänzen: Verschlüsselung der Datenträger, der Datenbank und des Speichers (at rest)',
+            'Die Datei enthält das Konto mit der gewählten Sprache, die Unterrichts- und Lerndaten mit den gewählten Stufen, „Erklär’s mir“, Rückfragen, Klassenbuch, Vertretungen, Benachrichtigungen, den Einwilligungsnachweis und die Sitzungen des Tuto-Mikros',
+            'Die Ergebnisse der eigenen Stunden sieht eine Lehrkraft auch dann noch, wenn sie der Klasse nicht mehr zugeordnet ist, die Lernstände, das Klassenbuch und die Einwilligungen der Klasse dann nicht mehr.',
+            'danach endet der Zugriff, auch auf die Ergebnisse der Stunden aus der Vertretung',
+            'Stunden anlegen, die Lernstände der Klasse sehen, das Klassenbuch mit allen Fehlzeiten lesen und exportieren, Einwilligungen der Eltern erfassen und Tuto-Mikro nutzen',
+            'Den Nachweis über eine Sitzung des Tuto-Mikros sieht nur die Lehrkraft der Stunde, auch nicht die Schuladministration',
+            'Die Wahl der Einfachen Sprache und die Einstellung „Namen verbergen“ beim Tuto-Mikro speichert nur der Browser',
+            'Die Plattform zeigt dann einen Fehler an und schickt die Daten nicht an einen anderen Anbieter',
         ] as $phrase) {
             $this->assertStringContainsString($phrase, $text);
         }
 
         $this->assertStringNotContainsString('legt der Server fest und übernimmt sie nie aus Eingaben', $text);
         $this->assertStringNotContainsString('Alle Inhalte gehören zu einem Konto. Technische Fehler', $text);
+        $this->assertStringNotContainsString('enthält diese Datei nicht', $text);
     }
 
     public function test_the_contract_does_not_exclude_its_own_profiling_and_liability_clauses_are_split(): void
@@ -465,8 +524,8 @@ class DpaPageTest extends TestCase
     public function test_the_hosting_row_claims_neither_a_contract_nor_a_status_without_a_name(): void
     {
         $html = $this->get(route('legal.dpa'))
-            ->assertSee('Deutschland, <mark class="avv-placeholder">[vom Auftragnehmer vor Vertragsschluss zu ergänzen: Vertrag nach Art. 28 DSGVO mit dem Anbieter', false)
-            ->assertSee('[vom Auftragnehmer vor Vertragsschluss zu ergänzen: im Einsatz oder entfällt]', false)
+            ->assertSee('Deutschland, <mark class="avv-placeholder">[vom Auftragnehmer zu ergänzen: Vertrag nach Art. 28 DSGVO mit dem Anbieter', false)
+            ->assertSee('[vom Auftragnehmer zu ergänzen: im Einsatz oder entfällt]', false)
             ->assertSee('oder Eigenbetrieb auf eigenen Servern und dann die Zeile streichen', false)
             ->getContent();
 
@@ -512,5 +571,13 @@ class DpaPageTest extends TestCase
         $this->assertMatchesRegularExpression('/<p class="avv-noprint">\s*Die Angaben zum Auftraggeber sind mit den Stammdaten Ihrer Schule ausgefüllt/', $html);
         $this->assertDoesNotMatchRegularExpression('/<p>\s*Die Angaben zum Auftraggeber sind/', $html);
         $this->assertMatchesRegularExpression('/<p>\s*Status: noch nicht angenommen\./', $html, 'The status line is part of the document and is printed.');
+    }
+
+    /**
+     * The visible text of the public agreement, with whitespace and entities normalised.
+     */
+    private function text(): string
+    {
+        return html_entity_decode(preg_replace('/\s+/', ' ', strip_tags($this->get(route('legal.dpa'))->assertOk()->getContent())));
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\NavigationGroup;
 use App\Filament\Resources\Schools\Schemas\SchoolForm;
 use App\Models\DpaAcceptance;
 use App\Models\School;
@@ -28,7 +29,7 @@ class MySchool extends Page
 {
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBuildingLibrary;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Verwaltung';
+    protected static string|UnitEnum|null $navigationGroup = NavigationGroup::Verwaltung;
 
     protected static ?int $navigationSort = 6;
 
@@ -125,7 +126,7 @@ class MySchool extends Page
                 Text::make(fn (): string => match (true) {
                     $this->school()->hasAcceptedCurrentDpa() => 'Angenommen, Version '.$this->school()->dpa_version,
                     ! DpaAcceptance::isFinal() => 'Entwurf, noch nicht annehmbar',
-                    $this->school()->hasAcceptedDpa() => 'Neue Version zur Annahme',
+                    $this->school()->hasAcceptedDpa() => 'Geänderte Fassung zur Annahme',
                     default => 'Noch nicht angenommen',
                 })
                     ->badge()
@@ -154,7 +155,7 @@ class MySchool extends Page
                         ->url(fn (): string => route('legal.dpa.school.accepted'))
                         ->openUrlInNewTab(),
                     Action::make('acceptDpa')
-                        ->label(fn (): string => $this->school()->hasAcceptedDpa() ? 'Neue Version annehmen' : 'Vertrag annehmen')
+                        ->label(fn (): string => $this->school()->hasAcceptedDpa() ? 'Geänderte Fassung annehmen' : 'Vertrag annehmen')
                         ->icon(Heroicon::OutlinedCheckCircle)
                         ->visible(fn (): bool => DpaAcceptance::isFinal() && ! $this->school()->hasAcceptedCurrentDpa())
                         ->requiresConfirmation()
@@ -200,9 +201,16 @@ class MySchool extends Page
             return $accepted;
         }
 
-        return $isFinal
-            ? $accepted.' Seitdem gibt es die neue Version '.$version.', bis zur Annahme gilt Version '.$school->dpa_version.' weiter. Lies die neue Version und nimm sie an.'
-            : $accepted.' Die neue Version '.$version.' ist noch ein Entwurf, bis zu ihrer Freigabe gilt Version '.$school->dpa_version.' weiter.';
+        if (! $isFinal) {
+            return $accepted.' Die neue Version '.$version.' ist noch ein Entwurf, bis zu ihrer Freigabe gilt Version '.$school->dpa_version.' weiter.';
+        }
+
+        // The same version number with another fingerprint: a value the text takes from the settings changed (DpaAcceptance::terms()).
+        $change = $school->dpa_version === $version
+            ? ' Seitdem hat sich der Vertragstext geändert, zum Beispiel eine Frist oder der KI-Anbieter.'
+            : ' Seitdem gibt es die neue Version '.$version.'.';
+
+        return $accepted.$change.' Bis zur Annahme gilt die angenommene Fassung (Version '.$school->dpa_version.') weiter. Lies die geänderte Fassung und nimm sie an.';
     }
 
     private function school(): School

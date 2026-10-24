@@ -1,5 +1,8 @@
 @php
+    use App\Filament\Pages\AiSettings;
+    use App\Models\ClassSubstitution;
     use App\Models\DpaAcceptance;
+    use App\Models\School;
     use Carbon\CarbonImmutable;
     use Illuminate\Support\HtmlString;
 
@@ -13,10 +16,13 @@
     $terms = DpaAcceptance::terms();
 
     $aiEnabled = $terms['aiEnabled'];
-    $transcriptionEnabled = $terms['transcriptionEnabled'];
-    $recordingDays = $terms['recordingDays'];
     $sessionMinutes = $terms['sessionMinutes'];
     $resetMinutes = $terms['resetMinutes'];
+    $mikroSessionDays = $terms['mikroSessionDays'];
+    $mikroMaxSessionHours = $terms['mikroMaxSessionHours'];
+    $notificationReadDays = $terms['notificationReadDays'];
+    $notificationDays = $terms['notificationDays'];
+    $substitutionMaxDays = $terms['substitutionMaxDays'];
 
     $keptYears = $terms['keptYears'];
     $keptPhrase = match (true) {
@@ -28,6 +34,10 @@
     $schoolYearStart = preg_match('/^(\d{2})-(\d{2})$/', $schoolYearStarts, $startParts) && checkdate((int) $startParts[1], (int) $startParts[2], 2001)
         ? CarbonImmutable::create(2001, (int) $startParts[1], (int) $startParts[2])->locale('de')->translatedFormat('j. F')
         : $schoolYearStarts;
+    // The agreements accepted so far promised two school years, so one year applies only from this date on (PruneLearningData).
+    $oneYearRuleFrom = $keptYears === 1 && CarbonImmutable::hasFormat($terms['oneYearRuleFrom'], 'Y-m-d')
+        ? CarbonImmutable::parse($terms['oneYearRuleFrom'])->format('d.m.Y')
+        : null;
 
     /*
      * One list drives the table of contents and the numbering of the headings below, so they cannot drift apart.
@@ -60,8 +70,36 @@
 
     $heading = fn (string $id): string => (array_search($id, array_keys($sections), true) + 1).'. '.$sections[$id];
 
-    /* A fact the code cannot know. It is marked in yellow so nobody releases the draft with a gap in it. */
-    $todo = fn (string $what): HtmlString => new HtmlString('<mark class="avv-placeholder">[vom Auftragnehmer vor Vertragsschluss zu ergänzen: '.e($what).']</mark>');
+    /* A fact about the operator's own business that the code cannot know (names, addresses, contracts, the servers). */
+    $todo = fn (string $what): HtmlString => new HtmlString('<mark class="avv-placeholder">[vom Auftragnehmer zu ergänzen: '.e($what).']</mark>');
+
+    /*
+     * The provider behind the KI-Funktionen, from `lernplattform.ai.provider`: Google Gemini by default, a local model
+     * with Ollama (then nothing leaves the operator's servers), any other provider with the operator's details still open.
+     */
+    $aiProvider = match ($terms['aiProvider']) {
+        'gemini' => [
+            'local' => false,
+            'name' => 'Google LLC, 1600 Amphitheatre Parkway, Mountain View, CA 94043, USA, beziehungsweise bei einem Vertrag über Google Cloud mit Kunden im EWR Google Cloud EMEA Limited, 70 Sir John Rogerson’s Quay, Dublin 2, Irland',
+            'short' => 'Google (Gemini API)',
+            'service' => 'Gemini API im kostenpflichtigen Tarif',
+            'place' => new HtmlString('Google verarbeitet die Daten auch in den USA und in weiteren Ländern außerhalb der EU, in denen Google oder seine Unterauftragsverarbeiter Rechenzentren betreiben (Drittland).'),
+            'safeguards' => new HtmlString('Datenverarbeitungsbedingungen von Google für Auftragsverarbeiter (Art. 28 Abs. 4 DSGVO) mit EU-Standardvertragsklauseln. Google LLC ist unter dem EU-US Data Privacy Framework zertifiziert (Angemessenheitsbeschluss der EU-Kommission vom 10. Juli 2023).'),
+        ],
+        'ollama' => [
+            'local' => true,
+            'short' => 'ein Sprachmodell auf Servern des Auftragnehmers (Ollama)',
+        ],
+        default => [
+            'local' => false,
+            'name' => new HtmlString(e(AiSettings::providerLabel($terms['aiProvider'])).': '.$todo('Name und Anschrift des Anbieters')),
+            'short' => AiSettings::providerLabel($terms['aiProvider']),
+            'service' => AiSettings::providerLabel($terms['aiProvider']),
+            'place' => $todo('Ort der Verarbeitung'),
+            'safeguards' => $todo('Vertrag nach Art. 28 Abs. 4 DSGVO und Garantien nach Art. 44 ff. DSGVO'),
+        ],
+    };
+    $blockedSubjects = implode(', ', School::DEFAULT_MIKRO_BLOCKED_SUBJECTS);
 @endphp
     <nav class="legal-toc" aria-labelledby="inhaltsverzeichnis">
         <p class="legal-note-title" id="inhaltsverzeichnis">Inhalt</p>
@@ -118,15 +156,16 @@
     <h2 id="gegenstand">{{ $heading('gegenstand') }}</h2>
     <p class="avv-clause">
         <span class="avv-no">1.1</span>
-        Der Auftragnehmer stellt dem Auftraggeber die Lernplattform bereit, eine Software, die im Browser genutzt wird.
-        Dabei verarbeitet er personenbezogene Daten im Auftrag des Auftraggebers. Dieser Vertrag legt die Pflichten beider
-        Parteien zum Datenschutz fest. Er erfüllt die Anforderungen des Art. 28 Abs. 3 DSGVO.
+        Der Auftragnehmer stellt dem Auftraggeber die Lernplattform Tuto bereit, eine Software, die im Browser genutzt
+        wird. Dabei verarbeitet er personenbezogene Daten im Auftrag des Auftraggebers. Dieser Vertrag legt die Pflichten
+        beider Parteien zum Datenschutz fest. Er erfüllt die Anforderungen des Art. 28 Abs. 3 DSGVO.
     </p>
     <p class="avv-clause">
         <span class="avv-no">1.2</span>
         Gegenstand sind alle Verarbeitungen personenbezogener Daten, die der Auftragnehmer für den Auftraggeber im Rahmen
-        der Plattform vornimmt: Konten und Rollen, Unterrichts- und Lerndaten sowie technische Begleitdaten. Die
-        optionalen Module nach Nummer 3.4 gehören nur dazu, soweit sie genutzt oder eingeschaltet sind.
+        der Plattform vornimmt: Konten, Rollen und Klassenzuordnungen, Unterrichts- und Lerndaten, Klassenbuch,
+        Benachrichtigungen sowie technische Begleitdaten. Die optionalen Module nach Nummer 3.4 gehören nur dazu, soweit
+        sie genutzt oder eingeschaltet sind.
     </p>
     <p class="avv-clause">
         <span class="avv-no">1.3</span>
@@ -149,15 +188,17 @@
         <span class="avv-no">2.1</span>
         <strong>Art der Verarbeitung:</strong> Der Auftragnehmer erhebt, erfasst, speichert, liest aus, fragt ab,
         verwendet und löscht Daten und macht sie berechtigten Personen innerhalb der Schule des Auftraggebers sichtbar.
-        Auswertungen laufen regelbasiert auf dem Server des Auftragnehmers. Eine KI-Auswertung gehört nur dazu, wenn sie
-        nach Nummer 3.4 eingeschaltet ist.
+        Auswertungen laufen regelbasiert auf dem Server des Auftragnehmers. Eine Verarbeitung durch einen KI-Anbieter
+        gehört nur dazu, wenn die Schuladministration die KI-Funktionen nach Nummer 3.4 für ihre Schule eingeschaltet hat.
     </p>
     <p class="avv-clause">
         <span class="avv-no">2.2</span>
-        <strong>Zweck:</strong> Der Auftraggeber nutzt die Plattform, damit Lehrkräfte Unterricht nachbereiten und
-        Hausaufgaben entwerfen, Schüler:innen Hausaufgaben bearbeiten und mit „Erklär’s mir“ üben, Lehrkräfte den
-        Lernstand ihrer Klassen einschätzen und Elterngespräche vorbereiten und die Schuladministration Konten und Klassen
-        verwaltet. Der Auftragnehmer verarbeitet die Daten ausschließlich dafür.
+        <strong>Zweck:</strong> Der Auftraggeber nutzt die Plattform, damit Lehrkräfte Unterricht nachbereiten,
+        Hausaufgaben in Stufen und in Einfacher Sprache bereitstellen und das Klassenbuch führen, Schüler:innen
+        Hausaufgaben bearbeiten, mit „Erklär’s mir“ üben und ihrer Lehrkraft Rückfragen stellen, Lehrkräfte den Lernstand
+        ihrer Klassen einschätzen, Elterngespräche vorbereiten und Vertretungen übergeben und die Schuladministration
+        Konten, Klassen und die Einstellungen der Schule verwaltet. Die Plattform benachrichtigt die Beteiligten in der
+        App über neue Hausaufgaben, Abgaben und Rückfragen. Der Auftragnehmer verarbeitet die Daten ausschließlich dafür.
     </p>
     <p class="avv-clause">
         <span class="avv-no">2.3</span>
@@ -168,7 +209,8 @@
     <p class="avv-clause">
         <span class="avv-no">2.4</span>
         Die Plattform trifft keine ausschließlich automatisierten Entscheidungen im Sinne des Art. 22 DSGVO.
-        Verständniswerte und Rückmeldungen sind Hinweise. Über Förderung, Noten und Versetzung entscheidet die Schule.
+        Verständniswerte und Rückmeldungen sind Hinweise und keine Noten. Über Förderung, Noten und Versetzung entscheidet
+        die Schule.
     </p>
 
     <h2 id="daten">{{ $heading('daten') }}</h2>
@@ -180,43 +222,53 @@
         <span class="avv-no">3.2</span>
         <strong>Betroffene Personen</strong> sind Schüler:innen (auch Kinder und Jugendliche), Lehrkräfte und
         Mitarbeitende der Schuladministration des Auftraggebers sowie, nur bei den optionalen Modulen,
-        Erziehungsberechtigte und weitere Personen, deren Stimme in einer Aufnahme zu hören ist oder die in einem
-        Transkript vorkommen.
+        Erziehungsberechtigte und weitere Personen, deren Stimme beim Tuto-Mikro zu hören ist oder die in Notizen aus der
+        Stunde vorkommen.
     </p>
     <p class="avv-clause">
         <span class="avv-no">3.3</span>
         Die Plattform ist nicht dafür gedacht, besondere Kategorien personenbezogener Daten nach Art. 9 DSGVO zu
-        verarbeiten. Freitexte und Aufnahmen können solche Angaben enthalten, wenn jemand sie hineinschreibt oder
-        ausspricht. Der Auftraggeber weist Lehrkräfte und Schüler:innen an, das zu unterlassen.
+        verarbeiten. Freitexte und der Ton beim Tuto-Mikro können solche Angaben enthalten, wenn jemand sie hineinschreibt
+        oder ausspricht. Der Auftraggeber weist Lehrkräfte und Schüler:innen an, das zu unterlassen. Die Fehlzeiten im
+        Klassenbuch enthalten keine Gründe.
     </p>
     <p class="avv-clause">
         <span class="avv-no">3.4</span>
         <span class="avv-optional">Optionale Module</span>
         Die folgenden Module sind nur Gegenstand dieses Vertrags, soweit sie genutzt oder eingeschaltet sind. Die
-        zugehörigen Teile der Anlagen 1 und 3 gelten erst dann. Wer sie einschaltet, ist verschieden: Die Aufnahmen
-        schaltet die Schuladministration für ihre Schule frei, die KI-Auswertung und die Transkription auf einem Server
-        schaltet der Auftragnehmer für die Plattform insgesamt ein.
+        zugehörigen Teile der Anlagen 1 und 3 gelten erst dann. Das Tuto-Mikro und die KI-Funktionen schaltet die
+        Schuladministration jeweils für ihre Schule ein und jederzeit wieder aus. Das Einschalten ist eine Weisung nach
+        Nummer 5.2.
     </p>
     <ul class="avv-list">
         <li>
-            <strong>Einwilligungsnachweise:</strong> Erfassung der Einwilligungen von Erziehungsberechtigten mit Name der
-            erziehungsberechtigten Person, den erteilten und widerrufenen Einwilligungen und den Zeitpunkten (Anlage 1).
-            Sie werden verarbeitet, sobald die Schule das Einwilligungsverfahren beginnt, also schon vor dem Freischalten
-            der Aufnahmen.
+            <strong>Einwilligungsnachweise:</strong> Erfassung der Einwilligungen von Erziehungsberechtigten zum
+            Tuto-Mikro mit Name der erziehungsberechtigten Person, den erteilten und widerrufenen Einwilligungen und den
+            Zeitpunkten (Anlage 1). Sie werden verarbeitet, sobald die Schule das Einwilligungsverfahren beginnt, also
+            schon vor dem Freischalten des Tuto-Mikros.
         </li>
         <li>
-            <strong>Tonaufnahmen und Transkripte:</strong> Aufnahme des Tons einer Unterrichtsstunde durch die
-            Lehrkraft, Transkript und Auswertung. Es gibt sie erst, wenn die Schuladministration die Aufnahmen für ihre
-            Schule freischaltet. Sie setzen die Einwilligung beziehungsweise die sonst erforderliche Grundlage für alle
-            anwesenden Schüler:innen und die Lehrkraft voraus. Der Auftraggeber holt sie ein und stellt sicher, dass sie
-            vorliegen, bevor eine Stunde aufgenommen oder ein Transkript an einen KI-Anbieter geschickt wird.
+            <strong>Tuto-Mikro:</strong> Die Lehrkraft schaltet in einer Stunde das Mikrofon ihres eigenen Geräts ein,
+            aus dem Ton entstehen Notizen aus der Stunde. Es gibt das Tuto-Mikro erst, wenn die Schuladministration es mit
+            vollständiger Checkliste und veröffentlichtem Einwilligungstext für ihre Schule freischaltet, und nie in den
+            Fächern, die die Schule ausschließt (ohne eigene Liste: {{ $blockedSubjects }}). Es setzt die Einwilligung für
+            alle anwesenden Schüler:innen voraus. Die Plattform speichert keinen Ton, sondern nur einen Nachweis über die
+            Sitzung (Anlage 1).
         </li>
         <li>
-            <strong>KI-Auswertung und Transkription auf einem Server:</strong> Übermittlung von Texten, Transkripten
-            oder Ton an einen Anbieter als Unterauftragsverarbeiter (Anlage 3). Beides ist vorbereitet und abgeschaltet.
-            Der Auftragnehmer schaltet es nur für die Plattform insgesamt ein, also für alle Auftraggeber zugleich, und
-            erst nach einer Mitteilung nach Nummer 8.2. Eine Freischaltung nur für einzelne Auftraggeber sieht die
-            Plattform derzeit nicht vor.
+            <strong>KI-Funktionen:</strong> Entwürfe für Zusammenfassungen, Hausaufgaben, Förderaufgaben, Stufen und
+            Fassungen in Einfacher Sprache, die Auswertung von Abgaben und „Erklär’s mir“ und beim Tuto-Mikro die
+            Spracherkennung und Zusammenfassung durch einen KI-Anbieter (Anlage 3). Sie gelten nur für einen
+            Auftraggeber, dessen Schuladministration sie eingeschaltet und dabei bestätigt hat, dass mit dem Anbieter ein
+            Vertrag zur Auftragsverarbeitung besteht, ein bezahlter Tarif ohne Nutzung der Eingaben zur
+            Produktverbesserung genutzt wird, eine Datenschutz-Folgenabschätzung vorliegt und Eltern und Schüler:innen
+            informiert sind. Einschalten kann sie nur, solange der Auftragnehmer die KI-Anbindung für die Plattform
+            bereitstellt.
+            @unless ($aiEnabled)
+                Derzeit ist die KI-Anbindung der Plattform abgeschaltet.
+            @endunless
+            Ohne Einschalten beantwortet eine regelbasierte Logik auf dem Server des Auftragnehmers alle Anfragen, und
+            keine Daten verlassen die Plattform.
         </li>
     </ul>
 
@@ -231,15 +283,18 @@
     <p class="avv-clause">
         <span class="avv-no">4.2</span>
         Der Auftraggeber informiert die Betroffenen nach Art. 13 und 14 DSGVO, holt erforderliche Einwilligungen ein,
-        zum Beispiel von Erziehungsberechtigten für Tonaufnahmen, führt das Verzeichnis seiner Verarbeitungstätigkeiten
+        zum Beispiel von Erziehungsberechtigten für das Tuto-Mikro, führt das Verzeichnis seiner Verarbeitungstätigkeiten
         nach Art. 30 Abs. 1 DSGVO, prüft, ob eine Datenschutz-Folgenabschätzung nach Art. 35 DSGVO nötig ist, und
-        entscheidet, ob er die Aufnahmen für seine Schule freischaltet. Zu einer Mitteilung über die KI-Auswertung oder
-        die Transkription (Nummer 8.2) äußert er sich innerhalb der Frist.
+        entscheidet, ob er das Tuto-Mikro und die KI-Funktionen für seine Schule einschaltet. Vor dem Einschalten bestätigt
+        seine Schuladministration die Punkte der jeweiligen Checkliste in der Plattform. Zu einer Mitteilung nach
+        Nummer 8.2 äußert er sich innerhalb der Frist.
     </p>
     <p class="avv-clause">
         <span class="avv-no">4.3</span>
         Der Auftraggeber verwaltet die Konten und Klassen seiner Schule. Er sorgt dafür, dass nur berechtigte Personen ein
-        Konto bekommen, dass Zugangsdaten vertraulich weitergegeben werden und dass die Rollen zur Aufgabe passen.
+        Konto bekommen, dass Zugangsdaten vertraulich weitergegeben werden und dass die Rollen zur Aufgabe passen. Er legt
+        fest, welche Lehrkräfte welche Klassen leiten oder unterrichten und wer vertritt. Danach richten sich die Rechte
+        der Lehrkräfte (Anlage 2).
     </p>
     <p class="avv-clause">
         <span class="avv-no">4.4</span>
@@ -265,9 +320,10 @@
         <span class="avv-no">5.2</span>
         Dieser Vertrag und die Einstellungen, die der Auftraggeber in der Plattform vornimmt, sind die Weisungen bei
         Vertragsschluss. Dazu gehören das Anlegen, Ändern und Löschen von Konten und Klassen, der Import von
-        Schülerlisten und das Freischalten oder Abschalten der Aufnahmen. Weitere Weisungen erteilt die
-        Schuladministration des Auftraggebers in Textform, eine E-Mail genügt. Mündliche Weisungen bestätigt der
-        Auftraggeber unverzüglich in Textform.
+        Schülerlisten, die Zuordnung von Lehrkräften zu Klassen, Vertretungen, das Ein- und Ausschalten des Tuto-Mikros
+        und der KI-Funktionen und die Liste der Fächer ohne Tuto-Mikro. Weitere Weisungen erteilt die Schuladministration
+        des Auftraggebers in Textform, eine E-Mail genügt. Mündliche Weisungen bestätigt der Auftraggeber unverzüglich in
+        Textform.
     </p>
     <p class="avv-clause">
         <span class="avv-no">5.3</span>
@@ -344,18 +400,26 @@
         Auftraggeber kann innerhalb dieser Frist aus einem wichtigen datenschutzrechtlichen Grund Einspruch erheben.
         Ohne Einspruch gilt die Änderung nach Ablauf der Frist als genehmigt und wird Teil dieses Vertrags (Nummer
         15.4). Erhebt der Auftraggeber Einspruch, suchen die Parteien eine Lösung. Solange der Einspruch offen ist,
-        setzt der Auftragnehmer den neuen Unterauftragsverarbeiter nicht ein. Gelingt keine Lösung, verzichtet der
-        Auftragnehmer auf den Einsatz, oder der Auftraggeber kann nach Nummer 15.3 kündigen. Der Auftragnehmer dokumentiert
-        Mitteilung, Frist und Antwort des Auftraggebers.
+        setzt der Auftragnehmer den neuen Unterauftragsverarbeiter für die Daten des Auftraggebers nicht ein. Gelingt
+        keine Lösung, verzichtet der Auftragnehmer darauf, oder der Auftraggeber kann nach Nummer 15.3 kündigen. Der
+        Auftragnehmer dokumentiert Mitteilung, Frist und Antwort des Auftraggebers.
     </p>
     <p class="avv-clause">
         <span class="avv-no">8.3</span>
-        <span class="avv-optional">Optionale Module</span>
-        Anbieter für die KI-Auswertung und die serverseitige Transkription sind in Anlage 3 als „vorbereitet, nicht
-        aktiv“ aufgeführt, solange sie nicht eingesetzt werden. Der Auftragnehmer setzt sie erst nach einer Mitteilung
-        nach Nummer 8.2 und nach Ablauf der Einspruchsfrist ein. Er schaltet sie für die Plattform insgesamt ein, also für
-        alle Auftraggeber zugleich. Deshalb schaltet er sie nicht ein, solange ein Einspruch eines Auftraggebers offen
-        ist, den dieser nicht durch Kündigung nach Nummer 15.3 erledigt hat.
+        <span class="avv-optional">Optionales Modul</span>
+        @if ($aiProvider['local'])
+            Die KI-Funktionen laufen mit {{ $aiProvider['short'] }}. Dafür setzt der Auftragnehmer keinen
+            Unterauftragsverarbeiter ein. Einen externen KI-Anbieter setzt er erst nach einer Mitteilung nach Nummer 8.2
+            ein.
+        @else
+            Der Anbieter der KI-Funktionen ist in Anlage 3 genannt und mit diesem Vertrag genehmigt. Der Auftragnehmer
+            setzt ihn nur für Auftraggeber ein, deren Schuladministration die KI-Funktionen eingeschaltet hat (Nummer
+            3.4), und nur für die Daten nach Anlage 1. Er nutzt ihn nur in einem kostenpflichtigen Tarif, in dem der
+            Anbieter Eingaben und Ergebnisse nicht zur Verbesserung seiner Produkte oder zum Training nutzt, und nur auf
+            Grundlage eines Vertrags nach Art. 28 Abs. 4 DSGVO. Schaltet die Schuladministration die KI-Funktionen aus,
+            gehen keine Daten des Auftraggebers mehr an den Anbieter. Einen anderen KI-Anbieter setzt der Auftragnehmer
+            erst nach einer Mitteilung nach Nummer 8.2 ein.
+        @endif
     </p>
     <p class="avv-clause">
         <span class="avv-no">8.4</span>
@@ -386,11 +450,13 @@
     <p class="avv-clause">
         <span class="avv-no">9.3</span>
         Die Plattform bietet dafür diese Funktionen. Jede Person kann unter „Mein Profil“ mit „Meine Daten herunterladen“
-        die Konto-, Unterrichts- und Lerndaten zu ihrem Konto als Datei (JSON) laden, das dient der Auskunft und der
-        Datenübertragbarkeit. Die Daten der optionalen Module, also Tonaufnahmen, Transkripte und
-        Einwilligungsnachweise, enthält diese Datei nicht. Sie gibt der Auftragnehmer auf Weisung des Auftraggebers
-        nach Nummer 9.4 heraus. Die Schuladministration kann Konten ihrer Schule ändern und löschen, dabei verschwinden die
-        zugehörigen Abgaben und Gespräche. Lehrkräfte können Abgaben löschen.
+        die Daten zu ihrem Konto als Datei (JSON) laden, ohne Daten anderer Personen. Das dient der Auskunft und der
+        Datenübertragbarkeit. Die Datei enthält das Konto mit der gewählten Sprache, die Unterrichts- und Lerndaten mit
+        den gewählten Stufen, „Erklär’s mir“, Rückfragen, Klassenbuch, Vertretungen, Benachrichtigungen, den
+        Einwilligungsnachweis und die Sitzungen des Tuto-Mikros. Die Schuladministration kann die Datei für jedes Konto
+        ihrer Schule laden, dann enthält sie nur, was die Schuladministration ohnehin sehen darf. Sie kann Konten ihrer
+        Schule ändern und löschen, dabei verschwinden die zugehörigen Abgaben, Gespräche und Rückfragen. Lehrkräfte können
+        Abgaben löschen.
     </p>
     <p class="avv-clause">
         <span class="avv-no">9.4</span>
@@ -413,12 +479,11 @@
         <span class="avv-no">10.2</span>
         <strong>Datenschutzverletzungen:</strong> Wird dem Auftragnehmer eine Verletzung des Schutzes personenbezogener
         Daten bekannt, die Daten des Auftraggebers betrifft, meldet er sie dem Auftraggeber unverzüglich
-        (Art. 33 Abs. 2 DSGVO), spätestens innerhalb von {{ $todo('Frist in Stunden nach Kenntnis, z. B. 24') }} Stunden
-        nach Kenntnis, an dessen Kontakt-E-Mail-Adresse. Der Auftraggeber muss die Verletzung selbst binnen 72 Stunden
-        melden (Art. 33 Abs. 1 DSGVO). Die Meldung beschreibt, soweit bekannt, die
-        Art der Verletzung mit den Kategorien und der ungefähren Zahl der betroffenen Personen und Datensätze, die
-        wahrscheinlichen Folgen und die ergriffenen oder vorgeschlagenen Maßnahmen und nennt einen Ansprechpartner.
-        Informationen, die noch fehlen, reicht der Auftragnehmer schrittweise nach (Art. 33 Abs. 4 DSGVO).
+        (Art. 33 Abs. 2 DSGVO), spätestens innerhalb von 24 Stunden nach Kenntnis, an dessen Kontakt-E-Mail-Adresse. Der
+        Auftraggeber muss die Verletzung selbst binnen 72 Stunden melden (Art. 33 Abs. 1 DSGVO). Die Meldung beschreibt,
+        soweit bekannt, die Art der Verletzung mit den Kategorien und der ungefähren Zahl der betroffenen Personen und
+        Datensätze, die wahrscheinlichen Folgen und die ergriffenen oder vorgeschlagenen Maßnahmen und nennt einen
+        Ansprechpartner. Informationen, die noch fehlen, reicht der Auftragnehmer schrittweise nach (Art. 33 Abs. 4 DSGVO).
     </p>
     <p class="avv-clause">
         <span class="avv-no">10.3</span>
@@ -429,10 +494,10 @@
     </p>
     <p class="avv-clause">
         <span class="avv-no">10.4</span>
-        Bei den optionalen Modulen (Tonaufnahmen, KI-Auswertung) prüft der Auftraggeber vor dem Freischalten der Aufnahmen
-        beziehungsweise vor Ablauf der Einspruchsfrist nach Nummer 8.2, ob eine Datenschutz-Folgenabschätzung nötig ist,
-        weil Daten von Kindern verarbeitet werden. Der Auftragnehmer liefert dafür
-        die Beschreibung der Verarbeitung, die Maßnahmen und die Unterauftragsverarbeiter.
+        Bei den optionalen Modulen (Tuto-Mikro, KI-Funktionen) prüft der Auftraggeber vor dem Einschalten, ob eine
+        Datenschutz-Folgenabschätzung nötig ist, weil Daten von Kindern verarbeitet werden. Die Plattform lässt das
+        Einschalten erst zu, wenn die Schuladministration bestätigt hat, dass sie durchgeführt ist. Der Auftragnehmer
+        liefert dafür die Beschreibung der Verarbeitung, die Maßnahmen und die Unterauftragsverarbeiter.
     </p>
 
     <h2 id="ort">{{ $heading('ort') }}</h2>
@@ -450,11 +515,15 @@
     <p class="avv-clause">
         <span class="avv-no">11.3</span>
         <span class="avv-optional">Optionales Modul</span>
-        Die KI-Auswertung läuft bei einem Anbieter in den USA (Anlage 3). Der Auftraggeber stimmt der Übermittlung nach
-        Nummer 11.2 zu, indem er der Mitteilung nach Nummer 8.2 in Textform zustimmt oder ihr nicht innerhalb der Frist
-        widerspricht. Der Auftragnehmer hält Mitteilung, Frist und Antwort fest (Nummer 8.2). Solange ein Auftraggeber
-        widersprochen hat und der Einspruch offen ist, übermittelt der Auftragnehmer keine Daten in die USA (Nummer
-        8.3).
+        @if ($aiProvider['local'])
+            Die KI-Funktionen laufen auf Servern des Auftragnehmers. Eine Übermittlung in ein Drittland findet dafür
+            nicht statt.
+        @else
+            Der Anbieter der KI-Funktionen kann Daten in einem Drittland verarbeiten (Anlage 3). Der Auftraggeber weist
+            die Übermittlung an und stimmt ihr nach Nummer 11.2 zu, indem seine Schuladministration die KI-Funktionen
+            einschaltet. Sie geschieht nur auf Grundlage der in Anlage 3 genannten Garantien. Solange die KI-Funktionen
+            ausgeschaltet sind, übermittelt der Auftragnehmer keine Daten des Auftraggebers in ein Drittland.
+        @endif
     </p>
 
     <h2 id="loeschung">{{ $heading('loeschung') }}</h2>
@@ -548,12 +617,14 @@
     </p>
     <p class="avv-clause">
         <span class="avv-no">15.4</span>
-        Ändert der Auftragnehmer den Vertrag inhaltlich, veröffentlicht er eine neue Version und bittet die
-        Schuladministration, sie unter „Meine Schule“ anzunehmen. Bis zur Annahme gilt die bisher angenommene Version
-        weiter, die die Plattform mit ihrem Text aufbewahrt und unter „Meine Schule“ anzeigt. Ausgenommen sind Änderungen
-        der Maßnahmen nach Nummer 7.3 und der Unterauftragsverarbeiter nach Nummer 8.2. Sie werden mit der Mitteilung
-        beziehungsweise nach Ablauf der Einspruchsfrist Teil des Vertrags, auch ohne erneute Annahme. Die Plattform bittet
-        trotzdem um Annahme der neuen Version, damit der Nachweis aktuell bleibt.
+        Ändert der Auftragnehmer den Vertrag inhaltlich, veröffentlicht er eine neue Fassung und bittet die
+        Schuladministration, sie unter „Meine Schule“ anzunehmen. Das gilt auch, wenn sich eine Angabe ändert, die die
+        Plattform aus ihrer Einstellung in den Text übernimmt, etwa eine Frist oder der KI-Anbieter. Bis zur Annahme gilt
+        die bisher angenommene Fassung weiter, die die Plattform mit ihrem Text aufbewahrt und unter „Meine Schule“
+        anzeigt. Ausgenommen sind Änderungen der Maßnahmen nach Nummer 7.3 und der Unterauftragsverarbeiter nach
+        Nummer 8.2. Sie werden mit der Mitteilung beziehungsweise nach Ablauf der Einspruchsfrist Teil des Vertrags, auch
+        ohne erneute Annahme. Die Plattform bittet trotzdem um Annahme der neuen Fassung, damit der Nachweis aktuell
+        bleibt.
     </p>
 
     <h2 id="schluss">{{ $heading('schluss') }}</h2>
@@ -588,9 +659,9 @@
 
         <h3>1. Gegenstand</h3>
         <p>
-            Bereitstellung der Lernplattform für eine Schule und Verarbeitung der Daten, die ihre Schuladministration,
-            Lehrkräfte und Schüler:innen dort eingeben oder die bei der Nutzung entstehen. Dauer: solange die Schule die
-            Plattform nutzt (Nummer 15).
+            Bereitstellung der Lernplattform Tuto für eine Schule und Verarbeitung der Daten, die ihre
+            Schuladministration, Lehrkräfte und Schüler:innen dort eingeben oder die bei der Nutzung entstehen. Dauer:
+            solange die Schule die Plattform nutzt (Nummer 15).
         </p>
 
         <h3>2. Betroffene Personen</h3>
@@ -604,8 +675,7 @@
             </li>
             <li>
                 <span class="avv-optional">Optional</span>
-                Weitere Personen, die bei einer Aufnahme anwesend sind und sprechen, oder die in einem Transkript
-                vorkommen
+                Weitere Personen, deren Stimme beim Tuto-Mikro zu hören ist oder die in Notizen aus der Stunde vorkommen
             </li>
         </ul>
 
@@ -623,28 +693,52 @@
                 </thead>
                 <tbody>
                     <tr>
-                        <th scope="row">Konten: Name, Benutzername, Passwort (nur als Hash), Rolle, Schule und Klasse, freiwillig eine E-Mail-Adresse</th>
+                        <th scope="row">Konten: Name, Benutzername, Passwort (nur als Hash), Rolle, Schule und Klasse, gewählte Sprache, freiwillig eine E-Mail-Adresse</th>
                         <td><span class="legal-cell-label">Betroffene</span> Schüler:innen, Lehrkräfte, Schuladministration</td>
-                        <td><span class="legal-cell-label">Zweck</span> Anmeldung, Zuordnung von Inhalten, Rechte nach Rolle, Zurücksetzen des Passworts</td>
+                        <td><span class="legal-cell-label">Zweck</span> Anmeldung, Zuordnung von Inhalten, Rechte nach Rolle, Anzeige in der gewählten Sprache, Zurücksetzen des Passworts</td>
                         <td><span class="legal-cell-label">Speicherdauer</span> bis die Schuladministration das Konto löscht, spätestens bei Vertragsende (Nummer 12)</td>
                     </tr>
                     <tr>
-                        <th scope="row">Unterrichtsstunden: Fach, Thema, Datum, Notizen, Tafelbild oder Transkripttext, hochgeladene Arbeitsblätter (Foto, Scan, PDF)</th>
-                        <td><span class="legal-cell-label">Betroffene</span> Lehrkräfte, Schüler:innen nur, soweit jemand sie in Texte schreibt</td>
-                        <td><span class="legal-cell-label">Zweck</span> Nachbereitung des Unterrichts, Entwurf von Hausaufgaben</td>
-                        <td><span class="legal-cell-label">Speicherdauer</span> {{ $keptPhrase }}, danach automatische Löschung</td>
+                        <th scope="row">Klassenzuordnung und Vertretungen: Klassenleitung, zugeordnete Lehrkräfte, Vertretungen mit Zeitraum, Hinweis und einrichtender Person</th>
+                        <td><span class="legal-cell-label">Betroffene</span> Lehrkräfte, Schuladministration</td>
+                        <td><span class="legal-cell-label">Zweck</span> Rechte der Lehrkräfte für ihre Klassen, Übergabe einer Klasse an eine Vertretung</td>
+                        <td><span class="legal-cell-label">Speicherdauer</span> bis die Zuordnung aufgehoben oder die Klasse oder das Konto gelöscht wird. Eine abgelaufene Vertretung gewährt nichts mehr und bleibt als Nachweis bis dahin bestehen.</td>
                     </tr>
                     <tr>
-                        <th scope="row">Hausaufgaben und Abgaben: Fragen, Zusammenfassungen, Antworten, Verständniswert von 0 bis 100, Rückmeldung, Hinweise auf Lücken</th>
+                        <th scope="row">Unterrichtsstunden: Fach, Thema, Datum, Notizen (auch übernommene Notizen aus der Stunde), Zusammenfassung, hochgeladene Arbeitsblätter (Foto, Scan, PDF), Fassungen in Einfacher Sprache</th>
+                        <td><span class="legal-cell-label">Betroffene</span> Lehrkräfte, Schüler:innen nur, soweit jemand sie in Texte schreibt</td>
+                        <td><span class="legal-cell-label">Zweck</span> Nachbereitung des Unterrichts, Entwurf von Hausaufgaben</td>
+                        <td><span class="legal-cell-label">Speicherdauer</span> {{ $keptPhrase }}, danach automatische Löschung (Abschnitt 4)</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Hausaufgaben und Abgaben: Fragen in Stufen, Zusammenfassungen, Antworten mit der gewählten Stufe, Verständniswert von 0 bis 100, Rückmeldung, Hinweise auf Lücken</th>
                         <td><span class="legal-cell-label">Betroffene</span> Schüler:innen, Lehrkräfte</td>
                         <td><span class="legal-cell-label">Zweck</span> Hausaufgaben bearbeiten und auswerten, Lernstand erkennen</td>
                         <td><span class="legal-cell-label">Speicherdauer</span> wie die zugehörige Unterrichtsstunde</td>
                     </tr>
                     <tr>
-                        <th scope="row">„Erklär’s mir“: Thema, Gesprächsverlauf, Verständniswert, Rückmeldung</th>
+                        <th scope="row">„Erklär’s mir“: Thema, Gesprächsverlauf mit der Computerfigur Tuto, Verständniswert, Rückmeldung</th>
                         <td><span class="legal-cell-label">Betroffene</span> Schüler:innen</td>
                         <td><span class="legal-cell-label">Zweck</span> Üben und Lernstand erkennen</td>
                         <td><span class="legal-cell-label">Speicherdauer</span> {{ $keptPhrase }}, danach automatische Löschung</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Rückfragen: Frage der Schüler:in zu einer Stunde, Antwort und antwortende Person, Zeitpunkte von Frage, Antwort und Lesen</th>
+                        <td><span class="legal-cell-label">Betroffene</span> Schüler:innen, Lehrkräfte</td>
+                        <td><span class="legal-cell-label">Zweck</span> Fragen zum Unterricht klären</td>
+                        <td><span class="legal-cell-label">Speicherdauer</span> wie die zugehörige Unterrichtsstunde</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Klassenbuch: Datum, Stunde, Fach, Thema, Unterrichtsinhalt, Hausaufgabe, Bemerkungen, fehlende Schüler:innen (ohne Gründe), eintragende Lehrkraft, Bestätigung</th>
+                        <td><span class="legal-cell-label">Betroffene</span> Schüler:innen, Lehrkräfte</td>
+                        <td><span class="legal-cell-label">Zweck</span> Nachweis des Unterrichts und der Anwesenheit</td>
+                        <td><span class="legal-cell-label">Speicherdauer</span> {{ $keptPhrase }} nach dem Datum des Eintrags, danach automatische Löschung</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Benachrichtigungen in der App: Titel und Text mit Thema, Fach und Klasse einer Stunde oder einer Anzahl, Link, Zeitpunkt, gelesen am</th>
+                        <td><span class="legal-cell-label">Betroffene</span> Schüler:innen, Lehrkräfte</td>
+                        <td><span class="legal-cell-label">Zweck</span> Hinweis auf neue Hausaufgaben, Abgaben, Rückfragen und Antworten</td>
+                        <td><span class="legal-cell-label">Speicherdauer</span> {{ $notificationReadDays }} Tage nach dem Lesen, höchstens {{ $notificationDays }} Tage nach dem Eingang</td>
                     </tr>
                     <tr>
                         <th scope="row">Lernstand-Übersicht und Elterngesprächs-Bericht</th>
@@ -653,8 +747,14 @@
                         <td><span class="legal-cell-label">Speicherdauer</span> werden aus den gespeicherten Ergebnissen berechnet und enthalten nur, was dort steht</td>
                     </tr>
                     <tr>
-                        <th scope="row">Technische Daten: Sitzungskennung, Benutzerkennung, IP-Adresse, Browserangabe, Zeitpunkt der letzten Aktivität</th>
-                        <td><span class="legal-cell-label">Betroffene</span> alle, die sich anmelden, und Erziehungsberechtigte, die die Seite für ihre Einwilligung aufrufen</td>
+                        <th scope="row">Einstellungen der Schule: Einschalten von Tuto-Mikro und KI-Funktionen mit Zeitpunkt und einschaltender Person, Bestätigungen der Checklisten, Fächer ohne Tuto-Mikro, Einwilligungstexte mit erstellender Person</th>
+                        <td><span class="legal-cell-label">Betroffene</span> Schuladministration</td>
+                        <td><span class="legal-cell-label">Zweck</span> Nachweis, wer was wann für die Schule eingeschaltet hat</td>
+                        <td><span class="legal-cell-label">Speicherdauer</span> bis zum Ausschalten oder zur nächsten Änderung, Einwilligungstexte bis zur Löschung der Schule</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Technische Daten: Sitzungskennung, Benutzerkennung, IP-Adresse, Browserangabe, Zeitpunkt der letzten Aktivität, auf der Anmeldeseite gewählte Sprache</th>
+                        <td><span class="legal-cell-label">Betroffene</span> alle, die sich anmelden</td>
                         <td><span class="legal-cell-label">Zweck</span> Anmeldung, Sicherheit und Betrieb</td>
                         <td><span class="legal-cell-label">Speicherdauer</span> Sitzungen laufen nach {{ $sessionMinutes }} Minuten ohne Aktivität ab und werden regelmäßig entfernt</td>
                     </tr>
@@ -665,23 +765,35 @@
                         <td><span class="legal-cell-label">Speicherdauer</span> Link gilt {{ $resetMinutes }} Minuten, Eintrag wird beim Zurücksetzen gelöscht, unbenutzte täglich</td>
                     </tr>
                     <tr>
-                        <th scope="row">Server-Logfiles und Fehlerprotokoll: IP-Adresse, Zeit, aufgerufene Adresse, Statuscode, Browserangabe, Benutzerkennung bei Fehlern</th>
-                        <td><span class="legal-cell-label">Betroffene</span> alle, die die Plattform aufrufen</td>
+                        <th scope="row">Server-Logfiles und Fehlerprotokoll: IP-Adresse, Zeit, aufgerufene Adresse (auch die Adresse der Einwilligungsseite mit ihrem Code), Statuscode, Browserangabe, Benutzerkennung bei Fehlern</th>
+                        <td><span class="legal-cell-label">Betroffene</span> alle, die die Plattform aufrufen, auch Erziehungsberechtigte auf der Einwilligungsseite</td>
                         <td><span class="legal-cell-label">Zweck</span> Betrieb, Fehlersuche, Abwehr von Angriffen</td>
-                        <td><span class="legal-cell-label">Speicherdauer</span> {{ $todo('konkrete Frist für Logfiles und Fehlerprotokoll') }}</td>
+                        <td><span class="legal-cell-label">Speicherdauer</span> {{ $todo('Frist für Logfiles und Fehlerprotokoll auf den Servern') }}</td>
                     </tr>
                     <tr>
                         <th scope="row">
                             <span class="avv-optional">Optional</span>
-                            Tonaufnahmen von Unterricht mit Transkript und Auswertung
+                            Tuto-Mikro, Ton und Notizen aus der Stunde (aus dem Ton erkannter Text)
                         </th>
                         <td><span class="legal-cell-label">Betroffene</span> Lehrkräfte und Schüler:innen (Stimme und alles, was gesagt wird), weitere anwesende Personen</td>
-                        <td><span class="legal-cell-label">Zweck</span> Unterricht nachbereiten, Hausaufgaben entwerfen; sichtbar nur für die aufnehmende Lehrkraft</td>
+                        <td><span class="legal-cell-label">Zweck</span> Unterricht nachbereiten, Hausaufgaben entwerfen; sichtbar nur für die Lehrkraft der Stunde</td>
                         <td>
                             <span class="legal-cell-label">Speicherdauer</span>
-                            Aufnahme mit Transkript und Auswertung {{ $recordingDays }} Tage nach Aufnahmebeginn, dann automatische Löschung.
-                            Texte, die die Lehrkraft daraus in eine Unterrichtsstunde übernimmt, gelten als Unterrichtsdaten.
+                            Der Ton wird nicht gespeichert. Bei eingeschalteten KI-Funktionen geht er in kurzen Abschnitten
+                            über eine verschlüsselte Verbindung an den Server, wird dort nur im Arbeitsspeicher an den
+                            KI-Anbieter weitergereicht und mit dem Ende der Anfrage verworfen. Ohne KI-Funktionen verlässt er
+                            das Gerät der Lehrkraft nicht. Der erkannte Text bleibt nur im Browser der Lehrkraft, bis sie
+                            etwas in die Notizen der Stunde übernimmt. Übernommenes gilt als Unterrichtsdaten.
                         </td>
+                    </tr>
+                    <tr>
+                        <th scope="row">
+                            <span class="avv-optional">Optional</span>
+                            Tuto-Mikro, Sitzungsnachweis: Stunde, Lehrkraft, Beginn, Ende, Dauer, als anwesend markierte Schüler:innen, Zeitpunkt der Bestätigung der Anwesenheit, Fassung des Einwilligungstextes, geprüfte Zwecke, ob Ton an den KI-Anbieter ging
+                        </th>
+                        <td><span class="legal-cell-label">Betroffene</span> Lehrkräfte, Schüler:innen</td>
+                        <td><span class="legal-cell-label">Zweck</span> Nachweis, dass für alle Anwesenden eine Einwilligung vorlag; sichtbar nur für die Lehrkraft der Stunde</td>
+                        <td><span class="legal-cell-label">Speicherdauer</span> {{ $mikroSessionDays }} Tage nach Beginn, dann automatische Löschung, mit der Stunde oder dem Konto der Lehrkraft früher</td>
                     </tr>
                     <tr>
                         <th scope="row">
@@ -695,11 +807,22 @@
                     <tr>
                         <th scope="row">
                             <span class="avv-optional">Optional</span>
-                            KI-Auswertung: Texte aus Unterrichtsstunden, Arbeitsblätter als Bild oder PDF, Texte der Schüler:innen und pseudonymisierte Transkripte von Tonaufnahmen, ohne Namen und Benutzernamen der Konten und ohne Benutzerkennungen
+                            KI-Funktionen: Fach, Thema und Datum von Stunden, Notizen und Zusammenfassung der Lehrkraft, Fragen mit Erwartungshorizont, Arbeitsblätter als Bild oder PDF, Kompetenzen, anonyme Hinweise auf Lücken, Zusammenfassungen und Antworten der Schüler:innen mit der gewählten Stufe, „Erklär’s mir“-Gespräche, beim Tuto-Mikro Ton-Abschnitte und der Text für die Zusammenfassung. Alle Texte pseudonymisiert, ohne Benutzernamen, E-Mail-Adressen, Benutzerkennungen, Klassen- und Schulnamen
                         </th>
-                        <td><span class="legal-cell-label">Betroffene</span> Lehrkräfte, Schüler:innen und weitere Anwesende, soweit sie in Texten oder Transkripten vorkommen (gesprochene Beiträge, Namen außerhalb der Klasse können enthalten sein)</td>
-                        <td><span class="legal-cell-label">Zweck</span> Zusammenfassung und Hausaufgaben entwerfen, Texte auswerten, Rückfragen im „Erklär’s mir“-Chat</td>
-                        <td><span class="legal-cell-label">Speicherdauer</span> beim KI-Anbieter nach dem Vertrag mit ihm: {{ $todo('Aufbewahrungsdauer beim KI-Anbieter') }}</td>
+                        <td><span class="legal-cell-label">Betroffene</span> Lehrkräfte, Schüler:innen und weitere Personen, soweit sie in Texten, auf Arbeitsblättern oder im Ton vorkommen (Stimmen im Ton, Namen außerhalb der Klasse und Text in Bildern und PDF sind nicht pseudonymisiert)</td>
+                        <td><span class="legal-cell-label">Zweck</span> Entwürfe für Zusammenfassung, Hausaufgaben, Förderaufgaben, Stufen und Einfache Sprache, Auswertung von Abgaben, Rückfragen und Einschätzung im „Erklär’s mir“-Chat, Spracherkennung und Zusammenfassung beim Tuto-Mikro</td>
+                        <td>
+                            <span class="legal-cell-label">Speicherdauer</span>
+                            @if ($aiProvider['local'])
+                                Die Plattform speichert nur die Ergebnisse, wie die zugehörigen Daten. Das Modell läuft auf
+                                Servern des Auftragnehmers und speichert keine Anfragen.
+                            @else
+                                Die Plattform speichert nur die Ergebnisse, wie die zugehörigen Daten. Sie verlangt mit jeder
+                                Anfrage, dass der Anbieter sie nicht für spätere Abrufe speichert, und führt dort keinen
+                                Gesprächsverlauf. Wie lange der Anbieter Anfragen etwa zur Missbrauchserkennung aufbewahrt,
+                                regeln seine Bedingungen (Anlage 3).
+                            @endif
+                        </td>
                     </tr>
                 </tbody>
             </table>
@@ -708,15 +831,23 @@
         <h3>4. Automatische Löschungen</h3>
         <ul>
             <li>
-                Unterrichtsstunden und „Erklär’s mir“-Gespräche, die älter als die Aufbewahrungsfrist sind, löscht die
-                Plattform täglich. Aufbewahrt werden {{ $keptPhrase }},
-                ein Schuljahr beginnt am {{ $schoolYearStart }}. Fragen, Abgaben, Antworten, Nachrichten und
+                Unterrichtsstunden, „Erklär’s mir“-Gespräche und Einträge im Klassenbuch, die älter als die
+                Aufbewahrungsfrist sind, löscht die Plattform täglich. Aufbewahrt werden {{ $keptPhrase }},
+                ein Schuljahr beginnt am {{ $schoolYearStart }}. Fragen, Abgaben, Antworten, Nachrichten, Rückfragen und
                 Arbeitsblatt-Dateien gehen mit. Konten, Klassen und Schulen bleiben bestehen.
+                @if ($oneYearRuleFrom)
+                    Übergang: Bis zum {{ $oneYearRuleFrom }} bleiben noch zwei Schuljahre gespeichert, weil die bis dahin
+                    angenommenen Fassungen dieses Vertrags das zusagen. Danach wird jedes Schuljahr zu seinem Ende gelöscht.
+                @endif
+            </li>
+            <li>
+                Benachrichtigungen löscht die Plattform täglich {{ $notificationReadDays }} Tage nach dem Lesen, ungelesene
+                spätestens {{ $notificationDays }} Tage nach dem Eingang.
             </li>
             <li>
                 <span class="avv-optional">Optional</span>
-                Tonaufnahmen werden {{ $recordingDays }} Tage nach Aufnahmebeginn täglich gelöscht, ebenso Audiodateien
-                ohne zugehörigen Eintrag.
+                Nachweise über Sitzungen des Tuto-Mikros löscht die Plattform täglich {{ $mikroSessionDays }} Tage nach
+                Beginn. Eine nicht beendete Sitzung nimmt nach {{ $mikroMaxSessionHours }} Stunden nichts mehr an.
             </li>
             <li>Nicht eingelöste Einträge zum Zurücksetzen des Passworts löscht die Plattform täglich.</li>
             <li>Die Fristen sind in der Konfiguration der Plattform festgelegt. Eine ungültige Einstellung löscht nichts.</li>
@@ -726,8 +857,8 @@
     <section class="avv-annex" aria-labelledby="anlage-2">
         <h2 id="anlage-2">{{ $annexes['anlage-2'] }}</h2>
         <p>
-            Maßnahmen nach Art. 32 DSGVO. Beschrieben ist, was die Plattform tatsächlich umsetzt. Angaben, die der Code
-            nicht belegt, hat der Auftragnehmer vor Vertragsschluss zu ergänzen.
+            Maßnahmen nach Art. 32 DSGVO. Beschrieben ist, was die Plattform tatsächlich umsetzt. Angaben zum Betrieb der
+            Server, die der Code nicht belegt, ergänzt der Auftragnehmer an den gelb markierten Stellen.
         </p>
 
         <h3>1. Vertraulichkeit</h3>
@@ -747,7 +878,8 @@
                 @if ($terms['secureCookie'])
                     Es wird nur über HTTPS gesendet.
                 @else
-                    {{ $todo('bestätigen, dass das Cookie im Betrieb nur über HTTPS gesendet wird (SESSION_SECURE_COOKIE)') }}
+                    Das Merkmal „Secure“ ist nicht gesetzt, verschlüsselt übertragen wird es über die HTTPS-Verbindung
+                    nach Abschnitt 2.
                 @endif
                 Ändert jemand sein Passwort, werden die anderen Sitzungen dieses Kontos beendet.
             </li>
@@ -758,9 +890,16 @@
             <li>
                 <strong>Zugriff:</strong> Rollen (Plattform-Administration, Schuladministration, Lehrkraft, Schüler:in) mit
                 Berechtigungsregeln für jede Art von Daten. Fehlt für eine Ressource eine Regel, wird der Zugriff nicht
-                freigegeben, sondern die Anfrage schlägt fehl. Schüler:innen sehen nur ihre eigenen Daten, Lehrkräfte nur die ihrer Stunden und
-                Klassen. Die Plattform-Administration sieht keine Unterrichts- und Lerndaten. Tonaufnahmen sind nur für die
-                aufnehmende Lehrkraft abrufbar, auch nicht für die Schuladministration.
+                freigegeben, sondern die Anfrage schlägt fehl. Schüler:innen sehen nur ihre eigenen Daten. Lehrkräfte
+                sehen die Ergebnisse ihrer eigenen Stunden und die Lernstände, das Klassenbuch und die Einwilligungen der
+                Klassen, die sie leiten, denen sie zugeordnet sind oder in denen sie gerade vertreten. Die Ergebnisse der
+                eigenen Stunden sieht eine Lehrkraft auch dann noch, wenn sie der Klasse nicht mehr zugeordnet ist, die
+                Lernstände, das Klassenbuch und die Einwilligungen der Klasse dann nicht mehr. Wer vertritt, darf für den
+                Zeitraum der Vertretung (höchstens {{ $substitutionMaxDays }} Tage) {{ ClassSubstitution::grants('de') }},
+                danach endet der Zugriff, auch auf die Ergebnisse der Stunden aus der Vertretung.
+                Die Schuladministration sieht die Daten der eigenen Schule, die Plattform-Administration keine Unterrichts-
+                und Lerndaten. Den Nachweis über eine Sitzung des Tuto-Mikros sieht nur die Lehrkraft der Stunde, auch
+                nicht die Schuladministration.
             </li>
             <li>
                 <strong>Trennung der Schulen:</strong> Konten, Klassen und Unterrichtsstunden gehören zu genau einer Schule.
@@ -770,8 +909,8 @@
                 Schüler:in dieser Schule. Automatisierte Tests prüfen das.
             </li>
             <li>
-                <strong>Verschlüsselung gespeicherter Daten:</strong> Die Anwendung verschlüsselt die Datenbank, die
-                Arbeitsblätter und die Audiodateien nicht zusätzlich.
+                <strong>Verschlüsselung gespeicherter Daten:</strong> Die Anwendung verschlüsselt die Datenbank und die
+                Arbeitsblätter nicht zusätzlich.
                 {{ $todo('Verschlüsselung der Datenträger, der Datenbank und des Speichers (at rest) auf den Servern') }}
             </li>
             <li>
@@ -784,10 +923,14 @@
         <ul>
             <li>
                 <strong>Übertragung:</strong> {{ $todo('Verschlüsselung der Verbindung (TLS): Zertifikat, Umleitung auf HTTPS') }}
+                @unless ($aiProvider['local'])
+                    Verbindungen zum KI-Anbieter laufen über HTTPS.
+                @endunless
             </li>
             <li>
-                <strong>Dateien:</strong> Arbeitsblätter und Aufnahmen liegen nicht öffentlich erreichbar auf dem Server und
-                sind nur über die Plattform abrufbar. Aufnahmen liefert die Plattform nur nach Prüfung der Berechtigung aus.
+                <strong>Dateien:</strong> Arbeitsblätter liegen nicht öffentlich erreichbar auf dem Server und sind nur über
+                die Plattform nach Prüfung der Berechtigung abrufbar. Ton des Tuto-Mikros wird weder als Datei noch in einer
+                Warteschlange oder der Datenbank gespeichert.
             </li>
             <li>
                 <strong>Gefälschte Anfragen:</strong> Formulare und Aktionen werden nur angenommen, wenn die Plattform sie
@@ -806,13 +949,34 @@
                 Kein Tracking, keine Reichweitenmessung, keine Werbung und keine Inhalte von fremden Servern. Die
                 Schriftart Lexend und die Platzhalter-Bilder mit den Initialen kommen von der Plattform selbst.
             </li>
-            <li>Die E-Mail-Adresse eines Kontos ist freiwillig.</li>
+            <li>Die E-Mail-Adresse eines Kontos ist freiwillig. Fehlzeiten im Klassenbuch werden ohne Gründe erfasst.</li>
+            <li>
+                Übersichten wie „Heute“ und die Zahl der Abgaben zeigen nur Anzahlen, keine Namen oder Ergebnisse.
+                Benachrichtigungen nennen nur Thema, Fach und Klasse einer Stunde oder eine Anzahl.
+            </li>
+            <li>
+                Die Wahl der Einfachen Sprache und die Einstellung „Namen verbergen“ beim Tuto-Mikro speichert nur der
+                Browser. Sie werden nicht an den Server gesendet.
+            </li>
             <li>
                 <span class="avv-optional">Optional</span>
-                Vor einer KI-Auswertung werden Namen, Benutzernamen und Benutzerkennungen nicht mitgeschickt. In
-                Transkripten ersetzt die Plattform die Namen der Klasse und der Lehrkraft durch neutrale Bezeichnungen.
-                Namen von Personen außerhalb der Klasse und Spitznamen erkennt sie nicht, deshalb prüft die Lehrkraft das
-                Transkript vor der Auswertung. Die KI-Anbindung ist standardmäßig abgeschaltet.
+                <strong>Tuto-Mikro:</strong> Es nutzt nur das Mikrofon des Geräts der Lehrkraft, nur Ton. Der Server lässt
+                es nur an, wenn die Schule es freigeschaltet hat, das Fach nicht ausgeschlossen ist, die Lehrkraft die
+                Klasse leitet, unterrichtet oder vertritt, sie die anwesenden Schüler:innen markiert und bestätigt hat
+                und für jede von ihnen eine gültige Einwilligung vorliegt. Bei jedem Ton-Abschnitt und vor jeder
+                Zusammenfassung prüft er Einwilligungen und Schalter erneut. Ein Widerruf oder das Ausschalten wirkt
+                spätestens beim nächsten Abschnitt. Ein Balken zeigt „Mikro an“ oder „Mikro aus“. Die Anzeige für den
+                Beamer zeigt nur „Mikro an“ oder „Mikro aus“ und das Thema der Stunde, keine Namen und keinen Text.
+            </li>
+            <li>
+                <span class="avv-optional">Optional</span>
+                <strong>Pseudonymisierung vor jeder KI-Anfrage:</strong> Die Plattform schickt keine Namen, Benutzernamen,
+                E-Mail-Adressen, Benutzerkennungen, Klassen- oder Schulnamen mit. In allen Texten ersetzt sie die Namen der
+                Schüler:innen der Klasse durch „Schüler:in A“, „Schüler:in B“ und so weiter, die Namen der Lehrkräfte der
+                Klasse durch „Lehrkraft“ und Namensteile, die mehrere Personen tragen, durch „Person“. Namen anderer
+                Personen, Spitznamen, falsch geschriebene Namen und Text in Fotos und PDF-Dateien erkennt sie nicht. Die
+                Ton-Abschnitte des Tuto-Mikros enthalten echte Stimmen und gesprochene Namen und gehen deshalb nur mit der
+                Einwilligung aller Anwesenden in die Verarbeitung durch den KI-Anbieter an diesen.
             </li>
         </ul>
 
@@ -828,15 +992,19 @@
             <li>
                 <strong>Wiederherstellung und Ausfälle:</strong> {{ $todo('Wiederherstellungsverfahren, Überwachung, Reaktion auf Ausfälle') }}
             </li>
+            <li>
+                <strong>Ausfall des KI-Anbieters:</strong> Die Plattform zeigt dann einen Fehler an und schickt die Daten
+                nicht an einen anderen Anbieter.
+            </li>
         </ul>
 
         <h3>5. Löschung und Betroffenenrechte</h3>
         <ul>
             <li>Tägliche automatische Löschung nach Aufbewahrungsfristen (Anlage 1, Abschnitt 4).</li>
             <li>
-                Jede Person kann die Konto-, Unterrichts- und Lerndaten zu ihrem Konto als Datei herunterladen. Daten der
-                optionalen Module enthält die Datei nicht (Nummer 9.3). Die Schuladministration kann Konten ihrer Schule
-                löschen, die zugehörigen Abgaben und Gespräche werden mitgelöscht.
+                Jede Person kann die Daten zu ihrem Konto als Datei herunterladen, ohne Daten anderer Personen (Nummer
+                9.3). Die Schuladministration kann Konten ihrer Schule löschen, die zugehörigen Abgaben, Gespräche und
+                Rückfragen werden mitgelöscht.
             </li>
         </ul>
 
@@ -850,12 +1018,14 @@
                 <strong>Verpflichtung und Schulung der Beschäftigten:</strong> {{ $todo('Verpflichtung zur Vertraulichkeit, Datenschutzschulung, Zahl und Rolle der Zugriffsberechtigten') }}
             </li>
             <li>
-                <strong>Umgang mit Datenschutzverletzungen:</strong> {{ $todo('Ablauf von Erkennen, Bewerten und Melden eines Vorfalls an den Auftraggeber') }}
+                <strong>Umgang mit Datenschutzverletzungen:</strong> Der Auftragnehmer prüft jeden Hinweis auf einen
+                Vorfall unverzüglich, dokumentiert ihn mit Bewertung und Maßnahmen und meldet ihn nach Nummer 10.2.
             </li>
             <li>
                 <strong>Überprüfung der Wirksamkeit (Art. 32 Abs. 1 lit. d DSGVO):</strong> Automatisierte Tests prüfen bei
-                jeder Änderung unter anderem Rechte, Trennung der Schulen, Löschfristen und den Datenexport.
-                {{ $todo('Verfahren für Sicherheitsupdates und die jährliche Überprüfung') }}
+                jeder Änderung unter anderem Rechte, Trennung der Schulen, Löschfristen, Einwilligungsprüfung und den
+                Datenexport. Sicherheitsupdates der eingesetzten Software spielt der Auftragnehmer zeitnah ein, die
+                Maßnahmen überprüft er nach Nummer 7.4.
             </li>
         </ul>
     </section>
@@ -863,9 +1033,9 @@
     <section class="avv-annex" aria-labelledby="anlage-3">
         <h2 id="anlage-3">{{ $annexes['anlage-3'] }}</h2>
         <p>
-            Der Auftraggeber genehmigt die folgenden Unterauftragsverarbeiter (Nummer 8). Dienstleister für optionale
-            Module sind erst im Einsatz, wenn der Auftragnehmer sie nach Nummer 8.2 mitgeteilt hat, die Einspruchsfrist
-            abgelaufen ist und er sie eingeschaltet hat. Das gilt dann für die Plattform insgesamt (Nummer 8.3).
+            Der Auftraggeber genehmigt die folgenden Unterauftragsverarbeiter (Nummer 8). Der Anbieter der KI-Funktionen
+            erhält Daten eines Auftraggebers nur, solange dessen Schuladministration die KI-Funktionen eingeschaltet hat
+            (Nummer 8.3).
         </p>
 
         <div class="legal-table-wrap" role="region" aria-label="Unterauftragsverarbeiter" tabindex="0">
@@ -892,66 +1062,34 @@
                         <td><span class="legal-cell-label">Ort und Garantien</span> {{ $todo('Standort und Vertrag') }}</td>
                         <td><span class="legal-cell-label">Status</span> {{ $todo('im Einsatz oder entfällt') }}</td>
                     </tr>
-                    <tr>
-                        <th scope="row">
-                            <span class="avv-optional">Optional</span>
-                            Anthropic PBC, USA (KI-Auswertung)
-                        </th>
-                        <td>
-                            <span class="legal-cell-label">Leistung und Daten</span>
-                            Entwurf und Auswertung von Texten mit Claude. Übermittelt werden Texte aus Unterrichtsstunden,
-                            Arbeitsblätter als Bild oder PDF, Texte der Schüler:innen und pseudonymisierte Transkripte von
-                            Tonaufnahmen, ohne Namen und Benutzernamen der Konten und ohne Benutzerkennungen. In
-                            Transkripten ersetzt die Plattform nur die Namen der Klasse und der Lehrkraft, gesprochene
-                            Beiträge aller Anwesenden und Namen außerhalb der Klasse können enthalten sein.
-                        </td>
-                        <td>
-                            <span class="legal-cell-label">Ort und Garantien</span>
-                            USA (Drittland), nur mit Garantien nach Art. 44 ff. DSGVO: EU-Standardvertragsklauseln oder
-                            Angemessenheitsbeschluss.
-                            @if ($aiEnabled)
-                                {{ $todo('konkrete Garantie, Datum und Fundstelle des Vertrags mit dem Anbieter') }}
-                            @endif
-                        </td>
-                        <td>
-                            <span class="legal-cell-label">Status</span>
-                            @if ($aiEnabled)
-                                aktiv
-                            @else
-                                vorbereitet, nicht aktiv – wird erst nach Mitteilung mit Widerspruchsrecht eingesetzt
-                            @endif
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row">
-                            <span class="avv-optional">Optional</span>
-                            Anbieter der Sprachverarbeitung (Transkription von Tonaufnahmen)
-                            @if ($transcriptionEnabled)
-                                {{ $todo('Name und Anschrift des Anbieters') }}
-                            @endif
-                        </th>
-                        <td>
-                            <span class="legal-cell-label">Leistung und Daten</span>
-                            Umwandlung von Tonaufnahmen des Unterrichts in Text auf einem Server. Übermittelt wird der Ton.
-                        </td>
-                        <td>
-                            <span class="legal-cell-label">Ort und Garantien</span>
-                            @if ($transcriptionEnabled)
-                                {{ $todo('Standort, Garantien und Vertrag mit dem Anbieter') }}
-                            @else
-                                Wird mit der Mitteilung angegeben. Ein Anbieter in einem Drittland nur mit Garantien nach
-                                Art. 44 ff. DSGVO.
-                            @endif
-                        </td>
-                        <td>
-                            <span class="legal-cell-label">Status</span>
-                            @if ($transcriptionEnabled)
-                                aktiv
-                            @else
-                                vorbereitet, nicht aktiv – wird erst nach Mitteilung mit Widerspruchsrecht eingesetzt
-                            @endif
-                        </td>
-                    </tr>
+                    @unless ($aiProvider['local'])
+                        <tr>
+                            <th scope="row">
+                                <span class="avv-optional">Optional</span>
+                                {{ $aiProvider['name'] }} (KI-Funktionen)
+                            </th>
+                            <td>
+                                <span class="legal-cell-label">Leistung und Daten</span>
+                                {{ $aiProvider['service'] }}: Erzeugen von Entwürfen, Auswertungen und Antworten aus
+                                pseudonymisierten Texten und Arbeitsblättern als Bild oder PDF, Spracherkennung der
+                                Ton-Abschnitte des Tuto-Mikros (Sprache Deutsch, ohne Trennung der Sprecher), Daten nach
+                                Anlage 1. Keine Nutzung der Eingaben zur Verbesserung der Produkte des Anbieters oder zum
+                                Training.
+                            </td>
+                            <td>
+                                <span class="legal-cell-label">Ort und Garantien</span>
+                                {{ $aiProvider['place'] }} {{ $aiProvider['safeguards'] }}
+                            </td>
+                            <td>
+                                <span class="legal-cell-label">Status</span>
+                                @if ($aiEnabled)
+                                    im Einsatz nur für Auftraggeber, deren Schuladministration die KI-Funktionen eingeschaltet hat
+                                @else
+                                    nicht im Einsatz: Die KI-Anbindung der Plattform ist abgeschaltet, keine Schule kann die KI-Funktionen einschalten
+                                @endif
+                            </td>
+                        </tr>
+                    @endunless
                 </tbody>
             </table>
         </div>

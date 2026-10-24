@@ -1,7 +1,7 @@
 @extends('filament.legal.layout')
 
 @section('title', 'Impressum')
-@section('description', 'Anbieterkennzeichnung der Lernplattform nach § 5 DDG')
+@section('description', 'Anbieterkennzeichnung von Tuto nach § 5 DDG')
 
 @section('content')
     <h1>Impressum</h1>
@@ -37,7 +37,7 @@
 
     <h2 id="angebot">Hinweis zum Angebot</h2>
     <p>
-        Die Lernplattform ist ein Prototyp, der bei einem Hackathon entstanden ist. Er wird als Pilot für Schulen und
+        Tuto ist eine Lernplattform, die als Prototyp bei einem Hackathon entstanden ist. Er wird als Pilot für Schulen und
         Schulträger erprobt. Das Angebot richtet sich an öffentliche Stellen, etwa Schulen und Schulträger, sowie an
         Unternehmen. Es richtet sich nicht an Verbraucher, mit Verbrauchern werden keine Verträge geschlossen.
     </p>

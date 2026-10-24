@@ -74,7 +74,7 @@ class SchoolDpaDocumentTest extends TestCase
         $this->actingAs($admin->fresh());
 
         $this->get(route('legal.dpa.school'))
-            ->assertSee('Status: Version 2025-01 angenommen, die aktuelle Version '.config('lernplattform.dpa.version').' ist noch offen.');
+            ->assertSee('Status: Version 2025-01 angenommen, die geänderte Fassung (Version '.config('lernplattform.dpa.version').') ist noch offen.');
     }
 
     public function test_the_document_links_to_my_school_where_the_agreement_is_accepted(): void
@@ -121,7 +121,7 @@ class SchoolDpaDocumentTest extends TestCase
         $current = $this->get(route('legal.dpa.school'))->assertOk();
         $current->assertSee('nach 90 Minuten ohne Aktivität')
             ->assertSee('Marburg, Hessen')
-            ->assertSee('Status: Version 2026-10 angenommen, die aktuelle Version 2027-02 ist noch offen.');
+            ->assertSee('Status: Version 2026-10 angenommen, die geänderte Fassung (Version 2027-02) ist noch offen.');
 
         $accepted = $this->get(route('legal.dpa.school.accepted'))->assertOk();
         $accepted->assertSee('Angenommene Fassung für Goethe-Gymnasium')
@@ -140,23 +140,25 @@ class SchoolDpaDocumentTest extends TestCase
 
     public function test_the_accepted_text_is_the_latest_acceptance_and_does_not_depend_on_the_current_settings(): void
     {
-        config(['lernplattform.dpa.version' => '2026-10', 'services.anthropic.enabled' => false]);
+        config(['lernplattform.dpa.version' => '2026-10', 'lernplattform.ai.enabled' => false]);
         $school = School::factory()->create();
         $admin = User::factory()->for($school)->admin()->create();
         $school->acceptDpa($admin);
 
-        config(['lernplattform.dpa.version' => '2027-02', 'services.anthropic.enabled' => true]);
+        config(['lernplattform.dpa.version' => '2027-02', 'lernplattform.ai.enabled' => true]);
         $school->acceptDpa($admin);
         $this->actingAs($admin);
 
-        config(['services.anthropic.enabled' => false]);
+        config(['lernplattform.ai.enabled' => false]);
 
-        $html = $this->get(route('legal.dpa.school.accepted'))
+        $this->get(route('legal.dpa.school.accepted'))
             ->assertOk()
             ->assertSee('Stand/Version: <strong>2027-02</strong>', false)
-            ->getContent();
+            ->assertSee('im Einsatz nur für Auftraggeber, deren Schuladministration die KI-Funktionen eingeschaltet hat')
+            ->assertDontSee('nicht im Einsatz: Die KI-Anbindung der Plattform ist abgeschaltet');
 
-        $this->assertSame(1, substr_count($html, 'vorbereitet, nicht aktiv'), 'The stored text lists the AI provider as active, only the transcription is still inactive.');
+        $this->get(route('legal.dpa.school'))
+            ->assertSee('nicht im Einsatz: Die KI-Anbindung der Plattform ist abgeschaltet');
     }
 
     public function test_there_is_no_accepted_text_before_the_first_acceptance(): void

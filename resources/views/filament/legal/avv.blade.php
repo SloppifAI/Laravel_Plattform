@@ -19,7 +19,7 @@
 @endphp
 
 @section('title', $title)
-@section('description', 'Vertrag zur Auftragsverarbeitung nach Art. 28 DSGVO für Schulen, die die Lernplattform nutzen')
+@section('description', 'Vertrag zur Auftragsverarbeitung nach Art. 28 DSGVO für Schulen, die Tuto nutzen')
 
 @section('content')
     <style>
@@ -68,7 +68,7 @@
             margin-top: 1rem;
         }
 
-        /* A fact the operator still has to fill in. */
+        /* A fact about the operator's business that only the operator can fill in (names, addresses, the servers). */
         .avv-placeholder {
             padding: 0.05em 0.3em;
             border-radius: 0.25rem;
@@ -190,8 +190,7 @@
         <div class="legal-note" role="note">
             <p class="legal-note-title">Entwurf – vor Vertragsschluss rechtlich prüfen lassen; keine Rechtsberatung.</p>
             <p>
-                Dieser Text folgt den üblichen Mustern für Verträge nach Art. 28 DSGVO und ist auf die Lernplattform
-                zugeschnitten. Er ersetzt keine rechtliche Prüfung durch eine Anwältin oder einen Anwalt oder durch die
+                Dieser Text folgt den üblichen Mustern für Verträge nach Art. 28 DSGVO und ist auf Tuto zugeschnitten. Er ersetzt keine rechtliche Prüfung durch eine Anwältin oder einen Anwalt oder durch die
                 Datenschutzbeauftragte der Schule. Angaben, die der Betreiber noch ergänzen muss, sind
                 <span class="avv-placeholder">gelb markiert</span>. Solange der Betreiber den Vertrag nicht freigegeben hat,
                 kann ihn keine Schule annehmen.
@@ -218,7 +217,7 @@
                 @if ($school->hasAcceptedCurrentDpa())
                     Status: Version {{ $school->dpa_version }} angenommen am {{ $school->dpa_accepted_at->format('d.m.Y') }}.
                 @elseif ($school->hasAcceptedDpa())
-                    Status: Version {{ $school->dpa_version }} angenommen, die aktuelle Version {{ $version }} ist noch offen.
+                    Status: Version {{ $school->dpa_version }} angenommen, die geänderte Fassung (Version {{ $version }}) ist noch offen.
                 @else
                     Status: noch nicht angenommen.
                     @unless ($isFinal)
@@ -276,7 +275,7 @@
                 {{ $school->name }} hat die Version {{ $school->dpa_version }} am
                 {{ $school->dpa_accepted_at->format('d.m.Y') }} angenommen
                 (durch {{ $school->dpa_accepted_by_name }}, Benutzername {{ $school->dpa_accepted_by_username }}). Die
-                aktuelle Version {{ $version }} ist noch nicht angenommen.
+                geänderte Fassung (Version {{ $version }}) ist noch nicht angenommen.
                 <span class="avv-noprint">Das geht unter <a href="{{ $mySchoolUrl }}">„Meine Schule“</a>.</span>
             </p>
         @else

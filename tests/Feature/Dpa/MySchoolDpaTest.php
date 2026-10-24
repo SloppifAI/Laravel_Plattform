@@ -45,7 +45,7 @@ class MySchoolDpaTest extends TestCase
             ->assertSee('Angenommen, Version '.config('lernplattform.dpa.version'))
             ->assertSee('Angenommen am 24.10.2026 um 14:05 Uhr durch Sabine Schulleitung (Benutzername sabine.leitung).')
             ->assertDontSee('Vertrag annehmen')
-            ->assertDontSee('Neue Version annehmen')
+            ->assertDontSee('Geänderte Fassung annehmen')
             ->assertSee(route('legal.dpa.school'));
     }
 
@@ -146,14 +146,14 @@ class MySchoolDpaTest extends TestCase
         config(['lernplattform.dpa.version' => '2027-02']);
 
         Livewire::test(MySchool::class)
-            ->assertSee('Neue Version zur Annahme')
-            ->assertSee('bis zur Annahme gilt Version 2026-10 weiter')
+            ->assertSee('Geänderte Fassung zur Annahme')
+            ->assertSee('Seitdem gibt es die neue Version 2027-02. Bis zur Annahme gilt die angenommene Fassung (Version 2026-10) weiter.')
             ->assertActionVisible($this->acceptAction())
             ->assertActionVisible($this->viewAcceptedAction())
             ->assertSee('Angenommene Fassung (Version 2026-10) ansehen')
             ->callAction($this->acceptAction())
             ->assertNotified('Vertrag angenommen')
-            ->assertDontSee('Neue Version annehmen');
+            ->assertDontSee('Geänderte Fassung annehmen');
 
         $school->refresh();
         $this->assertSame('2027-02', $school->dpa_version);
@@ -174,7 +174,9 @@ class MySchoolDpaTest extends TestCase
         config(['session.lifetime' => 30]);
 
         Livewire::test(MySchool::class)
-            ->assertSee('Neue Version zur Annahme')
+            ->assertSee('Geänderte Fassung zur Annahme')
+            ->assertSee('Seitdem hat sich der Vertragstext geändert, zum Beispiel eine Frist oder der KI-Anbieter.')
+            ->assertDontSee('Seitdem gibt es die neue Version')
             ->assertActionVisible($this->acceptAction());
     }
 

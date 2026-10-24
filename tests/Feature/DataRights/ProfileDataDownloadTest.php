@@ -16,6 +16,15 @@ class ProfileDataDownloadTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // The texts are asserted in German, the platform's default language (phpunit.xml runs the suite in English).
+        config(['lernplattform.locale.default' => 'de']);
+        app()->setLocale('de');
+    }
+
     /**
      * @return array<string, array{string}>
      */

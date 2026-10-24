@@ -4,21 +4,38 @@ namespace Tests\Feature\DataRights;
 
 use App\MessageAuthor;
 use App\Models\Answer;
+use App\Models\ClassBookEntry;
+use App\Models\ClassSubstitution;
+use App\Models\ConsentForm;
 use App\Models\ExplanationMessage;
 use App\Models\ExplanationSession;
 use App\Models\Lesson;
+use App\Models\LessonRecording;
 use App\Models\Question;
+use App\Models\RecordingConsent;
 use App\Models\SchoolClass;
+use App\Models\StudentQuestion;
 use App\Models\Submission;
 use App\Models\User;
+use App\Support\Notify;
 use App\Support\PersonalDataExport;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Arr;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class PersonalDataExportTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // The texts are asserted in German, the platform's default language (phpunit.xml runs the suite in English).
+        config(['lernplattform.locale.default' => 'de']);
+        app()->setLocale('de');
+    }
 
     public function test_student_export_contains_the_own_work_but_no_secrets_and_no_expectations(): void
     {
@@ -66,6 +83,7 @@ class PersonalDataExportTest extends TestCase
             'rolle' => 'Schüler:in',
             'schule' => $schoolClass->school->name,
             'klasse' => '7b',
+            'sprache' => null,
         ], collect($export['konto'])->except('registriert_am')->all());
 
         $this->assertCount(1, $export['abgaben']);
@@ -220,5 +238,210 @@ class PersonalDataExportTest extends TestCase
         $this->assertSame($user->school?->name, $export['konto']['schule']);
         $this->assertNull($export['konto']['klasse']);
         $this->assertStringNotContainsString('Text einer Schülerin', json_encode($export, JSON_UNESCAPED_UNICODE));
+    }
+
+    public function test_student_export_holds_language_questions_consent_and_tuto_mikro_attendance(): void
+    {
+        $schoolClass = SchoolClass::factory()->create();
+        $student = User::factory()->student($schoolClass)->create(['locale' => 'en']);
+        $classmate = User::factory()->student($schoolClass)->create(['name' => 'Mia Klassenkameradin']);
+        $teacher = User::factory()->teacher()->for($schoolClass->school)->create(['name' => 'Frau Antwortende']);
+        $lesson = Lesson::factory()->for($schoolClass)->for($teacher, 'teacher')->publishedFor([$student, $classmate])->create(['subject' => 'Biologie', 'topic' => 'Zellen']);
+        StudentQuestion::factory()->for($student, 'student')->for($lesson)->answered('Schau auf Seite 12.')->create(['question' => 'Was ist ein Zellkern?']);
+        StudentQuestion::factory()->for($classmate, 'student')->for($lesson)->create(['question' => 'Frage der Mitschülerin']);
+        RecordingConsent::factory()->for($student, 'student')->agreedTo(['audio', 'transcript'])->create([
+            'guardian_name' => 'Maria Muster',
+            'source' => RecordingConsent::SOURCE_PAPER,
+            'recorded_by' => $teacher->id,
+            'token_hash' => str_repeat('f', 64),
+        ]);
+        LessonRecording::factory()->for($lesson)->presentStudents([$student, $classmate])->finished()->create();
+        LessonRecording::factory()->for($lesson)->presentStudents([$classmate])->create();
+
+        $export = PersonalDataExport::for($student);
+
+        $this->assertSame('English', $export['konto']['sprache']);
+        $this->assertSame([[
+            'fach' => 'Biologie',
+            'thema' => 'Zellen',
+            'frage' => 'Was ist ein Zellkern?',
+            'antwort' => 'Schau auf Seite 12.',
+        ]], array_map(fn (array $question): array => Arr::only($question, ['fach', 'thema', 'frage', 'antwort']), $export['rueckfragen']));
+        $this->assertSame('Maria Muster', $export['einwilligung_tuto_mikro']['erziehungsberechtigte_person']);
+        $this->assertSame('auf Papier', $export['einwilligung_tuto_mikro']['art']);
+        $this->assertSame([ConsentForm::PURPOSES['audio'], ConsentForm::PURPOSES['transcript']], $export['einwilligung_tuto_mikro']['zwecke']);
+        $this->assertCount(1, $export['tuto_mikro_anwesenheit'], 'Only the session the student was marked present in.');
+        $this->assertSame('Zellen', $export['tuto_mikro_anwesenheit'][0]['thema']);
+
+        $json = json_encode($export, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+
+        foreach (['Mia Klassenkameradin', 'Frage der Mitschülerin', 'Frau Antwortende', str_repeat('f', 64), 'token_hash'] as $forbidden) {
+            $this->assertStringNotContainsString($forbidden, $json);
+        }
+    }
+
+    public function test_the_consent_reaches_others_only_if_they_look_after_the_consents_of_the_class(): void
+    {
+        $student = User::factory()->student()->create();
+        RecordingConsent::factory()->for($student, 'student')->create(['guardian_name' => 'Maria Muster']);
+        $admin = User::factory()->admin()->for($student->school)->create();
+        $otherTeacher = User::factory()->teacher()->for($student->school)->create();
+
+        $this->assertSame('Maria Muster', PersonalDataExport::for($student, $admin)['einwilligung_tuto_mikro']['erziehungsberechtigte_person']);
+        $this->assertNull(PersonalDataExport::for($student, $otherTeacher)['einwilligung_tuto_mikro']);
+    }
+
+    public function test_teacher_export_holds_mikro_sessions_classes_substitutions_and_answers_without_student_data(): void
+    {
+        $teacher = User::factory()->teacher()->create();
+        $ledClass = SchoolClass::factory()->for($teacher->school)->create(['name' => '8a', 'teacher_id' => $teacher->id]);
+        $assignedClass = SchoolClass::factory()->for($teacher->school)->create(['name' => '9c']);
+        $assignedClass->teachers()->attach($teacher);
+        $coveredClass = SchoolClass::factory()->for($teacher->school)->create(['name' => '5d']);
+        ClassSubstitution::factory()->for($coveredClass)->create(['substitute_id' => $teacher->id, 'note' => 'Bitte Kapitel 3']);
+        $students = User::factory()->count(2)->student($ledClass)->sequence(['name' => 'Ida Schuelerin'], ['name' => 'Ben Schueler'])->create();
+        $lesson = Lesson::factory()->for($ledClass)->for($teacher, 'teacher')->publishedFor($students)->create(['topic' => 'Bruchrechnung']);
+        LessonRecording::factory()->for($lesson)->presentStudents($students)->finished(600)->create([
+            'purposes' => ['audio', 'transcript', 'ai_analysis'],
+            'audio_sent_to_ai' => true,
+        ]);
+        StudentQuestion::factory()->for($students[0], 'student')->for($lesson)->answered('Erst kürzen, dann rechnen.')->create(['question' => 'Wie kürze ich?']);
+        RecordingConsent::factory()->for($students[1], 'student')->create(['recorded_by' => $teacher->id, 'guardian_name' => 'Maria Muster']);
+
+        $export = PersonalDataExport::for($teacher);
+
+        $this->assertSame(['8a'], $export['klassenleitung']);
+        $this->assertSame(['9c'], $export['zugeordnete_klassen']);
+        $this->assertSame([['klasse' => '5d', 'hinweis' => 'Bitte Kapitel 3']], array_map(fn (array $substitution): array => Arr::only($substitution, ['klasse', 'hinweis']), $export['vertretungen']));
+        $this->assertCount(1, $export['tuto_mikro_sitzungen']);
+        $this->assertSame(2, $export['tuto_mikro_sitzungen'][0]['anzahl_anwesende_schueler']);
+        $this->assertSame(600, $export['tuto_mikro_sitzungen'][0]['dauer_sekunden']);
+        $this->assertTrue($export['tuto_mikro_sitzungen'][0]['ton_an_ki_anbieter']);
+        $this->assertSame(array_values(ConsentForm::PURPOSES_SHORT), $export['tuto_mikro_sitzungen'][0]['gepruefte_zwecke']);
+        $this->assertSame('Erst kürzen, dann rechnen.', $export['beantwortete_rueckfragen'][0]['antwort']);
+        $this->assertSame(1, $export['erfasste_einwilligungserklaerungen']);
+
+        $json = json_encode($export, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+
+        foreach (['Ida Schuelerin', 'Ben Schueler', 'Wie kürze ich?', 'Maria Muster', 'present_student_ids'] as $forbidden) {
+            $this->assertStringNotContainsString($forbidden, $json);
+        }
+
+        $forAdmin = PersonalDataExport::for($teacher, User::factory()->admin()->for($teacher->school)->create());
+
+        $this->assertSame([], $forAdmin['tuto_mikro_sitzungen'], 'The school administration does not see Tuto-Mikro sessions.');
+    }
+
+    public function test_admin_export_holds_what_the_administration_switched_on_for_its_school(): void
+    {
+        $admin = User::factory()->admin()->create(['name' => 'Sabine Leitung']);
+        $school = $admin->school;
+        $school->forceFill(['ai_enabled_at' => now(), 'ai_enabled_by' => $admin->id, 'recordings_enabled_at' => now(), 'recordings_enabled_by' => $admin->id])->save();
+        $school->acceptDpa($admin);
+        ConsentForm::factory()->for($school)->create(['created_by' => $admin->id, 'title' => 'Einwilligung zum Tuto-Mikro']);
+        $schoolClass = SchoolClass::factory()->for($school)->create(['name' => '6b']);
+        ClassSubstitution::factory()->for($schoolClass)->create([
+            'granted_by' => $admin->id,
+            'substitute_id' => User::factory()->teacher()->for($school)->create(['name' => 'Herr Vertretung'])->id,
+        ]);
+
+        $export = PersonalDataExport::for($admin);
+
+        $this->assertNotNull($export['schuleinstellungen']['ki_funktionen_eingeschaltet_am']);
+        $this->assertNotNull($export['schuleinstellungen']['tuto_mikro_freigeschaltet_am']);
+        $this->assertSame([config('lernplattform.dpa.version')], array_column($export['schuleinstellungen']['avv_annahmen'], 'version'));
+        $this->assertSame(['Einwilligung zum Tuto-Mikro'], array_column($export['schuleinstellungen']['einwilligungstexte'], 'titel'));
+        $this->assertSame(['6b'], array_column($export['eingerichtete_vertretungen'], 'klasse'));
+        $this->assertStringNotContainsString('Herr Vertretung', json_encode($export, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
+    }
+
+    public function test_an_administration_export_holds_the_lessons_answers_and_klassenbuch_entries_of_the_administration(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $schoolClass = SchoolClass::factory()->for($admin->school)->create(['name' => '7b', 'teacher_id' => null]);
+        $student = User::factory()->student($schoolClass)->create();
+        $lesson = Lesson::factory()->for($schoolClass)->for($admin, 'teacher')->create(['topic' => 'Stunde der Administration', 'notes' => 'Notizen der Admin-Stunde']);
+        StudentQuestion::factory()->for($student, 'student')->for($lesson)->answered('Antwort der Schuladministration')->create();
+        ClassBookEntry::factory()->for($schoolClass, 'schoolClass')->create(['teacher_id' => $admin->id, 'topic' => 'Eintrag der Administration']);
+
+        $export = PersonalDataExport::for($admin);
+
+        $this->assertSame(['Stunde der Administration'], array_column($export['unterrichtsstunden'], 'thema'));
+        $this->assertSame('Notizen der Admin-Stunde', $export['unterrichtsstunden'][0]['notizen']);
+        $this->assertSame(['Antwort der Schuladministration'], array_column($export['beantwortete_rueckfragen'], 'antwort'));
+        $this->assertSame(['Eintrag der Administration'], array_column($export['klassenbuch_eintraege'], 'thema'));
+        $this->assertStringNotContainsString($student->name, json_encode($export, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
+    }
+
+    public function test_the_platform_operator_gets_the_account_and_the_agreements_of_an_administration_but_nothing_from_inside_the_school(): void
+    {
+        $operator = User::factory()->operator()->create();
+        $admin = User::factory()->admin()->create();
+        $school = $admin->school;
+        $school->forceFill(['ai_enabled_at' => now(), 'ai_enabled_by' => $admin->id])->save();
+        $school->acceptDpa($admin);
+        ConsentForm::factory()->for($school)->create(['created_by' => $admin->id, 'title' => 'Einwilligung der Schule']);
+        $schoolClass = SchoolClass::factory()->for($school)->create(['name' => 'Geheimklasse 7b', 'teacher_id' => null]);
+        ClassSubstitution::factory()->for($schoolClass)->create(['granted_by' => $admin->id]);
+        RecordingConsent::factory()->create(['recorded_by' => $admin->id]);
+        $lesson = Lesson::factory()->for($schoolClass)->for($admin, 'teacher')->create(['topic' => 'Geheimes Unterrichtsthema']);
+        Notify::submissionReceived(Submission::factory()->for($lesson)->create());
+        $this->assertSame(1, $admin->notifications()->count(), 'The administration has a bell entry that names the lesson.');
+
+        $forOperator = PersonalDataExport::for($admin, $operator);
+
+        $this->assertSame(['hinweis', 'erstellt_am', 'konto', 'schuleinstellungen'], array_keys($forOperator));
+        $this->assertSame(['avv_annahmen'], array_keys($forOperator['schuleinstellungen']));
+        $this->assertSame([config('lernplattform.dpa.version')], array_column($forOperator['schuleinstellungen']['avv_annahmen'], 'version'));
+
+        $json = json_encode($forOperator, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+
+        foreach (['Geheimklasse 7b', 'Geheimes Unterrichtsthema', 'Einwilligung der Schule'] as $forbidden) {
+            $this->assertStringNotContainsString($forbidden, $json);
+        }
+
+        $own = PersonalDataExport::for($admin);
+
+        $this->assertCount(1, $own['benachrichtigungen']);
+        $this->assertSame(['Geheimes Unterrichtsthema'], array_column($own['unterrichtsstunden'], 'thema'));
+        $this->assertSame(['Geheimklasse 7b'], array_column($own['eingerichtete_vertretungen'], 'klasse'));
+    }
+
+    public function test_the_optional_sections_reach_others_only_if_they_may_see_them(): void
+    {
+        $teacher = User::factory()->teacher()->create();
+        $schoolClass = SchoolClass::factory()->for($teacher->school)->create(['name' => 'Klasse der Leitung', 'teacher_id' => $teacher->id]);
+        ClassSubstitution::factory()->for($schoolClass)->create();
+        RecordingConsent::factory()->for(User::factory()->student($schoolClass), 'student')->create(['recorded_by' => $teacher->id]);
+        $admin = User::factory()->admin()->for($teacher->school)->create();
+        $teacher->school->forceFill(['ai_enabled_at' => now(), 'ai_enabled_by' => $admin->id])->save();
+        $colleague = User::factory()->teacher()->for($teacher->school)->create();
+
+        $forAdmin = PersonalDataExport::for($teacher, $admin);
+
+        $this->assertSame(['Klasse der Leitung'], array_column($forAdmin['eingerichtete_vertretungen'], 'klasse'));
+        $this->assertSame(1, $forAdmin['erfasste_einwilligungserklaerungen']);
+        $this->assertArrayHasKey('schuleinstellungen', PersonalDataExport::for($admin, $admin));
+
+        $forColleague = PersonalDataExport::for($teacher, $colleague);
+
+        $this->assertArrayNotHasKey('eingerichtete_vertretungen', $forColleague);
+        $this->assertArrayNotHasKey('erfasste_einwilligungserklaerungen', $forColleague);
+        $this->assertStringNotContainsString('Klasse der Leitung', json_encode(Arr::except($forColleague, 'klassenleitung'), JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
+        $this->assertArrayNotHasKey('schuleinstellungen', PersonalDataExport::for($admin, $colleague));
+    }
+
+    public function test_the_bell_is_part_of_the_own_export_only(): void
+    {
+        $student = User::factory()->student()->create();
+        $admin = User::factory()->admin()->for($student->school)->create();
+        $lesson = Lesson::factory()->for($student->schoolClass)->publishedFor([$student])->create();
+        Notify::homeworkReleased($lesson, [$student]);
+        $this->assertSame(1, $student->notifications()->count());
+        $student->notifications()->update(['read_at' => now()]);
+
+        $this->assertCount(1, PersonalDataExport::for($student)['benachrichtigungen']);
+        $this->assertCount(1, PersonalDataExport::for($student, $student)['benachrichtigungen']);
+        $this->assertArrayNotHasKey('benachrichtigungen', PersonalDataExport::for($student, $admin));
     }
 }

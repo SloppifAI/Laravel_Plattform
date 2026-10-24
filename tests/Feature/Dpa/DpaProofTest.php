@@ -34,12 +34,18 @@ class DpaProofTest extends TestCase
         return [
             'school years kept' => [['lernplattform.retention.school_years_kept' => 3]],
             'start of the school year' => [['lernplattform.retention.school_year_starts' => '09-15']],
-            'days a recording is kept' => [['lernplattform.recordings.keep_days' => 9]],
+            'end of the two-year transition' => [['lernplattform.retention.one_year_rule_from' => '2028-08-01']],
+            'days a Tuto-Mikro session is kept' => [['lernplattform.recordings.session_keep_days' => 200]],
+            'hours a Tuto-Mikro session stays open' => [['lernplattform.recordings.max_session_hours' => 4]],
+            'days a read notification is kept' => [['lernplattform.notifications.keep_read_days' => 7]],
+            'days a notification is kept at most' => [['lernplattform.notifications.keep_days' => 30]],
+            'days a substitution may last' => [['lernplattform.substitutions.max_days' => 30]],
             'session lifetime' => [['session.lifetime' => 45]],
             'minutes a reset link is valid' => [['auth.passwords.users.expire' => 15]],
             'secure session cookie' => [['session.secure' => true]],
-            'AI switched on' => [['services.anthropic.enabled' => true]],
-            'transcription switched on' => [['services.transcription.enabled' => true]],
+            'platform AI switched on' => [['lernplattform.ai.enabled' => true]],
+            'local AI model' => [['lernplattform.ai.provider' => 'ollama']],
+            'another AI provider' => [['lernplattform.ai.provider' => 'mistral']],
         ];
     }
 
@@ -50,15 +56,20 @@ class DpaProofTest extends TestCase
     public function test_every_setting_that_changes_the_text_changes_the_fingerprint(array $change): void
     {
         config([
-            'lernplattform.retention.school_years_kept' => 2,
+            'lernplattform.retention.school_years_kept' => 1,
             'lernplattform.retention.school_year_starts' => '08-01',
-            'lernplattform.recordings.keep_days' => 14,
+            'lernplattform.retention.one_year_rule_from' => '2027-08-01',
+            'lernplattform.recordings.session_keep_days' => 365,
+            'lernplattform.recordings.max_session_hours' => 6,
+            'lernplattform.notifications.keep_read_days' => 14,
+            'lernplattform.notifications.keep_days' => 60,
+            'lernplattform.substitutions.max_days' => 90,
             'session.lifetime' => 120,
             'session.secure' => false,
             'auth.passwords.users.expire' => 60,
             'auth.defaults.passwords' => 'users',
-            'services.anthropic.enabled' => false,
-            'services.transcription.enabled' => false,
+            'lernplattform.ai.enabled' => false,
+            'lernplattform.ai.provider' => 'gemini',
         ]);
 
         $fingerprint = DpaAcceptance::fingerprint();
@@ -110,6 +121,25 @@ class DpaProofTest extends TestCase
         $this->assertStringContainsString('nach 45 Minuten ohne Aktivität', $acceptance->content);
         $this->assertStringNotContainsString('90 Minuten', $acceptance->content);
         $this->assertFalse($school->refresh()->hasAcceptedCurrentDpa(), 'The settings changed since, so the acceptance is outdated.');
+    }
+
+    public function test_the_stored_text_is_the_german_contract_whatever_language_the_accepting_account_uses(): void
+    {
+        $school = School::factory()->create();
+        $admin = User::factory()->for($school)->admin()->create(['locale' => 'en']);
+
+        app()->setLocale('de');
+        $german = DpaAcceptance::render($school);
+
+        // The panel applies the language of the account, the contract the school read is the German one.
+        app()->setLocale('en');
+        $school->acceptDpa($admin);
+
+        $content = $school->dpaAcceptances()->sole()->content;
+
+        $this->assertSame($german, $content);
+        $this->assertStringContainsString('Stunden anlegen, die Lernstände der Klasse sehen', $content);
+        $this->assertStringNotContainsString('create lessons', $content);
     }
 
     public function test_each_acceptance_is_added_and_the_school_columns_follow_the_latest(): void

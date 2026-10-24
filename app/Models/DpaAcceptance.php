@@ -13,9 +13,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * the school saw it, the version and the fingerprint of the settings behind it, and who accepted it, as plain text
  * so that deleting the account never deletes the proof. Rows are only added, never changed.
  *
- * The text of the contract depends on the configuration (retention periods, session lifetime, whether AI and
- * transcription are switched on). `terms()` lists exactly those values and the contract view reads them from there, so
- * the fingerprint changes whenever the text would say something different.
+ * The text of the contract depends on the configuration (retention periods, Tuto-Mikro and notification limits, session
+ * lifetime, whether the platform offers the AI and which provider). `terms()` lists exactly those values and the
+ * contract view reads them from there, so the fingerprint changes whenever the text would say something different.
  */
 #[Fillable(['school_id', 'version', 'fingerprint', 'content', 'accepted_at', 'accepted_by', 'accepted_by_name', 'accepted_by_username'])]
 class DpaAcceptance extends Model
@@ -26,19 +26,24 @@ class DpaAcceptance extends Model
     /**
      * The configuration values the contract text is built from.
      *
-     * @return array{keptYears: int, schoolYearStarts: string, recordingDays: int, sessionMinutes: int, resetMinutes: int, secureCookie: bool, aiEnabled: bool, transcriptionEnabled: bool}
+     * @return array{keptYears: int, schoolYearStarts: string, oneYearRuleFrom: string, mikroSessionDays: int, mikroMaxSessionHours: int, notificationReadDays: int, notificationDays: int, substitutionMaxDays: int, sessionMinutes: int, resetMinutes: int, secureCookie: bool, aiEnabled: bool, aiProvider: string}
      */
     public static function terms(): array
     {
         return [
             'keptYears' => (int) config('lernplattform.retention.school_years_kept'),
             'schoolYearStarts' => (string) config('lernplattform.retention.school_year_starts'),
-            'recordingDays' => (int) config('lernplattform.recordings.keep_days'),
+            'oneYearRuleFrom' => (string) config('lernplattform.retention.one_year_rule_from'),
+            'mikroSessionDays' => (int) config('lernplattform.recordings.session_keep_days'),
+            'mikroMaxSessionHours' => (int) config('lernplattform.recordings.max_session_hours'),
+            'notificationReadDays' => (int) config('lernplattform.notifications.keep_read_days'),
+            'notificationDays' => (int) config('lernplattform.notifications.keep_days'),
+            'substitutionMaxDays' => (int) config('lernplattform.substitutions.max_days'),
             'sessionMinutes' => (int) config('session.lifetime'),
             'resetMinutes' => (int) config('auth.passwords.'.config('auth.defaults.passwords').'.expire'),
             'secureCookie' => (bool) config('session.secure'),
-            'aiEnabled' => (bool) config('services.anthropic.enabled'),
-            'transcriptionEnabled' => (bool) config('services.transcription.enabled'),
+            'aiEnabled' => (bool) config('lernplattform.ai.enabled'),
+            'aiProvider' => (string) config('lernplattform.ai.provider'),
         ];
     }
 
@@ -51,7 +56,7 @@ class DpaAcceptance extends Model
     }
 
     /**
-     * Whether the operator released the contract. As long as it is a draft with open placeholders, nobody can accept it.
+     * Whether the operator released the contract (the default). With LERNPLATTFORM_DPA_FINAL=false it is a draft that nobody can accept.
      */
     public static function isFinal(): bool
     {

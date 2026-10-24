@@ -27,7 +27,7 @@ class AdminDataExportTest extends TestCase
             ->test(EditUser::class, ['record' => $student->getRouteKey()])
             ->assertActionVisible('downloadData')
             ->callAction('downloadData')
-            ->assertFileDownloaded('lernplattform-daten-lena.muster-2026-10-24.json', contentType: 'application/json; charset=UTF-8');
+            ->assertFileDownloaded('platform-data-lena.muster-2026-10-24.json', contentType: 'application/json; charset=UTF-8');
 
         $content = base64_decode($page->effects['download']['content']);
         $data = json_decode($content, true, flags: JSON_THROW_ON_ERROR);
@@ -105,7 +105,7 @@ class AdminDataExportTest extends TestCase
             ->test(EditUser::class, ['record' => $teacher->getRouteKey()])
             ->callAction('downloadData');
 
-        $this->assertMatchesRegularExpression('/^lernplattform-daten-[A-Za-z0-9._-]+-\d{4}-\d{2}-\d{2}\.json$/', $page->effects['download']['name']);
+        $this->assertMatchesRegularExpression('/^platform-data-[A-Za-z0-9._-]+-\d{4}-\d{2}-\d{2}\.json$/', $page->effects['download']['name']);
     }
 
     private function classOf(User $admin): SchoolClass

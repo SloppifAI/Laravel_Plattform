@@ -22,6 +22,10 @@ class DpaGateTest extends TestCase
     {
         parent::setUp();
 
+        // The texts are asserted in German, the platform's default language (phpunit.xml runs the suite in English).
+        config(['lernplattform.locale.default' => 'de']);
+        app()->setLocale('de');
+
         $this->withoutVite();
         config(['lernplattform.dpa.final' => true]);
     }

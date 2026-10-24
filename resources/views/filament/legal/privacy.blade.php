@@ -1,14 +1,18 @@
 @extends('filament.legal.layout')
 
 @php
+    use App\Filament\Pages\AiSettings;
+    use App\Models\ClassSubstitution;
+    use App\Models\School;
     use App\Models\User;
+    use Carbon\CarbonImmutable;
     use Filament\AvatarProviders\UiAvatarsProvider;
     use Filament\Facades\Filament;
     use Filament\Models\Contracts\HasAvatar;
 
     /*
-     * One list drives the table of contents. The headings below carry the same number and title;
-     * tests/Feature/LegalPagesTest keeps both in sync.
+     * One list drives the table of contents and the numbered headings, so they cannot drift apart; references to other
+     * sections use $no(). tests/Feature/LegalPagesTest keeps both in sync.
      */
     $sections = [
         'verantwortlicher' => 'Verantwortlicher',
@@ -18,6 +22,7 @@
         'benutzerkonten' => 'Schulen und Benutzerkonten',
         'lerndaten' => 'Unterrichts- und Lerndaten',
         'ki' => 'Einsatz von KI',
+        'tuto-mikro' => 'Tuto-Mikro',
         'schriftarten' => 'Schriftarten und externe Inhalte',
         'kontakt' => 'Kontakt per E-Mail',
         'speicherdauer' => 'Speicherdauer',
@@ -26,16 +31,32 @@
         'beschwerde' => 'Beschwerderecht',
         'aenderungen' => 'Änderungen dieser Erklärung',
     ];
+    $no = fn (string $id): int => array_search($id, array_keys($sections), true) + 1;
+    $heading = fn (string $id): string => $no($id).'. '.$sections[$id];
 
-    $aiEnabled = (bool) config('services.anthropic.enabled');
     $sessionMinutes = (int) config('session.lifetime');
-    $recordingDays = (int) config('lernplattform.recordings.keep_days');
     $keptYears = (int) config('lernplattform.retention.school_years_kept');
     $keptPhrase = match (true) {
         $keptYears <= 1 => 'das laufende Schuljahr',
         $keptYears === 2 => 'das laufende und das vorherige Schuljahr',
         default => 'das laufende und die '.($keptYears - 1).' vorherigen Schuljahre',
     };
+    $oneYearRuleFrom = (string) config('lernplattform.retention.one_year_rule_from');
+    $transitionDate = $keptYears === 1 && CarbonImmutable::hasFormat($oneYearRuleFrom, 'Y-m-d')
+        ? CarbonImmutable::parse($oneYearRuleFrom)->format('d.m.Y')
+        : null;
+    $mikroSessionDays = (int) config('lernplattform.recordings.session_keep_days');
+    $mikroMaxSessionHours = (int) config('lernplattform.recordings.max_session_hours');
+    $notificationReadDays = (int) config('lernplattform.notifications.keep_read_days');
+    $notificationDays = (int) config('lernplattform.notifications.keep_days');
+    $substitutionMaxDays = (int) config('lernplattform.substitutions.max_days');
+
+    // The platform switch; every school still decides for itself (School::aiEnabled()).
+    $aiEnabled = (bool) config('lernplattform.ai.enabled');
+    $aiProvider = (string) config('lernplattform.ai.provider');
+    $aiIsLocal = $aiProvider === 'ollama';
+    $aiIsGoogle = $aiProvider === 'gemini';
+    $blockedSubjects = implode(', ', School::DEFAULT_MIKRO_BLOCKED_SUBJECTS);
 
     /*
      * Filament's default avatar provider builds an https://ui-avatars.com URL, so the browser asks that host for
@@ -47,14 +68,14 @@
 @endphp
 
 @section('title', 'Datenschutzerklärung')
-@section('description', 'Wie die Lernplattform personenbezogene Daten verarbeitet und welche Rechte Sie haben')
+@section('description', 'Wie Tuto personenbezogene Daten verarbeitet und welche Rechte Sie haben')
 
 @section('content')
     <h1>Datenschutzerklärung</h1>
     <p><strong>Stand: Oktober 2026</strong></p>
     <p>
         Diese Erklärung informiert Sie nach Art. 13 und 14 DSGVO darüber, welche personenbezogenen Daten auf der
-        Lernplattform verarbeitet werden, wozu das geschieht und welche Rechte Sie haben. Sie richtet sich an
+        Lernplattform Tuto verarbeitet werden, wozu das geschieht und welche Rechte Sie haben. Sie richtet sich an
         Schüler:innen, Eltern, Lehrkräfte und die Verwaltung.
     </p>
 
@@ -75,7 +96,7 @@
         </ol>
     </nav>
 
-    <h2 id="verantwortlicher">1. Verantwortlicher</h2>
+    <h2 id="verantwortlicher">{{ $heading('verantwortlicher') }}</h2>
     <p>
         <strong>Demo- und Pilotbetrieb.</strong> Für die Verarbeitung personenbezogener Daten auf dieser Plattform ist
         derzeit verantwortlich im Sinne der DSGVO:
@@ -91,40 +112,45 @@
     </address>
     <p>Weitere Angaben zum Anbieter finden Sie im <a href="{{ route('legal.imprint') }}">Impressum</a>.</p>
     <p>
-        <strong>Regulärer Schulbetrieb.</strong> Setzt eine Schule die Lernplattform im Unterricht ein, ist die Schule
-        beziehungsweise der Schulträger verantwortlich, weil sie über Zwecke und Mittel der Verarbeitung entscheiden. Wir
-        verarbeiten die Daten dann als Auftragsverarbeiter nach Art. 28 DSGVO, auf Grundlage eines Vertrags zur
-        Auftragsverarbeitung und nur nach Weisung der Schule. Erste Ansprechpartnerin für Fragen zum Datenschutz ist dann
-        die Schule. Ihre Kontaktdaten und die ihrer Datenschutzbeauftragten stehen in den Datenschutzhinweisen der
-        Schule.
+        <strong>Regulärer Schulbetrieb.</strong> Setzt eine Schule Tuto im Unterricht ein, ist die Schule beziehungsweise
+        der Schulträger verantwortlich, weil sie über Zwecke und Mittel der Verarbeitung entscheiden. Wir verarbeiten die
+        Daten dann als Auftragsverarbeiter nach Art. 28 DSGVO, auf Grundlage eines
+        <a href="{{ route('legal.dpa') }}">Vertrags zur Auftragsverarbeitung</a> und nur nach Weisung der Schule. Erste
+        Ansprechpartnerin für Fragen zum Datenschutz ist dann die Schule. Ihre Kontaktdaten und die ihrer
+        Datenschutzbeauftragten stehen in den Datenschutzhinweisen der Schule.
     </p>
     <p>
         <strong>Registrierung einer Schule.</strong> Für die Angaben, die eine Schule bei ihrer Registrierung macht (die
         Stammdaten der Schule und der Nachweis, dass sie den Vertrag zur Auftragsverarbeitung angenommen hat), und
-        für die Verwaltung der Schulen auf der Plattform (Abschnitt 5) sind wir selbst verantwortlich. Wir schließen damit
-        die Nutzung der Plattform mit der Schule ab und halten die Plattform sicher. Das Konto der Schuladministration
-        selbst, auch das erste, ist ein Konto der Schule: Dessen Daten verarbeiten wir im Auftrag der Schule.
+        für die Verwaltung der Schulen auf der Plattform (Abschnitt {{ $no('benutzerkonten') }}) sind wir selbst
+        verantwortlich. Wir schließen damit die Nutzung der Plattform mit der Schule ab und halten die Plattform sicher.
+        Das Konto der Schuladministration selbst, auch das erste, ist ein Konto der Schule: Dessen Daten verarbeiten wir
+        im Auftrag der Schule.
     </p>
 
-    <h2 id="ueberblick">2. Überblick</h2>
+    <h2 id="ueberblick">{{ $heading('ueberblick') }}</h2>
     <p>
-        Die Lernplattform unterstützt das Lernen. Lehrkräfte halten fest, was sie im Unterricht behandelt haben. Die
-        Plattform entwirft daraus passende Hausaufgaben. Schüler:innen sehen, was sie schon verstanden haben und wo sie
-        noch üben sollten.
+        Tuto unterstützt das Lernen. Lehrkräfte halten fest, was sie im Unterricht behandelt haben, und führen das
+        Klassenbuch. Tuto entwirft daraus passende Hausaufgaben, auf Wunsch in Stufen und in Einfacher Sprache.
+        Schüler:innen sehen, was sie schon verstanden haben und wo sie noch üben sollten, und können ihrer Lehrkraft
+        Rückfragen stellen.
     </p>
     <ul>
         <li>
-            Die Plattform zeichnet keinen Unterricht von sich aus auf, und es gibt kein Video. Lehrkräfte tragen selbst
-            Notizen, ein Tafelbild oder einen Transkripttext ein und können Arbeitsblätter als Foto, Scan oder PDF
-            hochladen. Nur wenn die Schule das optionale Aufnahme-Modul freischaltet und die nötigen Einwilligungen
-            vorliegen, kann eine Lehrkraft den Ton einer Stunde aufnehmen. Eine Aufnahme sieht nur die aufnehmende
-            Lehrkraft, und sie wird nach {{ $recordingDays }} Tagen gelöscht. Was dabei verarbeitet wird, steht im
-            <a href="{{ route('legal.dpa') }}">Vertrag zur Auftragsverarbeitung</a> (Anlage 1).
+            Tuto zeichnet keinen Unterricht auf, und es gibt kein Bild und kein Video. Lehrkräfte tragen selbst Notizen
+            oder ein Tafelbild ein und können Arbeitsblätter als Foto, Scan oder PDF hochladen. Nur wenn die Schule das
+            Tuto-Mikro freischaltet und die Einwilligungen vorliegen, kann eine Lehrkraft das Mikrofon ihres Geräts
+            einschalten. Daraus entstehen Notizen aus der Stunde, der Ton wird dabei nicht gespeichert (siehe Abschnitt
+            {{ $no('tuto-mikro') }}).
+        </li>
+        <li>
+            KI nutzt Tuto nur, wenn die Schule die KI-Funktionen selbst einschaltet. Namen werden vorher ersetzt (siehe
+            Abschnitt {{ $no('ki') }}).
         </li>
         <li>
             Es gibt kein Tracking: keine Reichweitenmessung, keine Werbung und keine Schriftarten von fremden Servern.
             @if ($externalAvatars)
-                Nur das Platzhalter-Bild neben dem Namen kommt von einem fremden Server (siehe Abschnitt 8).
+                Nur das Platzhalter-Bild neben dem Namen kommt von einem fremden Server (siehe Abschnitt {{ $no('schriftarten') }}).
             @else
                 Es werden auch keine Inhalte von Dritten eingebettet.
             @endif
@@ -132,37 +158,48 @@
         <li>
             Jede Schule registriert sich selbst auf der Plattform. Alles, was zu einer Schule gehört, also Klassen,
             Konten, Unterrichtsstunden, Abgaben und Gespräche, sehen nur Personen dieser Schule. Schulen sehen nichts
-            voneinander (siehe Abschnitt 5 und 6).
+            voneinander (siehe Abschnitt {{ $no('benutzerkonten') }} und {{ $no('lerndaten') }}).
         </li>
         <li>
             Schüler:innen können sich mit dem Klassencode ihrer Lehrkraft selbst registrieren. Konten für Lehrkräfte und
-            weitere Personen legt die Schuladministration der Schule an (siehe Abschnitt 5).
+            weitere Personen legt die Schuladministration der Schule an (siehe Abschnitt {{ $no('benutzerkonten') }}).
         </li>
-        <li>Zum Einsatz von KI und zu den Verständniswerten lesen Sie bitte Abschnitt 7.</li>
     </ul>
 
     <aside class="legal-note" aria-labelledby="kurz-fuer-schueler">
         <p class="legal-note-title" id="kurz-fuer-schueler">Kurz erklärt für Schüler:innen</p>
         <ul>
             <li>
-                Die Plattform kennt deinen Namen, deinen Benutzernamen, deine Klasse und dein Passwort. Dein Passwort wird
-                nur in verschlüsselter Form (als Hash) gespeichert, die Plattform kann es nicht nachlesen. Hat die
-                Schuladministration deiner Schule dein Konto angelegt, hat sie dein Startpasswort einmal gesehen. Ändere es dann in deinem
-                Profil.
+                Tuto kennt deinen Namen, deinen Benutzernamen, deine Klasse, die Sprache, die du gewählt hast, und dein
+                Passwort. Dein Passwort wird nur in verschlüsselter Form (als Hash) gespeichert, Tuto kann es nicht
+                nachlesen. Hat die Schuladministration deiner Schule dein Konto angelegt, hat sie dein Startpasswort einmal
+                gesehen. Ändere es dann in deinem Profil.
             </li>
             <li>
                 Eine E-Mail-Adresse musst du nicht angeben. Wir brauchen sie nur, um dir einen Link zu schicken, wenn du
                 dein Passwort vergessen hast.
             </li>
             <li>
-                Alles, was du abgibst, wird gespeichert: deine Zusammenfassungen, deine Antworten und deine Gespräche mit
-                Frieda. Deine Lehrkraft sieht deine Abgaben und den Verlauf der Gespräche, die zu ihren Stunden gehören.
-                Lehrkräfte, die deine Klasse leiten oder unterrichten, sehen außerdem deine Punktwerte und zu jedem
-                Gespräch Thema, Punktwert und Rückmeldung, auch wenn du dir das Thema selbst ausgesucht hast. Auch die
-                Schuladministration deiner Schule kann alles sehen. Die Plattform-Administration, die die Plattform
-                betreut, sieht deine Daten nicht. Andere Schüler:innen und andere Schulen sehen es nie.
+                Alles, was du abgibst, wird gespeichert: deine Zusammenfassungen, deine Antworten mit der Stufe, die du
+                gewählt hast, deine Gespräche mit Tuto und deine Rückfragen an die Lehrkraft. Deine Lehrkraft sieht deine
+                Abgaben, Rückfragen und Gespräche, die zu ihren Stunden gehören. Lehrkräfte, die deine Klasse leiten,
+                unterrichten oder gerade vertreten, sehen außerdem deine Punktwerte und die Rückmeldungen zu allen deinen
+                Hausaufgaben und im Klassenbuch, an welchen Tagen du gefehlt hast. Auch die Schuladministration deiner
+                Schule kann das sehen. Die Plattform-Administration, die die Plattform betreut, sieht deine Daten nicht.
+                Andere Schüler:innen und andere Schulen sehen es nie.
             </li>
-            <li>Frieda ist eine Computerfigur und kein Mensch.</li>
+            <li>Tuto ist ein Computerprogramm und kein Mensch.</li>
+            <li>
+                Hat deine Schule die KI-Funktionen eingeschaltet, gehen deine Texte an einen KI-Anbieter. Vorher ersetzt
+                Tuto die Namen aus deiner Klasse, zum Beispiel durch „Schüler:in A“.
+            </li>
+            <li>
+                Ob du Einfache Sprache eingeschaltet hast, merkt sich nur dein Browser. Tuto speichert das nicht.
+            </li>
+            <li>
+                Beim Tuto-Mikro ist nur das Mikrofon deiner Lehrkraft an. Der Ton wird nicht gespeichert. Es läuft nur,
+                wenn deine Eltern eingewilligt haben, und ein Balken zeigt, ob es an ist.
+            </li>
             <li>
                 Der Verständniswert von 0 bis 100 ist keine Note. Er zeigt nur, wo du vielleicht noch Hilfe brauchen
                 kannst. Deine Lehrkraft entscheidet, was daraus folgt.
@@ -173,12 +210,13 @@
             </li>
             <li>
                 Du und deine Eltern dürft jederzeit fragen, welche Daten über dich gespeichert sind, und verlangen, dass
-                sie gelöscht werden. Frag dafür deine Lehrkraft oder deine Schule.
+                sie gelöscht werden. Frag dafür deine Lehrkraft oder deine Schule. In deinem Profil kannst du mit „Meine
+                Daten herunterladen“ selbst nachsehen.
             </li>
         </ul>
     </aside>
 
-    <h2 id="hosting">3. Hosting und Server-Logfiles</h2>
+    <h2 id="hosting">{{ $heading('hosting') }}</h2>
     <h3>Hosting</h3>
     <p>
         Die Plattform läuft auf eigenen beziehungsweise angemieteten Servern in Deutschland. Sie wird als Docker-Container
@@ -191,11 +229,14 @@
         Bei jedem Aufruf der Plattform verarbeitet der Webserver technisch notwendige Daten: die IP-Adresse, Datum und
         Uhrzeit, die aufgerufene Adresse, den Statuscode, die übertragene Datenmenge sowie Angaben zu Browser und
         Betriebssystem. Wir brauchen sie, um die Seiten auszuliefern, den Betrieb stabil zu halten, Fehler zu finden und
-        Angriffe abzuwehren.
+        Angriffe abzuwehren. Ruft jemand die Einwilligungsseite für das Tuto-Mikro auf, steht deren Adresse mit dem darin
+        enthaltenen Code ebenfalls in diesem Zugriffsprotokoll. Tuto selbst speichert dazu weder den Code im Klartext noch
+        die IP-Adresse oder die Browserangabe.
     </p>
     <p>
         Auch die Plattform selbst schreibt ein Protokoll mit technischen Fehlermeldungen. Es dient der Fehlersuche. Tritt
-        ein Fehler auf, können darin Angaben zur betroffenen Anfrage stehen, zum Beispiel die Benutzerkennung.
+        ein Fehler auf, können darin Angaben zur betroffenen Anfrage stehen, zum Beispiel die Benutzerkennung. Anfragen an
+        den KI-Anbieter und seine Antworten schreibt Tuto nicht in dieses Protokoll.
     </p>
     <p>
         Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO. Unser berechtigtes Interesse ist ein sicherer und fehlerfreier
@@ -204,25 +245,27 @@
         bis er geklärt ist.
     </p>
 
-    <h2 id="cookies">4. Cookies und lokaler Speicher</h2>
+    <h2 id="cookies">{{ $heading('cookies') }}</h2>
     <p>
         Die Plattform verwendet nur technisch notwendige Cookies sowie Einträge im lokalen Speicher und im Sitzungsspeicher
         Ihres Browsers. Sie sind nötig, damit die Anmeldung funktioniert und Formulare sicher abgeschickt werden können,
         oder sie merken sich Einstellungen zur Darstellung. Cookies für Analyse, Reichweitenmessung oder Werbung gibt es
-        nicht. Die Seiten Impressum und Datenschutzerklärung setzen selbst keine Cookies.
+        nicht. Die Seiten Impressum und Datenschutzerklärung und die Einwilligungsseite für Eltern setzen selbst keine
+        Cookies.
     </p>
     <p>
         Das Speichern und Auslesen solcher Informationen ist nach § 25 Abs. 2 Nr. 2 TDDDG ohne Einwilligung erlaubt, weil
         es unbedingt erforderlich ist, um den von Ihnen ausdrücklich gewünschten Dienst bereitzustellen. Da nichts
         Optionales eingesetzt wird, ist kein Cookie-Banner nötig. Die dabei anfallende Verarbeitung personenbezogener
-        Daten stützt sich auf Art. 6 Abs. 1 lit. f DSGVO, im Schulbetrieb auf lit. e (siehe Abschnitt 5).
+        Daten stützt sich auf Art. 6 Abs. 1 lit. f DSGVO, im Schulbetrieb auf lit. e (siehe Abschnitt {{ $no('benutzerkonten') }}).
     </p>
     <p>
         Das Sitzungs-Cookie und das XSRF-Cookie setzt die Plattform schon, wenn Sie die Anmeldeseite, die Registrierung
         oder die Seite „Passwort vergessen“ öffnen, also auch ohne Konto. Zur Sitzung speichert der Server in der
         Datenbank die Sitzungskennung, die IP-Adresse, die Browserangabe und den Zeitpunkt der letzten Aktivität, bis die
-        Sitzung nach {{ $sessionMinutes }} Minuten ohne Aktivität abläuft. Das dient der Sicherheit und dem Betrieb der
-        Anmeldung (Art. 6 Abs. 1 lit. f DSGVO).
+        Sitzung nach {{ $sessionMinutes }} Minuten ohne Aktivität abläuft. Wählen Sie auf der Anmeldeseite eine Sprache,
+        merkt sich der Server diese Wahl in der Sitzung, nach der Anmeldung in Ihrem Konto. Das dient der Sicherheit, dem
+        Betrieb der Anmeldung und der Anzeige in Ihrer Sprache (Art. 6 Abs. 1 lit. f DSGVO).
     </p>
 
     <h3>Cookies</h3>
@@ -300,12 +343,21 @@
                     <td><span class="legal-cell-label">Zweck</span> Welche Gruppen der Seitenleiste eingeklappt sind</td>
                 </tr>
                 <tr>
+                    <th scope="row"><code>tuto-einfache-sprache-</code> mit angehängter Kontokennung</th>
+                    <td><span class="legal-cell-label">Speicher</span> lokaler Speicher</td>
+                    <td><span class="legal-cell-label">Zweck</span> Nur bei Schüler:innen: ob bei Hausaufgaben die Einfache Sprache eingeschaltet ist (1 oder 0)</td>
+                </tr>
+                <tr>
+                    <th scope="row"><code>tuto-mikro-hide-names</code></th>
+                    <td><span class="legal-cell-label">Speicher</span> lokaler Speicher</td>
+                    <td><span class="legal-cell-label">Zweck</span> Nur bei Lehrkräften: ob beim Tuto-Mikro die Namen verborgen sind (1 oder 0)</td>
+                </tr>
+                <tr>
                     <th scope="row"><code>filament.notifications.redirect</code></th>
                     <td><span class="legal-cell-label">Speicher</span> Sitzungsspeicher</td>
                     <td>
                         <span class="legal-cell-label">Zweck</span>
-                        Merkt sich kurz eine Benachrichtigung über einen Seitenwechsel hinweg und wird danach wieder
-                        entfernt
+                        Merkt sich kurz eine Meldung über einen Seitenwechsel hinweg und wird danach wieder entfernt
                     </td>
                 </tr>
             </tbody>
@@ -322,7 +374,7 @@
         Sitzungs-Cookie ist keine Anmeldung möglich.
     </p>
 
-    <h2 id="benutzerkonten">5. Schulen und Benutzerkonten</h2>
+    <h2 id="benutzerkonten">{{ $heading('benutzerkonten') }}</h2>
     <p>
         Wer die Plattform nutzen will, braucht ein Konto, und jedes Konto gehört zu einer Schule. Nur die
         Plattform-Administration gehört zu keiner Schule (siehe unten). Ein Konto entsteht auf einem von drei Wegen:
@@ -357,10 +409,18 @@
         </li>
         <li>das Passwort, das nur als Hash gespeichert wird und nicht lesbar ist</li>
         <li>die Rolle: Plattform-Administration, Schuladministration, Lehrkraft oder Schüler:in</li>
-        <li>die Schule, zu der das Konto gehört, bei Schüler:innen die Klasse, bei Lehrkräften gegebenenfalls die Klassenleitung</li>
+        <li>die Schule, zu der das Konto gehört, bei Schüler:innen die Klasse</li>
+        <li>
+            bei Lehrkräften die Klassen, die sie leiten oder denen sie zugeordnet sind, und Vertretungen mit Zeitraum,
+            Hinweis und der Person, die sie eingerichtet hat
+        </li>
+        <li>die gewählte Sprache der Oberfläche (Deutsch oder Englisch), solange jemand eine gewählt hat</li>
+        <li>
+            bei der Schuladministration, wer das Tuto-Mikro und die KI-Funktionen der Schule wann eingeschaltet hat
+        </li>
         <li>
             technische Sitzungsdaten: Sitzungskennung, bei angemeldeten Personen die Benutzerkennung, dazu IP-Adresse,
-            Browserangabe und Zeitpunkt der letzten Aktivität (siehe Abschnitt 4)
+            Browserangabe und Zeitpunkt der letzten Aktivität (siehe Abschnitt {{ $no('cookies') }})
         </li>
     </ul>
     <p>
@@ -369,10 +429,11 @@
     <h3>Wozu</h3>
     <p>
         Die Daten dienen der Anmeldung, der Zuordnung von Inhalten zu Personen und Klassen, der Vergabe von Rechten nach
-        der Rolle, dem Zurücksetzen vergessener Passwörter und der Sicherheit der Plattform. Die Schuladministration
-        sieht alle Konten ihrer Schule. Lehrkräfte sehen die Namen der Schüler:innen aus den Klassen ihrer Stunden. Die
-        Plattform-Administration sieht nur die Konten der Schuladministrationen. An Dritte geben wir diese
-        Daten nicht weiter{{ $externalAvatars ? ', abgesehen vom Platzhalter-Bild (siehe Abschnitt 8)' : '' }}.
+        Rolle und Klasse, der Anzeige in der gewählten Sprache, dem Zurücksetzen vergessener Passwörter und der Sicherheit
+        der Plattform. Die Schuladministration sieht alle Konten ihrer Schule. Lehrkräfte sehen die Namen der
+        Schüler:innen der Klassen, die sie leiten, unterrichten oder vertreten. Die Plattform-Administration sieht nur die
+        Konten der Schuladministrationen. An Dritte geben wir diese Daten nicht
+        weiter{{ $externalAvatars ? ', abgesehen vom Platzhalter-Bild (siehe Abschnitt '.$no('schriftarten').')' : '' }}.
     </p>
 
     <h3>Registrierung einer Schule</h3>
@@ -401,7 +462,8 @@
         Daten jeder Schule von denen anderer Schulen zu trennen, die Schule bei Fragen zum Betrieb zu erreichen und eine
         Schule sperren zu können, zum Beispiel bei Missbrauch oder auf Wunsch der Schule. Gesperrt kann sich niemand der
         Schule mehr anmelden. Die Daten bleiben dabei gespeichert, bis sie gelöscht werden oder die Sperre aufgehoben
-        wird.
+        wird. Bis die Schuladministration den Vertrag zur Auftragsverarbeitung angenommen hat, kann die Schule nur die
+        Seite „Meine Schule“ nutzen.
     </p>
     <p>
         <strong>Rechtsgrundlage:</strong> Art. 6 Abs. 1 lit. b DSGVO, soweit die Schule mit uns die Nutzung der
@@ -419,18 +481,18 @@
         <li>
             <strong>Das kann sie:</strong> registrierte Schulen und ihre Stammdaten ansehen und bearbeiten, Schulen
             sperren und wieder freigeben, Zugänge von Schuladministrationen anlegen, ändern, zurücksetzen und löschen
-            und das gemeinsame Kompetenzraster pflegen. Auf ihrer Startseite sieht sie nur Zahlen, nämlich wie viele
-            Schulen, Konten je Rolle und Klassen es gibt.
+            und das gemeinsame Kompetenzraster pflegen. Auf ihrer Startseite sieht sie Zahlen, nämlich wie viele
+            Schulen, Konten je Rolle und Klassen es gibt, und die zuletzt registrierten Schulen, aber keine Personen.
         </li>
         <li>
             <strong>Das sieht sie in der Plattform nicht:</strong> Unterrichtsstunden, Notizen, Arbeitsblätter,
-            Hausaufgaben, Abgaben, Verständniswerte, „Erklär’s mir“-Gespräche, Klassen sowie die Konten von Lehrkräften
-            und Schüler:innen.
+            Hausaufgaben, Abgaben, Verständniswerte, „Erklär’s mir“-Gespräche, Rückfragen, Klassenbuch, Einwilligungen,
+            Klassen sowie die Konten von Lehrkräften und Schüler:innen.
         </li>
     </ul>
     <p>
         Technisch betreiben wir die Server und die Datenbank und haben dort Zugriff, soweit es für Betrieb, Wartung und
-        Fehlersuche nötig ist (siehe Abschnitt 3). Diesen Zugriff nutzen wir nur dafür und nicht, um Unterrichts- oder
+        Fehlersuche nötig ist (siehe Abschnitt {{ $no('hosting') }}). Diesen Zugriff nutzen wir nur dafür und nicht, um Unterrichts- oder
         Lerndaten auszuwerten.
     </p>
 
@@ -476,44 +538,77 @@
         stehen auf der Anmeldeseite.
     </p>
 
-    <h2 id="lerndaten">6. Unterrichts- und Lerndaten</h2>
+    <h2 id="lerndaten">{{ $heading('lerndaten') }}</h2>
     <h3>Was gespeichert wird</h3>
     <ul>
         <li>
-            <strong>Unterrichtsstunden (Lehrkräfte):</strong> Fach, Thema, Datum, Notizen, Tafelbild oder Transkripttext
-            sowie hochgeladene Arbeitsblätter als Foto, Scan oder PDF (bis 10 MB je Datei). Die Dateien liegen auf dem
-            Server und sind nur über die Plattform abrufbar.
+            <strong>Unterrichtsstunden (Lehrkräfte):</strong> Fach, Thema, Datum, Notizen oder Tafelbild, auch Notizen
+            aus der Stunde, die die Lehrkraft vom Tuto-Mikro übernommen hat, eine Zusammenfassung und hochgeladene
+            Arbeitsblätter als Foto, Scan oder PDF (bis 10 MB je Datei). Die Dateien liegen auf dem Server und sind nur
+            über die Plattform abrufbar.
         </li>
         <li>
-            <strong>Hausaufgaben:</strong> eine Zusammenfassung und Fragen. Sie entstehen zunächst als Entwurf (siehe
-            Abschnitt 7), die Lehrkraft prüft und ändert sie und weist sie dann den Schüler:innen zu.
+            <strong>Hausaufgaben:</strong> eine Zusammenfassung und Fragen, auf Wunsch in drei Stufen (Einstieg, Standard,
+            Profi). Sie entstehen zunächst als Entwurf (siehe Abschnitt {{ $no('ki') }}), die Lehrkraft prüft und ändert
+            sie und gibt sie dann für die Schüler:innen frei. Schüler:innen sehen die Zusammenfassung der Lehrkraft vor
+            den Fragen. Schaltet eine Schüler:in Einfache Sprache ein, speichert Tuto die vereinfachte Fassung der
+            Zusammenfassung und der Fragen bei der Stunde, damit sie nicht für jede Person neu entsteht. Sie enthält nur
+            Texte der Lehrkraft.
         </li>
         <li>
-            <strong>Abgaben (Schüler:innen):</strong> die eigene Zusammenfassung und die Antworten auf die Fragen. Dazu
-            das Ergebnis der Auswertung: ein Verständniswert von 0 bis 100 für die ganze Abgabe und für jede Antwort, ein
-            Feedback-Text, Hinweise auf Lücken und der Zeitpunkt der Auswertung.
+            <strong>Abgaben (Schüler:innen):</strong> die eigene Zusammenfassung und die Antworten auf die Fragen mit der
+            gewählten Stufe. Dazu das Ergebnis der Auswertung: ein Verständniswert von 0 bis 100 für die ganze Abgabe und
+            für jede Antwort, ein Feedback-Text, Hinweise auf Lücken und der Zeitpunkt der Auswertung.
         </li>
         <li>
-            <strong>„Erklär’s mir“:</strong> Schüler:innen erklären einer Computerfigur namens Frieda ein Thema und
-            bekommen Rückfragen. Gespeichert werden das Thema, der gesamte Gesprächsverlauf, der Verständniswert und das
-            Feedback.
+            <strong>„Erklär’s mir“:</strong> Schüler:innen erklären der Computerfigur Tuto ein Thema und bekommen
+            Rückfragen. Gespeichert werden das Thema, der gesamte Gesprächsverlauf, der Verständniswert und das Feedback.
+        </li>
+        <li>
+            <strong>Rückfragen:</strong> Schüler:innen können der Lehrkraft einer Stunde eine Frage stellen. Gespeichert
+            werden die Frage, die Antwort, wer geantwortet hat, und wann gefragt, geantwortet und gelesen wurde.
+        </li>
+        <li>
+            <strong>Klassenbuch:</strong> Datum, Stunde, Fach, Thema, Unterrichtsinhalt, Hausaufgabe, Bemerkungen, die
+            fehlenden Schüler:innen (ohne Gründe), die eintragende Lehrkraft und ob der Eintrag bestätigt ist. Legt eine
+            Lehrkraft den Entwurf eines Eintrags aus einer Stunde an, schlägt Tuto als fehlend die Schüler:innen der Klasse
+            vor, die in der zuletzt bestätigten Anwesenheitsliste des Tuto-Mikros dieser Stunde nicht angehakt sind (nur
+            solche mit gültiger Einwilligung). Die Lehrkraft prüft und ändert den Vorschlag.
+        </li>
+        <li>
+            <strong>Benachrichtigungen:</strong> Hinweise in der App auf neue Hausaufgaben, Abgaben, Rückfragen und
+            Antworten. Sie nennen Thema, Fach und Klasse einer Stunde oder eine Anzahl und werden nur in der App
+            angezeigt, nicht per E-Mail verschickt.
         </li>
     </ul>
     <p>
         Aus den gespeicherten Ergebnissen berechnet die Plattform eine Übersicht zum Lernstand und möglichem
         Förderbedarf je Klasse sowie einen druckbaren Bericht für Elterngespräche. Beides enthält nur, was bereits
-        gespeichert ist.
+        gespeichert ist. Die Übersicht „Heute“ und die Zahl der Abgaben zeigen nur Anzahlen, keine Namen.
     </p>
 
     <div class="legal-note">
         <p class="legal-note-title">Hinweis für Lehrkräfte</p>
         <p>
-            Bitte tragen Sie in Notizen, Transkripten und Arbeitsblättern keine personenbezogenen Daten von Schüler:innen
-            ein, zum Beispiel Namen, Fotos oder Leistungsstände. Tonaufnahmen des Unterrichts sind nur mit dem
-            optionalen Aufnahme-Modul Ihrer Schule und nur mit den nötigen Einwilligungen erlaubt. Bitte laden Sie
-            Arbeitsblätter nur hoch, wenn Sie dazu berechtigt sind.
+            Bitte tragen Sie in Notizen und Arbeitsblätter keine personenbezogenen Daten von Schüler:innen ein, zum
+            Beispiel Namen, Fotos oder Leistungsstände, und tragen Sie im Klassenbuch keine Gründe für Fehlzeiten ein. Das
+            Tuto-Mikro können Sie nur nutzen, wenn Ihre Schule es freigeschaltet hat und die Einwilligungen vorliegen.
+            Bitte laden Sie Arbeitsblätter nur hoch, wenn Sie dazu berechtigt sind.
         </p>
     </div>
+
+    <h3>Lehrkräfte einer Klasse und Vertretung</h3>
+    <p>
+        Was eine Lehrkraft über eine Klasse sieht, richtet sich danach, ob sie die Klasse leitet (Klassenleitung), ihr von
+        der Schuladministration zugeordnet ist oder sie gerade vertritt. Lernstände, Klassenbuch und Einwilligungen einer
+        Klasse sieht eine Lehrkraft nur, solange das zutrifft. Die Ergebnisse einer Stunde (Abgaben, Gespräche und
+        Rückfragen) sieht dagegen die Lehrkraft, die die Stunde angelegt hat, auch dann noch, wenn sie der Klasse nicht
+        mehr zugeordnet ist. Wer nur vertreten hat, verliert die Ergebnisse der Stunden aus der Vertretung mit dem Ende
+        der Vertretung. Eine Vertretung richtet die Klassenleitung oder die Schuladministration für einen Zeitraum
+        ein, höchstens {{ $substitutionMaxDays }} Tage. Für diesen Zeitraum darf die vertretende Lehrkraft
+        {{ ClassSubstitution::grants('de') }}. Mit dem letzten Tag endet dieser Zugriff, auch auf die Ergebnisse der Stunden,
+        die sie in der Vertretung gehalten hat.
+    </p>
 
     <h3>Wer sieht was</h3>
     <div class="legal-table-wrap" role="region" aria-label="Wer welche Daten sehen kann" tabindex="0">
@@ -532,14 +627,21 @@
                 <tr>
                     <th scope="row">Abgaben, Verständniswerte und Feedback</th>
                     <td><span class="legal-cell-label">Schüler:in</span> nur die eigenen</td>
-                    <td><span class="legal-cell-label">Lehrkraft</span> die Abgaben zu den eigenen Stunden</td>
+                    <td><span class="legal-cell-label">Lehrkraft</span> die Abgaben zu den eigenen Stunden, nach dem Ende einer Vertretung nicht mehr die zu Stunden aus der Vertretung, dazu im Elterngesprächs-Bericht Verständniswert und Feedback aller Hausaufgaben der Schüler:innen ihrer Klassen (siehe unten)</td>
                     <td><span class="legal-cell-label">Schuladministration (nur die eigene Schule)</span> alle</td>
                     <td><span class="legal-cell-label">Plattform-Administration</span> keine Einsicht</td>
                 </tr>
                 <tr>
                     <th scope="row">„Erklär’s mir“-Gespräche mit Verlauf</th>
                     <td><span class="legal-cell-label">Schüler:in</span> nur die eigenen</td>
-                    <td><span class="legal-cell-label">Lehrkraft</span> nur Gespräche, die zu einer eigenen Stunde gehören</td>
+                    <td><span class="legal-cell-label">Lehrkraft</span> nur Gespräche, die zu einer eigenen Stunde gehören, nach dem Ende einer Vertretung nicht mehr die zu Stunden aus der Vertretung</td>
+                    <td><span class="legal-cell-label">Schuladministration (nur die eigene Schule)</span> Gespräche, die zu einer Stunde gehören, nicht die zu frei gewählten Themen</td>
+                    <td><span class="legal-cell-label">Plattform-Administration</span> keine Einsicht</td>
+                </tr>
+                <tr>
+                    <th scope="row">Rückfragen an die Lehrkraft</th>
+                    <td><span class="legal-cell-label">Schüler:in</span> nur die eigenen mit den Antworten</td>
+                    <td><span class="legal-cell-label">Lehrkraft</span> die Rückfragen zu den eigenen Stunden, nach dem Ende einer Vertretung nicht mehr die zu Stunden aus der Vertretung</td>
                     <td><span class="legal-cell-label">Schuladministration (nur die eigene Schule)</span> alle</td>
                     <td><span class="legal-cell-label">Plattform-Administration</span> keine Einsicht</td>
                 </tr>
@@ -552,7 +654,7 @@
                 </tr>
                 <tr>
                     <th scope="row">Hausaufgaben mit Fragen und Zusammenfassung</th>
-                    <td><span class="legal-cell-label">Schüler:in</span> nur veröffentlichte und ihnen zugewiesene, die Zusammenfassung der Lehrkraft erst nach der Abgabe</td>
+                    <td><span class="legal-cell-label">Schüler:in</span> nur freigegebene und ihnen zugewiesene, mit der Zusammenfassung der Lehrkraft vor den Fragen</td>
                     <td><span class="legal-cell-label">Lehrkraft</span> die eigenen Stunden</td>
                     <td><span class="legal-cell-label">Schuladministration (nur die eigene Schule)</span> alle</td>
                     <td><span class="legal-cell-label">Plattform-Administration</span> keine Einsicht</td>
@@ -562,9 +664,9 @@
                     <td><span class="legal-cell-label">Schüler:in</span> keine Einsicht</td>
                     <td>
                         <span class="legal-cell-label">Lehrkraft</span>
-                        für die Klassen, die sie leiten oder in denen sie Stunden halten: Kompetenzwerte und
-                        Förderbedarf aller Schüler:innen der Klasse, berechnet aus allen ausgewerteten Antworten, auch zu
-                        Stunden anderer Lehrkräfte
+                        für die Klassen, die sie leiten, denen sie zugeordnet sind oder die sie gerade vertreten:
+                        Kompetenzwerte und Förderbedarf aller Schüler:innen der Klasse, berechnet aus allen ausgewerteten
+                        Antworten, auch zu Stunden anderer Lehrkräfte
                     </td>
                     <td><span class="legal-cell-label">Schuladministration (nur die eigene Schule)</span> alle</td>
                     <td><span class="legal-cell-label">Plattform-Administration</span> keine Einsicht</td>
@@ -574,17 +676,38 @@
                     <td><span class="legal-cell-label">Schüler:in</span> keine Einsicht</td>
                     <td>
                         <span class="legal-cell-label">Lehrkraft</span>
-                        für Schüler:innen dieser Klassen: die Punktwerte aller veröffentlichten Hausaufgaben, auch zu
-                        Stunden anderer Lehrkräfte, sowie Thema, Punktwert und Feedback aller „Erklär’s mir“-Sitzungen,
-                        auch zu frei gewählten Themen (ohne Gesprächsverlauf)
+                        für Schüler:innen dieser Klassen: Punktwert, Feedback und Hinweise auf Lücken aller freigegebenen
+                        Hausaufgaben, auch zu Stunden anderer Lehrkräfte, sowie Thema, Punktwert und Feedback der
+                        „Erklär’s mir“-Gespräche zu eigenen Stunden (ohne Gesprächsverlauf)
                     </td>
+                    <td><span class="legal-cell-label">Schuladministration (nur die eigene Schule)</span> alle, bei „Erklär’s mir“ nur Gespräche, die zu einer Stunde gehören</td>
+                    <td><span class="legal-cell-label">Plattform-Administration</span> keine Einsicht</td>
+                </tr>
+                <tr>
+                    <th scope="row">Klassenbuch mit Fehlzeiten</th>
+                    <td><span class="legal-cell-label">Schüler:in</span> keine Einsicht</td>
+                    <td><span class="legal-cell-label">Lehrkraft</span> das ganze Klassenbuch der Klassen, die sie leiten, denen sie zugeordnet sind oder die sie gerade vertreten, mit Export</td>
                     <td><span class="legal-cell-label">Schuladministration (nur die eigene Schule)</span> alle</td>
+                    <td><span class="legal-cell-label">Plattform-Administration</span> keine Einsicht</td>
+                </tr>
+                <tr>
+                    <th scope="row">Einwilligungen zum Tuto-Mikro</th>
+                    <td><span class="legal-cell-label">Schüler:in</span> nur den eigenen Stand, um selbst zuzustimmen</td>
+                    <td><span class="legal-cell-label">Lehrkraft</span> für die Klassen, die sie leiten, denen sie zugeordnet sind oder die sie gerade vertreten</td>
+                    <td><span class="legal-cell-label">Schuladministration (nur die eigene Schule)</span> alle</td>
+                    <td><span class="legal-cell-label">Plattform-Administration</span> keine Einsicht</td>
+                </tr>
+                <tr>
+                    <th scope="row">Nachweis über Sitzungen des Tuto-Mikros</th>
+                    <td><span class="legal-cell-label">Schüler:in</span> keine Einsicht</td>
+                    <td><span class="legal-cell-label">Lehrkraft</span> nur die Lehrkraft der Stunde</td>
+                    <td><span class="legal-cell-label">Schuladministration (nur die eigene Schule)</span> keine Einsicht</td>
                     <td><span class="legal-cell-label">Plattform-Administration</span> keine Einsicht</td>
                 </tr>
                 <tr>
                     <th scope="row">Konten und Klassen</th>
                     <td><span class="legal-cell-label">Schüler:in</span> keine Einsicht</td>
-                    <td><span class="legal-cell-label">Lehrkraft</span> nur die Namen der Schüler:innen aus den Klassen ihrer Stunden</td>
+                    <td><span class="legal-cell-label">Lehrkraft</span> nur die Namen der Schüler:innen der Klassen, die sie leiten, unterrichten oder vertreten</td>
                     <td><span class="legal-cell-label">Schuladministration (nur die eigene Schule)</span> alle Konten und Klassen der Schule</td>
                     <td><span class="legal-cell-label">Plattform-Administration</span> nur die Konten der Schuladministrationen, keine Klassen und keine Konten von Lehrkräften und Schüler:innen</td>
                 </tr>
@@ -598,7 +721,7 @@
             </tbody>
         </table>
     </div>
-    <p>Andere Schüler:innen sehen die Abgaben und Gespräche einer Schülerin oder eines Schülers nie.</p>
+    <p>Andere Schüler:innen sehen die Abgaben, Gespräche und Rückfragen einer Schülerin oder eines Schülers nie.</p>
     <p>
         Die Daten verschiedener Schulen sind voneinander getrennt. Lehrkräfte und Schuladministration einer Schule sehen
         nie Klassen, Konten, Unterrichtsstunden, Abgaben oder Gespräche einer anderen Schule.
@@ -607,89 +730,269 @@
     <h3>Verständniswert und Förderbedarf</h3>
     <p>
         Der Verständniswert ist ein Hinweis darauf, wo Unterstützung nötig sein könnte. Er ist keine Note und keine
-        Leistungsbewertung im schulrechtlichen Sinn. Lehrkräfte entscheiden selbst, ob und wie sie ihn nutzen. Über
-        Förderung, Noten oder Versetzung entscheidet die Schule, nie die Plattform (siehe Abschnitt 7).
+        Leistungsbewertung im schulrechtlichen Sinn. Alle Stufen werden am selben Erwartungshorizont gemessen. Lehrkräfte
+        entscheiden selbst, ob und wie sie den Wert nutzen. Über Förderung, Noten oder Versetzung entscheidet die Schule,
+        nie die Plattform (siehe Abschnitt {{ $no('ki') }}).
     </p>
     <h3>Rechtsgrundlage</h3>
     <p>
         Im Schulbetrieb Art. 6 Abs. 1 lit. e DSGVO in Verbindung mit dem jeweiligen Landesschulgesetz, im Demo- und
-        Pilotbetrieb Art. 6 Abs. 1 lit. f DSGVO, wie in Abschnitt 5 beschrieben.
+        Pilotbetrieb Art. 6 Abs. 1 lit. f DSGVO, wie in Abschnitt {{ $no('benutzerkonten') }} beschrieben.
     </p>
 
-    <h2 id="ki">7. Einsatz von KI</h2>
+    <h2 id="ki">{{ $heading('ki') }}</h2>
+    <p>Tuto kann für diese Aufgaben ein KI-Sprachmodell nutzen:</p>
+    <ul>
+        <li>
+            <strong>Entwürfe für Lehrkräfte:</strong> aus den Notizen einer Stunde eine Zusammenfassung und fünf Fragen
+            (die Fragen, die die Lehrkraft selbst geschrieben oder bearbeitet hat, gehen pseudonymisiert mit, damit Tuto sie
+            nicht wiederholt), Förderaufgaben mit drei bis vier Fragen, Fragen in drei Stufen und Fassungen in Einfacher Sprache.
+        </li>
+        <li>
+            <strong>Auswertung einer Abgabe:</strong> ein Verständniswert von 0 bis 100, eine Rückmeldung, bis zu drei
+            Hinweise auf Lücken und ein Wert je Antwort.
+        </li>
+        <li>
+            <strong>„Erklär’s mir“:</strong> Die Computerfigur Tuto stellt Rückfragen und schätzt am Ende ein, wie gut das
+            Thema erklärt wurde. Tuto ist ein Computerprogramm und keine reale Person.
+        </li>
+        <li><strong>Tuto-Mikro:</strong> Spracherkennung und Zusammenfassung (siehe Abschnitt {{ $no('tuto-mikro') }}).</li>
+    </ul>
+
+    <h3>Jede Schule entscheidet selbst</h3>
     <p>
-        Die Plattform nutzt eine KI-Komponente für vier Aufgaben. Sie entwirft aus den Unterrichtsnotizen eine
-        Zusammenfassung und Hausaufgaben. Sie wertet die Texte der Schüler:innen aus. Als Figur Frieda stellt sie im
-        „Erklär’s mir“-Chat Rückfragen. Am Ende schätzt sie ein, wie gut ein Thema erklärt wurde. Frieda ist ein
-        Computerprogramm und keine reale Person.
+        Die KI-Funktionen sind ausgeschaltet, bis die Schuladministration einer Schule sie unter „KI-Funktionen“
+        einschaltet. Vorher bestätigt sie, dass mit dem KI-Anbieter ein Vertrag zur Auftragsverarbeitung besteht, ein
+        bezahlter Tarif genutzt wird, in dem Eingaben nicht zur Verbesserung der Produkte des Anbieters dienen, eine
+        Datenschutz-Folgenabschätzung durchgeführt ist und Eltern und Schüler:innen informiert sind. Sie kann die
+        KI-Funktionen jederzeit wieder ausschalten. Gespeichert wird, wann und von wem sie eingeschaltet wurden.
+    </p>
+    <p>
+        Solange eine Schule die KI-Funktionen nicht eingeschaltet hat, beantwortet eine regelbasierte Offline-Logik auf
+        unserem Server alle Anfragen ihrer Lehrkräfte und Schüler:innen. Sie arbeitet mit festen Textregeln, ermittelt die
+        wichtigsten Begriffe aus den Unterrichtsnotizen und misst, wie viele davon ein Text der Schülerin oder des Schülers
+        abdeckt. Sie ruft keinen externen Dienst auf, und es werden keine Daten an Dritte übermittelt.
     </p>
 
     @if ($aiEnabled)
         <div class="legal-note">
-            <p class="legal-note-title">Aktueller Stand: Die KI-Anbindung ist aktiviert.</p>
+            <p class="legal-note-title">Aktueller Stand: Die KI-Anbindung der Plattform ist eingeschaltet.</p>
             <p>
-                Für die genannten Aufgaben werden Inhalte an Claude von Anthropic PBC in den USA übermittelt.
+                Schulen können die KI-Funktionen für sich einschalten.
+                @if ($aiIsLocal)
+                    Das Sprachmodell läuft auf unseren eigenen Servern.
+                @elseif ($aiIsGoogle)
+                    Anbieter ist Google mit der Gemini API.
+                @else
+                    Anbieter ist {{ AiSettings::providerLabel($aiProvider) }}.
+                @endif
             </p>
         </div>
-        <h3>Was übermittelt wird</h3>
-        <ul>
-            <li>Texte der Unterrichtsstunden, also Notizen, Tafelbild oder Transkripttext</li>
-            <li>hochgeladene Arbeitsblätter als Bild oder PDF</li>
-            <li>Texte der Schüler:innen: Zusammenfassungen, Antworten und Beiträge im „Erklär’s mir“-Chat</li>
-        </ul>
-        <p>
-            Namen, Benutzernamen und Benutzerkennungen werden nicht übermittelt. Freitext kann aber Angaben enthalten,
-            die jemand selbst hineinschreibt. Deshalb bitten wir alle, keine persönlichen Angaben in Texte zu schreiben.
-        </p>
-        <h3>Übermittlung in die USA</h3>
-        <p>
-            Die USA sind ein Drittland. Wir übermitteln Inhalte dorthin nur mit geeigneten Garantien nach Art. 44 ff.
-            DSGVO, also auf Grundlage von EU-Standardvertragsklauseln oder eines Angemessenheitsbeschlusses der
-            EU-Kommission, und nur, wenn mit dem Anbieter ein Vertrag zur Auftragsverarbeitung besteht. Eine Kopie der
-            Garantien erhalten Sie auf Anfrage (siehe Abschnitt 12). Wie lange der Anbieter übermittelte Inhalte
-            speichert, regelt dieser Vertrag. Auch dazu geben wir auf Anfrage Auskunft.
-        </p>
-        <p>
-            Vor dem Einsatz im Unterricht prüft die verantwortliche Stelle, ob eine Datenschutz-Folgenabschätzung nach
-            Art. 35 DSGVO nötig ist. Die Schule entscheidet, ob die KI-Anbindung genutzt wird, und informiert
-            Schüler:innen und Eltern darüber.
-        </p>
     @else
         <div class="legal-note">
-            <p class="legal-note-title">Aktueller Stand: Die KI-Anbindung ist abgeschaltet.</p>
+            <p class="legal-note-title">Aktueller Stand: Die KI-Anbindung der Plattform ist abgeschaltet.</p>
             <p>
-                Alle Auswertungen laufen auf unserem Server mit einer regelbasierten Offline-Logik. Für die Auswertungen
-                werden keine Daten an Dritte übermittelt.
+                Keine Schule kann die KI-Funktionen derzeit einschalten. Alle Auswertungen laufen auf unserem Server mit
+                der Offline-Logik. Für die Auswertungen werden keine Daten an Dritte übermittelt.
             </p>
         </div>
+    @endif
+
+    <h3>Anbieter</h3>
+    @if ($aiIsLocal)
         <p>
-            Die Offline-Logik arbeitet mit festen Textregeln. Sie ermittelt die wichtigsten Begriffe aus den
-            Unterrichtsnotizen und misst, wie viele davon ein Text der Schülerin oder des Schülers abdeckt. Sie ruft
-            keinen externen Dienst auf.
+            Das Sprachmodell läuft auf unseren eigenen Servern (Ollama). Die Daten verlassen sie dafür nicht und gehen an
+            keinen weiteren Anbieter.
         </p>
-        <h3>Vorbereitete Anbindung</h3>
+    @elseif ($aiIsGoogle)
         <p>
-            Die Plattform ist technisch darauf vorbereitet, später Claude von Anthropic PBC in den USA anzubinden. Das
-            ist derzeit nicht aktiv. Würde die Anbindung eingeschaltet, würden Texte aus Unterrichtsstunden,
-            hochgeladene Arbeitsblätter und Texte der Schüler:innen an Anthropic übermittelt, und zwar ohne Namen,
-            Benutzernamen und Benutzerkennungen.
+            Anbieter ist Google mit der Gemini API im kostenpflichtigen Tarif: Google LLC, 1600 Amphitheatre Parkway,
+            Mountain View, CA 94043, USA, beziehungsweise bei einem Vertrag über Google Cloud mit Kunden im EWR Google Cloud
+            EMEA Limited, 70 Sir John Rogerson’s Quay, Dublin 2, Irland. Google verarbeitet die Daten als unser
+            Unterauftragsverarbeiter nach Art. 28 DSGVO. Im kostenpflichtigen Tarif nutzt Google Eingaben und Ergebnisse
+            nicht, um seine Produkte zu verbessern oder Modelle zu trainieren. Im kostenlosen Tarif dürfte Google das,
+            deshalb wird er nicht genutzt.
         </p>
+    @else
         <p>
-            Weil die USA ein Drittland sind, würde das nur mit geeigneten Garantien nach Art. 44 ff. DSGVO geschehen, also
-            auf Grundlage von EU-Standardvertragsklauseln oder eines Angemessenheitsbeschlusses der EU-Kommission.
-            Eingeschaltet wird die Anbindung erst, nachdem ein Vertrag zur Auftragsverarbeitung geschlossen und eine
-            Datenschutz-Folgenabschätzung durchgeführt wurde und Schüler:innen und Eltern informiert wurden. Diese
-            Datenschutzerklärung wird vor der Aktivierung aktualisiert.
+            Anbieter ist {{ AiSettings::providerLabel($aiProvider) }}. Er verarbeitet die Daten als unser
+            Unterauftragsverarbeiter nach Art. 28 DSGVO, so wie es der
+            <a href="{{ route('legal.dpa') }}">Vertrag zur Auftragsverarbeitung</a> in Anlage 3 beschreibt.
         </p>
     @endif
+
+    <h3>Was übermittelt wird</h3>
+    <ul>
+        <li>
+            aus den Stunden: Fach, Thema, Datum, Notizen und Zusammenfassung der Lehrkraft, Fragen mit dem
+            Erwartungshorizont, bei Förderaufgaben die Kompetenz, anonyme Hinweise auf Lücken und Thema, Datum und
+            Notizen der zugrunde liegenden Stunden
+        </li>
+        <li>
+            hochgeladene Arbeitsblätter als Bild (JPEG, PNG, WebP, HEIC) oder PDF, nur für Entwürfe von Hausaufgaben und für
+            die Auswertung von Abgaben
+        </li>
+        <li>
+            Texte der Schüler:innen: ihre Zusammenfassung und Antworten mit der gewählten Stufe, Thema und Beiträge im
+            „Erklär’s mir“-Chat
+        </li>
+        <li>
+            für Stufen und Einfache Sprache nur Texte der Lehrkraft (Zusammenfassung und Fragen), nie Antworten von
+            Schüler:innen
+        </li>
+        <li>beim Tuto-Mikro die Ton-Abschnitte und der Text für die Zusammenfassung (siehe Abschnitt {{ $no('tuto-mikro') }})</li>
+        <li>technische Kennungen von Fragen und Kompetenzen, damit die Ergebnisse zugeordnet werden können</li>
+    </ul>
+    <h3>Pseudonymisierung</h3>
+    <p>
+        Benutzernamen, E-Mail-Adressen, Benutzerkennungen, Klassen- und Schulnamen werden nicht übermittelt. Vor jeder
+        Anfrage ersetzt Tuto in allen Texten die Namen der Schüler:innen der Klasse durch „Schüler:in A“, „Schüler:in B“
+        und so weiter, die Namen der Lehrkräfte der Klasse durch „Lehrkraft“ und Namensteile, die mehrere Personen
+        tragen, durch „Person“. Namen anderer Personen, Spitznamen und falsch geschriebene Namen erkennt Tuto nicht, und
+        Text in Fotos und PDF-Dateien kann es nicht ersetzen. Deshalb bitten wir alle, keine persönlichen Angaben in
+        Texte und Arbeitsblätter zu schreiben.
+    </p>
+    @unless ($aiIsLocal)
+        <h3>Speicherung beim Anbieter</h3>
+        <p>
+            Tuto speichert nur die Ergebnisse, zusammen mit den Daten, zu denen sie gehören. Mit jeder Anfrage verlangt Tuto
+            vom Anbieter, die Anfrage nicht für spätere Abrufe zu speichern, und führt dort keinen Gesprächsverlauf. Wie
+            lange der Anbieter Anfragen etwa zur Erkennung von Missbrauch aufbewahrt, regeln seine Bedingungen. Darauf haben
+            wir keinen Einfluss. Auskunft dazu geben wir auf Anfrage (siehe Abschnitt {{ $no('rechte') }}).
+        </p>
+        <h3>Übermittlung in Drittländer</h3>
+        <p>
+            @if ($aiIsGoogle)
+                Google verarbeitet die Daten auch in den USA und in weiteren Ländern außerhalb der EU. Grundlage sind
+                die Datenverarbeitungsbedingungen von Google mit EU-Standardvertragsklauseln. Google LLC ist außerdem
+                unter dem EU-US Data Privacy Framework zertifiziert, für das ein Angemessenheitsbeschluss der
+                EU-Kommission besteht (Art. 45 DSGVO).
+            @else
+                Verarbeitet der Anbieter Daten außerhalb der EU, geschieht das nur mit geeigneten Garantien nach Art. 44 ff.
+                DSGVO, also auf Grundlage von EU-Standardvertragsklauseln oder eines Angemessenheitsbeschlusses der
+                EU-Kommission.
+            @endif
+            Eine Kopie der Garantien erhalten Sie auf Anfrage (siehe Abschnitt {{ $no('rechte') }}). Daten einer Schule
+            gehen nur dorthin, solange sie die KI-Funktionen eingeschaltet hat.
+        </p>
+    @endunless
+    <h3>Fehler</h3>
+    <p>
+        Antwortet der Anbieter nicht, zeigt Tuto einen Fehler an. Es greift dann nicht unbemerkt auf die Offline-Logik
+        zurück und fragt keinen anderen Anbieter.
+    </p>
+    <h3>Rechtsgrundlage</h3>
+    <p>
+        Im Schulbetrieb Art. 6 Abs. 1 lit. e DSGVO in Verbindung mit dem Landesschulgesetz, auf Grundlage der
+        Entscheidung der Schule, die KI-Funktionen einzuschalten. Beim Tuto-Mikro braucht die Verarbeitung durch den
+        KI-Anbieter außerdem die Einwilligung (siehe Abschnitt {{ $no('tuto-mikro') }}).
+    </p>
 
     <h3>Keine automatisierten Entscheidungen</h3>
     <p>
         Es gibt keine ausschließlich automatisierte Entscheidung im Sinne des Art. 22 DSGVO. Die Auswertungen, Verständniswerte
-        und Rückmeldungen sind Hinweise. Menschen entscheiden, was daraus folgt. Auch die KI kann sich irren.
+        und Rückmeldungen sind Hinweise. Menschen entscheiden, was daraus folgt. Auch die KI kann sich irren. Entwürfe von
+        Hausaufgaben bleiben Entwürfe, bis die Lehrkraft sie freigibt. Eine Förderaufgabe, die die Lehrkraft mit „Direkt
+        freigeben“ anlegt, geht ohne weitere Durchsicht an die ausgewählten Schüler:innen. Die Auswertung einer Abgabe
+        und die Einschätzung bei „Erklär’s mir“ sehen die Schüler:innen direkt, ohne dass eine Lehrkraft sie vorher prüft.
     </p>
 
-    <h2 id="schriftarten">8. Schriftarten und externe Inhalte</h2>
+    <h2 id="tuto-mikro">{{ $heading('tuto-mikro') }}</h2>
+    <p>
+        Mit dem Tuto-Mikro kann eine Lehrkraft während einer Stunde das Mikrofon ihres eigenen Geräts einschalten. Aus dem
+        Ton entstehen Notizen aus der Stunde, aus denen sie später ihre Unterrichtsnotizen und Hausaufgaben erstellen
+        kann. Es gibt kein Bild und kein Video. Das Mikrofon nimmt den Ton im Raum auf, also auch Stimmen von
+        Schüler:innen in der Nähe. Wir empfehlen deshalb ein Ansteck- oder Headset-Mikrofon.
+    </p>
+    <h3>Wann es an sein darf</h3>
+    <p>Der Server lässt das Tuto-Mikro nur an, wenn alles davon zutrifft:</p>
+    <ul>
+        <li>
+            Die Schuladministration hat es für die Schule freigeschaltet, nachdem sie ihre Checkliste bestätigt und einen
+            Einwilligungstext veröffentlicht hat. Die Schule ist nicht gesperrt.
+        </li>
+        <li>
+            Das Fach ist nicht ausgeschlossen. Ohne eigene Liste der Schule sind das {{ $blockedSubjects }}, weil dort
+            Überzeugungen und Privates zur Sprache kommen. Die Schuladministration kann die Liste ändern.
+        </li>
+        <li>Die Lehrkraft leitet die Klasse, ist ihr zugeordnet oder vertritt sie gerade.</li>
+        <li>
+            Die Lehrkraft hat die anwesenden Schüler:innen angehakt und bestätigt, dass nur sie im Raum sind. Für diese
+            Angabe ist die Lehrkraft verantwortlich. Wer später dazukommt, ist erst erfasst, wenn sie das Tuto-Mikro neu
+            startet.
+        </li>
+        <li>
+            Für jede angehakte Schüler:in liegt eine gültige Einwilligung der Erziehungsberechtigten für den Ton und die
+            Notizen aus der Stunde vor, bei eingeschalteten KI-Funktionen der Schule auch für die Spracherkennung und
+            Zusammenfassung durch den KI-Anbieter.
+        </li>
+    </ul>
+    <p>
+        Bei jedem Ton-Abschnitt und vor jeder Zusammenfassung prüft der Server das erneut. Wird eine Einwilligung
+        widerrufen oder das Tuto-Mikro oder die KI ausgeschaltet, endet es spätestens beim nächsten Abschnitt. Eine
+        Sitzung, die nach {{ $mikroMaxSessionHours }} Stunden nicht beendet ist, nimmt nichts mehr an. Solange das
+        Mikrofon an ist, zeigt ein Balken „Mikro an“, sonst „Mikro aus“. Die Anzeige für den Beamer zeigt nur „Mikro an“
+        oder „Mikro aus“ und das Thema der Stunde, keine Namen und keinen Text.
+    </p>
+    <h3>Was mit dem Ton geschieht</h3>
+    <ul>
+        <li>
+            Der Ton wird nie gespeichert: nicht als Datei, nicht in einer Warteschlange und nicht in der Datenbank.
+        </li>
+        <li>
+            Hat die Schule die KI-Funktionen eingeschaltet, schickt der Browser kurze Ton-Abschnitte über eine
+            verschlüsselte Verbindung an den Server. Der reicht sie nur im Arbeitsspeicher an den KI-Anbieter weiter
+            (Abschnitt {{ $no('ki') }}) und verwirft sie, sobald die Anfrage beendet ist. Diese Abschnitte sind nicht
+            pseudonymisiert: Darin sind echte Stimmen und gesprochene Namen zu hören.
+        </li>
+        <li>
+            Ohne KI-Funktionen verlässt der Ton das Gerät der Lehrkraft nicht. Erkennt der Browser selbst deutsche
+            Sprache auf dem Gerät, macht er daraus Text, sonst schreibt die Lehrkraft selbst mit.
+        </li>
+    </ul>
+    <h3>Notizen aus der Stunde und Zusammenfassung</h3>
+    <p>
+        Der erkannte Text bleibt nur im Browser der Lehrkraft und ist weg, wenn sie die Seite schließt. Die Lehrkraft
+        prüft und ändert ihn. Gespeichert wird nur, was sie in die Notizen der Stunde übernimmt. Dabei ersetzt Tuto die
+        Namen der Klasse noch einmal. Übernommene Notizen gelten als Unterrichtsdaten (Abschnitt {{ $no('lerndaten') }}).
+    </p>
+    <p>
+        Eine Zusammenfassung erstellt Tuto nur auf Wunsch der Lehrkraft und nur aus dem Text, nie aus dem Ton. Vorher
+        ersetzt es die Namen wie in Abschnitt {{ $no('ki') }} beschrieben, dazu Fach und Thema der Stunde. Den KI-Anbieter
+        nutzt es dafür nur bei eingeschalteten KI-Funktionen und wenn für alle Anwesenden die Einwilligung dazu vorliegt,
+        sonst die Offline-Logik. Die Zusammenfassung selbst wird nicht gespeichert.
+    </p>
+    <h3>Was gespeichert wird</h3>
+    <p>
+        Je Sitzung ein Nachweis: Stunde, Lehrkraft, Beginn, Ende, Dauer, die als anwesend angehakten Schüler:innen, wann
+        die Lehrkraft die Anwesenheit bestätigt hat, die Fassung des Einwilligungstextes, welche Zwecke geprüft wurden und
+        ob Ton an den KI-Anbieter ging. Er enthält keinen Ton und keinen Text. Nur die Lehrkraft der Stunde sieht ihn,
+        auch nicht die Schuladministration. Die Anwesenheitsliste der zuletzt bestätigten Sitzung einer Stunde dient
+        außerdem als Vorschlag für die Fehlzeiten im Klassenbuch-Entwurf dieser Stunde (Abschnitt {{ $no('lerndaten') }}).
+        Was die Lehrkraft davon als Fehlzeit im Klassenbuch einträgt, sehen alle, die das Klassenbuch der Klasse sehen.
+        Der Nachweis wird {{ $mikroSessionDays }} Tage nach Beginn automatisch gelöscht, mit der
+        Stunde oder dem Konto der Lehrkraft früher. Namen sieht nur die Lehrkraft auf ihrem Bildschirm. Mit „Namen
+        verbergen“ blendet sie sie aus, diese Wahl merkt sich nur ihr Browser.
+    </p>
+    <h3>Einwilligungen</h3>
+    <p>
+        Die Schule holt die Einwilligungen der Erziehungsberechtigten digital über einen persönlichen Link oder auf Papier
+        ein, auf Wunsch der Schule bestätigen die Schüler:innen sie selbst. Gespeichert werden der Name der
+        erziehungsberechtigten Person, die erteilten und widerrufenen Zwecke mit Zeitpunkten, die Fassung des
+        Einwilligungstextes, ob die Erklärung digital oder auf Papier kam, wer eine Papiererklärung erfasst hat, die
+        Bestätigung der Schüler:in und ein Prüfwert des Links. Den Link selbst speichert Tuto nicht. Eine Papiererklärung,
+        die älter ist als die letzte gespeicherte, nimmt Tuto nicht an. Die öffentliche Einwilligungsseite setzt kein
+        Cookie und legt keine Sitzung an.
+    </p>
+    <h3>Rechtsgrundlage</h3>
+    <p>
+        Für Ton und Notizen der Schüler:innen die Einwilligung der Erziehungsberechtigten (Art. 6 Abs. 1 lit. a DSGVO),
+        die die Schule einholt und die jederzeit für die Zukunft widerrufen werden kann. Für die Lehrkraft die Regelungen
+        der Schule. Für den Nachweis über die Sitzungen und die Einwilligungen die Nachweispflicht der Schule (Art. 7
+        Abs. 1 DSGVO).
+    </p>
+
+    <h2 id="schriftarten">{{ $heading('schriftarten') }}</h2>
     <p>
         Die Plattform verwendet die Schriftart Lexend. Sie wird von unserem eigenen Server ausgeliefert. Es besteht keine
         Verbindung zu Servern von Schriftanbietern, deshalb werden dabei keine Daten, insbesondere keine IP-Adressen, an
@@ -717,7 +1020,7 @@
         </p>
     @endif
 
-    <h2 id="kontakt">9. Kontakt per E-Mail</h2>
+    <h2 id="kontakt">{{ $heading('kontakt') }}</h2>
     <p>
         Wenn Sie uns per E-Mail schreiben, verarbeiten wir Ihre E-Mail-Adresse und den Inhalt Ihrer Nachricht, um Ihre
         Anfrage zu beantworten. Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO, wenn es um einen Vertrag oder dessen
@@ -728,9 +1031,9 @@
         Eine normale E-Mail ist nicht verschlüsselt und kann auf dem Weg mitgelesen werden. Bitte schicken Sie uns darin
         keine Daten von Schüler:innen oder andere sensible Angaben.
     </p>
-    <p>E-Mails, die die Plattform selbst verschickt, beschreibt Abschnitt 5 unter „Passwort zurücksetzen“.</p>
+    <p>E-Mails, die die Plattform selbst verschickt, beschreibt Abschnitt {{ $no('benutzerkonten') }} unter „Passwort zurücksetzen“.</p>
 
-    <h2 id="speicherdauer">10. Speicherdauer</h2>
+    <h2 id="speicherdauer">{{ $heading('speicherdauer') }}</h2>
     <p>Wir speichern personenbezogene Daten nur so lange, wie es für den jeweiligen Zweck nötig ist.</p>
     <ul>
         <li>
@@ -738,28 +1041,42 @@
             Abgelaufene Sitzungen werden regelmäßig aus der Datenbank entfernt.
         </li>
         <li>
-            <strong>Server-Logfiles und Fehlerprotokoll:</strong> nur so lange, wie wir sie brauchen, siehe Abschnitt 3.
+            <strong>Server-Logfiles und Fehlerprotokoll:</strong> nur so lange, wie wir sie brauchen, siehe Abschnitt {{ $no('hosting') }}.
         </li>
         <li>
-            <strong>Links zum Zurücksetzen des Passworts:</strong> 60 Minuten gültig, siehe Abschnitt 5.
+            <strong>Links zum Zurücksetzen des Passworts:</strong> 60 Minuten gültig, siehe Abschnitt {{ $no('benutzerkonten') }}.
         </li>
         <li>
             <strong>Konten:</strong> Die Plattform löscht Konten nicht automatisch. Sie werden gelöscht, wenn sie nicht
             mehr gebraucht werden, auf Anfrage oder durch die Schule nach deren eigenen Aufbewahrungs- und Löschfristen.
-            Die Schuladministration kann Konten ihrer Schule löschen, dabei verschwinden auch die zugehörigen Abgaben und
-            Gespräche der Schüler:innen.
+            Die Schuladministration kann Konten ihrer Schule löschen, dabei verschwinden auch die zugehörigen Abgaben,
+            Gespräche und Rückfragen der Schüler:innen. Mit dem Konto einer Lehrkraft gehen ihre Unterrichtsstunden
+            samt den Abgaben und Rückfragen dazu, Einträge im Klassenbuch bleiben. Die gewählte Sprache geht mit dem Konto.
         </li>
         <li>
-            <strong>Unterrichts- und Lerndaten:</strong> Unterrichtsstunden mit ihren Fragen, Abgaben und Antworten sowie
-            „Erklär’s mir“-Gespräche löscht die Plattform täglich automatisch, wenn sie älter sind als die
-            Aufbewahrungsfrist. Aufbewahrt werden {{ $keptPhrase }}. Lehrkräfte können Abgaben schon vorher löschen, etwa
-            damit eine Hausaufgabe neu bearbeitet werden kann. Einzelne „Erklär’s mir“-Gespräche löschen wir auf Anfrage.
-            Hochgeladene Arbeitsblätter entfernen wir auf Wunsch auch vom Server.
+            <strong>Unterrichts- und Lerndaten:</strong> Unterrichtsstunden mit ihren Fragen, Abgaben, Antworten und
+            Rückfragen, „Erklär’s mir“-Gespräche und Einträge im Klassenbuch löscht die Plattform täglich automatisch,
+            wenn sie älter sind als die Aufbewahrungsfrist. Aufbewahrt wird {{ $keptPhrase }}.
+            @if ($transitionDate)
+                Übergangsweise bleiben bis zum {{ $transitionDate }} noch zwei Schuljahre gespeichert, danach wird jedes
+                Schuljahr zu seinem Ende gelöscht.
+            @endif
+            Lehrkräfte können Abgaben schon vorher löschen, etwa damit eine Hausaufgabe neu bearbeitet werden kann.
+            Einzelne „Erklär’s mir“-Gespräche löschen wir auf Anfrage. Hochgeladene Arbeitsblätter entfernen wir auf
+            Wunsch auch vom Server.
         </li>
         <li>
-            <strong>Tonaufnahmen (nur mit dem optionalen Aufnahme-Modul):</strong> {{ $recordingDays }} Tage nach
-            Aufnahmebeginn, dann löscht die Plattform sie automatisch. Einwilligungsnachweise der Erziehungsberechtigten
-            bleiben bis zur Löschung des Schülerkontos gespeichert.
+            <strong>Benachrichtigungen:</strong> {{ $notificationReadDays }} Tage nachdem sie gelesen wurden, ungelesene
+            spätestens {{ $notificationDays }} Tage nach dem Eingang.
+        </li>
+        <li>
+            <strong>Klassenzuordnung und Vertretungen:</strong> bis die Zuordnung aufgehoben oder die Klasse oder das Konto
+            gelöscht wird. Eine abgelaufene Vertretung gewährt nichts mehr.
+        </li>
+        <li>
+            <strong>Tuto-Mikro:</strong> Ton wird nicht gespeichert. Der Nachweis über eine Sitzung wird
+            {{ $mikroSessionDays }} Tage nach ihrem Beginn automatisch gelöscht. Einwilligungsnachweise der
+            Erziehungsberechtigten bleiben bis zur Löschung des Schülerkontos gespeichert.
         </li>
         <li>
             <strong>Daten der Schule bei der Registrierung:</strong> solange die Schule die Plattform nutzt, der Nachweis
@@ -767,7 +1084,7 @@
             gesperrte Schule bleibt gespeichert. Auf Wunsch der Schule löschen wir sie samt Konten sowie Unterrichts- und
             Lerndaten.
         </li>
-        <li><strong>E-Mails:</strong> bis die Anfrage erledigt ist, siehe Abschnitt 9.</li>
+        <li><strong>E-Mails:</strong> bis die Anfrage erledigt ist, siehe Abschnitt {{ $no('kontakt') }}.</li>
     </ul>
     <div class="legal-note">
         <p class="legal-note-title">Demodaten</p>
@@ -777,22 +1094,22 @@
         </p>
     </div>
 
-    <h2 id="kinder">11. Kinder und Jugendliche</h2>
+    <h2 id="kinder">{{ $heading('kinder') }}</h2>
     <p>
-        Die Plattform ist für Schüler:innen ab etwa 10 Jahren gedacht. Die Schule stellt sie bereit, genutzt wird sie im
-        Unterricht und für Hausaufgaben. Konten entstehen durch die Schuladministration oder durch die Registrierung mit dem
-        Klassencode der Lehrkraft (siehe Abschnitt 5). Kinder und Jugendliche brauchen besonderen Schutz. Deshalb erheben
-        wir nur, was die Plattform braucht, nutzen die Daten nicht für Werbung oder für eigene geschäftliche Zwecke und
-        haben mit der Kurzfassung in Abschnitt 2 für eine verständliche Sprache gesorgt.
+        Tuto ist für Schüler:innen ab etwa 10 Jahren gedacht. Die Schule stellt es bereit, genutzt wird es im Unterricht
+        und für Hausaufgaben. Konten entstehen durch die Schuladministration oder durch die Registrierung mit dem
+        Klassencode der Lehrkraft (siehe Abschnitt {{ $no('benutzerkonten') }}). Kinder und Jugendliche brauchen
+        besonderen Schutz. Deshalb erheben wir nur, was die Plattform braucht, nutzen die Daten nicht für Werbung oder für
+        eigene geschäftliche Zwecke und haben mit der Kurzfassung in Abschnitt {{ $no('ueberblick') }} für eine
+        verständliche Sprache gesorgt.
     </p>
     <p>
         Eltern und Sorgeberechtigte können die Rechte ihrer Kinder ausüben, solange diese deren Tragweite noch nicht
-        selbst überblicken. Mit zunehmender Reife können Kinder und Jugendliche ihre Rechte auch selbst wahrnehmen. Holt
-        die Schule für einzelne Funktionen eine Einwilligung ein, zum Beispiel vor einer Aktivierung der KI-Anbindung,
-        informiert sie darüber selbst.
+        selbst überblicken. Mit zunehmender Reife können Kinder und Jugendliche ihre Rechte auch selbst wahrnehmen. Für
+        das Tuto-Mikro holt die Schule die Einwilligung der Erziehungsberechtigten ein und informiert darüber selbst.
     </p>
 
-    <h2 id="rechte">12. Rechte der betroffenen Personen</h2>
+    <h2 id="rechte">{{ $heading('rechte') }}</h2>
     <p>Sie haben nach der DSGVO folgende Rechte:</p>
     <ul>
         <li><strong>Auskunft</strong> über die gespeicherten Daten (Art. 15 DSGVO)</li>
@@ -805,21 +1122,21 @@
             können ihn aus Gründen einlegen, die sich aus Ihrer besonderen Situation ergeben (Art. 21 DSGVO).
         </li>
         <li>
-            <strong>Widerruf einer Einwilligung</strong> mit Wirkung für die Zukunft (Art. 7 Abs. 3 DSGVO). Die
-            Nur das optionale Aufnahme-Modul stützt sich auf Einwilligungen (Art. 6 Abs. 1 lit. a DSGVO), die die Schule einholt.
-            Eltern widerrufen eine Einwilligung für Tonaufnahmen über den Link in ihrem Einwilligungsschreiben oder bei der
-            Schule.
+            <strong>Widerruf einer Einwilligung</strong> mit Wirkung für die Zukunft (Art. 7 Abs. 3 DSGVO). Nur das
+            Tuto-Mikro stützt sich auf Einwilligungen (Art. 6 Abs. 1 lit. a DSGVO), die die Schule einholt. Eltern
+            widerrufen über den Link in ihrem Einwilligungsschreiben oder bei der Schule.
         </li>
-        <li><strong>Beschwerde</strong> bei einer Aufsichtsbehörde (siehe Abschnitt 13)</li>
+        <li><strong>Beschwerde</strong> bei einer Aufsichtsbehörde (siehe Abschnitt {{ $no('beschwerde') }})</li>
     </ul>
     <p>
-        Schreiben Sie dazu an <a href="mailto:info@sebastian-bleuel.de">info@sebastian-bleuel.de</a>. Im Schulbetrieb
-        wenden Sie sich bitte zuerst an Ihre Schule, wir unterstützen sie als Auftragsverarbeiter. Wir beantworten
-        Anfragen innerhalb eines Monats. Um Missbrauch zu verhindern, prüfen wir vorher, ob die Anfrage von der
+        Die Daten zu Ihrem Konto können Sie in Ihrem Profil mit „Meine Daten herunterladen“ selbst als Datei laden. Für
+        alles Weitere schreiben Sie an <a href="mailto:info@sebastian-bleuel.de">info@sebastian-bleuel.de</a>. Im
+        Schulbetrieb wenden Sie sich bitte zuerst an Ihre Schule, wir unterstützen sie als Auftragsverarbeiter. Wir
+        beantworten Anfragen innerhalb eines Monats. Um Missbrauch zu verhindern, prüfen wir vorher, ob die Anfrage von der
         betroffenen Person oder ihren Sorgeberechtigten kommt.
     </p>
 
-    <h2 id="beschwerde">13. Beschwerderecht</h2>
+    <h2 id="beschwerde">{{ $heading('beschwerde') }}</h2>
     <p>
         Sie haben das Recht, sich bei einer Datenschutz-Aufsichtsbehörde zu beschweren, wenn Sie meinen, dass Ihre Daten
         rechtswidrig verarbeitet werden (Art. 77 DSGVO). Für uns als Betreiber ist zuständig:
@@ -835,10 +1152,10 @@
         Schule liegt.
     </p>
 
-    <h2 id="aenderungen">14. Änderungen dieser Erklärung</h2>
+    <h2 id="aenderungen">{{ $heading('aenderungen') }}</h2>
     <p>
         Wir passen diese Datenschutzerklärung an, wenn sich die Plattform, die Verarbeitung oder die Rechtslage ändern,
-        zum Beispiel bevor die KI-Anbindung aktiviert wird. Es gilt die Fassung, die hier veröffentlicht ist.
+        zum Beispiel bevor ein anderer KI-Anbieter eingesetzt wird. Es gilt die Fassung, die hier veröffentlicht ist.
     </p>
     <p>Stand: Oktober 2026</p>
 @endsection
