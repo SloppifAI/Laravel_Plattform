@@ -1,0 +1,14 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "lernplattform-preview",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "-e",
+        "const {execFileSync, spawn} = require('child_process'); const fs = require('fs'); const path = require('path'); const db = path.join(process.cwd(), 'database', 'preview.sqlite'); fs.closeSync(fs.openSync(db, 'a')); const env = {...process.env, DB_CONNECTION: 'sqlite', DB_DATABASE: db, DB_URL: '', APP_LOCALE: 'de', SESSION_DRIVER: 'file', CACHE_STORE: 'file'}; execFileSync('php', ['artisan', 'migrate:fresh', '--seed', '--force'], {env, stdio: 'inherit'}); spawn('php', ['artisan', 'serve', '--port=8123'], {env, stdio: 'inherit'});"
+      ],
+      "port": 8123
+    }
+  ]
+}
