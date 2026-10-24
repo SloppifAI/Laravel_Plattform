@@ -5,9 +5,11 @@ namespace App\Support;
 use App\Models\Competency;
 use App\Models\Lesson;
 use App\Models\SchoolClass;
+use App\Models\Submission;
 use App\Models\User;
 use App\Role;
 use App\UnderstandingLevel;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -178,8 +180,43 @@ class LearningInsights
     }
 
     /**
-     * Newer half of the scores against the older half: 'up' or 'down' from a difference of 5 points, otherwise 'steady'.
-     * Null below two scores.
+     * A student's evaluated homework in lesson order (oldest first), limited to lessons still delegated to them and
+     * published: the same population the parent report counts, so both show the same average and trend.
+     *
+     * @return Collection<int, Submission>
+     */
+    public static function evaluatedSubmissions(User $student): Collection
+    {
+        return $student->submissions()
+            ->whereNotNull('submissions.evaluated_at')
+            ->whereIn('submissions.lesson_id', Lesson::query()->assignedTo($student)->select('lessons.id'))
+            ->join('lessons', 'lessons.id', '=', 'submissions.lesson_id')
+            ->orderBy('lessons.held_on')
+            ->orderBy('submissions.id')
+            ->select('submissions.*')
+            ->with('lesson')
+            ->get();
+    }
+
+    /**
+     * Label, colour and icon of a score for students. "Förderbedarf" is teacher language and red reads as failing to a
+     * child, so the lowest level becomes "Noch üben" in the calm warning colour; icon and label keep it readable without colour.
+     *
+     * @return array{label: string, color: string, icon: Heroicon}
+     */
+    public static function studentLevel(int $score): array
+    {
+        $level = UnderstandingLevel::fromScore($score);
+
+        return match ($level) {
+            UnderstandingLevel::NeedsSupport => ['label' => 'Noch üben', 'color' => 'warning', 'icon' => Heroicon::OutlinedLightBulb],
+            default => ['label' => $level->getLabel(), 'color' => $level->getColor(), 'icon' => $level->getIcon()],
+        };
+    }
+
+    /**
+     * Newer half of the scores against the older half, split and rounded like the parent report (an odd middle score
+     * counts as newer): 'up' or 'down' from a difference of 5 points, otherwise 'steady'. Null below two scores.
      *
      * @param  Collection<int, int>  $scoresOldestFirst
      * @return 'up'|'down'|'steady'|null
@@ -190,8 +227,8 @@ class LearningInsights
             return null;
         }
 
-        [$older, $newer] = $scoresOldestFirst->values()->split(2);
-        $difference = $newer->avg() - $older->avg();
+        $half = intdiv($scoresOldestFirst->count(), 2);
+        $difference = (int) round($scoresOldestFirst->slice($half)->avg() - $scoresOldestFirst->take($half)->avg());
 
         return match (true) {
             $difference >= 5 => 'up',
