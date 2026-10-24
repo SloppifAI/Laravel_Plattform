@@ -11,6 +11,9 @@ use App\QuestionLevel;
 use App\QuestionType;
 use App\Role;
 use App\UnderstandingLevel;
+use Filament\Facades\Filament;
+use Filament\Navigation\NavigationGroup as FilamentNavigationGroup;
+use Filament\Navigation\NavigationManager;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
@@ -89,6 +92,27 @@ class CoreAndAuthLanguageTest extends TestCase
             ->assertSee('Zurück zur Anmeldung');
     }
 
+    public function test_the_profile_page_follows_the_language_of_the_account(): void
+    {
+        $teacher = User::factory()->teacher()->create(['locale' => 'de']);
+
+        $this->actingAs($teacher)->get('/profile')
+            ->assertOk()
+            ->assertSee('Mein Profil')
+            ->assertSee('Meine Daten herunterladen')
+            ->assertSee('Lehrkraft')
+            ->assertDontSee('Download my data');
+
+        $teacher->update(['locale' => 'en']);
+
+        $this->actingAs($teacher->fresh())->get('/profile')
+            ->assertOk()
+            ->assertSee('My profile')
+            ->assertSee('Download my data')
+            ->assertSee('Teacher')
+            ->assertDontSee('Meine Daten herunterladen');
+    }
+
     /**
      * @return array<string, array{string}>
      */
@@ -165,15 +189,90 @@ class CoreAndAuthLanguageTest extends TestCase
         ], false);
     }
 
+    /**
+     * Group label => number of entries, in sidebar order, for whoever is signed in right now.
+     *
+     * @return array<string, int>
+     */
+    private function sidebarOutline(): array
+    {
+        app()->forgetInstance(NavigationManager::class);
+
+        return collect(Filament::getNavigation())
+            ->mapWithKeys(fn (FilamentNavigationGroup $group): array => [(string) $group->getLabel() => count($group->getItems())])
+            ->all();
+    }
+
+    /**
+     * @return array<string, array{callable(): User}>
+     */
+    public static function everyRole(): array
+    {
+        return [
+            'operator' => [fn (): User => User::factory()->operator()->create()],
+            'school administration' => [fn (): User => User::factory()->admin()->create()],
+            'teacher' => [fn (): User => User::factory()->teacher()->create()],
+            'student' => [fn (): User => User::factory()->student()->create()],
+        ];
+    }
+
+    #[DataProvider('everyRole')]
+    public function test_every_sidebar_entry_stays_in_its_group_in_both_languages(callable $makeUser): void
+    {
+        $this->actingAs($makeUser());
+
+        app()->setLocale('en');
+        $english = $this->sidebarOutline();
+
+        app()->setLocale('de');
+        $german = $this->sidebarOutline();
+
+        $this->assertNotEmpty($english);
+        $this->assertSame(array_values($english), array_values($german), 'An entry changed its group with the language.');
+
+        // No stray group: every labelled group is a case of the enum (the home page has the unlabelled one).
+        $caseLabels = fn (): array => array_map(fn (NavigationGroup $group): string => $group->getLabel(), NavigationGroup::cases());
+
+        $this->assertEmpty(array_diff(array_filter(array_keys($german)), $caseLabels()));
+        app()->setLocale('en');
+        $this->assertEmpty(array_diff(array_filter(array_keys($english)), $caseLabels()));
+    }
+
     public function test_the_administration_widgets_follow_the_language(): void
     {
         $admin = User::factory()->admin()->create();
 
-        $this->actingAs($admin)->get('/')->assertOk()->assertSee('Submissions this week')->assertDontSee('Abgaben diese Woche');
+        $this->actingAs($admin)->get('/')->assertOk()->assertSee('Submissions this week')->assertDontSee('Abgaben diese Woche')
+            // The shortcuts are found through the translated name of the group, so an empty list would mean the match broke.
+            ->assertSee('Manage users and classes')
+            ->assertDontSee('No administration areas are available to you right now.');
 
         $admin->update(['locale' => 'de']);
 
-        $this->actingAs($admin->fresh())->get('/')->assertOk()->assertSee('Abgaben diese Woche')->assertDontSee('Submissions this week');
+        $this->actingAs($admin->fresh())->get('/')->assertOk()->assertSee('Abgaben diese Woche')->assertDontSee('Submissions this week')
+            ->assertSee('Benutzer und Klassen pflegen')
+            ->assertDontSee('Für dich sind gerade keine Verwaltungsbereiche freigeschaltet.');
+    }
+
+    public function test_the_platform_administration_widgets_follow_the_language(): void
+    {
+        $operator = User::factory()->operator()->create();
+
+        $this->actingAs($operator)->get('/')
+            ->assertOk()
+            ->assertSee('Latest registrations')
+            ->assertSee('Look after the platform')
+            ->assertSee('Competency framework')
+            ->assertDontSee('Neueste Registrierungen');
+
+        $operator->update(['locale' => 'de']);
+
+        $this->actingAs($operator->fresh())->get('/')
+            ->assertOk()
+            ->assertSee('Neueste Registrierungen')
+            ->assertSee('Plattform betreuen')
+            ->assertSee('Kompetenzraster')
+            ->assertDontSee('Latest registrations');
     }
 
     public function test_the_enum_labels_follow_the_language(): void

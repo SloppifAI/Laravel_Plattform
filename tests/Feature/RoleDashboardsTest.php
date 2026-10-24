@@ -103,8 +103,8 @@ class RoleDashboardsTest extends TestCase
         $this->actingAs($teacher);
 
         $stats = array_map(fn (array $stat): mixed => $stat[0], $this->statsOf(TeacherStatsWidget::class));
-        $this->assertSame('1 / 2', $stats['Abgaben offener Hausaufgaben']);
-        $this->assertSame(1, $stats['Schüler:innen mit Förderbedarf']);
+        $this->assertSame('1 / 2', $stats['Submissions for open homework']);
+        $this->assertSame(1, $stats['Students with support needs']);
 
         Livewire::test(TeacherLessonsWidget::class)
             ->assertSee('Bruchrechnung')
@@ -134,10 +134,10 @@ class RoleDashboardsTest extends TestCase
 
         $stats = $this->statsOf(TeacherStatsWidget::class);
 
-        $this->assertSame('1 / 2', $stats['Abgaben offener Hausaufgaben'][0]);
-        $this->assertSame('aus 1 laufenden Hausaufgabe · Förderaufgaben: 1 / 1', $stats['Abgaben offener Hausaufgaben'][1]);
-        $this->assertSame('80 %', $stats['Ø Verständnis der letzten Hausaufgabe'][0]);
-        $this->assertStringContainsString('Bruchrechnung', $stats['Ø Verständnis der letzten Hausaufgabe'][1]);
+        $this->assertSame('1 / 2', $stats['Submissions for open homework'][0]);
+        $this->assertSame('from 1 running homework assignment · Practice tasks: 1 / 1', $stats['Submissions for open homework'][1]);
+        $this->assertSame('80 %', $stats['Avg. comprehension of the last homework'][0]);
+        $this->assertStringContainsString('Bruchrechnung', $stats['Avg. comprehension of the last homework'][1]);
     }
 
     public function test_teacher_stats_without_ordinary_homework_ignore_a_foerderaufgabe(): void
@@ -153,8 +153,8 @@ class RoleDashboardsTest extends TestCase
 
         $stats = $this->statsOf(TeacherStatsWidget::class);
 
-        $this->assertSame(['–', 'Noch keine Hausaufgabe freigegeben'], $stats['Ø Verständnis der letzten Hausaufgabe']);
-        $this->assertSame(['0 / 0', 'Gerade läuft keine Hausaufgabe · Förderaufgaben: 1 / 1'], $stats['Abgaben offener Hausaufgaben']);
+        $this->assertSame(['–', 'No homework released yet'], $stats['Avg. comprehension of the last homework']);
+        $this->assertSame(['0 / 0', 'No homework is running right now · Practice tasks: 1 / 1'], $stats['Submissions for open homework']);
     }
 
     public function test_the_teacher_widget_links_lessons_with_enough_evaluated_hand_ins_to_the_starter_board(): void
@@ -171,7 +171,7 @@ class RoleDashboardsTest extends TestCase
         $this->actingAs($teacher);
 
         Livewire::test(TeacherLessonsWidget::class)
-            ->assertSee('Einstieg nächste Stunde')
+            ->assertSee('Starter for the next lesson')
             ->assertSee(LessonStarter::getUrl(['lesson' => $reviewable]))
             ->assertDontSee(LessonStarter::getUrl(['lesson' => $tooFew]))
             ->assertDontSee(LessonStarter::getUrl(['lesson' => $practice]));

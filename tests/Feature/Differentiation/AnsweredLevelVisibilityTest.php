@@ -11,7 +11,6 @@ use App\Models\Question;
 use App\Models\SchoolClass;
 use App\Models\Submission;
 use App\Models\User;
-use App\QuestionLevel;
 use App\Support\PersonalDataExport;
 use Filament\Actions\Testing\TestAction;
 use Filament\Actions\ViewAction;
@@ -67,7 +66,8 @@ class AnsweredLevelVisibilityTest extends TestCase
         $answers = PersonalDataExport::for($this->student)['abgaben'][0]['antworten'];
 
         $this->assertSame('Einstiegsfrage: Was braucht eine Pflanze? Tipp: Denk an Licht.', $answers[0]['frage']);
-        $this->assertSame(QuestionLevel::Basis->getLabel(), $answers[0]['stufe']);
+        // The export is a German document, so the level is named in German although this suite runs in English.
+        $this->assertSame('Einstieg', $answers[0]['stufe']);
         $this->assertSame('Zweite Frage ohne Stufen?', $answers[1]['frage']);
         $this->assertNull($answers[1]['stufe']);
     }

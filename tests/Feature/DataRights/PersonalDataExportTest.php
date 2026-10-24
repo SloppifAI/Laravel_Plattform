@@ -444,4 +444,26 @@ class PersonalDataExportTest extends TestCase
         $this->assertCount(1, PersonalDataExport::for($student, $student)['benachrichtigungen']);
         $this->assertArrayNotHasKey('benachrichtigungen', PersonalDataExport::for($student, $admin));
     }
+
+    public function test_the_enum_labels_stay_german_when_the_person_reads_the_interface_in_english(): void
+    {
+        app()->setLocale('en');
+        $teacher = User::factory()->teacher()->create();
+        $schoolClass = SchoolClass::factory()->for($teacher->school)->create(['teacher_id' => $teacher->id]);
+        ClassBookEntry::factory()->for($schoolClass, 'schoolClass')->create(['teacher_id' => $teacher->id]);
+        ClassBookEntry::factory()->for($schoolClass, 'schoolClass')->confirmed()->create(['teacher_id' => $teacher->id]);
+        $student = User::factory()->student($schoolClass)->create();
+        $lesson = Lesson::factory()->for($schoolClass)->for($teacher, 'teacher')->publishedFor([$student])->create();
+        $submission = Submission::factory()->for($lesson)->for($student, 'student')->evaluated()->create();
+        Answer::factory()->for($submission)->for(Question::factory()->for($lesson)->create())->create(['level' => 'plus']);
+
+        $teacherExport = PersonalDataExport::for($teacher);
+        $studentExport = PersonalDataExport::for($student);
+
+        $this->assertSame('Lehrkraft', $teacherExport['konto']['rolle']);
+        $this->assertEqualsCanonicalizing(['Entwurf', 'Bestätigt'], array_column($teacherExport['klassenbuch_eintraege'], 'status'));
+        $this->assertSame('Schüler:in', $studentExport['konto']['rolle']);
+        $this->assertSame('Profi', $studentExport['abgaben'][0]['antworten'][0]['stufe']);
+        $this->assertSame('en', app()->getLocale());
+    }
 }

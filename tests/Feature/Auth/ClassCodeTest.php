@@ -107,7 +107,7 @@ class ClassCodeTest extends TestCase
 
         Livewire::test(ListLessons::class)
             ->mountAction('classCodes')
-            ->assertMountedActionModalSee('Dir ist noch keine Klasse zugeordnet')
+            ->assertMountedActionModalSee('You have not been assigned to a class yet')
             ->assertMountedActionModalDontSee('GHJKMN');
     }
 

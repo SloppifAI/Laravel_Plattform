@@ -140,6 +140,26 @@ class SpeechEnhancementTest extends TestCase
         $this->assertTrue($check->isSuccessful(), $check->getErrorOutput());
     }
 
+    public function test_the_buttons_the_messages_and_the_speech_language_follow_the_page_language(): void
+    {
+        app()->setLocale('en');
+        $english = $this->rendered();
+
+        $this->assertStringContainsString("const LANG = 'en-US';", $english);
+        $this->assertStringContainsString('\u0022read\u0022:\u0022Read aloud\u0022', $english);
+        $this->assertStringContainsString('\u0022dictate\u0022:\u0022Dictate\u0022', $english);
+        $this->assertStringContainsString('The English language pack is being downloaded to your device', $english);
+        $this->assertStringNotContainsString('Vorlesen', $english);
+
+        app()->setLocale('de');
+        $german = $this->rendered();
+
+        $this->assertStringContainsString("const LANG = 'de-DE';", $german);
+        $this->assertStringContainsString('\u0022read\u0022:\u0022Vorlesen\u0022', $german);
+        $this->assertStringContainsString('Das deutsche Sprachpaket wird auf dein Gerät geladen', $german);
+        $this->assertStringNotContainsString('Read aloud', $german);
+    }
+
     private function rendered(): string
     {
         return view('filament.lernplattform.speech')->render();

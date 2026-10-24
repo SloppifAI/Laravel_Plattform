@@ -17,7 +17,9 @@ use App\Models\StudentQuestion;
 use App\Models\Submission;
 use App\Models\User;
 use App\QuestionLevel;
+use Filament\Support\Contracts\HasLabel;
 use Illuminate\Notifications\DatabaseNotification;
+use Illuminate\Support\Facades\App;
 
 /**
  * Everything the platform stores about one person, as plain JSON-serialisable data with German keys
@@ -50,7 +52,7 @@ class PersonalDataExport
                 'name' => $user->name,
                 'benutzername' => $user->username,
                 'email' => $user->email,
-                'rolle' => $user->role->getLabel(),
+                'rolle' => self::germanLabel($user->role),
                 'schule' => $user->school?->name,
                 'klasse' => $user->schoolClass?->name,
                 'sprache' => $user->locale === null ? null : (config('lernplattform.locale.available')[$user->locale] ?? $user->locale),
@@ -168,7 +170,7 @@ class PersonalDataExport
                     ->sortBy(fn (Answer $answer): array => [$answer->question->position, $answer->id])
                     ->map(fn (Answer $answer): array => [
                         'frage' => $answer->askedPrompt(),
-                        'stufe' => QuestionLevel::tryFrom((string) $answer->level)?->getLabel(),
+                        'stufe' => self::germanLabel(QuestionLevel::tryFrom((string) $answer->level)),
                         'antwort' => $answer->answer,
                         'punkte' => $answer->score,
                         'rueckmeldung' => $answer->feedback,
@@ -466,7 +468,7 @@ class PersonalDataExport
                 'datum' => $entry->held_on->toDateString(),
                 'fach' => $entry->subject,
                 'klasse' => $entry->schoolClass->name,
-                'status' => $entry->status()->getLabel(),
+                'status' => self::germanLabel($entry->status()),
             ])
             ->all();
     }
@@ -496,7 +498,7 @@ class PersonalDataExport
                 'hausaufgabe' => $entry->homework,
                 'bemerkungen' => $entry->remarks,
                 'anzahl_fehlende_schueler' => count($entry->absent_student_ids ?? []),
-                'status' => $entry->status()->getLabel(),
+                'status' => self::germanLabel($entry->status()),
                 'bestaetigt_am' => $entry->confirmed_at?->toIso8601String(),
             ])
             ->all();
@@ -509,5 +511,20 @@ class PersonalDataExport
     private static function isVisible(User $viewer, User $owner, Lesson|Submission|ExplanationSession|ClassBookEntry|StudentQuestion|LessonRecording|ClassSubstitution $record): bool
     {
         return $viewer->is($owner) || $viewer->can('view', $record);
+    }
+
+    /**
+     * The export is a German document, so the labels of enums in it are German whatever language the viewer reads the interface in.
+     */
+    private static function germanLabel(?HasLabel $case): ?string
+    {
+        $locale = App::getLocale();
+        App::setLocale('de');
+
+        try {
+            return $case?->getLabel();
+        } finally {
+            App::setLocale($locale);
+        }
     }
 }
