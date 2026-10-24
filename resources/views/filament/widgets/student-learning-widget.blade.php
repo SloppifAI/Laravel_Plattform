@@ -229,9 +229,17 @@
                                 <span class="block font-medium text-gray-950 dark:text-white">{{ $need['competency']->name }}</span>
                             </span>
 
-                            <x-filament::link :href="$need['url']" :icon="Heroicon::OutlinedChatBubbleLeftRight" size="sm">
-                                Thema {{ ExplainIt::TUTOR_NAME }} erklären<span class="sr-only"> zu {{ $need['competency']->name }}</span>
-                            </x-filament::link>
+                            <span class="flex flex-wrap items-center gap-x-4 gap-y-2">
+                                @if ($need['practiceTaskUrl'])
+                                    <x-filament::link :href="$need['practiceTaskUrl']" :icon="Heroicon::OutlinedPencilSquare" size="sm">
+                                        Förderaufgabe bearbeiten<span class="sr-only"> zu {{ $need['competency']->name }}</span>
+                                    </x-filament::link>
+                                @endif
+
+                                <x-filament::link :href="$need['url']" :icon="Heroicon::OutlinedChatBubbleLeftRight" size="sm">
+                                    Thema {{ ExplainIt::TUTOR_NAME }} erklären<span class="sr-only"> zu {{ $need['competency']->name }}</span>
+                                </x-filament::link>
+                            </span>
                         </li>
                     @endforeach
                 </ul>

@@ -189,6 +189,74 @@ class DemoLessonAssistantTest extends TestCase
         $this->assertStringContainsString('Noch nicht erklärt hast du', $poor['feedback']);
     }
 
+    public function test_it_drafts_a_practice_task_on_exactly_one_competency_from_easier_to_harder(): void
+    {
+        $competency = Competency::factory()->create(['subject' => 'Biologie', 'name' => 'Erkenntnisse gewinnen', 'description' => 'Beobachtungen zu Versuchen beschreiben und deuten']);
+        $other = Competency::factory()->create(['subject' => 'Biologie']);
+        $lesson = $this->photosynthesisLesson();
+        $gaps = ['Gehe noch einmal auf „Chlorophyll“ ein.', 'Schreib deine Zusammenfassung ausführlicher: Was war der Ablauf der Stunde?'];
+
+        $draft = app(DemoLessonAssistant::class)->draftPracticeTask($competency, 'Biologie', collect([$lesson]), $gaps);
+
+        $this->assertCount(4, $draft['questions']);
+        $this->assertSame(
+            [QuestionType::Comprehension, QuestionType::Comprehension, QuestionType::Application, QuestionType::Comprehension],
+            array_column($draft['questions'], 'type'),
+        );
+        $this->assertSame([$competency->id], array_values(array_unique(array_column($draft['questions'], 'competency_id'))));
+        $this->assertNotContains($other->id, array_column($draft['questions'], 'competency_id'));
+        $this->assertStringContainsString('„Chlorophyll“', $draft['questions'][0]['prompt']);
+        $this->assertStringContainsString('Erkenntnisse gewinnen', $draft['summary']);
+        $this->assertStringContainsString('Beobachtungen zu Versuchen beschreiben und deuten', $draft['summary']);
+        $this->assertStringContainsString('„Chlorophyll“', $draft['summary']);
+        $this->assertStringContainsString('du schaffst das', $draft['summary']);
+
+        foreach ($draft['questions'] as $question) {
+            $this->assertNotSame('', $question['prompt']);
+            $this->assertNotSame('', $question['expected_answer']);
+        }
+
+        $this->assertSame($draft, app(DemoLessonAssistant::class)->draftPracticeTask($competency, 'Biologie', collect([$lesson]), $gaps));
+    }
+
+    public function test_a_practice_task_without_lessons_or_gaps_still_works_from_the_competency_alone(): void
+    {
+        $competency = Competency::factory()->create(['subject' => null, 'name' => 'Probleme mathematisch lösen', 'description' => null]);
+
+        $draft = app(DemoLessonAssistant::class)->draftPracticeTask($competency, 'Fachübergreifend', collect(), []);
+
+        $this->assertGreaterThanOrEqual(3, count($draft['questions']));
+        $this->assertLessThanOrEqual(4, count($draft['questions']));
+        $this->assertCount(1, array_filter($draft['questions'], fn (array $question): bool => $question['type'] === QuestionType::Application));
+        $this->assertStringContainsString('Probleme mathematisch lösen', $draft['summary']);
+        $this->assertSame([$competency->id], array_values(array_unique(array_column($draft['questions'], 'competency_id'))));
+        // No lesson, so no pointer to one.
+        $this->assertStringNotContainsString('Stunde', $draft['questions'][0]['prompt']);
+    }
+
+    public function test_a_practice_hand_in_is_not_judged_by_the_labels_of_the_practice_task(): void
+    {
+        $competency = Competency::factory()->create(['subject' => 'Biologie', 'name' => 'Versuche auswerten', 'description' => 'Beobachtungen aus Versuchen beschreiben und deuten']);
+        $task = Lesson::factory()->create([
+            'subject' => 'Biologie',
+            'topic' => 'Förderaufgabe: Versuche auswerten',
+            'held_on' => today(),
+            'practice_competency_id' => $competency->id,
+            'notes' => "Förderaufgabe zur Kompetenz „Versuche auswerten“.\nBeobachtungen aus Versuchen beschreiben und deuten\n\nAus der Stunde „Fotosynthese“ vom 21.10.2026:\n".self::NOTES,
+        ]);
+        $submission = Submission::factory()->for($task)->create(['summary' => 'Ich habe es nicht ganz verstanden.']);
+
+        $result = app(DemoLessonAssistant::class)->evaluateSubmission($submission);
+
+        $this->assertStringContainsString('„Fotosynthese“', implode(' ', $result['gaps']));
+        $this->assertStringContainsString('„Versuche auswerten“', $result['feedback']);
+
+        foreach ([...$result['gaps'], $result['feedback']] as $text) {
+            $this->assertStringNotContainsString('Förderaufgabe', $text);
+            $this->assertStringNotContainsString('Kompetenz', $text);
+        }
+    }
+
     private function photosynthesisLesson(): Lesson
     {
         return Lesson::factory()->create([

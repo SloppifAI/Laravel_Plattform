@@ -117,7 +117,7 @@ class MyLearningProgressPageTest extends TestCase
             ->assertOk()
             ->assertSee('Es geht aufwärts');
 
-        $this->actingAs(User::factory()->admin()->create())
+        $this->actingAs(User::factory()->admin()->for($student->school)->create())
             ->get(ParentReport::getUrl(['student' => $student]))
             ->assertOk()
             ->assertSee('Steigend: Die späteren Hausaufgaben liegen im Mittel 30 Punkte über den früheren.');

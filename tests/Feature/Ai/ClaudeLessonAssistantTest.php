@@ -96,6 +96,97 @@ class ClaudeLessonAssistantTest extends TestCase
         });
     }
 
+    public function test_a_practice_task_sends_only_competency_lessons_and_anonymous_gaps_and_maps_every_question_to_the_competency(): void
+    {
+        $student = User::factory()->student()->create(['name' => 'Zacharias Quellenberg', 'username' => 'zquellenberg', 'email' => 'zacharias.quellenberg@example.org']);
+        $competency = Competency::factory()->create(['subject' => 'Biologie', 'area' => 'Erkenntnisgewinnung', 'name' => 'Versuche deuten', 'description' => 'Beobachtungen beschreiben und deuten']);
+        $lesson = Lesson::factory()->create(['subject' => 'Biologie', 'topic' => 'Fotosynthese', 'held_on' => '2026-10-21', 'notes' => 'Wasserpest unter der Lampe: Sauerstoffbläschen gezählt.']);
+
+        Http::fake(['api.anthropic.com/*' => $this->messageResponse([
+            'summary' => 'Hier übst du, Versuche zu deuten.',
+            'questions' => [
+                ['type' => 'comprehension', 'prompt' => 'Was zeigt der Versuch?', 'expected_answer' => 'Sauerstoff entsteht bei Licht.'],
+                ['type' => 'comprehension', 'prompt' => 'Warum steigen Bläschen auf?', 'expected_answer' => 'Sauerstoff ist ein Gas.'],
+                ['type' => 'application', 'prompt' => 'Plane einen eigenen Versuch.', 'expected_answer' => 'Eine Variable wird verändert.'],
+                ['type' => 'comprehension', 'prompt' => 'Knobelaufgabe', 'expected_answer' => 'Individuell.'],
+                ['type' => 'comprehension', 'prompt' => 'Fünfte Frage, zu viel', 'expected_answer' => 'Wird abgeschnitten.'],
+            ],
+        ])]);
+
+        $draft = app(LessonAssistant::class)->draftPracticeTask($competency, 'Biologie', collect([$lesson]), ['Beschreibe genauer, was du beobachtest.']);
+
+        $this->assertSame('Hier übst du, Versuche zu deuten.', $draft['summary']);
+        $this->assertCount(4, $draft['questions']);
+        $this->assertSame(QuestionType::Application, $draft['questions'][2]['type']);
+        $this->assertSame([$competency->id], array_values(array_unique(array_column($draft['questions'], 'competency_id'))));
+
+        Http::assertSentCount(1);
+        Http::assertSent(function (Request $request) use ($student): bool {
+            $body = $request->data();
+            $text = $body['messages'][0]['content'][0]['text'];
+            $schema = $body['output_config']['format']['schema'];
+
+            $this->assertSame('https://api.anthropic.com/v1/messages', $request->url());
+            $this->assertTrue($request->hasHeader('x-api-key', 'test-key'));
+            $this->assertTrue($request->hasHeader('anthropic-version', '2026-10-21'));
+            $this->assertSame('default', $body['fallbacks']);
+            $this->assertSame('json_schema', $body['output_config']['format']['type']);
+            $this->assertFalse($schema['additionalProperties']);
+            $this->assertSame(['summary', 'questions'], $schema['required']);
+            $this->assertSame(['type', 'prompt', 'expected_answer'], $schema['properties']['questions']['items']['required']);
+            $this->assertCount(1, $body['messages'][0]['content']);
+            $this->assertStringContainsString('Fach: Biologie', $text);
+            $this->assertStringContainsString('Erkenntnisgewinnung – Versuche deuten', $text);
+            $this->assertStringContainsString('Beobachtungen beschreiben und deuten', $text);
+            $this->assertStringContainsString('Thema: Fotosynthese', $text);
+            $this->assertStringContainsString('21.10.2026', $text);
+            $this->assertStringContainsString('Wasserpest unter der Lampe', $text);
+            $this->assertStringContainsString('- Beschreibe genauer, was du beobachtest.', $text);
+            $this->assertStringContainsString('Förderaufgabe', $body['system']);
+            $this->assertStringNotContainsString('Quellenberg', $request->body());
+            $this->assertStringNotContainsStringIgnoringCase('zquellenberg', $request->body());
+            $this->assertStringNotContainsString($student->email, $request->body());
+
+            return true;
+        });
+    }
+
+    public function test_a_practice_task_sends_only_topic_and_date_of_a_lesson_whose_notes_were_withheld(): void
+    {
+        $competency = Competency::factory()->create(['subject' => 'Biologie']);
+        $own = Lesson::factory()->create(['topic' => 'Fotosynthese', 'held_on' => '2026-10-21', 'notes' => 'Eigene Notizen zur Wasserpest.']);
+        $colleagues = Lesson::factory()->create(['topic' => 'Zellaufbau', 'held_on' => '2026-10-22', 'notes' => 'GEHEIME NOTIZ von Kollegin']);
+        $colleagues->notes = null;
+
+        Http::fake(['api.anthropic.com/*' => $this->messageResponse([
+            'summary' => 'Hier übst du.',
+            'questions' => [['type' => 'comprehension', 'prompt' => 'Frage?', 'expected_answer' => 'Antwort.']],
+        ])]);
+
+        app(LessonAssistant::class)->draftPracticeTask($competency, 'Biologie', collect([$own, $colleagues]), []);
+
+        Http::assertSent(function (Request $request): bool {
+            $text = $request->data()['messages'][0]['content'][0]['text'];
+
+            $this->assertStringContainsString("Thema: Fotosynthese\nDatum der Stunde: 21.10.2026\nNotizen der Lehrkraft:\nEigene Notizen zur Wasserpest.", $text);
+            $this->assertStringContainsString("Thema: Zellaufbau\nDatum der Stunde: 22.10.2026", $text);
+            $this->assertSame(1, substr_count($text, 'Notizen der Lehrkraft'));
+            $this->assertStringNotContainsString('GEHEIME NOTIZ', $text);
+
+            return true;
+        });
+    }
+
+    public function test_a_practice_task_without_questions_is_an_error_instead_of_an_empty_task(): void
+    {
+        Http::fake(['api.anthropic.com/*' => $this->messageResponse(['summary' => 'Nichts.', 'questions' => []])]);
+
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('keine Übungsfragen');
+
+        app(LessonAssistant::class)->draftPracticeTask(Competency::factory()->create(), 'Biologie', collect(), []);
+    }
+
     public function test_evaluation_sends_the_texts_but_never_the_students_identity(): void
     {
         $student = User::factory()->student()->create([

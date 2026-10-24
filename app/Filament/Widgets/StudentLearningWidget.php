@@ -68,6 +68,7 @@ class StudentLearningWidget extends Widget
                     'competency' => $need['competency'],
                     'lesson' => $lesson,
                     'url' => ExplainIt::getUrl($lesson ? ['lesson' => $lesson->getKey()] : []),
+                    'practiceTaskUrl' => $need['practice_task'] ? WorkOnHomework::getUrl(['lesson' => $need['practice_task']]) : null,
                 ];
             }),
             'hasCompetencyData' => collect($competencies)->contains(fn (Collection $group): bool => $group->isNotEmpty()),

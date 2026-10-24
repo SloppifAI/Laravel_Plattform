@@ -84,9 +84,12 @@ class MyHomework extends Page implements HasTable
                     ->description(fn (Lesson $record): string => $record->subject, position: 'above')
                     ->weight(FontWeight::Medium)
                     ->wrap(),
+                // A Förderaufgabe was not held as a lesson, so it shows its kind instead of a date.
                 TextColumn::make('held_on')
                     ->label('Stunde vom')
-                    ->date('d.m.Y')
+                    ->formatStateUsing(fn (Lesson $record): string => $record->isPracticeTask() ? 'Förderaufgabe' : $record->held_on->format('d.m.Y'))
+                    ->badge(fn (Lesson $record): bool => $record->isPracticeTask())
+                    ->icon(fn (Lesson $record): ?Heroicon => $record->isPracticeTask() ? Heroicon::OutlinedLifebuoy : null)
                     ->sortable()
                     ->visibleFrom('md'),
                 // Status, understanding and due date share one column so the table fits a 375px phone screen.

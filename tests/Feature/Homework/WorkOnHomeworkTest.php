@@ -65,6 +65,15 @@ class WorkOnHomeworkTest extends TestCase
         $this->get(WorkOnHomework::getUrl(['lesson' => 999999]))->assertNotFound();
     }
 
+    public function test_homework_of_another_school_cannot_be_opened_or_listed(): void
+    {
+        $otherSchoolLesson = Lesson::factory()->publishedFor([User::factory()->student()->create()])->create();
+
+        $this->get(WorkOnHomework::getUrl(['lesson' => $otherSchoolLesson]))->assertForbidden();
+        $this->assertFalse($this->student->isMemberOf($otherSchoolLesson->school));
+        $this->assertNotContains($otherSchoolLesson->id, Lesson::assignedTo($this->student)->pluck('id')->all());
+    }
+
     public function test_open_homework_shows_questions_but_neither_expected_answers_nor_teacher_summary(): void
     {
         $this->get(WorkOnHomework::getUrl(['lesson' => $this->lesson]))

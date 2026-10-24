@@ -2,10 +2,12 @@
 
 namespace App\Ai;
 
+use App\Models\Competency;
 use App\Models\ExplanationSession;
 use App\Models\Lesson;
 use App\Models\Submission;
 use App\QuestionType;
+use Illuminate\Support\Collection;
 
 /**
  * Everything the platform asks an AI to do. Implementations only compute results; callers persist them.
@@ -22,6 +24,17 @@ interface LessonAssistant
      * @return array{summary: string, questions: list<array{type: QuestionType, prompt: string, expected_answer: string, competency_id: int|null}>}
      */
     public function draftHomework(Lesson $lesson): array;
+
+    /**
+     * Draft a Förderaufgabe: three or four practice questions on one competency, from easier to harder with one
+     * application question, for students who showed gaps in the given lessons. `$gaps` are the anonymous hints the AI
+     * named when it evaluated their homework. Every question is mapped to `$competency`; the summary says what is practised.
+     *
+     * @param  Collection<int, Lesson>  $sourceLessons  the lessons in which the gap showed
+     * @param  list<string>  $gaps
+     * @return array{summary: string, questions: list<array{type: QuestionType, prompt: string, expected_answer: string, competency_id: int}>}
+     */
+    public function draftPracticeTask(Competency $competency, string $subject, Collection $sourceLessons, array $gaps): array;
 
     /**
      * Check a student's own summary and answers (`$submission->answers`) against the lesson.

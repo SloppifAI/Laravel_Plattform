@@ -105,6 +105,23 @@
                                     @include('filament.pages.my-learning-progress.score', ['score' => $need['average']])
                                 </div>
 
+                                @if ($need['practice_task'])
+                                    {{-- The teacher handed out a Förderaufgabe for exactly this competency. --}}
+                                    <div class="mt-5 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-xl bg-primary-50 p-4 dark:bg-primary-400/10">
+                                        <p class="min-w-48 flex-1 text-sm text-gray-800 dark:text-gray-200">
+                                            <span class="font-semibold">Deine Lehrkraft hat dir eine Förderaufgabe gegeben.</span>
+                                            Mit ein paar Fragen kannst du genau das üben.
+                                            @if ($need['practice_task']->due_on)
+                                                Bis {{ $need['practice_task']->due_on->format('d.m.Y') }}.
+                                            @endif
+                                        </p>
+
+                                        <x-filament::button tag="a" :href="WorkOnHomework::getUrl(['lesson' => $need['practice_task']])" size="sm" :icon="Heroicon::OutlinedPencilSquare">
+                                            Förderaufgabe bearbeiten<span class="sr-only"> zu {{ $need['competency']->name }}</span>
+                                        </x-filament::button>
+                                    </div>
+                                @endif
+
                                 @if ($need['lessons']->isNotEmpty())
                                     <h4 class="mt-5 text-sm font-semibold text-gray-950 dark:text-white">Bei diesen Hausaufgaben hat es noch gehakt</h4>
 

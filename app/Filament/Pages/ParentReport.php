@@ -103,7 +103,7 @@ class ParentReport extends Page
             'submissionRate' => $countedCount > 0 ? (int) round(100 * $submittedCount / $countedCount) : null,
             'onTimeCount' => $homework->where('status.0', 'Pünktlich abgegeben')->count(),
             'notDueCount' => $notDueCount,
-            'sessions' => $this->student->explanationSessions()->with('lesson')->latest()->get(),
+            'sessions' => LearningInsights::visibleExplanationSessions(auth()->user(), $this->student),
         ];
     }
 

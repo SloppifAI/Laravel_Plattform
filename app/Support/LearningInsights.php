@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\Competency;
+use App\Models\ExplanationSession;
 use App\Models\Lesson;
 use App\Models\SchoolClass;
 use App\Models\Submission;
@@ -13,6 +14,7 @@ use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 
 /**
  * Who may see whose learning results, and the score aggregation behind "Lernstand & Förderbedarf" and "Elterngespräch".
@@ -21,7 +23,9 @@ use Illuminate\Support\Facades\DB;
 class LearningInsights
 {
     /**
-     * Admins see every class, teachers the classes they lead or hold lessons in, everyone else none.
+     * Admins see every class of their school, teachers the classes of their school they lead or hold published
+     * lessons in (a draft lesson, which any teacher can create for any class, grants nothing), everyone else
+     * (students, platform operators) none.
      *
      * @return Builder<SchoolClass>
      */
@@ -29,17 +33,19 @@ class LearningInsights
     {
         $query = SchoolClass::query();
 
+        if (! ($user->isAdmin() || $user->isTeacher()) || $user->school_id === null) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        $query->where('school_id', $user->school_id);
+
         if ($user->isAdmin()) {
             return $query;
         }
 
-        if (! $user->isTeacher()) {
-            return $query->whereRaw('1 = 0');
-        }
-
         return $query->where(fn (Builder $query) => $query
             ->where('teacher_id', $user->getKey())
-            ->orWhereHas('lessons', fn (Builder $query) => $query->where('teacher_id', $user->getKey())));
+            ->orWhereHas('lessons', fn (Builder $query) => $query->where('teacher_id', $user->getKey())->published()));
     }
 
     /**
@@ -47,14 +53,35 @@ class LearningInsights
      */
     public static function visibleStudents(User $user): Builder
     {
-        return User::query()
-            ->withRole(Role::Student)
-            ->when(! $user->isAdmin(), fn (Builder $query) => $query->whereIn('school_class_id', static::visibleClasses($user)->select('id')));
+        $students = User::query()->withRole(Role::Student);
+
+        return match (true) {
+            $user->isAdmin() && $user->school_id !== null => $students->where('school_id', $user->school_id),
+            $user->isTeacher() => $students->whereIn('school_class_id', static::visibleClasses($user)->select('id')),
+            default => $students->whereRaw('1 = 0'),
+        };
     }
 
     public static function canView(User $user, User $student): bool
     {
         return static::visibleStudents($user)->whereKey($student->getKey())->exists();
+    }
+
+    /**
+     * The student's "Erklär's mir" sessions the viewer may read. Sessions on a freely chosen topic belong to the
+     * student alone, so only sessions about a lesson count, and the policy still has the last word.
+     *
+     * @return Collection<int, ExplanationSession>
+     */
+    public static function visibleExplanationSessions(User $viewer, User $student): Collection
+    {
+        return $student->explanationSessions()
+            ->whereNotNull('lesson_id')
+            ->with(['student', 'lesson'])
+            ->latest()
+            ->get()
+            ->filter(fn (ExplanationSession $session): bool => Gate::forUser($viewer)->allows('view', $session))
+            ->values();
     }
 
     /**
@@ -122,14 +149,33 @@ class LearningInsights
     }
 
     /**
+     * The students with a support need in one competency, and the lessons in which their weak answers were given.
+     *
+     * @param  array<int, list<array{competency_id: int, average: int, lesson_ids: list<int>}>>  $supportNeeds  as returned by supportNeeds()
+     * @return array{student_ids: list<int>, lesson_ids: list<int>}
+     */
+    public static function competencySupport(array $supportNeeds, int $competencyId): array
+    {
+        $needs = collect($supportNeeds)
+            ->map(fn (array $needsOfStudent): ?array => collect($needsOfStudent)->firstWhere('competency_id', $competencyId))
+            ->filter();
+
+        return [
+            'student_ids' => $needs->keys()->map(fn (int|string $id): int => (int) $id)->all(),
+            'lesson_ids' => $needs->pluck('lesson_ids')->flatten()->unique()->values()->all(),
+        ];
+    }
+
+    /**
      * A student's own competencies for "Mein Lernstand": strengths, nearly there and those worth practising (below the
-     * support threshold), the latter with the lessons where they showed and the gaps the AI named in those submissions.
+     * support threshold), the latter with the lessons where they showed, the gaps the AI named in those submissions and
+     * the open Förderaufgabe the teacher delegated for that competency, if any.
      * Reads only the given student's answers; strongest/weakest first.
      *
      * @return array{
      *     strengths: Collection<int, array{competency: Competency, average: int}>,
      *     almost: Collection<int, array{competency: Competency, average: int}>,
-     *     practice: Collection<int, array{competency: Competency, average: int, lessons: Collection<int, Lesson>, gaps: list<string>}>
+     *     practice: Collection<int, array{competency: Competency, average: int, lessons: Collection<int, Lesson>, gaps: list<string>, practice_task: Lesson|null}>
      * }
      */
     public static function studentCompetencies(User $student): array
@@ -151,6 +197,15 @@ class LearningInsights
             ->get()
             ->pluck('gaps', 'lesson_id');
 
+        $practiceTasks = Lesson::assignedTo($student)
+            ->whereIn('practice_competency_id', $needs->keys())
+            ->whereDoesntHave('submissions', fn (Builder $query) => $query->whereBelongsTo($student, 'student'))
+            ->orderByDesc('published_at')
+            ->orderByDesc('id')
+            ->get()
+            ->unique('practice_competency_id')
+            ->keyBy('practice_competency_id');
+
         $rows = collect($averages)->map(fn (int $average, int $competencyId): array => [
             'competency' => $competencies[$competencyId],
             'average' => $average,
@@ -162,7 +217,7 @@ class LearningInsights
             'strengths' => $withLevel(UnderstandingLevel::Understood)->sortByDesc('average')->values(),
             'almost' => $withLevel(UnderstandingLevel::Partly)->sortByDesc('average')->values(),
             'practice' => $withLevel(UnderstandingLevel::NeedsSupport)->sortBy('average')->values()
-                ->map(function (array $row) use ($needs, $lessons, $gapsByLesson): array {
+                ->map(function (array $row) use ($needs, $lessons, $gapsByLesson, $practiceTasks): array {
                     $ownLessons = $lessons->only($needs[$row['competency']->getKey()]['lesson_ids'])->values();
 
                     return [
@@ -174,6 +229,7 @@ class LearningInsights
                             ->unique()
                             ->values()
                             ->all(),
+                        'practice_task' => $practiceTasks->get($row['competency']->getKey()),
                     ];
                 }),
         ];

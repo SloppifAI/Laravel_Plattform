@@ -23,7 +23,8 @@ use Illuminate\Support\Collection;
 class DemoLessonAssistant implements LessonAssistant
 {
     /**
-     * German words that carry no lesson content, plus classroom words that are never the subject matter.
+     * German words that carry no lesson content, plus classroom words that are never the subject matter
+     * (a Förderaufgabe's notes name the Förderaufgabe and the Kompetenz in their header).
      */
     private const array STOPWORDS = [
         'aber', 'alle', 'allem', 'allen', 'aller', 'alles', 'also', 'andere', 'anderen', 'anderer', 'anderes', 'anschließend',
@@ -44,6 +45,7 @@ class DemoLessonAssistant implements LessonAssistant
         'beispielsweise', 'arbeitsblatt', 'arbeitsblätter', 'aufgabe', 'aufgaben', 'ergebnis', 'ergebnisse', 'gruppe',
         'gruppen', 'hausaufgabe', 'hausaufgaben', 'klasse', 'lehrer', 'lehrerin', 'lehrkraft', 'notizen', 'schüler',
         'schülerin', 'schülerinnen', 'schülern', 'stunde', 'tafel', 'tafelbild', 'thema', 'unterricht', 'zusammenfassung',
+        'förderaufgabe', 'förderaufgaben', 'kompetenz', 'kompetenzen',
     ];
 
     /**
@@ -113,6 +115,59 @@ class DemoLessonAssistant implements LessonAssistant
         ];
     }
 
+    public function draftPracticeTask(Competency $competency, string $subject, Collection $sourceLessons, array $gaps): array
+    {
+        $topics = $sourceLessons->pluck('topic')->filter()->unique()->values();
+        $topicText = $topics->implode('. ');
+        $notes = $sourceLessons->pluck('notes')->filter()->implode("\n");
+        $sentences = $this->sentences($notes);
+        $topic = $topics->first() ?? $competency->name;
+        $description = trim((string) $competency->description);
+        $terms = $this->practiceTerms($gaps, $competency, $topicText, $notes);
+        $term = fn (int $index): string => $terms === [] ? $topic : $terms[$index % count($terms)]['term'];
+        $expected = fn (array $selected): string => $sentences === [] && $description !== '' ? $description : $this->expectedAnswer($sentences, $selected);
+
+        $questions = [
+            [
+                'type' => QuestionType::Comprehension,
+                'prompt' => "Zum Aufwärmen: Erkläre mit eigenen Worten, was man unter „{$term(0)}“ versteht. ".($topics->isEmpty() ? 'Schau bei Bedarf in deinen Unterlagen nach.' : "Bei Bedarf hilft dir die Stunde „{$topic}“ beim Nachschlagen."),
+                'expected_answer' => $expected([$terms[0] ?? null]),
+            ],
+            count($terms) >= 2
+                ? [
+                    'type' => QuestionType::Comprehension,
+                    'prompt' => "Beschreibe, wie „{$term(0)}“ und „{$term(1)}“ zusammenhängen.",
+                    'expected_answer' => $expected([$terms[0], $terms[1]]),
+                ]
+                : [
+                    'type' => QuestionType::Comprehension,
+                    'prompt' => "Beschreibe die wichtigsten Schritte und Zusammenhänge zum Thema „{$topic}“ in deinen eigenen Worten.",
+                    'expected_answer' => $expected([]),
+                ],
+            [
+                'type' => QuestionType::Application,
+                'prompt' => "Jetzt wird es praktisch: Finde ein eigenes Beispiel aus deinem Alltag, bei dem „{$term(1)}“ eine Rolle spielt, und erkläre Schritt für Schritt, wie du dabei vorgehst. Damit übst du „{$competency->name}“.",
+                'expected_answer' => "Ein passendes Beispiel überträgt die Inhalte richtig und zeigt die Kompetenz „{$competency->name}“".($description === '' ? '. ' : ": {$this->sentenceEnd($description)} ").$expected([$terms[1] ?? $terms[0] ?? null]),
+            ],
+        ];
+
+        if (count($terms) >= 3) {
+            $questions[] = [
+                'type' => QuestionType::Comprehension,
+                'prompt' => "Zum Knobeln: Begründe, warum „{$term(2)}“ wichtig ist, wenn es um „{$term(0)}“ geht. Nenne mindestens ein Argument.",
+                'expected_answer' => $expected([$terms[0], $terms[2]]),
+            ];
+        }
+
+        $focus = $terms === [] ? '' : ' Im Mittelpunkt stehen '.$this->quotedList(array_column(array_slice($terms, 0, 3), 'term')).'.';
+        $recap = $sentences === [] ? '' : ' '.$this->expectedAnswer($sentences, array_slice($terms, 0, 2));
+
+        return [
+            'summary' => "Diese Förderaufgabe übt die Kompetenz „{$competency->name}“ ({$subject})".($description === '' ? '.' : ": {$this->sentenceEnd($description)}")."{$focus}{$recap} Die Aufgaben werden Schritt für Schritt schwerer – nimm dir Zeit, du schaffst das!",
+            'questions' => array_map(fn (array $question): array => [...$question, 'competency_id' => $competency->getKey()], $questions),
+        ];
+    }
+
     public function evaluateSubmission(Submission $submission): array
     {
         $lesson = $submission->lesson;
@@ -153,7 +208,7 @@ class DemoLessonAssistant implements LessonAssistant
 
         return [
             'understanding_score' => $understandingScore,
-            'feedback' => $this->submissionFeedback($understandingScore, $coverage['covered'], (string) $lesson->topic),
+            'feedback' => $this->submissionFeedback($understandingScore, $coverage['covered'], $lesson->practiceCompetency?->name ?? (string) $lesson->topic),
             'gaps' => $gaps,
             'answers' => $evaluatedAnswers,
         ];
@@ -419,6 +474,37 @@ class DemoLessonAssistant implements LessonAssistant
         return $lesson === null
             ? $this->keyTerms((string) $session->topic, (string) $session->topic)
             : $this->keyTerms($lesson->topic.'. '.$lesson->notes, $session->topic.' '.$lesson->topic);
+    }
+
+    /**
+     * Up to four terms to practise: the ones the AI named in its gap hints first, then the key terms of the lessons
+     * where the gap showed, and only without any lesson text the words of the competency itself.
+     *
+     * @param  list<string>  $gaps
+     * @return list<array{term: string, stem: string}>
+     */
+    private function practiceTerms(array $gaps, Competency $competency, string $topics, string $notes): array
+    {
+        $fromGaps = collect($gaps)
+            ->flatMap(fn (string $gap): array => preg_match_all('/„([^“]{2,60})“/u', $gap, $matches) ? $matches[1] : [])
+            ->map(fn (string $term): array => ['term' => $term, 'stem' => $this->stem($term)]);
+
+        $fromLessons = $this->withoutTopic($this->keyTerms($topics.'. '.$notes, $topics), $topics);
+        $fromCompetency = $this->keyTerms($competency->name.'. '.$competency->description, $competency->name);
+
+        return $fromGaps
+            ->concat($fromLessons === [] || trim($notes) === '' ? $fromCompetency : $fromLessons)
+            ->unique('stem')
+            ->take(4)
+            ->values()
+            ->all();
+    }
+
+    private function sentenceEnd(string $text): string
+    {
+        $text = trim($text);
+
+        return preg_match('/[.!?…]$/u', $text) ? $text : $text.'.';
     }
 
     /**
