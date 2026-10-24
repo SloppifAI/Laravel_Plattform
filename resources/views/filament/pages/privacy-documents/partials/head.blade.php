@@ -1,6 +1,6 @@
 {{-- Title block and the "this is only a template" notice every template starts with. Needs $title and $lead. --}}
 <header class="space-y-2">
-    <p class="pd-kicker">{{ $school['name'] ?? 'Name der Schule' }} · Datenschutz bei der Lernplattform</p>
+    <p class="pd-kicker">{{ $school['name'] ?? 'Name der Schule' }} · Datenschutz bei Tuto</p>
     <h2 id="pd-title">{{ $title }}</h2>
     <p>{{ $lead }}</p>
 </header>

@@ -1,37 +1,53 @@
 @php
-    $thirdCountries = $aiEnabled
-        ? "Ja. Die KI-Anbindung ist eingeschaltet: {$aiData} gehen an Anthropic PBC (USA); bei der Auswertung einer Aufnahme nur pseudonymisierter Text. Name und Benutzerkennung des Kontos werden nicht mitgesendet, Namen im Freitext oder auf Arbeitsblättern schon. Garantien nach Art. 44 ff. DSGVO (Standardvertragsklauseln oder Angemessenheitsbeschluss) und Vertrag nach Art. 28 DSGVO sind zu dokumentieren."
-        : "Nein. Die KI-Anbindung ist ausgeschaltet, es verlassen keine Daten die Plattform. Wird sie eingeschaltet, gehen {$aiData} an Anthropic PBC (USA); dann sind Garantien nach Art. 44 ff. DSGVO und ein Vertrag nach Art. 28 DSGVO zu dokumentieren.";
+    $thirdCountries = match (true) {
+        $aiProviderIsLocal => "Nein. Der KI-Anbieter ist ein vom Betreiber selbst betriebenes Sprachmodell ({$aiProvider}); Lage der Server laut Auftragsverarbeitungsvertrag.",
+        $ai['enabled'] => "Möglich. Die KI-Funktionen sind eingeschaltet, Anbieter ist {$aiProvider}. Der Anbieter kann Daten auch außerhalb der EU verarbeiten, insbesondere in den USA. Garantien nach Art. 44 ff. DSGVO (Angemessenheitsbeschluss oder Standardvertragsklauseln) und der Vertrag nach Art. 28 DSGVO sind zu dokumentieren, hier eintragen: ______",
+        default => "Nein, solange die KI-Funktionen ausgeschaltet sind. Werden sie eingeschaltet, gehen Daten an {$aiProvider}, auch eine Verarbeitung außerhalb der EU ist möglich; dann sind Garantien nach Art. 44 ff. DSGVO und ein Vertrag nach Art. 28 DSGVO zu dokumentieren.",
+    };
 
-    $measures = "Siehe Anlage „Technische und organisatorische Maßnahmen“ zum Auftragsverarbeitungsvertrag. Kurz: Trennung der Schulen, Rollen- und Rechtekonzept mit serverseitiger Prüfung, Passwörter nur als Hash, Sitzungsende nach {$sessionMinutes} Minuten ohne Aktivität, Schutz gegen gefälschte Anfragen, automatische Löschfristen, kein Tracking, Schriftarten vom eigenen Server.";
+    $measures = "Siehe Anlage „Technische und organisatorische Maßnahmen“ zum Auftragsverarbeitungsvertrag. Kurz: Trennung der Schulen, Rollen- und Rechtekonzept mit serverseitiger Prüfung, Zugriff von Lehrkräften nur in ihren Klassen, Passwörter nur als Hash, Sitzungsende nach {$sessionMinutes} Minuten ohne Aktivität, Schutz gegen gefälschte Anfragen, automatische Löschfristen, kein Tracking, Schriftarten vom eigenen Server.";
 
     $entries = [
         [
-            'title' => 'A: Nutzung der Lernplattform im Unterricht',
+            'title' => 'A: Nutzung von Tuto im Unterricht',
             'rows' => [
-                'Zwecke' => 'Unterstützung von Unterricht und Lernen: Unterrichtsnotizen und Arbeitsblätter, Hausaufgaben, Abgaben, „Erklär’s mir“-Gespräche, Auswertung des Verständnisses, Übersicht über Förderbedarf, Bericht für Elterngespräche, Verwaltung von Konten und Klassen.',
+                'Zwecke' => 'Unterstützung von Unterricht und Lernen: Unterrichtsnotizen und Arbeitsblätter, Hausaufgaben in Stufen und in Einfacher Sprache, Abgaben, „Erklär’s mir“-Gespräche, Rückfragen an die Lehrkraft, Auswertung des Verständnisses, Übersicht über Förderbedarf, Klassenbuch mit Fehlzeiten, Vertretung, Benachrichtigungen, Verwaltung von Konten und Klassen.',
                 'Betroffene Personen' => 'Schüler:innen, Lehrkräfte, Schuladministration der Schule.',
-                'Datenkategorien' => 'Name, Benutzername, E-Mail-Adresse (optional), Rolle, Klasse, Passwort-Hash; Notizen und Arbeitsblätter der Lehrkräfte; Abgaben, Antworten, Gesprächsverläufe, Verständniswerte und Rückmeldungen; Sitzungs- und Protokolldaten.',
-                'Empfänger' => 'Intern: Lehrkräfte (zu ihren Stunden und Klassen), Schuladministration (eigene Schule). Extern: Betreiber der Plattform als Auftragsverarbeiter, dessen Unterauftragsverarbeiter (Hosting) nach Auftragsverarbeitungsvertrag. Die Plattform-Administration sieht keine Unterrichts- und Lerndaten. Nur nach Einschalten: KI-Anbieter (siehe Übermittlung in Drittländer).',
-                'Übermittlung in Drittländer' => $thirdCountries,
-                'Löschfristen' => "Unterrichtsstunden mit Abgaben und Gesprächen: automatisch nach {$schoolYearsKept} Schuljahren (das laufende eingerechnet). Konten: Löschung durch die Schuladministration, etwa beim Abgang von der Schule. Sitzungen: {$sessionMinutes} Minuten ohne Aktivität. Server-Logfiles und Fehlerprotokoll: Frist des Betreibers laut Anlage 1 des Auftragsverarbeitungsvertrags, hier eintragen: ______ Tage.",
+                'Datenkategorien' => 'Name, Benutzername, E-Mail-Adresse (optional), Rolle, Klasse, gewählte Sprache, Passwort-Hash; Klassenleitung, Zuordnungen und Vertretungen; Notizen und Arbeitsblätter der Lehrkräfte; Abgaben, Antworten mit gewählter Stufe, Gesprächsverläufe in „Erklär’s mir“, Rückfragen, Verständniswerte und Rückmeldungen; Klassenbuch mit Fehlzeiten; Benachrichtigungen; Sitzungs- und Protokolldaten.',
+                'Empfänger' => 'Intern: Lehrkräfte (zu ihren Stunden und den Klassen, die sie leiten, unterrichten oder vertreten), Schuladministration (eigene Schule). Eine Vertretung darf für die Dauer der Vertretung: '.$substitutionGrants.'. Extern: Betreiber als Auftragsverarbeiter, dessen Unterauftragsverarbeiter (Hosting) nach Auftragsverarbeitungsvertrag. Die Plattform-Administration sieht keine Unterrichts- und Lerndaten.',
+                'Übermittlung in Drittländer' => 'Nein, soweit die Unterauftragsverarbeiter des Betreibers in der EU verarbeiten (siehe Auftragsverarbeitungsvertrag). Für die KI-Funktionen siehe Eintrag B.',
+                'Löschfristen' => 'Unterrichtsstunden mit Abgaben, Antworten, Rückfragen und Arbeitsblättern, „Erklär’s mir“-Gespräche und Klassenbuch-Einträge: automatisch '.$retention.". Benachrichtigungen: {$notificationReadDays} Tage nach dem Lesen, spätestens nach {$notificationMaxDays} Tagen. Konten: Löschung durch die Schuladministration, etwa beim Abgang von der Schule. Sitzungen: {$sessionMinutes} Minuten ohne Aktivität. Server-Logfiles und Fehlerprotokoll: Frist des Betreibers laut Anlage 1 des Auftragsverarbeitungsvertrags, hier eintragen: ______ Tage.",
                 'Technische und organisatorische Maßnahmen' => $measures,
-                'Rechtsgrundlage' => 'Art. 6 Abs. 1 lit. e DSGVO in Verbindung mit dem Schulgesetz und den Datenschutzvorschriften des Landes. Die Schule ergänzt die genaue Norm.',
-                'Datenschutz-Folgenabschätzung' => 'Schwellwertprüfung nötig, mit der Vorlage „Folgenabschätzung“. Beim Einschalten der KI ist sie zu empfehlen.',
+                'Rechtsgrundlage' => 'Art. 6 Abs. 1 lit. e DSGVO in Verbindung mit dem Schulgesetz und den Datenschutzvorschriften des Landes, für das Klassenbuch auch die Vorschriften zur Schulverwaltung. Die Schule ergänzt die genaue Norm.',
+                'Datenschutz-Folgenabschätzung' => 'Schwellwertprüfung nötig, mit der Vorlage „Folgenabschätzung“.',
             ],
         ],
         [
-            'title' => 'B: Tonaufnahme von Unterricht (Aufnahme-Modul, optional)',
+            'title' => 'B: KI-Funktionen (optional)',
             'rows' => [
-                'Zwecke' => 'Eine Lehrkraft nimmt den Ton einer Stunde auf, um Transkript, Zusammenfassung und Tafelbild-Vorschlag für ihre Unterrichtsnotizen zu erhalten (Vor- und Nachbereitung). Keine Kontrolle von Schüler:innen oder Lehrkräften.',
-                'Betroffene Personen' => 'Alle, die im Raum sprechen: Schüler:innen (überwiegend minderjährig), die aufnehmende Lehrkraft, gegebenenfalls Vertretungen, Gäste, Praktikant:innen, Schulbegleitungen. Für die Einwilligungen zusätzlich die Erziehungsberechtigten.',
-                'Datenkategorien' => 'Tonaufnahme (Stimmen und Äußerungen), Beginn, Dauer, aufnehmende Lehrkraft, Zeitpunkt der Bestätigung vor der Aufnahme; Transkript und Auswertung. Einwilligungen je Schüler:in: Name der erklärenden Person, Zwecke, Fassung des Textes, Zeitpunkt, Widerruf. Gesprochenes kann zufällig besondere Kategorien nach Art. 9 DSGVO berühren.',
-                'Empfänger' => 'Aufnahme, Transkript und Auswertung: nur die aufnehmende Lehrkraft. Einwilligungen: Schuladministration und Lehrkräfte der Klasse. Auf Aufnahmen haben Schuladministration, andere Lehrkräfte, Schüler:innen und Plattform-Administration keinen Zugriff. Betreiber als Auftragsverarbeiter (technisch nur Betrieb). Nur nach Einschalten: Anbieter für Spracherkennung und KI-Anbieter, jeweils nur Text beziehungsweise bei der Spracherkennung Audio, mit Vertrag nach Art. 28 DSGVO.',
+                'Zwecke' => 'Entwürfe für Hausaufgaben, Förderaufgaben und Stufen, Fassungen in Einfacher Sprache, Einschätzung von Abgaben, Gespräch in „Erklär’s mir“, beim Tuto-Mikro Spracherkennung und Zusammenfassung. Ohne Einschalten durch die Schuladministration arbeitet eine Demo-Logik auf der Plattform, und nichts geht an einen KI-Anbieter.',
+                'Betroffene Personen' => 'Schüler:innen und Lehrkräfte, deren Texte verarbeitet werden; beim Tuto-Mikro alle, die im Raum sprechen.',
+                'Datenkategorien' => ucfirst($aiData).'; beim Tuto-Mikro Ton-Abschnitte (nicht pseudonymisiert) und pseudonymisierte Notizen aus der Stunde. Nie Benutzernamen, E-Mail-Adressen, Konto-Kennungen, Namen von Klasse und Schule. Gespeichert werden die Ergebnisse (Entwürfe, Einschätzungen, Fassungen in Einfacher Sprache) sowie die Bestätigungen der Schuladministration, Zeitpunkt und Person beim Einschalten.',
+                'Empfänger' => 'KI-Anbieter '.$aiProvider.' als weiterer Auftragsverarbeiter, nur bei eingeschalteten KI-Funktionen der Schule (derzeit '.($ai['enabled'] ? 'eingeschaltet' : 'ausgeschaltet').'). Die Schuladministration bestätigt beim Einschalten Auftragsverarbeitung und bezahlten Tarif.',
                 'Übermittlung in Drittländer' => $thirdCountries,
-                'Löschfristen' => "Aufnahme, Transkript und Auswertung: automatisch {$recordingDays} Tage nach Aufnahmebeginn, jederzeit früher durch die Lehrkraft. In Unterrichtsnotizen übernommene Texte (Namen der Klasse vorher durch Platzhalter ersetzt) folgen den Fristen der Notizen ({$schoolYearsKept} Schuljahre) und gehen bei der Hausaufgaben-Funktion mit KI an den KI-Anbieter. Löschung der Aufnahme über die Plattform nur durch die aufnehmende Lehrkraft; sonst über die Löschung von Stunde oder Konto oder auf Weisung durch den Betreiber.",
-                'Technische und organisatorische Maßnahmen' => $measures.' Zusätzlich: nur Ton; Dialog mit Bestätigung der Lehrkraft vor jeder Aufnahme; feste Leiste während der Aufnahme; Zugriff nur für die aufnehmende Lehrkraft; Dateien nicht öffentlich; Live-Texterkennung nur lokal im Browser; Pseudonymisierung bei der Auswertung einer Aufnahme; Audio nie an KI.',
-                'Rechtsgrundlage' => 'Einwilligung nach Art. 6 Abs. 1 lit. a, Art. 7 DSGVO aller aufgenommenen Personen, bei Minderjährigen der Sorgeberechtigten und je nach Land und Alter der Schüler:innen; bei Beschäftigten Landesrecht beziehungsweise § 26 BDSG beachten. Zusätzlich § 201 StGB. Für zufällig mitgesprochene besondere Kategorien (Gesundheit, Herkunft, Religion, Familie) ausdrückliche Einwilligung nach Art. 9 Abs. 2 lit. a DSGVO.',
-                'Datenschutz-Folgenabschätzung' => 'Ja, vor der ersten Aufnahme (Vorlage „Folgenabschätzung“). Personalrat beteiligen, soweit nach Landesrecht vorgesehen.',
+                'Löschfristen' => 'Ergebnisse folgen den Fristen der Stunde, Abgabe oder des Gesprächs (Eintrag A). Tuto bittet den Anbieter bei jeder Anfrage, nichts zu speichern („store: false“); was der Anbieter dennoch vorhält, regelt sein Vertrag.',
+                'Technische und organisatorische Maßnahmen' => 'Zwei Schalter (Plattform und Schule) mit Checkliste; Pseudonymisierung aller Texte vor jeder Anfrage; Stufen und Einfache Sprache nur mit Texten der Lehrkraft; keine Konto-Kennungen; Anweisung an die KI, niemanden zu identifizieren; Fehler werden angezeigt, nicht still ersetzt.',
+                'Rechtsgrundlage' => 'Art. 6 Abs. 1 lit. e DSGVO in Verbindung mit dem Schulgesetz; beim Tuto-Mikro die Einwilligung (Eintrag C). Die Schule ergänzt die genaue Norm.',
+                'Datenschutz-Folgenabschätzung' => 'Ja, vor dem Einschalten (Vorlage „Folgenabschätzung“).',
+            ],
+        ],
+        [
+            'title' => 'C: Tuto-Mikro im Unterricht (optional)',
+            'rows' => [
+                'Zwecke' => 'Das Mikrofon der Lehrkraft macht aus dem Ton einer Stunde Notizen, aus denen die Lehrkraft Zusammenfassung und Tafelbild-Vorschlag für ihre Unterrichtsnotizen gewinnt (Vor- und Nachbereitung). Die Anwesenheitsliste dient als Nachweis der Einwilligungsprüfung und als Vorschlag für die Fehlzeiten im Klassenbuch. Keine Kontrolle von Schüler:innen oder Lehrkräften.',
+                'Betroffene Personen' => 'Alle, die im Raum sprechen: Schüler:innen (überwiegend minderjährig), die Lehrkraft, gegebenenfalls Vertretungen, Gäste, Praktikant:innen, Schulbegleitungen. Für die Einwilligungen zusätzlich die Erziehungsberechtigten.',
+                'Datenkategorien' => "Ton (wird nicht gespeichert, nur für die Dauer der Anfrage im Arbeitsspeicher verarbeitet, vom Webserver gegebenenfalls kurz zwischengepuffert); Notizen aus der Stunde (nur im Browser der Lehrkraft); Nachweis je Sitzung: Lehrkraft, Beginn, Ende, Dauer, angehakte Schüler:innen, Zeitpunkt der Bestätigung, Fassung der Einwilligung, Zwecke, ob Ton-Abschnitte an den KI-Anbieter gingen. Einwilligungen je Schüler:in: Name der erklärenden Person, Zwecke, Fassung des Textes, Zeitpunkt, Widerruf. Gesprochenes kann zufällig besondere Kategorien nach Art. 9 DSGVO berühren.",
+                'Empfänger' => 'Notizen und Nachweis: nur die Lehrkraft der Stunde, nicht die Schuladministration; Schüler:innen die eigene Anwesenheit in ihrem Datenexport. Einwilligungen: Schuladministration und Lehrkräfte der Klasse. Betreiber als Auftragsverarbeiter (technisch nur Betrieb). Nur bei eingeschalteten KI-Funktionen: '.$aiProvider.' für Spracherkennung (Ton-Abschnitte) und Zusammenfassung (pseudonymisierter Text).',
+                'Übermittlung in Drittländer' => $thirdCountries,
+                'Löschfristen' => "Ton: keine Speicherung. Notizen aus der Stunde: mit dem Schließen der Seite. Nachweis: automatisch {$sessionKeepDays} Tage nach Beginn, früher mit der Stunde oder dem Konto der Lehrkraft. In die Stundennotizen übernommener Text (pseudonymisiert) folgt den Fristen der Notizen (Eintrag A). Einwilligungen: mit dem Konto der Schüler:in.",
+                'Technische und organisatorische Maßnahmen' => $measures.' Zusätzlich: Schalter der Schule mit Checkliste und veröffentlichter Einwilligungserklärung; gesperrte Fächer (derzeit: '.(implode(', ', $blockedSubjects) ?: 'keine').'); Start nur mit gültiger Einwilligung aller angehakten Schüler:innen und erneute Prüfung während der Sitzung; feste Leiste „Mikro an“ / „Mikro aus“; auf Wunsch der Lehrkraft eine Anzeige am Beamer, die nur „an“ oder „aus“ zeigt; Ton wird nie gespeichert (höchstens kurz vom Webserver zwischengepuffert, bis die Anfrage endet); Pseudonymisierung vor der Zusammenfassung.',
+                'Rechtsgrundlage' => 'Einwilligung nach Art. 6 Abs. 1 lit. a, Art. 7 DSGVO aller Personen im Raum, bei Minderjährigen der Sorgeberechtigten und je nach Land und Alter der Schüler:innen; bei Beschäftigten Landesrecht beziehungsweise § 26 BDSG beachten. Zusätzlich § 201 StGB. Für zufällig mitgesprochene besondere Kategorien (Gesundheit, Herkunft, Religion, Familie) ausdrückliche Einwilligung nach Art. 9 Abs. 2 lit. a DSGVO.',
+                'Datenschutz-Folgenabschätzung' => 'Ja, vor dem ersten Einsatz (Vorlage „Folgenabschätzung“). Personalrat beteiligen, soweit nach Landesrecht vorgesehen.',
             ],
         ],
     ];
@@ -39,7 +55,7 @@
 
 @include('filament.pages.privacy-documents.partials.head', [
     'title' => 'Eintrag für das Verzeichnis von Verarbeitungstätigkeiten (Art. 30 DSGVO)',
-    'lead' => 'Vorlage für zwei Einträge im Verzeichnis der Schule: die Lernplattform insgesamt und das optionale Aufnahme-Modul, das einen eigenen Zweck, eine eigene Rechtsgrundlage und eigene Fristen hat.',
+    'lead' => 'Vorlage für drei Einträge im Verzeichnis der Schule: Tuto insgesamt, die optionalen KI-Funktionen und das optionale Tuto-Mikro, die jeweils eigene Empfänger, Rechtsgrundlagen und Fristen haben.',
 ])
 
 <h3>Angaben zum Verantwortlichen (Art. 30 Abs. 1 lit. a)</h3>
@@ -79,5 +95,5 @@
 @endforeach
 
 <p>
-    Der Betreiber der Plattform führt als Auftragsverarbeiter ein eigenes Verzeichnis nach Art. 30 Abs. 2 DSGVO. Dieser Eintrag ersetzt es nicht.
+    Der Betreiber führt als Auftragsverarbeiter ein eigenes Verzeichnis nach Art. 30 Abs. 2 DSGVO. Dieser Eintrag ersetzt es nicht.
 </p>

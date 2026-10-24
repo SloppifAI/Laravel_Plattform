@@ -1,223 +1,255 @@
 @php
-    $aiStatus = $aiEnabled
-        ? "eingeschaltet: {$aiData} gehen an Anthropic PBC (USA). Name und Benutzerkennung des Kontos werden nicht mitgesendet, Namen im Freitext oder auf Arbeitsblättern dagegen schon"
-        : 'ausgeschaltet: keine Daten verlassen die Plattform';
-    $transcriptionStatus = $transcriptionEnabled
-        ? 'eingeschaltet: Audio geht zur Texterkennung an den eingerichteten Dienst'
-        : 'ausgeschaltet: kein Audio verlässt die Plattform';
-
-    $consentCheckOfPlatform = $consentGateEnforced
-        ? 'Die Plattform lässt eine Aufnahme nur zu, wenn für alle anwesenden Schüler:innen eine gültige Einwilligung der Eltern zur aktuellen Fassung vorliegt, die die benötigten Zwecke abdeckt. Widerruft jemand, sperrt das künftige Aufnahmen.'
-        : 'Die Plattform erfasst die Einwilligungen je Schüler:in und zeigt der Lehrkraft in der Übersicht „Einwilligungen“ der Klasse, wer gültig eingewilligt hat. Grenze: Sie sperrt den Start einer Aufnahme in dieser Version nicht, wenn Einwilligungen fehlen oder widerrufen sind. Das Prüfen vor jeder Aufnahme ist Pflicht der Lehrkraft und gehört in die Dienstanweisung.';
+    $aiStatus = $ai['enabled']
+        ? "eingeschaltet: {$aiData} gehen an {$aiProvider}, beim Tuto-Mikro außerdem Ton-Abschnitte zur Spracherkennung"
+        : 'ausgeschaltet: keine Daten gehen an einen KI-Anbieter, eine einfache Demo-Logik arbeitet auf der Plattform';
+    $blockedList = implode(', ', $blockedSubjects) ?: 'keine';
 
     $criteria = [
         ['Daten von Kindern', 'Schüler:innen sind überwiegend minderjährig und besonders schutzbedürftig.', true],
-        ['Systematische Aufzeichnung gesprochener Sprache', 'Das Aufnahme-Modul hält Unterricht als Ton fest, sobald eine Lehrkraft es nutzt.', true],
-        ['Besondere Kategorien personenbezogener Daten möglich', 'Im aufgenommenen Ton können zufällig Angaben zu Gesundheit, Herkunft, Religion oder Familie vorkommen (Art. 9 DSGVO). Die Plattform kann sie weder erkennen noch ausfiltern.', true],
-        ['Bewertung persönlicher Aspekte', 'Der Verständniswert (0 bis 100) ist eine KI-gestützte Einschätzung zu einzelnen Schüler:innen. Er ist keine Note.', true],
-        ['Neue Technologien', 'KI-Auswertung und Spracherkennung. Beides ist ab Werk ausgeschaltet; die Schule bewertet es für den Fall der Aktivierung mit.', true],
+        ['Verarbeitung des gesprochenen Wortes', 'Das Tuto-Mikro macht aus dem Ton einer Stunde Text, sobald eine Lehrkraft es einschaltet. Der Ton wird nicht gespeichert, bei eingeschalteten KI-Funktionen aber in Abschnitten an den KI-Anbieter gesendet.', true],
+        ['Besondere Kategorien personenbezogener Daten möglich', 'Im Ton, in Notizen und in Antworten können zufällig Angaben zu Gesundheit, Herkunft, Religion oder Familie vorkommen (Art. 9 DSGVO). Die Plattform kann sie weder erkennen noch ausfiltern. In gesperrten Fächern bleibt das Tuto-Mikro aus.', true],
+        ['Bewertung persönlicher Aspekte', 'Der Verständniswert (0 bis 100) ist eine KI-gestützte Einschätzung zu einzelnen Schüler:innen. Er ist keine Note. Das Klassenbuch hält Fehlzeiten fest.', true],
+        ['Neue Technologien', 'Sprachmodell und Spracherkennung eines KI-Anbieters. Beides ist für jede Schule ausgeschaltet, bis die Schuladministration die KI-Funktionen einschaltet.', true],
         ['Automatisierte Einzelentscheidung mit Rechtswirkung', 'Gibt es nicht. Menschen entscheiden, was aus den Ergebnissen folgt.', false],
     ];
 
     $dataCategories = [
         [
             'title' => 'Kontodaten',
-            'data' => 'Name, Benutzername, auf Wunsch E-Mail-Adresse, Rolle, Schule, Klasse. Das Passwort nur als Hash.',
+            'data' => 'Name, Benutzername, auf Wunsch E-Mail-Adresse, Rolle, Schule, Klasse, gewählte Sprache. Das Passwort nur als Hash.',
             'people' => 'Schüler:innen, Lehrkräfte, Schuladministration',
-            'access' => 'Schuladministration der Schule. Lehrkräfte sehen die Namen der Schüler:innen ihrer Klassen. Die Plattform-Administration sieht nur Administrationskonten.',
+            'access' => 'Schuladministration der Schule. Lehrkräfte sehen die Namen der Schüler:innen der Klassen, die sie leiten, unterrichten oder vertreten. Die Plattform-Administration sieht nur Administrationskonten.',
             'retention' => 'Bis die Schule das Konto löscht.',
         ],
         [
-            'title' => 'Unterrichtsnotizen, Arbeitsblätter, Hausaufgaben',
-            'data' => 'Fach, Thema, Datum, Notizen, hochgeladene Arbeitsblätter, Zusammenfassung, Fragen. Das trägt die Lehrkraft selbst ein.',
+            'title' => 'Klassen, Zuordnungen und Vertretungen',
+            'data' => 'Klasse, Klassenleitung, zugeordnete Lehrkräfte; je Vertretung die Lehrkraft, der Zeitraum, wer sie eingetragen hat und eine Notiz.',
+            'people' => 'Lehrkräfte',
+            'access' => 'Schuladministration und Lehrkräfte der Klasse.',
+            'retention' => "Eine Vertretung dauert höchstens {$substitutionMaxDays} Tage und gewährt danach nichts mehr. Der Eintrag bleibt als Nachweis, bis die Klasse oder das Konto gelöscht wird.",
+        ],
+        [
+            'title' => 'Unterrichtsstunden, Notizen, Arbeitsblätter, Hausaufgaben',
+            'data' => 'Fach, Thema, Datum, Notizen (auch aus dem Tuto-Mikro übernommener Text), hochgeladene Arbeitsblätter, Zusammenfassung, Fragen in bis zu drei Stufen (Einstieg, Standard, Profi) mit Erwartungshorizont, Fassungen in Einfacher Sprache. Das trägt die Lehrkraft selbst ein oder lässt es von der KI entwerfen.',
             'people' => 'Lehrkräfte; nur zufällig genannte Dritte',
-            'access' => 'Lehrkraft der Stunde und Schuladministration. Schüler:innen sehen veröffentlichte Hausaufgaben.',
-            'retention' => "Automatische Löschung nach {$schoolYearsKept} Schuljahren (das laufende eingerechnet).",
+            'access' => 'Lehrkraft der Stunde und Schuladministration. Schüler:innen sehen freigegebene Hausaufgaben (Zusammenfassung und Fragen), nicht die Notizen, Arbeitsblätter und den Erwartungshorizont.',
+            'retention' => 'Automatisch '.$retention.'.',
         ],
         [
-            'title' => 'Abgaben, Verständniswerte, „Erklär’s mir“-Gespräche',
-            'data' => 'Antworten, Zusammenfassungen, Gesprächsverlauf, Verständniswert, Rückmeldung.',
+            'title' => 'Abgaben, Antworten, Verständniswerte',
+            'data' => 'Zusammenfassung und Antworten der Schüler:in mit der gewählten Stufe, Verständniswert, Rückmeldung, Hinweise auf Lücken.',
             'people' => 'Schüler:innen',
-            'access' => 'Abgaben und Gespräche zu einer Stunde: die Schüler:in selbst, die Lehrkraft der Stunde und die Schuladministration. Gespräche zu einem frei gewählten Thema: nur die Schüler:in selbst. Nie andere Schüler:innen.',
-            'retention' => "Automatische Löschung nach {$schoolYearsKept} Schuljahren (das laufende eingerechnet).",
+            'access' => 'Die Schüler:in selbst, die Lehrkraft der Stunde (eine Vertretung nur, solange sie dauert) und die Schuladministration. Den Lernstand einer Klasse sehen die Lehrkräfte der Klasse. Nie andere Schüler:innen.',
+            'retention' => 'Automatisch '.$retention.'.',
         ],
         [
-            'title' => 'Tonaufnahme einer Stunde (Aufnahme-Modul, optional)',
-            'data' => 'Stimmen und Äußerungen aller, die im Raum sprechen. Dazu Beginn, Dauer, aufnehmende Lehrkraft und der Zeitpunkt der Bestätigung vor der Aufnahme. Gesprochenes kann zufällig auch besondere Kategorien nach Art. 9 DSGVO berühren (Gesundheit, Herkunft, Religion, Familie).',
+            'title' => '„Erklär’s mir“-Gespräche und Rückfragen',
+            'data' => 'Thema, Gesprächsverlauf mit Tuto, Verständniswert, Rückmeldung; Rückfragen an die Lehrkraft und ihre Antwort.',
+            'people' => 'Schüler:innen, Lehrkräfte',
+            'access' => 'Gespräche und Rückfragen zu einer Stunde: die Schüler:in selbst, die Lehrkraft der Stunde (eine Vertretung nur, solange sie dauert) und die Schuladministration. Gespräche zu einem frei gewählten Thema: nur die Schüler:in selbst.',
+            'retention' => 'Automatisch '.$retention.'. Rückfragen werden mit ihrer Stunde gelöscht.',
+        ],
+        [
+            'title' => 'Klassenbuch',
+            'data' => 'Datum, Fach, Thema, Inhalt, Hausaufgabe, Fehlzeiten (welche Schüler:innen gefehlt haben), Bemerkungen, Bestätigung. Den Entwurf erstellt Tuto aus der Stunde; die Fehlzeiten schlägt Tuto aus der Anwesenheitsliste des Tuto-Mikro vor, die Lehrkraft prüft und bestätigt.',
+            'people' => 'Schüler:innen, Lehrkräfte',
+            'access' => 'Lehrkräfte der Klasse (eine Vertretung, solange sie dauert, mit allen Einträgen und dem Export) und die Schuladministration. Nie Schüler:innen.',
+            'retention' => 'Automatisch '.$retention.', nach dem Datum des Eintrags.',
+        ],
+        [
+            'title' => 'Tuto-Mikro (optional)',
+            'data' => 'Ton der Stunde: wird nicht gespeichert. Notizen aus der Stunde (erkannter Text): nur im Browser der Lehrkraft, bis sie etwas in die Stundennotizen übernimmt. Gespeichert wird je Sitzung ein Nachweis: Lehrkraft, Beginn, Ende, Dauer, angehakte Schüler:innen, Zeitpunkt der Bestätigung der Anwesenheit, Fassung der Einwilligung, geprüfte Zwecke und ob Ton-Abschnitte an den KI-Anbieter gingen. Im Ton kann zufällig auch Gesprochenes nach Art. 9 DSGVO vorkommen.',
             'people' => 'Schüler:innen (minderjährig), Lehrkraft, weitere anwesende Personen',
-            'access' => 'Nur die aufnehmende Lehrkraft. Nicht die Schuladministration, nicht andere Lehrkräfte, nicht Schüler:innen, nicht die Plattform-Administration.',
-            'retention' => "{$recordingDays} Tage ab Aufnahmebeginn, dann automatische Löschung von Datei und Eintrag. Über die Plattform löschen kann nur die aufnehmende Lehrkraft, solange sie die Stunde leitet (siehe R10).",
+            'access' => 'Den Nachweis sieht nur die Lehrkraft der Stunde. Nicht die Schuladministration, nicht andere Lehrkräfte, nicht die Plattform-Administration. Schüler:innen finden nur die eigene Anwesenheit (Fach, Thema, Beginn, Ende) in ihrem Datenexport.',
+            'retention' => "Nachweis: {$sessionKeepDays} Tage ab Beginn, früher mit der Stunde oder dem Konto der Lehrkraft. In die Stundennotizen übernommener Text: wie die Notizen.",
         ],
         [
-            'title' => 'Transkript und Auswertung der Aufnahme (optional)',
-            'data' => 'Text des Gesprochenen, Zusammenfassung, Fachbegriffe, Tafelbild-Vorschlag, Fragen aus der Klasse. Der Text kann von der Lehrkraft eingegeben, live im Browser erkannt oder, falls eingeschaltet, durch einen Dienst erzeugt sein.',
-            'people' => 'wie die Aufnahme',
-            'access' => 'Nur die aufnehmende Lehrkraft.',
-            'retention' => "Zusammen mit der Aufnahme. Teile, die die Lehrkraft in ihre Unterrichtsnotizen übernimmt (Namen der Klasse vorher durch Platzhalter ersetzt), folgen den Fristen der Notizen ({$schoolYearsKept} Schuljahre) und gehen bei „Hausaufgabe mit KI erstellen“ an den KI-Anbieter, auch wenn der Auswertung der Aufnahme nicht zugestimmt wurde.",
-        ],
-        [
-            'title' => 'Einwilligungen für Aufnahmen (optional)',
-            'data' => 'Pro Schüler:in: Name der erklärenden Person, Zwecke (Tonaufnahme, Transkript, KI-Auswertung), Fassung des Einwilligungstextes, Zeitpunkt, Art (digital oder Papier), Widerruf, auf Wunsch die eigene Bestätigung der Schüler:in. Der Link zur Einwilligung wird nur als Hash gespeichert.',
+            'title' => 'Einwilligungen für das Tuto-Mikro (optional)',
+            'data' => 'Pro Schüler:in: Name der erklärenden Person, Zwecke (Ton, Notizen aus der Stunde, Spracherkennung und Zusammenfassung durch den KI-Anbieter), Fassung des Textes, Zeitpunkt, Art (digital oder Papier), Widerruf, auf Wunsch die eigene Bestätigung der Schüler:in. Der Link zur Einwilligung wird nur als Hash gespeichert.',
             'people' => 'Erziehungsberechtigte, Schüler:innen',
-            'access' => 'Schuladministration und die Lehrkräfte der jeweiligen Klasse. Schüler:innen nur die eigene Bestätigung. Die Plattform-Administration sieht keine Einwilligungen.',
-            'retention' => 'Solange das Konto der Schüler:in besteht; mit dem Konto werden auch die Einwilligungen gelöscht. Die Schule bewahrt Papier-Originale nach ihren eigenen Fristen auf.',
+            'access' => 'Schuladministration und die Lehrkräfte der Klasse (Klassenleitung, zugeordnete Lehrkräfte, laufende Vertretung). Schüler:innen nur die eigene. Die Plattform-Administration sieht keine Einwilligungen.',
+            'retention' => 'Solange das Konto der Schüler:in besteht. Die Schule bewahrt Papier-Originale nach ihren eigenen Fristen auf.',
+        ],
+        [
+            'title' => 'Benachrichtigungen',
+            'data' => 'Hinweise in der Glocke, etwa zu einer neuen Hausaufgabe oder einer Rückfrage, mit Thema, Fach und Klasse der Stunde; Zeitpunkt des Lesens.',
+            'people' => 'alle Nutzenden',
+            'access' => 'Nur die Person, die sie erhält.',
+            'retention' => "{$notificationReadDays} Tage nach dem Lesen, spätestens {$notificationMaxDays} Tage nach dem Erstellen.",
+        ],
+        [
+            'title' => 'KI-Einstellung der Schule',
+            'data' => 'Die vier Bestätigungen der Checkliste, Zeitpunkt des Einschaltens und die Schuladministration, die eingeschaltet hat.',
+            'people' => 'Schuladministration',
+            'access' => 'Schuladministration der Schule.',
+            'retention' => 'Bis zum Ausschalten oder zur Löschung der Schule.',
         ],
         [
             'title' => 'Technische Daten',
-            'data' => 'Sitzungskennung, IP-Adresse, Browserangabe, Zeitpunkt der letzten Aktivität, Server-Logfiles, Fehlerprotokoll.',
+            'data' => 'Sitzungskennung, IP-Adresse, Browserangabe, Zeitpunkt der letzten Aktivität, gewählte Sprache, Server-Logfiles, Fehlerprotokoll. Im Browser bleiben die Einstellungen „Einfache Sprache“ und „Namen verbergen“; sie verlassen das Gerät nicht.',
             'people' => 'alle Nutzenden',
             'access' => 'Betreiber, nur für Betrieb, Sicherheit und Fehlersuche.',
-            'retention' => "Sitzung {$sessionMinutes} Minuten ohne Aktivität; Logfiles nach der Datenschutzerklärung der Plattform.",
+            'retention' => "Sitzung {$sessionMinutes} Minuten ohne Aktivität; Logfiles nach der Frist des Betreibers.",
         ],
     ];
 
     $risks = [
         [
             'title' => 'Verhaltensanpassung durch Überwachungsdruck',
-            'impact' => 'Schüler:innen und Lehrkräfte sprechen nicht mehr frei, stellen weniger Fragen oder äußern sich vorsichtiger, weil sie sich beobachtet fühlen (Chilling Effect). Das beeinträchtigt Unterricht und die freie Entfaltung der Persönlichkeit, bei Kindern besonders.',
+            'impact' => 'Schüler:innen und Lehrkräfte sprechen nicht mehr frei, stellen weniger Fragen oder äußern sich vorsichtiger, weil das Mikro an ist (Chilling Effect). Das beeinträchtigt Unterricht und die freie Entfaltung der Persönlichkeit, bei Kindern besonders.',
             'measures' => [
-                'Aufnahme ist die bewusste Ausnahme einer Lehrkraft für eine Stunde. Es gibt keine Dauer- oder Hintergrundaufnahme.',
-                'Nur Ton, kein Video und kein Bild.',
-                'Eine feste Leiste am oberen Bildschirmrand zeigt auf dem Gerät der Lehrkraft die ganze Zeit an, dass aufgenommen wird.',
-                'Schuladministration und andere Lehrkräfte haben keinen Zugriff. Die Ergebnisse sind für die Lehrkraft gedacht, nicht zur Kontrolle.',
+                'Das Tuto-Mikro ist die bewusste Ausnahme einer Lehrkraft für eine Stunde. Sie schaltet es ein und aus; es gibt keinen Dauer- oder Hintergrundbetrieb.',
+                'Nur das Mikrofon der Lehrkraft, nur Ton, kein Bild. Tuto speichert keinen Ton.',
+                'Eine feste Leiste zeigt auf dem Gerät der Lehrkraft die ganze Zeit „Mikro an – Tuto schreibt mit“ oder „Mikro aus“. Die Lehrkraft kann außerdem eine Anzeige für den Beamer öffnen, die der Klasse nur „an“ oder „aus“ und das Thema der Stunde zeigt, keine Namen und keinen Text. Die Plattform erzwingt das Öffnen nicht (siehe „Was die Plattform nicht leistet“).',
+                "In gesperrten Fächern bleibt das Tuto-Mikro aus (derzeit: {$blockedList}), ebenso bei Förderaufgaben.",
+                'Schuladministration und andere Lehrkräfte sehen weder die Notizen aus der Stunde noch den Nachweis der Sitzung. Die Ergebnisse sind für die Lehrkraft gedacht, nicht zur Kontrolle.',
             ],
         ],
         [
-            'title' => 'Missbrauch und Weitergabe von Aufnahmen',
-            'impact' => 'Stimmen von Kindern werden veröffentlicht, in Messengern geteilt, für Mobbing oder zur Bloßstellung genutzt. Aufnahmen dienen der Leistungs- oder Verhaltenskontrolle von Lehrkräften.',
+            'title' => 'Missbrauch und Weitergabe von Ton oder Notizen',
+            'impact' => 'Stimmen oder Äußerungen von Kindern werden weitergegeben, in Messengern geteilt, für Mobbing oder zur Bloßstellung genutzt, oder dienen der Leistungs- oder Verhaltenskontrolle von Lehrkräften.',
             'measures' => [
-                'Zugriff nur für die aufnehmende Lehrkraft (Richtlinie der Plattform, serverseitig bei jedem Abruf geprüft).',
-                'Die Datei ist nicht öffentlich abrufbar, sondern nur über eine geprüfte Adresse, mit zufälligem Dateinamen.',
-                "Kurze Frist: automatische Löschung nach {$recordingDays} Tagen; die Lehrkraft kann jederzeit selbst löschen.",
-                'Grenze: Die Lehrkraft kann die Datei herunterladen. Was mit der Kopie geschieht, kann die Plattform nicht steuern. Das regelt die Dienstanweisung der Schule.',
+                'Es gibt keine Tondatei: Tuto speichert einen Abschnitt nirgends und erkennt ihn aus dem Arbeitsspeicher der Anfrage. Es gibt nichts zum Anhören oder Herunterladen. Grenze: Der Webserver kann einen größeren Abschnitt für die Dauer der Anfrage kurz in einer temporären Datei zwischenpuffern; sie wird mit dem Ende der Anfrage gelöscht.',
+                'Die Notizen aus der Stunde liegen nur im Browser der Lehrkraft und sind weg, wenn sie die Seite schließt. Die Zusammenfassung wird nicht gespeichert.',
+                'Grenze: Die Lehrkraft kann Text von der Seite kopieren. Was sie in die Stundennotizen übernimmt, sieht wie alle Notizen auch die Schuladministration. Das regelt die Dienstanweisung.',
             ],
         ],
         [
             'title' => 'Unbefugter Zugriff',
-            'impact' => 'Fremde hören Aufnahmen oder lesen Transkripte, etwa durch übernommene Konten, geteilte Passwörter, geteilte Geräte oder Schwachstellen. Die Äußerungen von Kindern werden offengelegt.',
+            'impact' => 'Fremde lesen Lerndaten, Fehlzeiten oder Notizen, etwa durch übernommene Konten, geteilte Passwörter, geteilte Geräte oder Schwachstellen.',
             'measures' => [
                 'Passwörter werden nur als Hash gespeichert. Eine Sitzung läuft nach '.$sessionMinutes.' Minuten ohne Aktivität ab.',
-                'Jede Schule sieht nur ihre Daten. Die Plattform-Administration hat keine Einsicht in Unterrichts- und Lerndaten oder Aufnahmen.',
-                'Aufnahmen funktionieren nur über eine gesicherte Verbindung (HTTPS). Anfragen sind gegen Fälschung geschützt (CSRF).',
-                'Grenze: Die Anwendung verschlüsselt die Audiodateien nicht zusätzlich. Server, Datenträger und Sicherungen schützt der Betrieb; das beschreibt die Anlage zu den technischen und organisatorischen Maßnahmen des Auftragsverarbeitungsvertrags.',
+                'Jede Schule sieht nur ihre Daten. Die Plattform-Administration hat keine Einsicht in Unterrichts- und Lerndaten.',
+                'Lehrkräfte sehen Lernstände, Klassenbuch und Einwilligungen nur in Klassen, die sie leiten, unterrichten oder gerade vertreten. Eine gehaltene Stunde allein gewährt das nicht.',
+                'Alles läuft über eine gesicherte Verbindung (HTTPS); Anfragen sind gegen Fälschung geschützt (CSRF). Der persönliche Link der Eltern wird nur als Hash gespeichert.',
+                'Grenze: Die Anwendung verschlüsselt die Datenbank nicht zusätzlich. Server, Datenträger und Sicherungen schützt der Betrieb; das beschreibt die Anlage zu den technischen und organisatorischen Maßnahmen des Auftragsverarbeitungsvertrags.',
             ],
         ],
         [
             'title' => 'Wiedererkennung trotz Pseudonymisierung',
-            'impact' => 'Personen werden aus Transkripten, Auswertungen oder der Stimme erkannt, obwohl Namen ersetzt wurden: durch Namen, die nicht bekannt sind (Eltern, andere Lehrkräfte, Spitznamen), durch Erkennungsfehler der Spracherkennung, durch Inhalte oder durch die Stimme selbst.',
+            'impact' => 'Personen werden aus Texten, die an die KI gehen, wiedererkannt, obwohl Namen ersetzt wurden: durch Namen, die nicht bekannt sind (Eltern, andere Lehrkräfte, Spitznamen), durch Erkennungsfehler, durch Inhalte oder durch die Stimme selbst.',
             'measures' => [
-                'Bei der Auswertung einer Aufnahme ersetzt die Plattform vor der KI die Namen der Klasse und der Lehrkraft durch Platzhalter („Schüler:in A“, „Lehrkraft“). Das gilt auch für Text aus der Aufnahme, der in die Unterrichtsnotizen übernommen wird.',
-                'Nach der Transkription weist die Plattform darauf hin, das Transkript zu lesen und zu korrigieren. Die Plattform erzwingt das nicht; verbindlich macht es die Dienstanweisung der Schule.',
-                'Die KI bekommt die Anweisung, Personen nie zu erraten oder zu identifizieren.',
-                'Audio geht nie an die KI. Die Stimme wird nicht zur Identifizierung ausgewertet.',
-                'Grenze: Die Ersetzung ist eine technische Hilfe und keine Anonymisierung. Die Schule geht von personenbezogenen Daten aus.',
-                'Grenze: Ersetzt wird nur bei der Auswertung einer Aufnahme und beim Übernehmen in die Notizen. Notizen, die die Lehrkraft selbst schreibt, Arbeitsblatt-Dateien, Antworten und Gespräche gehen bei eingeschalteter KI unverändert an den Anbieter und können Namen enthalten.',
+                'Vor jeder Anfrage an die KI ersetzt Tuto die Namen der Schüler:innen der Klasse und der Lehrkräfte der Klasse durch Platzhalter („Schüler:in A“, „Lehrkraft“, bei mehrdeutigen Namensteilen „Person“). Das gilt für alle Texte, auch für die Notizen aus dem Tuto-Mikro und für Text, der in die Stundennotizen übernommen wird.',
+                'Benutzernamen, E-Mail-Adressen, Konto-Kennungen sowie Namen von Klasse und Schule gehen nie an die KI. Die KI bekommt die Anweisung, Personen nie zu erraten oder zu identifizieren.',
+                'Grenze: Die Ersetzung ist eine technische Hilfe und keine Anonymisierung. Namen anderer Personen, Spitznamen und falsch geschriebene Namen bleiben stehen. Die Schule geht von personenbezogenen Daten aus.',
+                'Grenze: Arbeitsblatt-Dateien (Fotos, PDF) gehen unverändert an den Anbieter. Die Ton-Abschnitte des Tuto-Mikro gehen unverändert zur Spracherkennung: Darin sind echte Stimmen und gesprochene Namen.',
             ],
         ],
         [
             'title' => 'Fehler und Verzerrungen der KI',
-            'impact' => 'Zusammenfassungen oder Einschätzungen sind falsch, unvollständig oder verzerrt. Ein Verständniswert wird wie eine Note gelesen, Empfehlungen werden ungeprüft übernommen (Automatisierungsneigung), Kinder werden dadurch benachteiligt.',
+            'impact' => 'Entwürfe, Einschätzungen oder Zusammenfassungen sind falsch, unvollständig oder verzerrt. Ein Verständniswert wird wie eine Note gelesen, Vorschläge werden ungeprüft übernommen (Automatisierungsneigung), Kinder werden dadurch benachteiligt.',
             'measures' => [
-                'Es gibt keine automatisierte Entscheidung im Sinne von Art. 22 DSGVO. Ergebnisse sind als Hinweise gekennzeichnet.',
-                'Der Verständniswert ist ausdrücklich keine Note. Die Lehrkraft entscheidet, was daraus folgt.',
-                'Die Plattform weist nach der Transkription darauf hin, das Transkript vor der Auswertung zu lesen; verbindlich macht das die Dienstanweisung. Die Auswertung der Aufnahme nutzt nur Text.',
-                'KI-Auswertung und Server-Transkription sind ab Werk ausgeschaltet.',
+                'Es gibt keine automatisierte Entscheidung im Sinne von Art. 22 DSGVO. Der Verständniswert ist ausdrücklich keine Note; die Lehrkraft entscheidet, was daraus folgt.',
+                'Hausaufgaben-Entwürfe und Stufen bleiben Entwürfe, bis die Lehrkraft sie freigibt. Die Zusammenfassung aus dem Tuto-Mikro ist ein Vorschlag; die Lehrkraft übernimmt nur, was sie will.',
+                'Grenze: Eine Förderaufgabe mit „Direkt freigeben“ geht ohne getrennte Prüfung an die Schüler:innen. Die Einschätzung einer Abgabe und Tutos Rückfragen in „Erklär’s mir“ sehen die Schüler:innen sofort, ohne vorherige Prüfung durch die Lehrkraft.',
+                'Fällt der Anbieter aus, zeigt Tuto einen Fehler und weicht nicht still auf die Demo-Logik aus.',
             ],
         ],
         [
-            'title' => 'Übermittlung an Anbieter, besonders in Drittländer',
-            'impact' => 'Texte oder Audio gelangen an Dienstleister außerhalb der Kontrolle der Schule, möglicherweise in die USA, ohne ausreichende Garantien oder ohne Vertrag.',
-            'measures' => [
-                'Standardmäßig verlässt nichts die Plattform: KI-Anbindung und Server-Transkription sind ausgeschaltet. Aktuell: KI '.($aiEnabled ? 'eingeschaltet' : 'ausgeschaltet').', Server-Transkription '.($transcriptionEnabled ? 'eingeschaltet' : 'ausgeschaltet').'.',
-                'Sie werden nur vom Betreiber über die Serverkonfiguration eingeschaltet, nicht von Lehrkräften. Die Plattform prüft dabei nicht, ob Vertrag und Garantien vorliegen. Das klärt der Betreiber vor dem Einschalten, und die Schule lässt es sich bestätigen (Checkliste).',
-                'Die Live-Texterkennung läuft ausschließlich lokal im Browser. Steht sie dort nicht lokal zur Verfügung, wird sie nicht genutzt; es gibt keinen Rückfall auf einen Cloud-Dienst.',
-                'Audio geht nie an die KI. Die Auswertung einer Aufnahme sendet nur Text und nur pseudonymisiert.',
-                "Grenze: Die übrigen KI-Funktionen (Hausaufgaben-Entwurf, Auswertung von Abgaben, „Erklär’s mir“) senden {$aiData} ohne Ersetzung von Namen.",
-            ],
+            'title' => 'Übermittlung an den KI-Anbieter, besonders in Drittländer',
+            'impact' => 'Texte, Arbeitsblätter oder Ton gelangen an einen Anbieter außerhalb der Kontrolle der Schule, möglicherweise in die USA, ohne ausreichende Garantien, ohne Vertrag oder zur Verbesserung seiner Produkte.',
+            'measures' => array_values(array_filter([
+                'Nichts geht an einen KI-Anbieter, solange der Schalter der Plattform aus ist oder die Schuladministration die KI-Funktionen nicht selbst eingeschaltet hat. Dafür bestätigt sie vier Punkte: Auftragsverarbeitung mit dem Anbieter, bezahlter Tarif ohne Nutzung der Eingaben zur Produktverbesserung, Folgenabschätzung, Eltern und Schüler:innen informiert. Aktuell: KI-Funktionen '.($ai['enabled'] ? 'eingeschaltet' : 'ausgeschaltet').', Anbieter '.$aiProvider.'.',
+                $aiProviderIsLocal ? 'Der Betreiber nutzt ein selbst betriebenes Sprachmodell (Ollama); die Daten gehen dann an keinen fremden Anbieter.' : null,
+                'Im kostenlosen Tarif von Gemini darf Google Eingaben zur Verbesserung seiner Produkte nutzen. Deshalb verlangt die Checkliste einen bezahlten Tarif.',
+                'Tuto bittet den Anbieter bei jeder Anfrage, nichts zu speichern („store: false“, so sendet es die KI-Bibliothek), und führt dort keine Gesprächsverläufe. Ob und wie lange der Anbieter Daten dennoch vorhält, regelt sein Vertrag, nicht die Plattform.',
+                'Der Ton des Tuto-Mikro geht nur bei eingeschalteten KI-Funktionen und nur dann zur Spracherkennung, wenn für alle angehakten Schüler:innen auch diesem Zweck zugestimmt wurde. Sonst verlässt der Ton das Gerät der Lehrkraft nicht.',
+                'Grenze: Die Plattform prüft nicht, ob Vertrag und Garantien nach Art. 44 ff. DSGVO vorliegen. Das lässt sich die Schule bestätigen (Checkliste).',
+            ])),
         ],
         [
-            'title' => 'Aufnahme ohne wirksame Einwilligung',
-            'impact' => 'Jemand wird aufgenommen, ohne einzuwilligen, oder die Einwilligung ist unwirksam, weil sie nicht freiwillig war (Abhängigkeit, Gruppendruck) oder nicht informiert. Das ist unzulässig und kann nach § 201 StGB strafbar sein. Ein Widerruf lässt sich bei einer Klassenaufnahme nicht auf eine Stimme begrenzen.',
+            'title' => 'Tuto-Mikro ohne wirksame Einwilligung',
+            'impact' => 'Die Stimme einer Person wird verarbeitet, ohne dass sie oder ihre Eltern eingewilligt haben, oder die Einwilligung ist unwirksam, weil sie nicht freiwillig war (Abhängigkeit, Gruppendruck) oder nicht informiert. Das ist unzulässig und kann nach § 201 StGB strafbar sein.',
             'measures' => [
-                'Aufnahmen sind je Schule ausgeschaltet, bis die Schuladministration sie einschaltet; vorher lässt die Plattform keine Aufnahme starten. '.$consentCheckOfPlatform,
-                'Vor jeder Aufnahme muss die Lehrkraft in einem Dialog bestätigen, dass die Klasse informiert ist. Der Server verlangt die Bestätigung und speichert den Zeitpunkt. Danach, und erst danach, fragt der Browser nach dem Mikrofon.',
-                'Grenze: Die Plattform kennt nur die Einwilligungen der Schüler:innen, nicht die von Lehrkräften und weiteren Personen im Raum. Sie kann nicht beurteilen, ob eine Einwilligung wirklich freiwillig zustande kam, etwa ohne Gruppendruck. Sie führt keine Anwesenheitsliste; wer anwesend ist, gibt die Lehrkraft an.',
-                'Grenze: Bei einem Widerruf bleibt nur, die ganze Aufnahme zu löschen oder künftig nicht aufzunehmen. Einholen von Einwilligungen auf Papier und Umsetzen von Widerrufen anderer Personen ist Aufgabe der Schule (Vorlage „Einwilligung“).',
+                'Das Tuto-Mikro ist je Schule ausgeschaltet, bis die Schuladministration es einschaltet; vorher lässt die Plattform das Tuto-Mikro nicht starten. Starten kann es nur die Lehrkraft der Stunde, und nur in einer Klasse, die sie leitet, unterrichtet oder gerade vertritt.',
+                'Die Lehrkraft hakt an, wer im Raum ist, und bestätigt: „Nur die Schüler:innen, die hier angehakt sind, sind im Raum.“ Der Server startet das Tuto-Mikro nur, wenn für jede angehakte Schüler:in eine gültige Einwilligung zur aktuellen Fassung vorliegt, die Ton und Notizen abdeckt und, bei eingeschalteten KI-Funktionen, auch die Spracherkennung und Zusammenfassung durch den KI-Anbieter.',
+                "Die Einwilligungen werden während der Sitzung etwa alle {$segmentSeconds} Sekunden und vor jeder Zusammenfassung erneut geprüft. Ein Widerruf oder ein ausgeschalteter Schalter beendet das Tuto-Mikro bei der nächsten Prüfung durch den Server. Eine Sitzung, die älter als {$maxSessionHours} Stunden ist, nimmt nichts mehr an.",
+                'Grenze: Ohne Verbindung zum Server kann die Prüfung nicht stattfinden. Dann geht nichts an den KI-Anbieter, aber die Spracherkennung auf dem Gerät der Lehrkraft läuft weiter, bis die Verbindung wieder da ist oder die Lehrkraft das Mikro ausschaltet.',
+                'Grenze: Die Anwesenheitsliste ist die Erklärung der Lehrkraft; eine eigene Anwesenheitserfassung hat die Plattform nicht. Nicht angehakte Personen prüft sie nicht, und wer später dazukommt, ist erst nach einem Neustart erfasst. Einwilligungen von Lehrkräften und weiteren Personen im Raum kennt sie nicht, und ob eine Einwilligung wirklich freiwillig zustande kam, kann sie nicht beurteilen.',
             ],
         ],
         [
             'title' => 'Zu lange Speicherung, unvollständige Löschung',
-            'impact' => 'Aufnahmen oder Kopien bleiben länger gespeichert als nötig: in Sicherungen, in heruntergeladenen Dateien, in übernommenen Notizen. Sie können nach einem Widerruf nicht mehr gefunden werden.',
+            'impact' => 'Daten bleiben länger gespeichert als nötig: in Sicherungen, in kopierten Texten, in übernommenen Notizen, im Klassenbuch. Sie können nach einem Widerruf nicht mehr gefunden werden.',
             'measures' => [
-                "Aufnahmen werden täglich automatisch nach {$recordingDays} Tagen gelöscht, Datei und Eintrag zusammen. Verwaiste Dateien ohne Eintrag werden ebenfalls entfernt.",
-                'Wird eine Stunde, ein Konto oder eine Schule gelöscht, entfallen die zugehörigen Einträge sofort. Übrig gebliebene Dateien räumt die tägliche Löschung nach spätestens etwa zwei Tagen ab.',
-                'Grenze: Sicherungen des Betreibers, heruntergeladene Kopien und von der Lehrkraft übernommener Text folgen eigenen Fristen. Die Schule klärt das mit dem Betreiber (Auftragsverarbeitungsvertrag) und in der Dienstanweisung.',
+                'Ton wird gar nicht gespeichert, die Notizen aus der Stunde nur im Browser. Reste der früheren Version mit Tondateien räumt eine tägliche Löschung ab.',
+                "Der Nachweis einer Tuto-Mikro-Sitzung wird täglich nach {$sessionKeepDays} Tagen gelöscht, früher mit der Stunde oder dem Konto der Lehrkraft.",
+                'Unterrichtsstunden mit Abgaben, Antworten, Rückfragen und Arbeitsblättern, „Erklär’s mir“-Gespräche und Klassenbuch-Einträge löscht Tuto automatisch '.$retention.'.',
+                "Benachrichtigungen werden {$notificationReadDays} Tage nach dem Lesen gelöscht, spätestens nach {$notificationMaxDays} Tagen.",
+                'Grenze: Sicherungen des Betreibers und Kopien der Lehrkraft folgen eigenen Fristen. Die Schule klärt das mit dem Betreiber (Auftragsverarbeitungsvertrag) und in der Dienstanweisung.',
             ],
         ],
         [
             'title' => 'Zweckentfremdung',
-            'impact' => 'Aufnahmen oder Transkripte werden für andere Zwecke verwendet als vereinbart, etwa zur Beurteilung von Lehrkräften, als Beweismittel in Streitfällen oder für Disziplinarmaßnahmen.',
+            'impact' => 'Notizen, Nachweise oder Fehlzeiten werden für andere Zwecke verwendet als vereinbart, etwa zur Beurteilung von Lehrkräften, als Beweismittel oder für Disziplinarmaßnahmen.',
             'measures' => [
-                'Die Plattform gibt Aufnahmen nur der aufnehmenden Lehrkraft. Die Schulleitung kann sie nicht über die Plattform abrufen.',
+                'Den Nachweis einer Sitzung sieht nur die Lehrkraft der Stunde. Die Schulleitung kann ihn nicht über die Plattform abrufen.',
                 'Der Zweck ist in Einwilligung und Elterninformation festgelegt. Die Dienstvereinbarung kann ihn für Beschäftigte festschreiben.',
-                'Grenze: Wer die Datei herunterlädt oder weitergibt, verlässt den geschützten Raum der Plattform. Verstöße gegen die Zweckbindung regelt die Schule dienstrechtlich.',
+                'Grenze: Die Anwesenheitsliste des Tuto-Mikro dient auch als Vorschlag für die Fehlzeiten im Klassenbuch (nur für Schüler:innen mit Einwilligung, die nicht angehakt waren). Die Lehrkraft prüft und bestätigt den Eintrag. Die Schule nimmt diese Nutzung in ihre Regeln zum Klassenbuch auf.',
+            ],
+        ],
+        [
+            'title' => 'Zu weiter Zugriff innerhalb der Schule',
+            'impact' => 'Mehr Lehrkräfte als nötig sehen Lernstände, Fehlzeiten oder Einwilligungen, etwa nach einem Wechsel der Lehrkraft oder durch eine Vertretung.',
+            'measures' => [
+                'Der Zugriff folgt der Zuordnung zur Klasse: Klassenleitung, zugeordnete Lehrkräfte und laufende Vertretung.',
+                "Eine Vertretung trägt die Klassenleitung oder die Schuladministration ein, für höchstens {$substitutionMaxDays} Tage. Sie gewährt: {$substitutionGrants}. Nach dem letzten Tag endet der Zugriff von selbst, auch auf die Ergebnisse der Stunden, die die Vertretung gehalten hat.",
+                'Grenze: Die Zuordnungen pflegt die Schule. Bleibt eine Lehrkraft einer Klasse zugeordnet, die sie nicht mehr unterrichtet, behält sie den Zugriff.',
             ],
         ],
         [
             'title' => 'Betroffenenrechte nicht erfüllbar',
             'impact' => 'Betroffene können Auskunft, Berichtigung, Löschung oder Widerruf nicht durchsetzen, weil niemand weiß, wo Daten liegen oder wer zuständig ist.',
             'measures' => [
-                'Jede Person kann ihre Daten im Profil herunterladen. Die Schuladministration kann Konten und damit zugehörige Daten löschen. Die aufnehmende Lehrkraft löscht Aufnahmen selbst.',
-                "Grenze: Nur die aufnehmende Lehrkraft kann eine Aufnahme über die Plattform löschen, solange sie die Stunde leitet. Ist sie nicht erreichbar oder wurde die Stunde einer anderen Lehrkraft zugewiesen, kann die Schuladministration die Aufnahme nur löschen, indem sie die Stunde oder das Konto der Lehrkraft löscht (dabei entfallen alle zugehörigen Aufnahmen), oder sie beauftragt den Betreiber. Spätestens löscht die Plattform automatisch nach {$recordingDays} Tagen.",
+                'Jede Person kann ihre Daten im Profil herunterladen. Das Konto mit der gewählten Sprache und die Benachrichtigungen gehören immer dazu. Bei Schüler:innen außerdem: Hausaufgaben, Abgaben mit Stufe, Gespräche, Rückfragen, Fehlzeiten im Klassenbuch, die Einwilligung zum Tuto-Mikro und die eigene Anwesenheit in Sitzungen. Bei Lehrkräften: Klassen, Vertretungen, Unterrichtsstunden, beantwortete Rückfragen, Klassenbuch-Einträge und Tuto-Mikro-Sitzungen. Die Schuladministration kann Konten und damit zugehörige Daten löschen.',
+                "Grenze: Einen einzelnen Nachweis einer Tuto-Mikro-Sitzung kann über die Plattform niemand löschen. Die Schuladministration kann ihn nur mit der Stunde oder dem Konto der Lehrkraft löschen, oder sie beauftragt den Betreiber. Spätestens löscht die Plattform ihn nach {$sessionKeepDays} Tagen. Papier-Originale von Einwilligungen bewahrt die Schule selbst auf; sie sind nicht im Download.",
+                'Eltern widerrufen eine Einwilligung jederzeit über ihren persönlichen Link; die Schule erfasst Widerrufe auf Papier in der Plattform.',
                 'Die Elterninformation benennt Ansprechpartner und Rechte.',
-                'Grenze: Eine einzelne Stimme lässt sich nicht aus einer Aufnahme herauslösen. Auskunft zu Aufnahmen gibt die Schule über die aufnehmende Lehrkraft.',
             ],
         ],
     ];
 
     $platformMeasures = [
         'Trennung der Schulen' => [
-            'Jede Schule sieht nur ihre eigenen Klassen, Konten, Stunden, Abgaben, Gespräche und Aufnahmen. Schulen sehen nichts voneinander.',
-            'Die Plattform-Administration betreut die Plattform und die Schulen. Sie sieht keine Unterrichts- und Lerndaten und keine Aufnahmen.',
+            'Jede Schule sieht nur ihre eigenen Klassen, Konten, Stunden, Abgaben, Gespräche, Klassenbücher und Einwilligungen. Schulen sehen nichts voneinander.',
+            'Die Plattform-Administration betreut die Plattform und die Schulen. Sie sieht keine Unterrichts- und Lerndaten.',
         ],
         'Rollen und Rechte' => [
             'Vier Rollen mit festen Rechten: Plattform-Administration, Schuladministration, Lehrkraft, Schüler:in. Die Prüfung erfolgt serverseitig bei jedem Abruf. Die Seite „Rollen & Rechte“ macht sie sichtbar.',
-            'Aufnahmen gehören der Lehrkraft der Stunde allein: Hören, Herunterladen, Transkript, Auswertung und Löschen. Wechselt die Lehrkraft der Stunde, verliert die bisherige den Zugriff, ohne dass die neue ihn erhält.',
+            'Lehrkräfte arbeiten nur in Klassen, die sie leiten, unterrichten oder vertreten. Eine Vertretung ist zeitlich begrenzt und endet von selbst.',
+            'Das Tuto-Mikro und sein Nachweis gehören der Lehrkraft der Stunde allein.',
         ],
         'Einwilligung und Transparenz' => [
-            'Aufnahmen sind für jede Schule zunächst ausgeschaltet. Die Schuladministration schaltet sie erst ein, nachdem sie fünf Punkte bestätigt hat (Folgenabschätzung, Personalrat, Eltern informiert, Einwilligungserklärung freigegeben, Aufbewahrungsfrist) und eine Einwilligungserklärung veröffentlicht hat. Die Plattform kann nicht prüfen, ob diese Bestätigungen stimmen. In einer Schule ohne Freischaltung lässt sie keine Aufnahme starten.',
-            'Eltern willigen je Schüler:in über einen persönlichen Link oder auf Papier ein, getrennt nach Zweck (Tonaufnahme, Transkript, KI-Auswertung), und können über denselben Link widerrufen. Die Plattform speichert Fassung, Zwecke, Zeitpunkt, Name und Widerruf. Wird der Text geändert, gelten Einwilligungen zur alten Fassung als veraltet.',
-            $consentGateEnforced
-                ? 'Die Plattform lässt eine Aufnahme nur zu, wenn für alle anwesenden Schüler:innen der Klasse eine gültige, nicht widerrufene Einwilligung zur aktuellen Fassung vorliegt, die die benötigten Zwecke abdeckt, und, wenn die Schule es verlangt, die Schüler:in selbst bestätigt hat.'
-                : 'Die Plattform erfasst die Einwilligungen (gültig, widerrufen, veraltet) je Schüler:in und zeigt sie der Lehrkraft in der Übersicht „Einwilligungen“ der Klasse. Sie sperrt den Start einer Aufnahme in dieser Version nicht, wenn eine Einwilligung fehlt. Das Prüfen vor jeder Aufnahme verlangt die Dienstanweisung.',
-            'Zusätzlich bestätigt die Lehrkraft vor jeder Aufnahme ausdrücklich in einem Dialog, dass die Klasse informiert ist. Der Server verlangt die Bestätigung und speichert den Zeitpunkt.',
-            'Während der Aufnahme zeigt eine feste Leiste oben im Bildschirm den Zustand an, auch bei Pause und beim Speichern.',
-            'Die Seite „Datenschutz & KI“ und die Datenschutzerklärung erklären in einfacher Sprache, was gespeichert wird, wer es sieht und was die KI tut.',
+            'Das Tuto-Mikro ist für jede Schule zunächst ausgeschaltet. Die Schuladministration schaltet es erst ein, nachdem sie fünf Punkte bestätigt hat (Folgenabschätzung, Personalrat, Eltern informiert, Einwilligungserklärung freigegeben, Aufbewahrungsfrist) und eine Einwilligungserklärung veröffentlicht hat. Die Plattform kann nicht prüfen, ob diese Bestätigungen stimmen.',
+            'Eltern willigen je Schüler:in über einen persönlichen Link oder auf Papier ein, getrennt nach Zweck, und können über denselben Link widerrufen. Wird der Text geändert, gelten Einwilligungen zur alten Fassung als veraltet.',
+            'Die Plattform startet das Tuto-Mikro nur, wenn für alle angehakten Schüler:innen eine gültige, nicht widerrufene Einwilligung zur aktuellen Fassung vorliegt, die die benötigten Zwecke abdeckt, und, wenn die Schule es verlangt, die Schüler:in selbst bestätigt hat. Sie prüft das während der Sitzung erneut.',
+            'Während das Mikro an ist, zeigt eine feste Leiste den Zustand. Öffnet die Lehrkraft die Beamer-Anzeige, sieht die Klasse dort „an“ oder „aus“.',
+            'Die Seite „Datenschutz & KI“ erklärt allen Rollen in einfacher Sprache, was gespeichert wird, wer es sieht und was die KI bekommt.',
         ],
         'Datensparsamkeit und Fristen' => [
-            'Nur Ton, kein Video, kein Bild.',
-            "Aufnahmen werden nach {$recordingDays} Tagen automatisch gelöscht (täglich, mit Aufräumen verwaister Dateien). Die Lehrkraft kann sie jederzeit selbst löschen.",
-            "Unterrichtsstunden mit Abgaben und Gesprächen werden nach {$schoolYearsKept} Schuljahren automatisch gelöscht.",
+            'Kein Ton wird gespeichert, kein Bild, kein Video. Die Notizen aus der Stunde bleiben im Browser der Lehrkraft, bis sie etwas übernimmt.',
+            'Unterrichts- und Lerndaten und das Klassenbuch löscht Tuto automatisch '.$retention.'. Nachweise des Tuto-Mikro nach '.$sessionKeepDays.' Tagen, Benachrichtigungen spätestens nach '.$notificationMaxDays.' Tagen.',
+            'Die Einstellungen „Einfache Sprache“ und „Namen verbergen“ bleiben im Browser.',
             'Auskunft und Datenübertragbarkeit: Jede Person kann ihre Daten im Profil herunterladen.',
         ],
         'KI und Dritte' => [
-            'KI-Auswertung und Server-Transkription sind ab Werk ausgeschaltet und nur durch den Betreiber einzuschalten. Die Datenschutzerklärung wird vorher ergänzt.',
-            'Audio erreicht nie die KI. Die Live-Texterkennung läuft nur lokal im Browser.',
-            'Bei der Auswertung einer Aufnahme und beim Übernehmen in die Notizen werden Namen der Klasse und der Lehrkraft durch Platzhalter ersetzt (Pseudonymisierung, keine Anonymisierung). Die übrigen KI-Funktionen senden Texte und Arbeitsblatt-Dateien unverändert.',
-            'Keine automatisierten Einzelentscheidungen. Nach der Transkription weist die Plattform darauf hin, das Transkript vor der Auswertung zu lesen; verbindlich macht das die Dienstanweisung. Der Verständniswert ist keine Note.',
+            'KI-Funktionen laufen nur, wenn der Schalter der Plattform an ist und die Schule sie selbst eingeschaltet hat; sonst arbeitet eine Demo-Logik auf der Plattform.',
+            'Vor jeder Anfrage werden die Namen der Klasse und ihrer Lehrkräfte durch Platzhalter ersetzt (Pseudonymisierung, keine Anonymisierung). Arbeitsblatt-Dateien und Ton-Abschnitte gehen unverändert.',
+            'Einfache Sprache und Stufen bekommen nur Texte der Lehrkraft, nie Texte der Schüler:innen.',
+            'Keine automatisierten Einzelentscheidungen. Der Verständniswert ist keine Note.',
         ],
         'Technik' => [
             'Passwörter nur als Hash, Sitzungsende nach '.$sessionMinutes.' Minuten ohne Aktivität, Schutz gegen gefälschte Anfragen.',
-            'Audiodateien liegen nicht öffentlich auf dem Server, mit zufälligem Namen, und werden nur über eine geprüfte Adresse ausgeliefert.',
+            'Tuto schreibt keinen Ton in eine Datei oder Datenbank: Ein Abschnitt wird aus dem Arbeitsspeicher der Anfrage erkannt und danach verworfen. Der Webserver kann ihn für die Dauer der Anfrage kurz zwischenpuffern.',
             'Kein Tracking, keine Werbung, keine Schriftarten oder Inhalte von fremden Servern im Kern der Plattform. Nur technisch notwendige Cookies.',
-            'Betrieb in Deutschland. Server, Sicherungen und Unterauftragsverarbeiter beschreibt der Auftragsverarbeitungsvertrag.',
+            'Server, Sicherungen und Unterauftragsverarbeiter beschreibt der Auftragsverarbeitungsvertrag.',
         ],
     ];
 @endphp
 
 @include('filament.pages.privacy-documents.partials.head', [
     'title' => 'Datenschutz-Folgenabschätzung (Art. 35 DSGVO)',
-    'lead' => 'Vorlage für die Lernplattform einschließlich des optionalen Aufnahme-Moduls für Tonaufnahmen im Unterricht: Beschreibung, Notwendigkeit, Risiken für die Rechte der Kinder, Maßnahmen und die Bewertung der Schule.',
+    'lead' => 'Vorlage für Tuto einschließlich der KI-Funktionen und des optionalen Tuto-Mikro: Beschreibung, Notwendigkeit, Risiken für die Rechte der Kinder, Maßnahmen und die Bewertung der Schule.',
 ])
 
 <h3>0. Beteiligte und Stand</h3>
@@ -257,7 +289,7 @@
     @endforeach
 </ul>
 <p>
-    Weil mehrere Merkmale zusammentreffen, ist eine Folgenabschätzung zu empfehlen, jedenfalls vor dem Aufnahme-Modul und vor dem Einschalten der KI. Ob die Aufsichtsbehörde des Landes die Verarbeitung ohnehin in ihrer Liste nach Art. 35 Abs. 4 DSGVO führt, prüft die Schule.
+    Weil mehrere Merkmale zusammentreffen, ist eine Folgenabschätzung zu empfehlen, jedenfalls vor dem Einschalten der KI-Funktionen und vor dem Tuto-Mikro. Ob die Aufsichtsbehörde des Landes die Verarbeitung ohnehin in ihrer Liste nach Art. 35 Abs. 4 DSGVO führt, prüft die Schule.
 </p>
 
 <h3>2. Systematische Beschreibung der Verarbeitung</h3>
@@ -265,16 +297,19 @@
 <h4>2.1 Zwecke</h4>
 <ul>
     <li>
-        <strong>Lernplattform:</strong> Lehrkräfte halten fest, was sie im Unterricht behandelt haben, und verteilen daraus Hausaufgaben. Schüler:innen sehen, was sie schon verstanden haben und was sie noch üben sollten. Lehrkräfte erkennen Förderbedarf.
+        <strong>Tuto:</strong> Lehrkräfte halten fest, was sie im Unterricht behandelt haben, und geben daraus Hausaufgaben frei, auch in Stufen und in Einfacher Sprache. Schüler:innen sehen, was sie schon verstanden haben, üben mit „Erklär’s mir“ und stellen Rückfragen. Lehrkräfte erkennen Förderbedarf und führen das Klassenbuch. Vertretungen übernehmen eine Klasse für eine begrenzte Zeit.
     </li>
     <li>
-        <strong>Aufnahme-Modul (optional):</strong> Eine Lehrkraft nimmt den Ton einer Stunde auf, um daraus ein Transkript, eine Zusammenfassung und einen Tafelbild-Vorschlag für ihre Unterrichtsnotizen zu gewinnen. Die Aufnahme dient der Unterrichtsvor- und -nachbereitung der Lehrkraft. Sie dient nicht der Kontrolle von Schüler:innen oder Lehrkräften.
+        <strong>KI-Funktionen (optional, je Schule):</strong> Ein KI-Anbieter entwirft Hausaufgaben, Förderaufgaben, Stufen und Fassungen in Einfacher Sprache, schätzt Abgaben ein und führt das Gespräch in „Erklär’s mir“.
+    </li>
+    <li>
+        <strong>Tuto-Mikro (optional, je Schule):</strong> Das Mikrofon der Lehrkraft macht aus dem Ton einer Stunde Notizen, aus denen die Lehrkraft eine Zusammenfassung und einen Tafelbild-Vorschlag für ihre Unterrichtsnotizen gewinnt. Es dient der Vor- und Nachbereitung durch die Lehrkraft, nicht der Kontrolle von Schüler:innen oder Lehrkräften.
     </li>
 </ul>
 
 <h4>2.2 Betroffene Personen</h4>
 <p>
-    Schüler:innen (überwiegend minderjährig), Lehrkräfte und Schuladministration. Bei Aufnahmen zusätzlich alle weiteren Personen, die im Raum sprechen, etwa Vertretungslehrkräfte, Referendar:innen, Gäste, Praktikant:innen und Schulbegleitungen.
+    Schüler:innen (überwiegend minderjährig), Lehrkräfte und Schuladministration, für die Einwilligungen die Erziehungsberechtigten. Beim Tuto-Mikro zusätzlich alle weiteren Personen, die im Raum sprechen, etwa Vertretungslehrkräfte, Referendar:innen, Gäste, Praktikant:innen und Schulbegleitungen.
 </p>
 
 <h4>2.3 Daten, Zugriff und Fristen</h4>
@@ -299,66 +334,83 @@
     @endforeach
 </div>
 
-<h4>2.4 Ablauf einer Aufnahme</h4>
+<h4>2.4 Was an die KI geht</h4>
+<p>Nur bei eingeschalteten KI-Funktionen der Schule. Alle Texte werden vorher pseudonymisiert.</p>
+<ul>
+    <li><strong>Hausaufgaben-Entwurf:</strong> Fach, Thema, Datum, Zusammenfassung und Notizen der Lehrkraft, die Kompetenzen des Fachs, Arbeitsblätter (Fotos, PDF). Ergebnis: Zusammenfassung und fünf Fragen als Entwurf.</li>
+    <li><strong>Förderaufgabe:</strong> Fach, Kompetenz, anonyme Hinweise auf Lücken, Thema, Datum und Notizen der Stunden, in denen sich die Lücke zeigte. Ergebnis: drei bis vier Übungsfragen.</li>
+    <li><strong>Einschätzung einer Abgabe:</strong> die Stunde wie beim Entwurf mit Arbeitsblättern, die Fragen mit Erwartungshorizont und gewählter Stufe, Zusammenfassung und Antworten der Schüler:in. Ergebnis: Verständniswert, Rückmeldung, bis zu drei Hinweise auf Lücken, Punkte je Antwort.</li>
+    <li><strong>„Erklär’s mir“:</strong> Thema und Gesprächsverlauf, bei einer gewählten Stunde deren Zusammenfassung und Notizen als Hintergrund. Ergebnis: Tutos Rückfragen und zum Schluss Verständniswert und Rückmeldung.</li>
+    <li><strong>Stufen:</strong> Fach, Thema, Zusammenfassung der Lehrkraft, Art und Text der Frage. Nicht: Erwartungshorizont, Notizen, Arbeitsblätter, Texte der Schüler:innen.</li>
+    <li><strong>Einfache Sprache:</strong> Fach, Thema und ein Text der Lehrkraft (Zusammenfassung oder Frage). Nie Texte der Schüler:innen. Das Ergebnis wird an der Stunde oder Frage gespeichert.</li>
+    <li><strong>Tuto-Mikro, Spracherkennung:</strong> Ton-Abschnitte von etwa {{ $segmentSeconds }} Sekunden, unverändert, Sprache Deutsch, ohne Sprechertrennung. Ergebnis: Text, der nur an den Browser der Lehrkraft geht.</li>
+    <li><strong>Tuto-Mikro, Zusammenfassung:</strong> die von der Lehrkraft gelesenen Notizen, Fach und Thema. Nie Ton. Ergebnis: Zusammenfassung, Fachbegriffe, Tafelbild-Vorschlag, Fragen aus der Klasse; nichts davon wird gespeichert.</li>
+    <li><strong>Nie:</strong> Benutzernamen, E-Mail-Adressen, Konto-Kennungen, Namen von Klasse und Schule.</li>
+</ul>
+
+<h4>2.5 Ablauf mit dem Tuto-Mikro</h4>
 <ol>
-    <li>Die Schule hat Aufnahmen eingeschaltet und Einwilligungen der Eltern eingeholt. Die Lehrkraft öffnet die Aufnahmeseite zu einer ihrer Stunden. {{ $consentGateEnforced ? 'Die Plattform prüft die Einwilligungen der anwesenden Schüler:innen.' : 'Die Lehrkraft prüft in der Übersicht „Einwilligungen“, dass für alle Anwesenden eine gültige Einwilligung vorliegt; die Plattform erzwingt das in dieser Version nicht.' }} Die Lehrkraft bestätigt in einem Dialog ausdrücklich, dass die Klasse informiert ist. Erst danach fragt der Browser nach dem Mikrofon. Der Server speichert die Bestätigung mit Zeitpunkt.</li>
-    <li>Der Browser nimmt nur Ton auf und sendet ihn in kurzen Teilen über die gesicherte Verbindung an den Server. Eine feste Leiste zeigt die laufende Aufnahme.</li>
-    <li>Der Server legt die Datei mit zufälligem Namen auf dem nicht öffentlichen Speicher ab. Nur die aufnehmende Lehrkraft kann sie hören oder herunterladen.</li>
-    <li>Optional: Eine Live-Texterkennung im Browser der Lehrkraft, nur lokal, liefert einen Text. Alternativ fügt die Lehrkraft einen Text selbst ein. Die Server-Transkription ist {{ $transcriptionStatus }}.</li>
-    <li>Optional: Die Lehrkraft löst die Auswertung aus; die Plattform weist darauf hin, das Transkript vorher zu lesen. Namen der Klasse und der Lehrkraft werden zuvor durch Platzhalter ersetzt. Nur Text wird ausgewertet, nie Audio. Die KI-Anbindung ist {{ $aiStatus }}.</li>
-    <li>Die Lehrkraft kann übernehmen, was sie braucht, und die Aufnahme jederzeit löschen. Spätestens nach {{ $recordingDays }} Tagen löscht die Plattform sie automatisch.</li>
+    <li>Die Schule hat das Tuto-Mikro eingeschaltet und Einwilligungen der Eltern eingeholt. Das Fach ist nicht gesperrt (derzeit gesperrt: {{ $blockedList }}), die Stunde ist keine Förderaufgabe.</li>
+    <li>Die Lehrkraft der Stunde öffnet das Tuto-Mikro, hakt an, wer im Raum ist, und bestätigt die Liste. Der Browser fragt nach dem Mikrofon (ohne KI-Funktionen und ohne Spracherkennung auf dem Gerät öffnet er es gar nicht, die Lehrkraft tippt). Der Server prüft die Einwilligungen jeder angehakten Schüler:in und startet nur, wenn alle gültig sind; sonst schließt der Browser das Mikrofon wieder, ohne etwas zu verarbeiten. Beim Start speichert der Server den Nachweis der Sitzung.</li>
+    <li>Eine feste Leiste zeigt „Mikro an – Tuto schreibt mit“ oder „Mikro aus“. Öffnet die Lehrkraft die Beamer-Anzeige, sieht die Klasse dort nur „an“ oder „aus“ und das Thema. Sonst sagt sie der Klasse an, dass das Mikro läuft.</li>
+    <li>Mit eingeschalteten KI-Funktionen gehen Ton-Abschnitte von etwa {{ $segmentSeconds }} Sekunden über HTTPS an den Server, werden nur im Arbeitsspeicher an den KI-Anbieter zur Spracherkennung weitergereicht und danach verworfen. Ohne KI-Funktionen verlässt der Ton das Gerät nicht: Der Browser erkennt die Sprache nur, wenn er das auf dem Gerät kann; sonst tippt die Lehrkraft.</li>
+    <li>Der Text liegt nur im Browser der Lehrkraft. Sie liest und korrigiert ihn. Auf ihren Wunsch entsteht eine Zusammenfassung; vorher prüft der Server die Einwilligungen erneut und ersetzt die Namen. Die KI-Funktionen sind {{ $aiStatus }}.</li>
+    <li>Was die Lehrkraft in die Stundennotizen übernimmt, wird dort erneut pseudonymisiert gespeichert und folgt den Fristen der Notizen. Daraus kann sie eine Hausaufgabe entwerfen lassen.</li>
 </ol>
 
-<h4>2.5 Empfänger</h4>
+<h4>2.6 Empfänger</h4>
 <ul>
     <li>Innerhalb der Schule nur die in 2.3 genannten Rollen.</li>
     <li>Der Betreiber der Plattform als Auftragsverarbeiter, technisch nur für Betrieb, Wartung und Fehlersuche.</li>
     <li>Unterauftragsverarbeiter des Betreibers, etwa für das Hosting, gemäß Auftragsverarbeitungsvertrag.</li>
-    <li>Nur nach Einschalten: ein Anbieter für Spracherkennung und der KI-Anbieter Anthropic PBC (USA), jeweils nur zulässig mit Vertrag nach Art. 28 und, außerhalb der EU, mit geeigneten Garantien nach Art. 44 ff. DSGVO. Die Plattform prüft das nicht; die Schule lässt es sich vom Betreiber bestätigen.</li>
+    <li>Nur bei eingeschalteten KI-Funktionen: der KI-Anbieter {{ $aiProvider }}{{ $aiProviderIsLocal ? ' (vom Betreiber selbst betrieben)' : '' }}, nur mit Vertrag nach Art. 28 DSGVO und, außerhalb der EU, mit geeigneten Garantien nach Art. 44 ff. DSGVO. Die Plattform prüft das nicht; die Schuladministration bestätigt es beim Einschalten.</li>
 </ul>
 
-<h4>2.6 Aktueller Stand dieser Plattform</h4>
+<h4>2.7 Aktueller Stand dieser Plattform</h4>
 <dl class="pd-facts">
-    <dt>KI-Anbindung</dt>
+    <dt>KI-Funktionen</dt>
     <dd>{{ ucfirst($aiStatus) }}</dd>
 
-    <dt>Server-Transkription</dt>
-    <dd>{{ ucfirst($transcriptionStatus) }}</dd>
+    <dt>KI-Anbieter</dt>
+    <dd>{{ $aiProvider }}</dd>
 
-    <dt>Aufbewahrung von Aufnahmen</dt>
-    <dd>{{ $recordingDays }} Tage</dd>
+    <dt>Ton</dt>
+    <dd>Wird nicht gespeichert</dd>
+
+    <dt>Nachweis des Tuto-Mikro</dt>
+    <dd>{{ $sessionKeepDays }} Tage</dd>
 
     <dt>Aufbewahrung von Lerndaten</dt>
-    <dd>{{ $schoolYearsKept }} Schuljahre (das laufende eingerechnet)</dd>
+    <dd>Automatisch {{ $retention }}</dd>
 </dl>
 
 <h3>3. Notwendigkeit und Verhältnismäßigkeit</h3>
 <dl class="pd-facts">
-    <dt>Rechtsgrundlage Lernplattform</dt>
-    <dd>Im Schulbetrieb Art. 6 Abs. 1 lit. e DSGVO in Verbindung mit dem Schulgesetz und den Datenschutzvorschriften des Landes. Die Schule prüft die genaue Norm.</dd>
+    <dt>Rechtsgrundlage Tuto</dt>
+    <dd>Im Schulbetrieb Art. 6 Abs. 1 lit. e DSGVO in Verbindung mit dem Schulgesetz und den Datenschutzvorschriften des Landes, auch für die KI-Funktionen und das Klassenbuch. Die Schule prüft die genaue Norm.</dd>
 
-    <dt>Rechtsgrundlage Aufnahme</dt>
-    <dd>Einwilligung nach Art. 6 Abs. 1 lit. a, Art. 7 DSGVO, zusätzlich zum Schutz des nicht öffentlich gesprochenen Wortes (§ 201 StGB). Zufällig mitgesprochene besondere Kategorien (Art. 9 DSGVO, etwa Gesundheit, Herkunft, Religion, Familie) erfasst die Einwilligung nur, wenn sie ausdrücklich danach fragt (Art. 9 Abs. 2 lit. a, siehe Vorlage „Einwilligung“). Sie ist freiwillig, nachweisbar und jederzeit ohne Nachteil mit Wirkung für die Zukunft widerrufbar. Bei Minderjährigen willigen in der Regel die Sorgeberechtigten ein, je nach Land, Alter und Einsichtsfähigkeit zusätzlich die Schüler:innen. Bei Beschäftigten ist die Freiwilligkeit besonders zu prüfen (§ 26 BDSG oder die Vorschrift des Landes).</dd>
+    <dt>Rechtsgrundlage Tuto-Mikro</dt>
+    <dd>Einwilligung nach Art. 6 Abs. 1 lit. a, Art. 7 DSGVO, zusätzlich zum Schutz des nicht öffentlich gesprochenen Wortes (§ 201 StGB). Zufällig Gesprochenes aus besonderen Kategorien (Art. 9 DSGVO, etwa Gesundheit, Herkunft, Religion, Familie) erfasst die Einwilligung nur, wenn sie ausdrücklich danach fragt (Art. 9 Abs. 2 lit. a, siehe Vorlage „Einwilligung“). Sie ist freiwillig, nachweisbar und jederzeit ohne Nachteil mit Wirkung für die Zukunft widerrufbar. Bei Minderjährigen willigen in der Regel die Sorgeberechtigten ein, je nach Land, Alter und Einsichtsfähigkeit zusätzlich die Schüler:innen. Bei Beschäftigten ist die Freiwilligkeit besonders zu prüfen (§ 26 BDSG oder die Vorschrift des Landes).</dd>
 
     <dt>Zweckbindung</dt>
     <dd>Die Zwecke sind in 2.1 festgelegt und stehen in Einwilligung und Elterninformation. Eine Nutzung zur Kontrolle von Schüler:innen oder Lehrkräften ist nicht vorgesehen.</dd>
 
     <dt>Datenminimierung</dt>
-    <dd>Nur Ton, kein Video. Die KI bekommt nie Audio; bei der Auswertung einer Aufnahme nur pseudonymisierten Text. Aufnahmen sind nur für die aufnehmende Lehrkraft zugänglich.</dd>
+    <dd>Kein Ton wird gespeichert, kein Bild, kein Video. Die KI bekommt nur pseudonymisierte Texte; Stufen und Einfache Sprache nur Texte der Lehrkraft. Der Nachweis des Tuto-Mikro ist nur für die Lehrkraft der Stunde zugänglich.</dd>
 
     <dt>Speicherbegrenzung</dt>
-    <dd>Aufnahmen nach {{ $recordingDays }} Tagen, Lerndaten nach {{ $schoolYearsKept }} Schuljahren, jeweils automatisch.</dd>
+    <dd>Lerndaten und Klassenbuch {{ $retention }}; Nachweise des Tuto-Mikro nach {{ $sessionKeepDays }} Tagen; Benachrichtigungen spätestens nach {{ $notificationMaxDays }} Tagen, jeweils automatisch.</dd>
 
     <dt>Transparenz</dt>
     <dd>Elterninformation, Einwilligungstext, Seite „Datenschutz &amp; KI“ und Datenschutzerklärung.</dd>
 
     <dt>Betroffenenrechte</dt>
-    <dd>Auskunft per Datenexport im Profil, Löschung der Aufnahme durch die aufnehmende Lehrkraft, ersatzweise über die Löschung der Stunde oder des Kontos durch die Schuladministration oder auf Weisung durch den Betreiber (siehe R10), Löschung des Kontos durch die Schuladministration, Widerruf über die Schule.</dd>
+    <dd>Auskunft per Datenexport im Profil (Umfang siehe R11: Konto, Lerndaten, Rückfragen, Fehlzeiten, Einwilligung und Anwesenheit beim Tuto-Mikro, bei Lehrkräften auch Klassen, Vertretungen, Stunden und Sitzungen), Löschung von Konten durch die Schuladministration, Löschung eines Nachweises mit der Stunde oder auf Weisung durch den Betreiber (siehe R11), Widerruf der Einwilligung über den persönlichen Link oder die Schule.</dd>
 </dl>
 
 @include('filament.pages.privacy-documents.partials.field', [
-    'label' => 'Ist die Aufnahme für den Zweck erforderlich? Gibt es mildere Mittel?',
-    'hint' => 'Zum Beispiel eigene Notizen der Lehrkraft, ein Foto des Tafelbilds, ein Gedächtnisprotokoll, Aufnahme nur in Einzelfällen. Begründung der Schule.',
+    'label' => 'Sind KI-Funktionen und Tuto-Mikro für den Zweck erforderlich? Gibt es mildere Mittel?',
+    'hint' => 'Zum Beispiel eigene Notizen der Lehrkraft, ein Foto des Tafelbilds, ein Gedächtnisprotokoll, die Demo-Logik ohne KI, das Tuto-Mikro nur in Einzelfällen. Begründung der Schule.',
 ])
 
 <h3>4. Risiken für die Rechte und Freiheiten der Betroffenen</h3>
@@ -436,24 +488,20 @@
 
 <h4>Was die Plattform nicht leistet</h4>
 <ul>
-    @if ($consentGateEnforced)
-        <li>Sie prüft nur die Einwilligungen der Schüler:innen, die die Lehrkraft als anwesend angibt, nicht die von Lehrkräften und weiteren Personen im Raum, und nicht, ob die Bestätigungen der Schule (Folgenabschätzung, Personalrat und so weiter) stimmen. Das ist Sache der Schule.</li>
-    @else
-        <li>Sie sperrt den Start einer Aufnahme nicht, wenn Einwilligungen fehlen oder widerrufen sind. Sie prüft weder Einwilligungen von Lehrkräften und weiteren Personen im Raum noch, ob die Bestätigungen der Schule (Folgenabschätzung, Personalrat und so weiter) stimmen. Das ist Sache der Schule und der Dienstanweisung.</li>
-    @endif
-    <li>Sie führt keine Anwesenheitsliste. Wer bei einer Aufnahme anwesend ist, gibt die Lehrkraft an.</li>
-    <li>Die Ersetzung von Namen vor der KI gibt es nur bei der Auswertung einer Aufnahme und beim Übernehmen in die Notizen, und sie ist keine Anonymisierung. Unbekannte Namen, Spitznamen und Erkennungsfehler bleiben im Text. Notizen, Arbeitsblatt-Dateien, Antworten und Gespräche gehen bei eingeschalteter KI ohne Ersetzung an den Anbieter.</li>
-    <li>Sie erzwingt nicht, dass die Lehrkraft das Transkript vor der Auswertung liest, und bindet das Übernehmen in die Notizen und den Hausaufgaben-Entwurf mit KI nicht an die Zustimmung zur KI-Auswertung. Übernommener Text bleibt so lange in den Notizen wie diese und geht beim Hausaufgaben-Entwurf an den KI-Anbieter. Das regelt die Dienstanweisung.</li>
-    <li>Löschen kann nur die aufnehmende Lehrkraft, solange sie die Stunde leitet. Ist sie nicht erreichbar oder wurde die Stunde neu zugewiesen, hilft nur die Löschung der Stunde oder des Kontos, ein Auftrag an den Betreiber oder die automatische Löschung (siehe R10).</li>
-    <li>Die Anwendung verschlüsselt Audiodateien nicht zusätzlich. Server, Datenträger und Sicherungen schützt der Betrieb.</li>
-    <li>Sie kann heruntergeladene Kopien und übernommenen Text nicht kontrollieren oder zurückholen.</li>
-    <li>Sie kann einzelne Stimmen nicht aus einer Aufnahme herauslösen.</li>
+    <li>Sie prüft nur die Einwilligungen der Schüler:innen, die die Lehrkraft als anwesend anhakt. Sie hat keine eigene Anwesenheitserfassung, kennt keine Einwilligungen von Lehrkräften und weiteren Personen im Raum und prüft nicht, ob die Bestätigungen der Schule (Folgenabschätzung, Personalrat, Auftragsverarbeitung mit dem KI-Anbieter und so weiter) stimmen. Das ist Sache der Schule und der Dienstanweisung.</li>
+    <li>Die Ersetzung von Namen ist keine Anonymisierung. Unbekannte Namen, Spitznamen und Erkennungsfehler bleiben im Text. Arbeitsblatt-Dateien und Ton-Abschnitte gehen bei eingeschalteten KI-Funktionen ohne Ersetzung an den Anbieter.</li>
+    <li>Sie erzwingt nicht, dass die Lehrkraft die Notizen aus der Stunde vor der Zusammenfassung liest. Text, der in die Stundennotizen übernommen wurde, bleibt so lange wie diese und geht beim Hausaufgaben-Entwurf pseudonymisiert an den KI-Anbieter, auch wenn er aus einer Sitzung ohne KI stammt.</li>
+    <li>Einen einzelnen Nachweis des Tuto-Mikro kann niemand über die Plattform löschen; das geht nur mit der Stunde, dem Konto der Lehrkraft, über den Betreiber oder automatisch (siehe R11).</li>
+    <li>Sie erzwingt nicht, dass die Beamer-Anzeige geöffnet wird. Ob die Klasse sieht, dass das Mikro an ist, hängt davon ab, dass die Lehrkraft die Anzeige öffnet oder es ansagt (Dienstanweisung).</li>
+    <li>Sie stoppt die Spracherkennung auf dem Gerät der Lehrkraft nicht, solange der Server nicht erreichbar ist: Ein Widerruf wirkt bei der nächsten Prüfung durch den Server, die ohne Verbindung ausbleibt.</li>
+    <li>Sie kann nicht ausschließen, dass der Webserver des Betreibers einen Ton-Abschnitt für die Dauer einer Anfrage kurz in einer temporären Datei zwischenpuffert. Tuto selbst speichert keinen Ton; Einstellung und Löschung der Zwischenspeicher klärt die Schule mit dem Betreiber.</li>
+    <li>Sie kann kopierten Text nicht kontrollieren oder zurückholen und kann nicht beeinflussen, was ein Mikrofon in der Nähe der Lehrkraft außer ihrer Stimme erfasst.</li>
 </ul>
 
 <h3>6. Weitere Maßnahmen der Schule</h3>
 @include('filament.pages.privacy-documents.partials.field', [
     'label' => 'Organisatorische Maßnahmen',
-    'hint' => 'Zum Beispiel Dienstanweisung (Einwilligungsübersicht vor jeder Aufnahme prüfen, Transkript vor der Auswertung lesen, nur bei Zustimmung zur KI-Auswertung Text in die Notizen übernehmen, wer löscht, wenn die Lehrkraft nicht erreichbar ist), Dienstvereinbarung, Unterweisung der Lehrkräfte, Ankündigung vor jeder Aufnahme, Regeln für heruntergeladene Dateien, Prüfung der Sicherungen mit dem Betreiber.',
+    'hint' => 'Zum Beispiel Dienstanweisung (Anwesenheitsliste gewissenhaft anhaken, bei Gästen das Tuto-Mikro ausschalten, die Beamer-Anzeige öffnen oder der Klasse ansagen, dass das Mikro läuft, Notizen vor der Zusammenfassung lesen, keine Namen in Notizen und auf Arbeitsblättern, wer Vertretungen einträgt), Dienstvereinbarung, Unterweisung der Lehrkräfte, Ankündigung vor jedem Einschalten, Prüfung der Sicherungen mit dem Betreiber.',
     'tall' => true,
 ])
 @include('filament.pages.privacy-documents.partials.field', [
@@ -472,14 +520,15 @@
 
 <h4>Entscheidung der Schulleitung</h4>
 <ul class="pd-options">
-    <li><span class="pd-check" aria-hidden="true"></span> Aufnahme-Modul freigegeben</li>
+    <li><span class="pd-check" aria-hidden="true"></span> KI-Funktionen freigegeben</li>
+    <li><span class="pd-check" aria-hidden="true"></span> Tuto-Mikro freigegeben</li>
     <li><span class="pd-check" aria-hidden="true"></span> freigegeben mit Auflagen (siehe Teil 6)</li>
     <li><span class="pd-check" aria-hidden="true"></span> nicht freigegeben</li>
     <li><span class="pd-check" aria-hidden="true"></span> Konsultation der Aufsichtsbehörde nötig (Art. 36 DSGVO)</li>
 </ul>
 
 <p>
-    Überprüfung der Folgenabschätzung spätestens am {{ $blank }}, außerdem bei jeder Änderung der Verarbeitung, zum Beispiel beim Einschalten der KI-Anbindung oder der Server-Transkription (Art. 35 Abs. 11 DSGVO).
+    Überprüfung der Folgenabschätzung spätestens am {{ $blank }}, außerdem bei jeder Änderung der Verarbeitung, zum Beispiel bei einem anderen KI-Anbieter oder neuen KI-Funktionen (Art. 35 Abs. 11 DSGVO).
 </p>
 
 @include('filament.pages.privacy-documents.partials.signatures', [

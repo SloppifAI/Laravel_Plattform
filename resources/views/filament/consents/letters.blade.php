@@ -279,8 +279,8 @@
 
                 <p>
                     Sehr geehrte Erziehungsberechtigte, wir möchten in einzelnen Unterrichtsstunden das Tuto-Mikro einschalten. Es erfasst nur den Ton, damit
-                    die Lehrkraft den Unterricht besser nachbereiten kann. Dafür brauchen wir Ihre freiwillige Einwilligung. Sie können sie
-                    jederzeit widerrufen.
+                    die Lehrkraft den Unterricht besser nachbereiten kann. Tuto speichert keinen Ton. Dafür brauchen wir Ihre freiwillige Einwilligung.
+                    Sie können sie jederzeit widerrufen.
                 </p>
 
                 <div class="access">

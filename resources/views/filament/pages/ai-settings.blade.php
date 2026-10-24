@@ -79,13 +79,14 @@
             <x-filament::section heading="Was an die KI geht" :icon="Heroicon::OutlinedDocumentText">
                 <div class="space-y-3 text-sm text-gray-600 dark:text-gray-400">
                     <p>
-                        Die KI schreibt Entwürfe für Hausaufgaben und Förderaufgaben, schlägt eine Bewertung der Abgaben vor und spricht in „Erklär’s mir“ als Tuto mit den Schüler:innen.
+                        Die KI schreibt Entwürfe für Hausaufgaben, Förderaufgaben und Stufen, schreibt Texte der Lehrkraft in Einfacher Sprache, schlägt eine Bewertung der Abgaben vor und spricht in „Erklär’s mir“ als Tuto mit den Schüler:innen. Beim Tuto-Mikro erkennt sie die Sprache und fasst die Notizen aus der Stunde zusammen.
                         Hausaufgaben-Entwürfe prüfen Lehrkräfte, bevor sie sie freigeben. Förderaufgaben können sie direkt freigeben, dann gibt es keine getrennte Prüfung.
                     </p>
                     <ul class="list-disc space-y-1 ps-5">
                         <li>Fach, Thema, Datum, Notizen und Zusammenfassung der Lehrkraft sowie Fragen mit Erwartungshorizont.</li>
                         <li>Arbeitsblätter, die Lehrkräfte an eine Stunde anhängen (Fotos und PDF).</li>
                         <li>Texte der Schüler:innen: ihre Zusammenfassung, ihre Antworten und ihre Nachrichten in „Erklär’s mir“.</li>
+                        <li>Beim Tuto-Mikro kurze Ton-Abschnitte zur Spracherkennung, nur wenn alle angehakten Schüler:innen dafür eine Einwilligung haben. Tuto speichert keinen Ton.</li>
                     </ul>
                     <p>
                         <span class="font-medium text-gray-950 dark:text-white">Nie mit dabei:</span>
@@ -94,8 +95,8 @@
                     </p>
                     <p>
                         <span class="font-medium text-gray-950 dark:text-white">Grenzen:</span>
-                        Ersetzt werden nur Namen, die die Plattform kennt (die Klasse und die Lehrkräfte, die sie unterrichten). Namen anderer Personen und Spitznamen bleiben stehen, und auf Fotos und PDF-Arbeitsblättern kann die Plattform keine Namen ersetzen.
-                        Schreibt deshalb keine Namen in Notizen und hängt keine Arbeitsblätter mit Namen an.
+                        Ersetzt werden nur Namen, die die Plattform kennt (die Klasse und die Lehrkräfte, die sie unterrichten). Namen anderer Personen und Spitznamen bleiben stehen, und auf Fotos und PDF-Arbeitsblättern und in den Ton-Abschnitten des Tuto-Mikro kann die Plattform keine Namen ersetzen.
+                        Schreibt deshalb keine Namen in Notizen und hängt keine Arbeitsblätter mit Namen an. Alle KI-Funktionen im Einzelnen stehen unter „Datenschutz &amp; KI“.
                     </p>
                 </div>
             </x-filament::section>

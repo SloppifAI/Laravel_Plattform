@@ -72,6 +72,7 @@ class ConsentLettersTest extends TestCase
             ->assertSee($this->form->title)
             ->assertSee('Fassung 1')
             ->assertSee('Lieber auf Papier?')
+            ->assertSee('Tuto speichert keinen Ton.')
             ->assertSee('Drucken')
             ->assertSee('data:image/svg+xml;base64,', false);
         $this->assertCount(3, array_unique($this->tokensIn($response)));

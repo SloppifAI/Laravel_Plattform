@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ExplanationSessions;
 
+use App\Filament\NavigationGroup;
 use App\Filament\Resources\ExplanationSessions\Pages\ListExplanationSessions;
 use App\Filament\Resources\ExplanationSessions\Pages\ViewExplanationSession;
 use App\Filament\Resources\ExplanationSessions\Schemas\ExplanationSessionInfolist;
@@ -28,17 +29,38 @@ class ExplanationSessionResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedChatBubbleLeftRight;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Unterricht';
+    protected static string|UnitEnum|null $navigationGroup = NavigationGroup::Unterricht;
 
     protected static ?int $navigationSort = 3;
-
-    protected static ?string $modelLabel = 'Erklär-Sitzung';
-
-    protected static ?string $pluralModelLabel = 'Erklär-Sitzungen';
 
     protected static ?string $slug = 'erklaer-sitzungen';
 
     protected static ?string $recordTitleAttribute = 'topic';
+
+    public static function getModelLabel(): string
+    {
+        return __('Erklär-Sitzung');
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return __('Erklär-Sitzungen');
+    }
+
+    public static function getTitleCaseModelLabel(): string
+    {
+        return __('Erklär-Sitzung');
+    }
+
+    public static function getTitleCasePluralModelLabel(): string
+    {
+        return __('Erklär-Sitzungen');
+    }
+
+    public static function getNavigationLabel(): string
+    {
+        return __('Erklär-Sitzungen');
+    }
 
     public static function infolist(Schema $schema): Schema
     {
@@ -65,7 +87,12 @@ class ExplanationSessionResource extends Resource
             $user->isAdmin(),
             // Only sessions about a lesson of the own school: free-topic sessions stay private to the student.
             fn (Builder $query) => $query->whereHas('lesson', fn (Builder $lessons) => $lessons->whereRelation('schoolClass', 'school_id', $user->school_id)),
-            fn (Builder $query) => $query->whereHas('lesson', fn (Builder $lessons) => $lessons->whereBelongsTo($user, 'teacher')),
+            // Like StudentQuestion::scopeManagedBy(): not the lessons of a class the teacher is in only as a substitute whose substitution is over.
+            fn (Builder $query) => $query->whereHas('lesson', fn (Builder $lessons) => $lessons
+                ->whereBelongsTo($user, 'teacher')
+                ->whereHas('schoolClass', fn (Builder $classes) => $classes->where(fn (Builder $classes) => $classes
+                    ->whereDoesntHave('substitutions', fn (Builder $substitutions) => $substitutions->where('substitute_id', $user->getKey()))
+                    ->orWhere(fn (Builder $taught) => $taught->taughtBy($user))))),
         );
     }
 
@@ -87,18 +114,19 @@ class ExplanationSessionResource extends Resource
             ->formatStateUsing(fn (int $state): string => "{$state} % · ".UnderstandingLevel::fromScore($state)->getLabel())
             ->color(fn (int $state): string => UnderstandingLevel::fromScore($state)->getColor())
             ->icon(fn (int $state): Heroicon => UnderstandingLevel::fromScore($state)->getIcon())
-            ->placeholder('Noch nicht ausgewertet');
+            ->placeholder(__('Noch nicht ausgewertet'));
     }
 
     /**
-     * Running or finished, as text plus icon.
+     * Running or finished, as text plus icon. The state stays a language-independent key, only its label is translated.
      */
     public static function asStatusBadge(TextColumn|TextEntry $component): TextColumn|TextEntry
     {
         return $component
-            ->state(fn (ExplanationSession $record): string => $record->isFinished() ? 'Beendet' : 'Läuft')
+            ->state(fn (ExplanationSession $record): string => $record->isFinished() ? 'finished' : 'running')
             ->badge()
-            ->color(fn (string $state): string => $state === 'Beendet' ? 'gray' : 'info')
-            ->icon(fn (string $state): Heroicon => $state === 'Beendet' ? Heroicon::OutlinedFlag : Heroicon::OutlinedClock);
+            ->formatStateUsing(fn (string $state): string => $state === 'finished' ? __('Beendet') : __('Läuft'))
+            ->color(fn (string $state): string => $state === 'finished' ? 'gray' : 'info')
+            ->icon(fn (string $state): Heroicon => $state === 'finished' ? Heroicon::OutlinedFlag : Heroicon::OutlinedClock);
     }
 }

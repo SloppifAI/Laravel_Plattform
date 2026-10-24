@@ -2,8 +2,17 @@
 
 namespace Tests\Feature\PrivacyDocuments;
 
+use App\Ai\Agents\HomeworkDrafter;
+use App\Ai\LessonAssistant;
+use App\Filament\NavigationGroup;
+use App\Filament\Pages\AiSettings;
+use App\Filament\Pages\PrivacyAndAi;
 use App\Filament\Pages\PrivacyDocuments;
 use App\Filament\Pages\RecordingSettings;
+use App\Filament\Pages\RecordLesson;
+use App\Filament\Resources\ExplanationSessions\Pages\ListExplanationSessions;
+use App\Models\ClassBookEntry;
+use App\Models\ClassSubstitution;
 use App\Models\ConsentForm;
 use App\Models\ExplanationSession;
 use App\Models\Lesson;
@@ -12,16 +21,27 @@ use App\Models\School;
 use App\Models\SchoolClass;
 use App\Models\User;
 use App\Role;
+use App\Support\PersonalDataExport;
+use App\Support\RecordingConsentGate;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Laravel\Ai\Prompts\AgentPrompt;
+use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Tests\Feature\Ai\EnablesSchoolAi;
 use Tests\Feature\Consents\CreatesConsentFixtures;
 use Tests\TestCase;
 
+/**
+ * The privacy templates of a school. The statements they make about the platform are backed here by tests against the
+ * code: when the code changes, a test fails and the text has to follow.
+ */
 class PrivacyDocumentsTest extends TestCase
 {
     use CreatesConsentFixtures;
+    use EnablesSchoolAi;
     use RefreshDatabase;
 
     /**
@@ -32,11 +52,11 @@ class PrivacyDocumentsTest extends TestCase
     public static function documents(): array
     {
         return [
-            'Checkliste' => ['checkliste', 'Checkliste für die Einführung', ['Teil A: Einsatz der Lernplattform', 'Teil B: Zusätzlich vor dem Aufnahme-Modul', 'Auftragsverarbeitungsvertrag abgeschlossen', 'Personalrat beteiligt', 'Datenschutz-Folgenabschätzung durchgeführt', 'Elterninformation', 'Einwilligungen aller aufgenommenen Personen', 'Löschfristen festgelegt', 'Ansprechpartner']],
-            'Folgenabschätzung' => ['dsfa', 'Datenschutz-Folgenabschätzung (Art. 35 DSGVO)', ['Systematische Beschreibung der Verarbeitung', 'Notwendigkeit und Verhältnismäßigkeit', 'Verhaltensanpassung durch Überwachungsdruck', 'Missbrauch und Weitergabe von Aufnahmen', 'Wiedererkennung trotz Pseudonymisierung', 'Fehler und Verzerrungen der KI', 'Maßnahmen der Plattform', 'Was die Plattform nicht leistet', 'Trennung der Schulen', 'Stellungnahme der oder des Datenschutzbeauftragten', 'Konsultation der Aufsichtsbehörde']],
-            'Verzeichnis' => ['verzeichnis', 'Eintrag für das Verzeichnis von Verarbeitungstätigkeiten (Art. 30 DSGVO)', ['A: Nutzung der Lernplattform im Unterricht', 'B: Tonaufnahme von Unterricht', 'Zwecke', 'Betroffene Personen', 'Datenkategorien', 'Empfänger', 'Übermittlung in Drittländer', 'Löschfristen', 'Technische und organisatorische Maßnahmen']],
-            'Elterninformation' => ['elterninformation', 'Elterninformation zur Lernplattform (Art. 13 DSGVO)', ['Wer ist verantwortlich?', 'Welche Daten werden verarbeitet?', 'Künstliche Intelligenz', 'Aufnahme-Modul: Ton im Unterricht', 'Freiwillig und nur mit Einwilligung', 'Ihre Rechte und die Rechte Ihres Kindes', 'Widerruf einer erteilten Einwilligung', 'Beschwerde bei einer Aufsichtsbehörde']],
-            'Einwilligung' => ['einwilligung', 'Einwilligung in Tonaufnahmen im Unterricht (Muster)', [ConsentForm::PURPOSES['audio'], ConsentForm::PURPOSES['transcript'], ConsentForm::PURPOSES['ai_analysis'], 'Die Einwilligung ist freiwillig', 'jederzeit ohne Angabe von Gründen widerrufen', 'Variante für Lehrkräfte und weitere anwesende Personen']],
+            'Checkliste' => ['checkliste', 'Checkliste für die Einführung', ['Teil A: Einsatz von Tuto', 'Teil B: Zusätzlich vor den KI-Funktionen', 'Teil C: Zusätzlich vor dem Tuto-Mikro', 'Auftragsverarbeitungsvertrag abgeschlossen', 'Auftragsverarbeitung mit dem KI-Anbieter geklärt', 'Regeln für die Vertretung festgelegt', 'Personalrat beteiligt', 'Datenschutz-Folgenabschätzung durchgeführt', 'Gesperrte Fächer festgelegt', 'Einwilligungen aller Personen im Raum', 'Löschfristen festgelegt', 'Ansprechpartner']],
+            'Folgenabschätzung' => ['dsfa', 'Datenschutz-Folgenabschätzung (Art. 35 DSGVO)', ['Systematische Beschreibung der Verarbeitung', 'Was an die KI geht', 'Ablauf mit dem Tuto-Mikro', 'Notwendigkeit und Verhältnismäßigkeit', 'Verhaltensanpassung durch Überwachungsdruck', 'Missbrauch und Weitergabe von Ton oder Notizen', 'Wiedererkennung trotz Pseudonymisierung', 'Fehler und Verzerrungen der KI', 'Übermittlung an den KI-Anbieter', 'Zu weiter Zugriff innerhalb der Schule', 'Klassenbuch', 'Benachrichtigungen', 'Maßnahmen der Plattform', 'Was die Plattform nicht leistet', 'Trennung der Schulen', 'Stellungnahme der oder des Datenschutzbeauftragten', 'Konsultation der Aufsichtsbehörde']],
+            'Verzeichnis' => ['verzeichnis', 'Eintrag für das Verzeichnis von Verarbeitungstätigkeiten (Art. 30 DSGVO)', ['A: Nutzung von Tuto im Unterricht', 'B: KI-Funktionen (optional)', 'C: Tuto-Mikro im Unterricht (optional)', 'Zwecke', 'Betroffene Personen', 'Datenkategorien', 'Empfänger', 'Übermittlung in Drittländer', 'Löschfristen', 'Technische und organisatorische Maßnahmen']],
+            'Elterninformation' => ['elterninformation', 'Elterninformation zu Tuto (Art. 13 DSGVO)', ['Wer ist verantwortlich?', 'Welche Daten werden verarbeitet?', 'Künstliche Intelligenz', 'Tuto-Mikro: Ton im Unterricht', 'Freiwillig und nur mit Einwilligung', 'Was mit dem Ton geschieht', 'Ihre Rechte und die Rechte Ihres Kindes', 'Widerruf einer erteilten Einwilligung', 'Beschwerde bei einer Aufsichtsbehörde']],
+            'Einwilligung' => ['einwilligung', 'Einwilligung zum Tuto-Mikro im Unterricht (Muster)', [ConsentForm::PURPOSES['audio'], ConsentForm::PURPOSES['transcript'], ConsentForm::PURPOSES['ai_analysis'], 'Die Einwilligung ist freiwillig', 'jederzeit ohne Angabe von Gründen widerrufen', 'Variante für Lehrkräfte und weitere anwesende Personen']],
         ];
     }
 
@@ -85,6 +105,26 @@ class PrivacyDocumentsTest extends TestCase
             ->assertSee('@media print', false);
     }
 
+    /**
+     * The product is Tuto, the provider Google Gemini (config/lernplattform.php), and the former recording mode with
+     * stored audio is gone: no template may still speak of Anthropic, of an "Aufnahme-Modul" or of audio files.
+     */
+    #[DataProvider('documents')]
+    public function test_every_template_names_tuto_and_google_and_nothing_of_the_former_setup(string $key): void
+    {
+        $this->assertSame('gemini', config('lernplattform.ai.provider'));
+        $this->actingAs($this->schoolAdmin());
+
+        $article = $this->articleOf($this->get(PrivacyDocuments::getUrl(['document' => $key]))->assertOk()->getContent());
+
+        $this->assertStringContainsString('Datenschutz bei Tuto', $article);
+        $this->assertStringContainsString('Google', $article);
+
+        foreach (['Anthropic', 'Claude', 'Aufnahme-Modul', 'Aufnahmen &amp; Einwilligungen', 'Audiodatei', 'Server-Transkription'] as $outdated) {
+            $this->assertStringNotContainsString($outdated, $article);
+        }
+    }
+
     public function test_the_master_data_of_the_school_and_the_operator_are_prefilled(): void
     {
         $this->actingAs($this->schoolAdmin());
@@ -114,7 +154,7 @@ class PrivacyDocumentsTest extends TestCase
         $this->actingAs($this->schoolAdmin());
 
         $this->get(PrivacyDocuments::getUrl())->assertOk()->assertSee('Checkliste für die Einführung');
-        $this->get(PrivacyDocuments::getUrl(['document' => 'dsfa']))->assertOk()->assertSee('Datenschutz-Folgenabschätzung (Art. 35 DSGVO)')->assertDontSee('Teil A: Einsatz der Lernplattform');
+        $this->get(PrivacyDocuments::getUrl(['document' => 'dsfa']))->assertOk()->assertSee('Datenschutz-Folgenabschätzung (Art. 35 DSGVO)')->assertDontSee('Teil A: Einsatz von Tuto');
         $this->get(PrivacyDocuments::getUrl(['document' => '../../.env']))->assertOk()->assertSee('Checkliste für die Einführung');
     }
 
@@ -137,31 +177,55 @@ class PrivacyDocumentsTest extends TestCase
 
     public function test_the_texts_follow_the_real_settings_of_the_platform(): void
     {
-        config([
-            'lernplattform.recordings.keep_days' => 21,
-            'lernplattform.retention.school_years_kept' => 3,
-            'services.anthropic.enabled' => false,
-            'services.transcription.enabled' => false,
-        ]);
-        $this->actingAs($this->schoolAdmin());
+        $this->preventRealAiCalls();
+        config(['lernplattform.retention.school_years_kept' => 3, 'lernplattform.recordings.session_keep_days' => 30]);
+        $admin = $this->schoolAdmin();
+        $this->actingAs($admin);
 
+        // The platform switch alone sends nothing: the school has not opted in.
         $this->get(PrivacyDocuments::getUrl(['document' => 'dsfa']))
             ->assertOk()
-            ->assertSee('21 Tage')
-            ->assertSee('nach 3 Schuljahren')
-            ->assertSee('Ausgeschaltet: keine Daten verlassen die Plattform');
-
-        config(['services.anthropic.enabled' => true, 'services.transcription.enabled' => true]);
-
-        $this->get(PrivacyDocuments::getUrl(['document' => 'dsfa']))
-            ->assertOk()
-            ->assertSee('Eingeschaltet: '.PrivacyDocuments::AI_DATA.' gehen an Anthropic PBC (USA)')
-            ->assertSee('Eingeschaltet: Audio geht zur Texterkennung an den eingerichteten Dienst');
+            ->assertSee('nach 3 Schuljahren (das laufende eingerechnet)')
+            ->assertSee('30 Tage')
+            ->assertSee('Ausgeschaltet: keine Daten gehen an einen KI-Anbieter');
 
         $this->get(PrivacyDocuments::getUrl(['document' => 'elterninformation']))
             ->assertOk()
-            ->assertSee('Dafür werden '.PrivacyDocuments::AI_DATA.' an Anthropic PBC in den USA übermittelt')
-            ->assertSee('21 Tage');
+            ->assertSee('Derzeit sind die KI-Funktionen an unserer Schule ausgeschaltet')
+            ->assertSee('Er wird nach 30 Tagen gelöscht');
+
+        $this->enableAiFor($admin->school);
+
+        $this->get(PrivacyDocuments::getUrl(['document' => 'dsfa']))
+            ->assertOk()
+            ->assertSee('Eingeschaltet: '.PrivacyDocuments::AI_DATA.' gehen an Google Gemini');
+
+        $this->get(PrivacyDocuments::getUrl(['document' => 'elterninformation']))
+            ->assertOk()
+            ->assertSee('Anbieter ist Google Gemini')
+            ->assertSee('Dafür werden '.PrivacyDocuments::AI_DATA.' an den Anbieter übermittelt');
+
+        config(['lernplattform.ai.enabled' => false]);
+
+        $this->get(PrivacyDocuments::getUrl(['document' => 'einwilligung']))->assertOk()->assertSee('derzeit ausgeschaltet');
+    }
+
+    /**
+     * One school year by default, with the transition the accepted agreements require (PruneLearningData).
+     */
+    public function test_the_retention_follows_the_one_year_rule_and_its_transition(): void
+    {
+        config(['lernplattform.retention.school_years_kept' => 1, 'lernplattform.retention.one_year_rule_from' => now()->addYear()->toDateString()]);
+
+        $this->assertStringContainsString('zum Ende des Schuljahres, also zu Beginn des nächsten Schuljahres am 01.08.', PrivacyDocuments::retentionText());
+        $this->assertStringContainsString('Übergang: bis zum '.now()->addYear()->format('d.m.Y').' bleiben noch zwei Schuljahre gespeichert', PrivacyDocuments::retentionText());
+
+        config(['lernplattform.retention.one_year_rule_from' => now()->subDay()->toDateString()]);
+        $this->assertStringNotContainsString('Übergang', PrivacyDocuments::retentionText());
+
+        $this->actingAs($this->schoolAdmin());
+        $this->get(PrivacyDocuments::getUrl(['document' => 'elterninformation']))->assertOk()
+            ->assertSee('löscht Tuto automatisch zum Ende des Schuljahres');
     }
 
     public function test_the_consent_names_the_three_purposes_and_the_parent_information_uses_sie(): void
@@ -172,6 +236,7 @@ class PrivacyDocumentsTest extends TestCase
             ->assertOk()
             ->assertSeeInOrder(['1. '.ConsentForm::PURPOSES['audio'], '2. '.ConsentForm::PURPOSES['transcript'], '3. '.ConsentForm::PURPOSES['ai_analysis'], 'Ja, ich willige ein', 'Nein, ich willige nicht ein'])
             ->assertSee('Wer nicht einwilligt, hat keine Nachteile')
+            ->assertSee('KI-Anbieter:</strong> Google Gemini', false)
             ->assertSee('Unterschrift Erziehungsberechtigte(r)');
 
         $this->get(PrivacyDocuments::getUrl(['document' => 'elterninformation']))
@@ -199,8 +264,9 @@ class PrivacyDocumentsTest extends TestCase
         $this->assertDoesNotMatchRegularExpression('~https?://|url\(|@import~i', $style, 'The print and layout styles of the templates are self-contained.');
     }
 
-    public function test_the_checklist_shows_the_agreement_and_recording_status_of_the_school_with_links(): void
+    public function test_the_checklist_shows_the_agreement_ai_and_tuto_mikro_status_of_the_school_with_links(): void
     {
+        $this->preventRealAiCalls();
         $school = School::factory()->create();
         $admin = $this->schoolAdmin($school);
         $this->actingAs($admin);
@@ -208,145 +274,195 @@ class PrivacyDocumentsTest extends TestCase
         $this->get(PrivacyDocuments::getUrl(['document' => 'checkliste']))
             ->assertOk()
             ->assertSee('In der Plattform noch nicht akzeptiert.')
-            ->assertSee('Aufnahmen sind für diese Schule ausgeschaltet.')
-            ->assertSee('Aufnahmen & Einwilligungen')
+            ->assertSee('KI-Funktionen sind für diese Schule ausgeschaltet.')
+            ->assertSee('Tuto-Mikro ist für diese Schule ausgeschaltet.')
+            ->assertSee('Zu „Tuto-Mikro & Einwilligungen“')
             ->assertSee('href="'.route('legal.dpa').'"', false)
+            ->assertSee('href="'.AiSettings::getUrl().'"', false)
             ->assertSee('href="'.RecordingSettings::getUrl().'"', false);
 
         $school->acceptDpa($admin);
         $school->forceFill(['recordings_enabled_at' => now(), 'recording_checklist' => array_fill_keys(School::RECORDING_CHECKLIST, true)])->save();
+        $this->enableAiFor($school);
         $this->actingAs($admin->fresh());
 
         $this->get(PrivacyDocuments::getUrl(['document' => 'checkliste']))
             ->assertOk()
             ->assertSee('In der Plattform akzeptiert am '.now()->format('d.m.Y').'.')
-            ->assertSee('Aufnahmen sind für diese Schule eingeschaltet.');
+            ->assertSee('KI-Funktionen sind für diese Schule eingeschaltet (Anbieter: Google Gemini).')
+            ->assertSee('Tuto-Mikro ist für diese Schule eingeschaltet.');
     }
 
     /**
-     * Only the evaluation of a recording replaces names. Notes, worksheet files, answers and the "Erklär's mir" chat
-     * reach the provider as they stand (ClaudeLessonAssistant), and the templates may not say otherwise.
+     * "Vor jeder Anfrage an die KI ersetzt Tuto die Namen", "Arbeitsblatt-Dateien gehen unverändert", "Nichts geht an
+     * einen KI-Anbieter, solange die Schule die KI-Funktionen nicht eingeschaltet hat": checked against the lesson AI.
      */
-    public function test_the_ai_statements_say_what_is_sent_unfiltered(): void
+    public function test_the_ai_statements_say_what_reaches_the_provider(): void
     {
-        $this->actingAs($this->schoolAdmin());
+        $this->preventRealAiCalls();
+        Storage::fake('local');
+        Storage::disk('local')->put('worksheets/foto.png', base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='));
+        $school = School::factory()->create();
+        [$schoolClass, $students, $teacher] = $this->classWithStudents($school, 1);
+        $student = $students->first();
+        $lesson = Lesson::factory()->for($schoolClass)->for($teacher, 'teacher')->create([
+            'notes' => "{$student->name} hat das Experiment erklärt, {$teacher->name} hat ergänzt.",
+            'attachments' => ['worksheets/foto.png'],
+        ]);
+        HomeworkDrafter::fake();
 
-        foreach ([false, true] as $aiEnabled) {
-            config(['services.anthropic.enabled' => $aiEnabled]);
+        app(LessonAssistant::class)->draftHomework($lesson);
+        HomeworkDrafter::assertNeverPrompted();
 
-            $dsfa = $this->get(PrivacyDocuments::getUrl(['document' => 'dsfa']))->assertOk()
-                ->assertSee('Arbeitsblatt-Dateien')
-                ->assertSee('ohne Ersetzung von Namen')
-                ->assertSee('können Namen enthalten')
-                ->assertSee('Bei der Auswertung einer Aufnahme ersetzt die Plattform')
-                ->assertDontSee('Vor jeder KI-Auswertung')
-                ->assertDontSee('ohne Namen und Benutzerkennungen')
-                ->assertDontSee('Für die KI gehen nur Texte, nie Audio, und nur pseudonymisiert');
+        $this->enableAiFor($school);
+        HomeworkDrafter::fake([['summary' => 'Zusammenfassung.', 'questions' => [['type' => 'comprehension', 'prompt' => 'Was?', 'expected_answer' => 'Das.', 'competency_id' => null]]]]);
 
-            $this->assertStringContainsString('Erklär’s mir', $dsfa->getContent());
+        app(LessonAssistant::class)->draftHomework($lesson->fresh());
 
-            $this->get(PrivacyDocuments::getUrl(['document' => 'verzeichnis']))->assertOk()
-                ->assertSee('Arbeitsblatt-Dateien')
-                ->assertSee('Gespräche in „Erklär’s mir“');
-        }
+        HomeworkDrafter::assertPrompted(function (AgentPrompt $prompt) use ($student, $teacher): bool {
+            $this->assertStringNotContainsString($student->name, $prompt->prompt);
+            $this->assertStringNotContainsString($teacher->name, $prompt->prompt);
+            $this->assertStringNotContainsString($student->username, $prompt->prompt);
+            $this->assertStringContainsString('Schüler:in A', $prompt->prompt);
+            $this->assertCount(1, $prompt->attachments);
 
-        config(['services.anthropic.enabled' => true]);
+            return true;
+        });
+
+        $this->actingAs($this->schoolAdmin($school));
+
+        $this->get(PrivacyDocuments::getUrl(['document' => 'dsfa']))->assertOk()
+            ->assertSee('Vor jeder Anfrage an die KI ersetzt Tuto die Namen der Schüler:innen der Klasse und der Lehrkräfte der Klasse')
+            ->assertSee('Arbeitsblatt-Dateien (Fotos, PDF) gehen unverändert an den Anbieter')
+            ->assertSee('Die Ton-Abschnitte des Tuto-Mikro gehen unverändert zur Spracherkennung')
+            ->assertSee('Nichts geht an einen KI-Anbieter, solange der Schalter der Plattform aus ist oder die Schuladministration die KI-Funktionen nicht selbst eingeschaltet hat');
 
         $this->get(PrivacyDocuments::getUrl(['document' => 'elterninformation']))->assertOk()
-            ->assertSee('Arbeitsblatt-Dateien')
-            ->assertSee('werden aber nicht entfernt')
-            ->assertDontSee('ohne Namen und Benutzerkennungen')
-            ->assertDontSee('nur mit geeigneten Garantien');
+            ->assertSee('Vor jeder Übermittlung ersetzt Tuto die Namen')
+            ->assertSee('Namen auf Fotos oder PDF-Arbeitsblättern werden aber nicht entfernt');
     }
 
     /**
-     * What the templates claim about the consent check follows what starting a recording really does. The constant is
-     * the lever and this test the guard: whoever wires RecordingConsentGate into the start of a recording flips it.
+     * What the templates claim about the consent check is what starting the Tuto-Mikro does: the server refuses the
+     * start while a ticked student has no valid consent, and with the school's AI on it asks for the AI purpose as well.
      */
-    public function test_the_templates_claim_the_consent_check_only_while_starting_a_recording_enforces_it(): void
+    public function test_the_tuto_mikro_starts_only_with_the_consent_of_every_ticked_student(): void
     {
         Storage::fake('local');
         $school = $this->schoolWithRecordings();
-        $this->publishedForm($school);
-        [$schoolClass, , $teacher] = $this->classWithStudents($school);
-        $lesson = Lesson::factory()->for($schoolClass)->for($teacher, 'teacher')->create();
+        $form = $this->publishedForm($school);
+        [$schoolClass, $students, $teacher] = $this->classWithStudents($school);
+        $lesson = Lesson::factory()->for($schoolClass)->for($teacher, 'teacher')->create(['subject' => 'Biologie']);
+        $start = fn () => $this->actingAs($teacher)->postJson(route('recordings.store', $lesson), ['present' => $students->modelKeys(), 'attendance_confirmed' => true]);
 
-        $startedWithoutAnyConsent = $this->actingAs($teacher)
-            ->postJson(route('recordings.store', $lesson), ['consent' => true, 'mime_type' => 'audio/webm'])
-            ->status() === 201;
+        $start()->assertConflict();
+        $this->assertSame(0, LessonRecording::query()->count());
 
-        $this->assertSame(! $startedWithoutAnyConsent, PrivacyDocuments::CONSENT_GATE_ENFORCED, 'PrivacyDocuments::CONSENT_GATE_ENFORCED must say whether the start of a recording is refused for students without consent.');
+        $this->consentAll($students, $form);
+        $start()->assertCreated();
+        $this->assertNotNull(LessonRecording::query()->sole()->attendance_confirmed_at);
 
-        $this->actingAs($this->schoolAdmin());
+        $this->assertSame(['audio', 'transcript'], LessonRecording::purposesFor($school));
+        $this->preventRealAiCalls();
+        $this->assertSame(['audio', 'transcript', 'ai_analysis'], LessonRecording::purposesFor($this->enableAiFor($school)));
 
-        foreach (['dsfa', 'elterninformation', 'checkliste'] as $key) {
-            $response = $this->get(PrivacyDocuments::getUrl(['document' => $key]))->assertOk();
+        $this->actingAs($this->schoolAdmin($school));
 
-            if (PrivacyDocuments::CONSENT_GATE_ENFORCED) {
-                $response->assertDontSee('sperrt den Start einer Aufnahme');
-            } else {
-                $response
-                    ->assertDontSee('Die Plattform lässt eine Aufnahme nur zu, wenn für alle anwesenden')
-                    ->assertDontSee('prüft die Plattform vor jeder Aufnahme')
-                    ->assertDontSee('Die Plattform prüft vor einer Aufnahme')
-                    ->assertDontSee('Die Plattform prüft die Einwilligungen der anwesenden Schüler:innen');
-            }
-        }
+        $this->get(PrivacyDocuments::getUrl(['document' => 'dsfa']))->assertOk()
+            ->assertSee('Der Server startet das Tuto-Mikro nur, wenn für jede angehakte Schüler:in eine gültige Einwilligung zur aktuellen Fassung vorliegt')
+            ->assertSee('bei eingeschalteten KI-Funktionen, auch die Spracherkennung und Zusammenfassung durch den KI-Anbieter')
+            ->assertSee('eine eigene Anwesenheitserfassung hat die Plattform nicht');
 
-        $this->get(PrivacyDocuments::getUrl(['document' => 'dsfa']))->assertSee('Sie führt keine Anwesenheitsliste');
+        $this->get(PrivacyDocuments::getUrl(['document' => 'checkliste']))->assertOk()
+            ->assertSee('Die Plattform startet das Tuto-Mikro nur, wenn für alle Schüler:innen, die die Lehrkraft als anwesend anhakt, eine gültige Einwilligung der Eltern vorliegt');
+
+        $this->get(PrivacyDocuments::getUrl(['document' => 'elterninformation']))->assertOk()
+            ->assertSee('Tuto startet das Mikro nur, wenn für alle angehakten Schüler:innen eine gültige Einwilligung vorliegt');
     }
 
-    public function test_recordings_stay_blocked_in_a_school_that_has_not_released_them(): void
+    public function test_the_tuto_mikro_stays_off_in_a_school_that_has_not_switched_it_on_and_in_blocked_subjects(): void
     {
         Storage::fake('local');
         $school = School::factory()->create();
-        $teacher = User::factory()->for($school)->teacher()->create();
-        $schoolClass = SchoolClass::factory()->create(['school_id' => $school->getKey(), 'teacher_id' => $teacher->getKey()]);
-        $lesson = Lesson::factory()->for($schoolClass)->for($teacher, 'teacher')->create();
+        [$schoolClass, $students, $teacher] = $this->classWithStudents($school);
+        $lesson = Lesson::factory()->for($schoolClass)->for($teacher, 'teacher')->create(['subject' => 'Biologie']);
 
-        $this->actingAs($teacher)->postJson(route('recordings.store', $lesson), ['consent' => true, 'mime_type' => 'audio/webm'])->assertForbidden();
+        $this->actingAs($teacher)->postJson(route('recordings.store', $lesson), ['present' => $students->modelKeys(), 'attendance_confirmed' => true])->assertForbidden();
 
-        $this->actingAs($this->schoolAdmin());
+        $religion = Lesson::factory()->for($schoolClass)->for($teacher, 'teacher')->create(['subject' => 'Religion']);
+        $this->assertSame(School::DEFAULT_MIKRO_BLOCKED_SUBJECTS, $school->mikroBlockedSubjects());
+        $this->assertNotNull(RecordingConsentGate::lessonRefusal($religion));
 
-        $this->get(PrivacyDocuments::getUrl(['document' => 'dsfa']))->assertSee('vorher lässt die Plattform keine Aufnahme starten');
+        $this->actingAs($this->schoolAdmin($school));
+
+        $this->get(PrivacyDocuments::getUrl(['document' => 'dsfa']))->assertOk()
+            ->assertSee('vorher lässt die Plattform das Tuto-Mikro nicht starten')
+            ->assertSee('derzeit: '.implode(', ', School::DEFAULT_MIKRO_BLOCKED_SUBJECTS));
+
+        $this->get(PrivacyDocuments::getUrl(['document' => 'elterninformation']))->assertOk()
+            ->assertSee('In den Fächern '.implode(', ', School::DEFAULT_MIKRO_BLOCKED_SUBJECTS).' bleibt es aus');
     }
 
     /**
-     * The templates do not credit the platform with a reading step it does not enforce.
+     * "Tuto speichert keinen Ton": the session row holds the proof the templates list, and nothing else.
      */
-    public function test_reading_the_transcript_is_an_instruction_and_not_a_platform_control(): void
+    public function test_no_sound_is_stored_and_the_session_keeps_only_the_named_proof(): void
+    {
+        $this->assertEqualsCanonicalizing(
+            ['id', 'lesson_id', 'teacher_id', 'started_at', 'finished_at', 'duration_seconds', 'present_student_ids', 'attendance_confirmed_at', 'consent_form_version', 'purposes', 'audio_sent_to_ai', 'created_at', 'updated_at'],
+            Schema::getColumnListing('lesson_recordings'),
+            'A new column of the Tuto-Mikro session has to be named in the privacy templates first.',
+        );
+
+        $this->actingAs($this->schoolAdmin());
+
+        $this->get(PrivacyDocuments::getUrl(['document' => 'dsfa']))->assertOk()
+            ->assertSee('Es gibt keine Tondatei')
+            ->assertSee('Lehrkraft, Beginn, Ende, Dauer, angehakte Schüler:innen, Zeitpunkt der Bestätigung der Anwesenheit, Fassung der Einwilligung, geprüfte Zwecke und ob Ton-Abschnitte an den KI-Anbieter gingen');
+
+        $this->get(PrivacyDocuments::getUrl(['document' => 'elterninformation']))->assertOk()->assertSee('Tuto speichert keinen Ton');
+        $this->get(PrivacyDocuments::getUrl(['document' => 'einwilligung']))->assertOk()->assertSee('Der Ton wird nicht gespeichert.');
+    }
+
+    /**
+     * The templates do not credit the platform with a reading step or an attendance check it does not enforce.
+     */
+    public function test_reading_the_notes_is_an_instruction_and_not_a_platform_control(): void
     {
         $this->actingAs($this->schoolAdmin());
 
         $this->get(PrivacyDocuments::getUrl(['document' => 'dsfa']))->assertOk()
-            ->assertDontSee('Die Lehrkraft liest das Transkript vor der Auswertung und korrigiert es')
-            ->assertDontSee('Transkripte werden vor der Auswertung gelesen')
-            ->assertDontSee('Die Lehrkraft liest das Transkript, bevor es ausgewertet wird')
-            ->assertSee('Die Plattform erzwingt das nicht; verbindlich macht es die Dienstanweisung der Schule')
-            ->assertSee('Sie erzwingt nicht, dass die Lehrkraft das Transkript vor der Auswertung liest');
+            ->assertSee('Sie erzwingt nicht, dass die Lehrkraft die Notizen aus der Stunde vor der Zusammenfassung liest');
 
-        $this->get(PrivacyDocuments::getUrl(['document' => 'checkliste']))->assertOk()->assertSee('Transkripte vor der Auswertung lesen');
+        $this->get(PrivacyDocuments::getUrl(['document' => 'checkliste']))->assertOk()
+            ->assertSee('Die Plattform erzwingt das Lesen und die Richtigkeit der Liste nicht');
     }
 
     /**
-     * Text carried from a recording into the notes follows the notes' deadline and can reach the AI provider
-     * through the homework draft, whatever the parents agreed to for the AI evaluation.
+     * Text carried from the Tuto-Mikro into the notes is stored with the names replaced and follows the notes' deadline.
      */
     public function test_the_templates_name_what_happens_to_text_carried_into_the_notes(): void
     {
-        config(['lernplattform.retention.school_years_kept' => 2, 'lernplattform.recordings.keep_days' => 14]);
-        $this->actingAs($this->schoolAdmin());
+        config(['lernplattform.retention.school_years_kept' => 2]);
+        $school = $this->schoolWithRecordings();
+        [$schoolClass, $students, $teacher] = $this->classWithStudents($school, 1);
+        $lesson = Lesson::factory()->for($schoolClass)->for($teacher, 'teacher')->create(['subject' => 'Biologie', 'notes' => '']);
+
+        Livewire::actingAs($teacher)->test(RecordLesson::class, ['lesson' => $lesson])->call('applyToNotes', $students->first()->name.' hat gefragt.');
+
+        $this->assertStringNotContainsString($students->first()->name, (string) $lesson->fresh()->notes);
+        $this->assertStringContainsString('Schüler:in A hat gefragt.', (string) $lesson->fresh()->notes);
+
+        $this->actingAs($this->schoolAdmin($school));
 
         $this->get(PrivacyDocuments::getUrl(['document' => 'einwilligung']))->assertOk()
-            ->assertSee('folgt den Fristen der Notizen (2 Schuljahre)')
-            ->assertSee('Lehne ich diesen Zweck ab, verwendet die Schule Text aus der Aufnahme auch nicht für die Hausaufgaben-Funktion mit KI.');
+            ->assertSee('Übernommener Text wird mit ersetzten Namen gespeichert und nach 2 Schuljahren');
 
         $this->get(PrivacyDocuments::getUrl(['document' => 'elterninformation']))->assertOk()
-            ->assertSee('nicht nach 14 Tagen gelöscht, sondern folgt den Fristen der Notizen (2 Schuljahre)')
-            ->assertSee('geht dieser Text auch an den KI-Anbieter');
+            ->assertSee('wird dort mit ersetzten Namen gespeichert und folgt den Fristen der Notizen');
 
         $this->get(PrivacyDocuments::getUrl(['document' => 'dsfa']))->assertOk()
-            ->assertSee('bindet das Übernehmen in die Notizen und den Hausaufgaben-Entwurf mit KI nicht an die Zustimmung zur KI-Auswertung');
+            ->assertSee('geht beim Hausaufgaben-Entwurf pseudonymisiert an den KI-Anbieter, auch wenn er aus einer Sitzung ohne KI stammt');
     }
 
     public function test_the_special_categories_of_article_9_have_their_own_basis_and_explicit_consent(): void
@@ -370,6 +486,7 @@ class PrivacyDocumentsTest extends TestCase
         $this->get(PrivacyDocuments::getUrl(['document' => 'elterninformation']))->assertOk()
             ->assertSee('technische Dienstleister als Unterauftragsverarbeiter')
             ->assertSee('Technische Protokolle des Servers')
+            ->assertSee('auch beim Aufruf des persönlichen Einwilligungslinks')
             ->assertSee('löscht der Betreiber nach');
 
         $this->get(PrivacyDocuments::getUrl(['document' => 'verzeichnis']))->assertOk()
@@ -386,20 +503,15 @@ class PrivacyDocumentsTest extends TestCase
         [$schoolClass, $students, $teacher] = $this->classWithStudents($school);
         $admin = $this->schoolAdmin($school);
         $lesson = Lesson::factory()->for($schoolClass)->for($teacher, 'teacher')->create();
-        $recording = LessonRecording::factory()->for($lesson)->create();
+        $recording = LessonRecording::factory()->for($lesson)->create(['teacher_id' => $teacher->getKey()]);
 
-        // Only the recording teacher deletes through the platform; the administration does not.
-        $this->assertTrue($teacher->can('delete', $recording));
+        // The session proof belongs to the lesson's teacher; the administration does not get it, and nobody deletes a single one.
+        $this->assertTrue($teacher->can('create', [LessonRecording::class, $lesson]));
+        $this->assertFalse($admin->can('create', [LessonRecording::class, $lesson]));
+        $this->assertFalse($teacher->can('delete', $recording));
         $this->assertFalse($admin->can('delete', $recording));
 
-        // The lesson is reassigned: neither the former nor the new teacher can delete the recording.
-        $successor = User::factory()->for($school)->teacher()->create();
-        $lesson->teacher()->associate($successor)->save();
-        $recording = $recording->fresh();
-        $this->assertFalse($teacher->can('delete', $recording));
-        $this->assertFalse($successor->can('delete', $recording));
-
-        // The way out the templates name: the administration deletes the lesson, the recording goes with it.
+        // The way out the templates name: the administration deletes the lesson, the proof goes with it.
         $this->assertTrue($admin->can('delete', $lesson));
         $lesson->delete();
         $this->assertDatabaseMissing('lesson_recordings', ['id' => $recording->getKey()]);
@@ -410,19 +522,117 @@ class PrivacyDocumentsTest extends TestCase
         $this->assertFalse($teacher->can('view', $session));
         $this->assertFalse($admin->can('view', $session));
 
+        // The Klassenbuch: teachers of the class and the administration, a substitute only while the substitution lasts, never students.
+        $substitution = ClassSubstitution::factory()->create(['school_class_id' => $schoolClass->getKey()]);
+        $this->assertTrue($teacher->can('accessClass', [ClassBookEntry::class, $schoolClass]));
+        $this->assertTrue($admin->can('accessClass', [ClassBookEntry::class, $schoolClass]));
+        $this->assertTrue($substitution->substitute->can('accessClass', [ClassBookEntry::class, $schoolClass]));
+        $this->assertFalse($students->first()->can('accessClass', [ClassBookEntry::class, $schoolClass]));
+        $substitution->end();
+        $this->assertFalse($substitution->substitute->fresh()->can('accessClass', [ClassBookEntry::class, $schoolClass->fresh()]));
+
         $this->actingAs($admin);
 
         $this->get(PrivacyDocuments::getUrl(['document' => 'elterninformation']))->assertOk()
             ->assertDontSee('kann alle Daten der Schule einsehen')
-            ->assertSee('mit zwei Ausnahmen: Aufnahmen')
-            ->assertSee('zu einem frei gewählten Thema sieht nur Ihr Kind');
+            ->assertSee('mit zwei Ausnahmen: Notizen und Nachweise des Tuto-Mikro')
+            ->assertSee('zu einem frei gewählten Thema sieht nur Ihr Kind')
+            ->assertSee('Ihr Kind sieht die eigenen Daten, aber nicht das Klassenbuch');
 
         $this->get(PrivacyDocuments::getUrl(['document' => 'dsfa']))->assertOk()
-            ->assertSee('Nur die aufnehmende Lehrkraft kann eine Aufnahme über die Plattform löschen, solange sie die Stunde leitet')
-            ->assertSee('wurde die Stunde einer anderen Lehrkraft zugewiesen')
-            ->assertSee('Gespräche zu einem frei gewählten Thema: nur die Schüler:in selbst');
+            ->assertSee('Den Nachweis sieht nur die Lehrkraft der Stunde')
+            ->assertSee('Einen einzelnen Nachweis einer Tuto-Mikro-Sitzung kann über die Plattform niemand löschen')
+            ->assertSee('Gespräche zu einem frei gewählten Thema: nur die Schüler:in selbst')
+            ->assertSee('eine Vertretung, solange sie dauert, mit allen Einträgen und dem Export');
+    }
 
-        $this->get(PrivacyDocuments::getUrl(['document' => 'checkliste']))->assertOk()->assertSee('Löschen bei Abwesenheit der Lehrkraft geregelt');
+    /**
+     * The substitution and the bell: the texts take the list of what a substitution grants and the deadlines from the code.
+     */
+    public function test_the_substitution_and_notification_statements_follow_the_code(): void
+    {
+        config(['lernplattform.notifications.keep_read_days' => 7, 'lernplattform.notifications.keep_days' => 30, 'lernplattform.substitutions.max_days' => 45]);
+        $this->actingAs($this->schoolAdmin());
+
+        foreach (['checkliste', 'dsfa', 'verzeichnis', 'elterninformation'] as $key) {
+            $this->get(PrivacyDocuments::getUrl(['document' => $key]))->assertOk()->assertSee('Stunden anlegen, die Lernstände der Klasse sehen, das Klassenbuch mit allen Fehlzeiten lesen und exportieren, Einwilligungen der Eltern erfassen und Tuto-Mikro nutzen');
+        }
+
+        $this->get(PrivacyDocuments::getUrl(['document' => 'dsfa']))->assertOk()
+            ->assertSee('7 Tage nach dem Lesen, spätestens 30 Tage nach dem Erstellen')
+            ->assertSee('höchstens 45 Tage');
+
+        $this->get(PrivacyDocuments::getUrl(['document' => 'elterninformation']))->assertOk()
+            ->assertSee('7 Tage nach dem Lesen gelöscht, spätestens nach 30 Tagen');
+    }
+
+    /**
+     * "Jede Person kann ihre Daten im Profil herunterladen": the sections the DSFA and the parent information name are in
+     * the export of a student and of a teacher, even while they are empty.
+     */
+    public function test_the_data_export_holds_what_the_templates_name(): void
+    {
+        $schoolClass = SchoolClass::factory()->create();
+        $studentExport = PersonalDataExport::for(User::factory()->student($schoolClass)->create());
+        $teacherExport = PersonalDataExport::for(User::factory()->teacher()->for($schoolClass->school)->create());
+
+        foreach ([$studentExport, $teacherExport] as $export) {
+            $this->assertArrayHasKey('sprache', $export['konto']);
+            $this->assertArrayHasKey('benachrichtigungen', $export);
+        }
+
+        foreach (['zugewiesene_hausaufgaben', 'abgaben', 'erklaer_mir_gespraeche', 'rueckfragen', 'klassenbuch_fehlzeiten', 'einwilligung_tuto_mikro', 'tuto_mikro_anwesenheit'] as $section) {
+            $this->assertArrayHasKey($section, $studentExport);
+        }
+
+        foreach (['klassenleitung', 'zugeordnete_klassen', 'vertretungen', 'unterrichtsstunden', 'beantwortete_rueckfragen', 'klassenbuch_eintraege', 'tuto_mikro_sitzungen'] as $section) {
+            $this->assertArrayHasKey($section, $teacherExport);
+        }
+
+        $this->actingAs($this->schoolAdmin());
+
+        $this->get(PrivacyDocuments::getUrl(['document' => 'dsfa']))->assertOk()
+            ->assertSee('Das Konto mit der gewählten Sprache und die Benachrichtigungen gehören immer dazu')
+            ->assertSee('Bei Schüler:innen außerdem: Hausaufgaben, Abgaben mit Stufe, Gespräche, Rückfragen, Fehlzeiten im Klassenbuch, die Einwilligung zum Tuto-Mikro und die eigene Anwesenheit in Sitzungen')
+            ->assertSee('Bei Lehrkräften: Klassen, Vertretungen, Unterrichtsstunden, beantwortete Rückfragen, Klassenbuch-Einträge und Tuto-Mikro-Sitzungen');
+
+        $this->get(PrivacyDocuments::getUrl(['document' => 'elterninformation']))->assertOk()
+            ->assertSee('das Konto, die Abgaben, Gespräche und Rückfragen, die Fehlzeiten im Klassenbuch, die Einwilligung zum Tuto-Mikro, die eigene Anwesenheit in Sitzungen und die Hinweise in der Glocke');
+    }
+
+    /**
+     * "Nach dem letzten Tag endet der Zugriff von selbst, auch auf die Ergebnisse der Stunden, die die Vertretung gehalten
+     * hat": the "Erklär's mir" conversations of a substitute's lessons leave the list and the view with the substitution.
+     */
+    public function test_a_substitute_sees_the_conversations_of_their_lessons_only_while_the_substitution_lasts(): void
+    {
+        $school = School::factory()->create();
+        [$schoolClass, $students] = $this->classWithStudents($school, 1);
+        $substitute = User::factory()->teacher()->for($school)->create();
+        $substitution = ClassSubstitution::factory()->for($schoolClass)->create(['substitute_id' => $substitute->getKey(), 'starts_on' => today(), 'ends_on' => today()->addDays(2)]);
+        $lesson = Lesson::factory()->for($schoolClass)->for($substitute, 'teacher')->create();
+        $session = ExplanationSession::factory()->create(['student_id' => $students->first()->getKey(), 'lesson_id' => $lesson->getKey()]);
+
+        $this->assertTrue($substitute->can('view', $session));
+        Livewire::actingAs($substitute)->test(ListExplanationSessions::class)->assertCanSeeTableRecords([$session]);
+
+        $substitution->end();
+        $substitute = $substitute->fresh();
+
+        $this->assertFalse($substitute->can('view', $session));
+        Livewire::actingAs($substitute)->test(ListExplanationSessions::class)->assertCanNotSeeTableRecords([$session]);
+
+        $this->actingAs($this->schoolAdmin($school));
+
+        $this->get(PrivacyDocuments::getUrl(['document' => 'dsfa']))->assertOk()
+            ->assertSee('die Lehrkraft der Stunde (eine Vertretung nur, solange sie dauert) und die Schuladministration. Gespräche zu einem frei gewählten Thema')
+            ->assertSee('Nach dem letzten Tag endet der Zugriff von selbst, auch auf die Ergebnisse der Stunden, die die Vertretung gehalten hat');
+
+        $this->get(PrivacyDocuments::getUrl(['document' => 'elterninformation']))->assertOk()
+            ->assertSee('Danach endet der Zugriff von selbst, auch auf Abgaben, Gespräche und Rückfragen zu den Stunden, die sie in der Klasse gehalten hat');
+
+        $this->get(PrivacyAndAi::getUrl())->assertOk()
+            ->assertSee('danach endet der Zugriff von selbst, auch auf die Ergebnisse der Stunden, die sie gehalten hat');
     }
 
     /**
@@ -488,11 +698,11 @@ class PrivacyDocumentsTest extends TestCase
     public function test_the_page_sits_in_the_menu_group_of_the_role(): void
     {
         $this->actingAs($this->schoolAdmin());
-        $this->assertSame('Verwaltung', PrivacyDocuments::getNavigationGroup());
+        $this->assertSame(NavigationGroup::Verwaltung, PrivacyDocuments::getNavigationGroup());
         $this->assertTrue(PrivacyDocuments::canAccess());
 
         $this->actingAs(User::factory()->operator()->create());
-        $this->assertSame('Plattform', PrivacyDocuments::getNavigationGroup());
+        $this->assertSame(NavigationGroup::Plattform, PrivacyDocuments::getNavigationGroup());
         $this->assertTrue(PrivacyDocuments::canAccess());
     }
 }

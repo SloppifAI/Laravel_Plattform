@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Filament\Pages\AiSettings;
 use Database\Factories\ConsentFormFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -97,7 +98,8 @@ class ConsentForm extends Model
 
     /**
      * A template in Sie-form for the parents. The school has to read it through and adapt it (with its data protection
-     * officer): the values in it come from the school's master data and the platform's retention setting.
+     * officer): the values in it come from the school's master data, its blocked subjects and the platform's settings
+     * (retention, AI provider).
      */
     public static function defaultBody(School $school): string
     {
@@ -105,6 +107,8 @@ class ConsentForm extends Model
         $years = (int) config('lernplattform.retention.school_years_kept', 1);
         $notesRetention = $years === 1 ? 'zum Ende des Schuljahres' : "nach {$years} Schuljahren";
         $contact = $school->contact_email ?: 'das Sekretariat der Schule';
+        $provider = AiSettings::providerLabel((string) config('lernplattform.ai.provider'));
+        $blocked = $school->mikroBlockedSubjects() === [] ? '' : ' In den Fächern '.implode(', ', $school->mikroBlockedSubjects()).' und bei Förderaufgaben bleibt es immer aus.';
 
         return <<<MARKDOWN
         **{$school->name}** möchte in einzelnen Unterrichtsstunden das **Tuto-Mikro** einschalten. Es erfasst ausschließlich den Ton der Stunde. Dafür brauchen wir Ihre Einwilligung. Sie ist freiwillig.
@@ -112,28 +116,28 @@ class ConsentForm extends Model
         ## Was erfasst das Tuto-Mikro?
 
         - Ausschließlich den Ton des Unterrichts aus dem Mikro der Lehrkraft. Es gibt kein Bild und kein Video.
-        - Im Ton können die Stimme und die mündlichen Beiträge Ihres Kindes zu hören sein.
-        - Das Tuto-Mikro ist nur an, wenn für alle anwesenden Schüler:innen der Klasse eine Einwilligung vorliegt.
+        - Im Ton können die Stimme und die mündlichen Beiträge Ihres Kindes zu hören sein, zufällig auch Angaben zu Gesundheit, Herkunft, Religion oder Familie. Mit der Einwilligung in den Ton willigen Sie ausdrücklich auch darin ein (Art. 9 Abs. 2 lit. a DSGVO).
+        - Die Lehrkraft hakt an, wer im Raum ist. Das Tuto-Mikro startet nur, wenn für alle angehakten Schüler:innen eine Einwilligung vorliegt, und Tuto prüft das während der Stunde immer wieder.{$blocked}
 
         ## Was passiert mit dem Ton und den Notizen?
 
-        - Der Ton wird in kurzen Abschnitten in Text umgewandelt (Notizen aus der Stunde) und danach sofort gelöscht. Die Plattform speichert keinen Ton.
-        - Für die Umwandlung nutzt die Schule ihre KI-Anbindung: Ist sie aktiviert, gehen die kurzen Ton-Abschnitte zur Spracherkennung an den KI-Anbieter. Diese Ton-Abschnitte werden nicht pseudonymisiert: Darin sind echte Stimmen zu hören, auch gesprochene Namen. Ist die KI-Anbindung nicht aktiviert, verlässt der Ton die Plattform nicht.
+        - Der Ton wird in kurzen Abschnitten in Text umgewandelt (Notizen aus der Stunde) und danach sofort verworfen. Die Plattform speichert keinen Ton.
+        - Für die Umwandlung nutzt die Schule ihre KI-Funktionen: Sind sie eingeschaltet, gehen die kurzen Ton-Abschnitte zur Spracherkennung an den KI-Anbieter (derzeit {$provider}). Diese Ton-Abschnitte werden nicht pseudonymisiert: Darin sind echte Stimmen zu hören, auch gesprochene Namen. Sind die KI-Funktionen ausgeschaltet, verlässt der Ton das Gerät der Lehrkraft nicht.
         - Die Notizen bleiben im Browser der Lehrkraft, bis sie etwas daraus in ihre Unterrichtsnotizen übernimmt. Daraus kann die Lehrkraft eine Zusammenfassung und Hausaufgaben erstellen. Dafür erhält die KI nur pseudonymisierten Text: Namen der Klasse werden vorher durch neutrale Bezeichnungen ersetzt.
-        - Ist die KI-Anbindung der Schule aktiviert, läuft das Tuto-Mikro nur, wenn alle anwesenden Eltern auch der Spracherkennung und Zusammenfassung durch den KI-Anbieter unten ausdrücklich zugestimmt haben. Ohne diese Zustimmung bleibt das Tuto-Mikro für die ganze Klasse aus. Ist die KI-Anbindung nicht aktiviert, wird diese Zustimmung nicht gebraucht.
-        - Für andere Zwecke werden Ton und Notizen nicht verwendet.
+        - Sind die KI-Funktionen der Schule eingeschaltet, läuft das Tuto-Mikro nur, wenn für alle anwesenden Schüler:innen die Eltern auch der Spracherkennung und Zusammenfassung durch den KI-Anbieter unten ausdrücklich zugestimmt haben. Ohne diese Zustimmung bleibt das Tuto-Mikro für die ganze Klasse aus. Sind die KI-Funktionen ausgeschaltet, wird diese Zustimmung nicht gebraucht.
+        - Für andere Zwecke werden Ton und Notizen nicht verwendet. Die Liste, wer angehakt war, kann der Lehrkraft die Fehlzeiten im Klassenbuch vorschlagen; sie prüft das.
 
         ## Wer hat Zugriff?
 
-        Nur die Lehrkraft, die die Stunde hält. Ton und Notizen werden nicht an andere Personen oder Stellen weitergegeben, außer an den KI-Anbieter, soweit oben beschrieben.
+        Die Notizen aus der Stunde sieht nur die Lehrkraft, die die Stunde hält. Was sie in ihre Unterrichtsnotizen übernimmt, sieht wie alle Unterrichtsnotizen auch die Schuladministration. Ton und Notizen werden nicht an andere Personen oder Stellen weitergegeben, außer an den KI-Anbieter, soweit oben beschrieben.
 
         ## Wie lange wird gespeichert?
 
-        Ton wird nicht gespeichert. Was die Lehrkraft in ihre Unterrichtsnotizen übernimmt, wird {$notesRetention} gelöscht. Die Plattform vermerkt je Sitzung, wann das Tuto-Mikro lief und für welche Schüler:innen eine Einwilligung vorlag. Dieser Nachweis wird nach {$sessionDays} Tagen gelöscht.
+        Ton wird nicht gespeichert. Was die Lehrkraft in ihre Unterrichtsnotizen übernimmt, wird {$notesRetention} gelöscht. Die Plattform vermerkt je Sitzung, wann das Tuto-Mikro lief und wer angehakt war. Diesen Nachweis sieht nur die Lehrkraft der Stunde; er wird nach {$sessionDays} Tagen gelöscht.
 
         ## Freiwillig und ohne Nachteile
 
-        Sie entscheiden freiwillig. Wenn Sie nicht einwilligen oder später widerrufen, entstehen Ihrem Kind keine Nachteile. Sie können einzelne Zwecke ablehnen und nur den Rest erlauben, der Ton ist aber die Grundlage der anderen Zwecke. Lehnen Sie die Spracherkennung und Zusammenfassung durch den KI-Anbieter ab, bleibt das Tuto-Mikro aus, solange die Schule die KI-Anbindung nutzt.
+        Sie entscheiden freiwillig. Wenn Sie nicht einwilligen oder später widerrufen, entstehen Ihrem Kind keine Nachteile. Sie können einzelne Zwecke ablehnen und nur den Rest erlauben, der Ton ist aber die Grundlage der anderen Zwecke. Lehnen Sie die Spracherkennung und Zusammenfassung durch den KI-Anbieter ab, bleibt das Tuto-Mikro aus, solange die Schule ihre KI-Funktionen nutzt.
 
         ## Widerruf
 

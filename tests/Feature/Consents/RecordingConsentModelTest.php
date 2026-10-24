@@ -172,7 +172,7 @@ class RecordingConsentModelTest extends TestCase
             $this->assertNotNull($status->getIcon());
         }
 
-        $this->assertSame('Schüler:in-Bestätigung fehlt', ConsentStatus::StudentPending->getLabel());
+        $this->assertSame('Student confirmation missing', ConsentStatus::StudentPending->getLabel());
     }
 
     public function test_recordings_cannot_be_enabled_without_the_whole_checklist(): void
@@ -286,7 +286,18 @@ class RecordingConsentModelTest extends TestCase
         $this->assertStringContainsString('Text nur pseudonymisiert', $label);
         $this->assertStringContainsString('nicht pseudonymisiert', $body);
         $this->assertStringContainsString('bleibt das Tuto-Mikro für die ganze Klasse aus', $body);
-        $this->assertStringContainsString('Ist die KI-Anbindung nicht aktiviert, wird diese Zustimmung nicht gebraucht', $body);
+        $this->assertStringContainsString('Sind die KI-Funktionen ausgeschaltet, wird diese Zustimmung nicht gebraucht', $body);
+        $this->assertStringContainsString('derzeit Google Gemini', $body);
+        $this->assertStringContainsString('verlässt der Ton das Gerät der Lehrkraft nicht', $body);
+    }
+
+    public function test_the_default_form_names_the_blocked_subjects_and_the_explicit_consent_of_article_9(): void
+    {
+        $body = ConsentForm::defaultBody(School::factory()->create());
+
+        $this->assertStringContainsString('In den Fächern '.implode(', ', School::DEFAULT_MIKRO_BLOCKED_SUBJECTS).' und bei Förderaufgaben bleibt es immer aus.', $body);
+        $this->assertStringContainsString('Art. 9 Abs. 2 lit. a DSGVO', $body);
+        $this->assertStringContainsString('auch die Schuladministration', $body);
     }
 
     public function test_the_form_text_is_rendered_without_raw_html(): void

@@ -10,48 +10,59 @@
         default => 'In der Plattform noch nicht akzeptiert.',
     };
 
+    $aiStatus = match (true) {
+        ! $hasSchool => null,
+        $ai['enabled'] => 'KI-Funktionen sind für diese Schule eingeschaltet (Anbieter: '.$aiProvider.').',
+        default => 'KI-Funktionen sind für diese Schule ausgeschaltet.',
+    };
+
     $recordingStatus = match (true) {
         $recordings['enabled'] === null => null,
-        $recordings['enabled'] => 'Aufnahmen sind für diese Schule eingeschaltet.',
-        default => 'Aufnahmen sind für diese Schule ausgeschaltet.',
+        $recordings['enabled'] => 'Tuto-Mikro ist für diese Schule eingeschaltet.',
+        default => 'Tuto-Mikro ist für diese Schule ausgeschaltet.',
     };
 
     $general = [
-        $entry('Entscheidung zum Einsatz der Lernplattform', 'Schulleitung beziehungsweise Schulträger entscheiden über den Einsatz und sind nach Landesrecht die verantwortliche Stelle. Zuständigkeiten, zum Beispiel Freigabe digitaler Lernmittel durch Schulträger oder Schulaufsicht, sind geklärt.'),
-        $entry('Datenschutzbeauftragte(r) beteiligt', 'Die oder der schulische Datenschutzbeauftragte kennt die Plattform und hat Stellung genommen (Art. 37 bis 39 DSGVO). Name und Kontakt stehen in der Datenschutzerklärung der Schule.'),
-        $entry('Auftragsverarbeitungsvertrag abgeschlossen', 'Mit dem Betreiber der Plattform besteht ein Vertrag nach Art. 28 DSGVO. Die Plattform bietet dafür einen Vertragsentwurf an, der bei der Registrierung der Schule akzeptiert wird. Alle Unterauftragsverarbeiter sind bekannt, und der Betreiber hat die Löschfrist für Server-Logfiles und Fehlerprotokoll genannt.', $dpaStatus, $dpa['url'] ? ['Vertragsentwurf ansehen', $dpa['url']] : null),
-        $entry('Verzeichnis von Verarbeitungstätigkeiten ergänzt', 'Die Lernplattform steht im Verzeichnis der Schule (Art. 30 DSGVO). Dafür gibt es die Vorlage „Verzeichnis“.'),
-        $entry('Notwendigkeit einer Datenschutz-Folgenabschätzung geprüft', 'Für die Grundfunktionen ist die Prüfung dokumentiert, ob eine Folgenabschätzung nach Art. 35 DSGVO nötig ist. Beim Einsatz von KI und für das Aufnahme-Modul ist sie in aller Regel nötig, siehe Teil B.'),
-        $entry('Eltern und Schüler:innen informiert', 'Die Elterninformation nach Art. 13 DSGVO ist angepasst und verteilt, die Datenschutzerklärung der Schule verweist auf die Plattform. Dafür gibt es die Vorlage „Elterninformation“.'),
-        $entry('Beschäftigte unterwiesen und auf Vertraulichkeit verpflichtet', 'Lehrkräfte und Schuladministration kennen die Regeln: keine privaten Angaben in Notizen, Passwörter nicht weitergeben, Klassencodes nur an die Klasse geben, Konten sorgfältig verwalten.'),
-        $entry('Löschfristen festgelegt', 'Die Plattform löscht Unterrichtsstunden samt Abgaben und Gesprächen nach '.$schoolYearsKept.' Schuljahren (das laufende eingerechnet), Aufnahmen nach '.$recordingDays.' Tagen. Konten löscht die Schuladministration, etwa beim Abgang von der Schule. Für Server-Logfiles und Fehlerprotokoll gilt die Frist des Betreibers aus dem Auftragsverarbeitungsvertrag. Die Schule hat geprüft, ob diese Fristen zu ihrem Löschkonzept passen.'),
+        $entry('Entscheidung zum Einsatz von Tuto', 'Schulleitung beziehungsweise Schulträger entscheiden über den Einsatz und sind nach Landesrecht die verantwortliche Stelle. Zuständigkeiten, zum Beispiel Freigabe digitaler Lernmittel durch Schulträger oder Schulaufsicht, sind geklärt.'),
+        $entry('Datenschutzbeauftragte(r) beteiligt', 'Die oder der schulische Datenschutzbeauftragte kennt Tuto und hat Stellung genommen (Art. 37 bis 39 DSGVO). Name und Kontakt stehen in der Datenschutzerklärung der Schule.'),
+        $entry('Auftragsverarbeitungsvertrag abgeschlossen', 'Mit dem Betreiber besteht ein Vertrag nach Art. 28 DSGVO. Die Schuladministration akzeptiert ihn in der Plattform unter „Meine Schule“; bis dahin kann die Schule nur diese Seite nutzen. Alle Unterauftragsverarbeiter sind bekannt, und der Betreiber hat die Löschfrist für Server-Logfiles und Fehlerprotokoll genannt.', $dpaStatus, $dpa['url'] ? ['Vertrag ansehen', $dpa['url']] : null),
+        $entry('Verzeichnis von Verarbeitungstätigkeiten ergänzt', 'Tuto steht im Verzeichnis der Schule (Art. 30 DSGVO), mit eigenen Einträgen für die KI-Funktionen und das Tuto-Mikro. Dafür gibt es die Vorlage „Verzeichnis“.'),
+        $entry('Notwendigkeit einer Datenschutz-Folgenabschätzung geprüft', 'Für die Grundfunktionen ist die Prüfung dokumentiert, ob eine Folgenabschätzung nach Art. 35 DSGVO nötig ist. Für die KI-Funktionen und das Tuto-Mikro ist sie in aller Regel nötig, siehe Teil B und C.'),
+        $entry('Eltern und Schüler:innen informiert', 'Die Elterninformation nach Art. 13 DSGVO ist angepasst und den Eltern zugegangen, die Datenschutzerklärung der Schule verweist auf Tuto. Dafür gibt es die Vorlage „Elterninformation“.'),
+        $entry('Klassen und Lehrkräfte richtig zugeordnet', 'Lehrkräfte sehen Lernstände, Klassenbuch und Einwilligungen nur in Klassen, die sie leiten oder unterrichten. Die Schuladministration pflegt deshalb Klassenleitung und zugeordnete Lehrkräfte und nimmt Lehrkräfte aus einer Klasse, wenn sie sie nicht mehr unterrichten.'),
+        $entry('Regeln für die Vertretung festgelegt', 'Eine Klassenleitung oder die Schuladministration kann eine Lehrkraft der Schule für höchstens '.$substitutionMaxDays.' Tage als Vertretung einer Klasse eintragen. Eine Vertretung darf in dieser Zeit: '.$substitutionGrants.'. Danach endet der Zugriff von selbst. Die Schule hat festgelegt, wer Vertretungen einträgt.'),
+        $entry('Beschäftigte unterwiesen und auf Vertraulichkeit verpflichtet', 'Lehrkräfte und Schuladministration kennen die Regeln: keine privaten Angaben und möglichst keine Namen in Notizen und auf Arbeitsblättern, Passwörter nicht weitergeben, Klassencodes nur an die Klasse geben, Konten sorgfältig verwalten.'),
+        $entry('Löschfristen festgelegt', 'Tuto löscht Unterrichtsstunden mit Abgaben, Antworten, Rückfragen und Arbeitsblättern, „Erklär’s mir“-Gespräche und Klassenbuch-Einträge automatisch '.$retention.'. Benachrichtigungen werden '.$notificationReadDays.' Tage nach dem Lesen gelöscht, spätestens nach '.$notificationMaxDays.' Tagen. Konten löscht die Schuladministration, etwa beim Abgang von der Schule. Für Server-Logfiles und Fehlerprotokoll gilt die Frist des Betreibers aus dem Auftragsverarbeitungsvertrag. Die Schule hat geprüft, ob diese Fristen zu ihrem Löschkonzept passen, auch für das Klassenbuch.'),
         $entry('Ansprechpartner und Meldeweg für Datenpannen benannt', 'Es ist klar, wer Anfragen betroffener Personen beantwortet und wer bei einer Datenpanne innerhalb von 72 Stunden die Aufsichtsbehörde informiert (Art. 33 DSGVO). Der Betreiber meldet Vorfälle der Schule unverzüglich.'),
         $entry('Betroffenenrechte vorbereitet', 'Auskunft: Jede Person kann ihre Daten im eigenen Profil unter „Meine Daten herunterladen“ abrufen. Berichtigung und Löschung laufen über die Schuladministration. Die Schule weiß, wie sie Anfragen beantwortet.'),
     ];
 
-    $recording = [
-        $entry('Entscheidung der Schule über das Aufnahme-Modul', 'Die Schule hat entschieden, ob und unter welchen Bedingungen Lehrkräfte Unterricht aufnehmen dürfen, zum Beispiel nur zu bestimmten Zwecken und mit Ankündigung. Die Entscheidung ist schriftlich festgehalten, etwa in einer Dienstanweisung. Aufnahmen sind für jede Schule zunächst ausgeschaltet; die Schuladministration schaltet sie unter „Aufnahmen & Einwilligungen“ ein.', $recordingStatus, $recordings['settingsUrl'] ? ['Zu „Aufnahmen & Einwilligungen“', $recordings['settingsUrl']] : null),
-        $entry('Datenschutz-Folgenabschätzung durchgeführt', 'Die Vorlage „Folgenabschätzung“ ist von der Schule bewertet, mit der oder dem Datenschutzbeauftragten besprochen und von der Schulleitung freigegeben (Art. 35 DSGVO). Bleibt ein hohes Restrisiko, wurde die Aufsichtsbehörde konsultiert (Art. 36 DSGVO). Die Schuladministration bestätigt das in der Plattform; prüfen kann die Plattform es nicht.'),
-        $entry('Personalrat beteiligt, Dienstvereinbarung geprüft', 'Aufnahmen können Verhalten und Leistung von Lehrkräften erfassen. Je nach Personalvertretungsrecht des Landes ist der Personalrat zu beteiligen, gegebenenfalls ist eine Dienstvereinbarung nötig. Der Zweck „keine Kontrolle von Lehrkräften“ ist dort festgeschrieben. Auch das bestätigt die Schuladministration in der Plattform.'),
-        $entry('Elterninformation zum Aufnahme-Modul verteilt', 'Der Abschnitt zum Aufnahme-Modul in der Elterninformation wurde nicht gestrichen und ist vor der ersten Aufnahme bei allen Eltern angekommen.'),
+    $aiFunctions = [
+        $entry('Entscheidung der Schule über die KI-Funktionen', 'Ohne Zustimmung der Schule geht nichts an einen KI-Anbieter: Die Schuladministration schaltet die KI-Funktionen unter „KI-Funktionen“ ein, erst nachdem sie vier Punkte bestätigt hat (Auftragsverarbeitung mit dem Anbieter, bezahlter Tarif ohne Nutzung der Eingaben zur Produktverbesserung, Folgenabschätzung, Eltern und Schüler:innen informiert). Die Plattform kann nicht prüfen, ob diese Bestätigungen stimmen. Nimmt die Schuladministration eine Bestätigung zurück, sind die KI-Funktionen wieder aus. Bis dahin arbeitet eine einfache Demo-Logik auf der Plattform.', $aiStatus, $ai['settingsUrl'] ? ['Zu „KI-Funktionen“', $ai['settingsUrl']] : null),
+        $entry('Auftragsverarbeitung mit dem KI-Anbieter geklärt', 'Anbieter ist derzeit '.$aiProvider.'. Er ist im Auftragsverarbeitungsvertrag als Unterauftragsverarbeiter des Betreibers genannt oder hat mit der Schule einen eigenen Vertrag nach Art. 28 DSGVO. Für eine Verarbeitung außerhalb der EU liegen geeignete Garantien nach Art. 44 ff. DSGVO vor. Die Schule lässt sich bestätigen, dass ein bezahlter Tarif genutzt wird: Im kostenlosen Tarif von Gemini darf Google Eingaben zur Verbesserung seiner Produkte nutzen.'),
+        $entry('Datenschutz-Folgenabschätzung für die KI-Funktionen', 'Die Vorlage „Folgenabschätzung“ ist von der Schule bewertet, mit der oder dem Datenschutzbeauftragten besprochen und von der Schulleitung freigegeben (Art. 35 DSGVO).'),
+        $entry('Grenzen der Pseudonymisierung bekannt', 'Vor jeder Anfrage an die KI ersetzt Tuto die Namen der Schüler:innen der Klasse und der Lehrkräfte der Klasse durch Platzhalter. Namen anderer Personen, Spitznamen und falsch geschriebene Namen bleiben stehen, und auf Fotos und PDF-Arbeitsblättern kann Tuto nichts ersetzen. Die Lehrkräfte sind angewiesen, keine Arbeitsblätter mit Namen anzuhängen.'),
+    ];
+
+    $mikro = [
+        $entry('Entscheidung der Schule über das Tuto-Mikro', 'Die Schule hat entschieden, ob und unter welchen Bedingungen Lehrkräfte das Tuto-Mikro nutzen dürfen, zum Beispiel nur zu bestimmten Zwecken und mit Ankündigung. Die Entscheidung ist schriftlich festgehalten, etwa in einer Dienstanweisung. Das Tuto-Mikro ist für jede Schule zunächst ausgeschaltet; die Schuladministration schaltet es unter „Tuto-Mikro & Einwilligungen“ ein, nachdem sie fünf Punkte bestätigt und eine Einwilligungserklärung veröffentlicht hat.', $recordingStatus, $recordings['settingsUrl'] ? ['Zu „Tuto-Mikro & Einwilligungen“', $recordings['settingsUrl']] : null),
+        $entry('Gesperrte Fächer festgelegt', 'In Fächern, in denen Überzeugungen, Glauben oder das Intimleben der Kinder zur Sprache kommen, bleibt das Tuto-Mikro aus. Gesperrt sind derzeit: '.(implode(', ', $blockedSubjects) ?: 'keine Fächer').'. Die Schuladministration kann die Liste anpassen; eine leere Liste sperrt nichts. Für Förderaufgaben gibt es das Tuto-Mikro nie.'),
+        $entry('Datenschutz-Folgenabschätzung durchgeführt', 'Die Vorlage „Folgenabschätzung“ ist auch für das Tuto-Mikro bewertet, mit der oder dem Datenschutzbeauftragten besprochen und von der Schulleitung freigegeben (Art. 35 DSGVO). Bleibt ein hohes Restrisiko, wurde die Aufsichtsbehörde konsultiert (Art. 36 DSGVO). Die Schuladministration bestätigt das in der Plattform; prüfen kann die Plattform es nicht.'),
+        $entry('Personalrat beteiligt, Dienstvereinbarung geprüft', 'Das Tuto-Mikro erfasst auch die Stimmen der Lehrkräfte. Je nach Personalvertretungsrecht des Landes ist der Personalrat zu beteiligen, gegebenenfalls ist eine Dienstvereinbarung nötig. Der Zweck „keine Kontrolle von Lehrkräften“ ist dort festgeschrieben.'),
+        $entry('Elterninformation zum Tuto-Mikro verteilt', 'Der Abschnitt zum Tuto-Mikro in der Elterninformation wurde nicht gestrichen und ist vor dem ersten Einsatz bei allen Eltern angekommen.'),
         $entry('Einwilligungstext angepasst und veröffentlicht', 'Die Vorlage „Einwilligung“ ist an die Schule und an das Landesrecht angepasst, auch zum Alter, ab dem Schüler:innen selbst unterschreiben. Für die digitale Einwilligung der Eltern wird der Text in der Plattform veröffentlicht; jede Änderung ist eine neue Fassung, und Einwilligungen zu einer älteren Fassung gelten dann als veraltet.'),
-        $entry('Einwilligungen aller aufgenommenen Personen liegen vor', 'Die Aufnahme erfasst alle, die im Raum sprechen: die Klasse, die Lehrkraft und eventuell Vertretungen, Gäste oder Begleitpersonen. Das nicht öffentlich gesprochene Wort ohne Einwilligung aufzunehmen kann nach § 201 StGB strafbar sein. '.($consentGateEnforced
-        ? 'Die Plattform prüft vor einer Aufnahme die Einwilligungen der Schüler:innen, die die Lehrkraft als anwesend angibt. Einwilligungen von Lehrkräften und weiteren Personen im Raum prüft sie nicht.'
-        : 'Die Plattform zeigt je Klasse in der Übersicht „Einwilligungen“, wer gültig eingewilligt hat, sperrt den Start einer Aufnahme aber nicht. Die Lehrkraft prüft die Übersicht vor jeder Aufnahme. Einwilligungen von Lehrkräften und weiteren Personen im Raum kennt die Plattform nicht.')),
-        $entry('Ablehnung und Widerruf geregelt', 'Wer nicht einwilligt oder widerruft, hat keine Nachteile. Weil sich einzelne Stimmen nicht aussparen lassen, findet die Aufnahme dann nicht statt. Eltern können über den Link aus dem Elternbrief widerrufen. Die Schule hat festgelegt, wie andere Widerrufe entgegengenommen, dokumentiert und an die Lehrkräfte weitergegeben werden.'),
+        $entry('Einwilligungen aller Personen im Raum liegen vor', 'Das Mikro der Lehrkraft erfasst alle, die im Raum sprechen: die Klasse, die Lehrkraft und eventuell Vertretungen, Gäste oder Begleitpersonen. Das nicht öffentlich gesprochene Wort ohne Einwilligung zu verarbeiten kann nach § 201 StGB strafbar sein. Die Plattform startet das Tuto-Mikro nur, wenn für alle Schüler:innen, die die Lehrkraft als anwesend anhakt, eine gültige Einwilligung der Eltern vorliegt. Einwilligungen von Lehrkräften und weiteren Personen im Raum kennt die Plattform nicht.'),
+        $entry('Ablehnung und Widerruf geregelt', 'Wer nicht einwilligt oder widerruft, hat keine Nachteile. Weil sich einzelne Stimmen nicht aussparen lassen, bleibt das Tuto-Mikro dann aus, wenn die Person anwesend ist. Eltern können über den Link aus dem Elternbrief widerrufen. Die Schule hat festgelegt, wie andere Widerrufe entgegengenommen, in der Plattform erfasst und an die Lehrkräfte weitergegeben werden.'),
         $entry('Einwilligungen dokumentiert und aufbewahrt', 'Die Plattform speichert die Einwilligungen der Eltern je Schüler:in mit Fassung, Zwecken, Zeitpunkt, Name der erklärenden Person und Widerruf, digital über den Link im Elternbrief oder von der Schule auf Papier erfasst. Papier-Originale und Einwilligungen von Lehrkräften und weiteren Personen verwaltet die Schule (Nachweis nach Art. 7 Abs. 1 DSGVO).'),
-        $entry('Lehrkräfte unterwiesen', 'Die Lehrkräfte kennen die Regeln: vor jeder Aufnahme die Klasse hörbar informieren, nur mit vorliegenden Einwilligungen aufnehmen (Übersicht „Einwilligungen“ der Klasse prüfen), nicht weitergeben, nicht auf private Geräte oder in private Clouds kopieren, Aufnahmen nach der Auswertung selbst löschen, Transkripte vor der Auswertung lesen und Text aus Aufnahmen nur in die Notizen übernehmen oder für die Hausaufgaben-Funktion mit KI verwenden, wenn die Zustimmung zur KI-Auswertung vorliegt. Die Plattform erzwingt diese Punkte nicht, sie hängen an der Unterweisung.'),
-        $entry('Löschen bei Abwesenheit der Lehrkraft geregelt', 'Nur die aufnehmende Lehrkraft kann eine Aufnahme über die Plattform löschen, solange sie die Stunde leitet. Es ist festgelegt, wer löscht, wenn sie nicht erreichbar ist oder die Stunde einer anderen Lehrkraft zugewiesen wurde: die Schuladministration löscht die Stunde oder das Konto (dabei entfallen alle zugehörigen Aufnahmen) oder beauftragt den Betreiber auf Weisung der Schule. Spätestens löscht die Plattform nach '.$recordingDays.' Tagen.'),
-        $entry('Umgang mit heruntergeladenen Dateien geregelt', 'Die Lehrkraft kann die Audiodatei herunterladen. Was danach mit der Kopie geschieht, kann die Plattform nicht steuern. Die Dienstanweisung sagt, wo sie liegen darf und wann sie zu löschen ist.'),
-        $entry('Transkription und KI bewusst entschieden', 'Die Server-Transkription ('.($transcriptionEnabled ? 'derzeit eingeschaltet' : 'derzeit ausgeschaltet').') und die KI-Anbindung ('.($aiEnabled ? 'derzeit eingeschaltet' : 'derzeit ausgeschaltet').') sind nur dann zu nutzen, wenn für den jeweiligen Anbieter ein Vertrag nach Art. 28 DSGVO und, bei Anbietern außerhalb der EU, geeignete Garantien nach Art. 44 ff. DSGVO vorliegen. Die Plattform prüft das nicht. Die KI-Anbindung sendet außerdem Notizen, Antworten, Gespräche und Arbeitsblatt-Dateien (Fotos, PDF) ohne Ersetzung von Namen; nur bei der Auswertung einer Aufnahme werden Namen der Klasse ersetzt. Die Datenschutzerklärung und die Elterninformation nennen den Anbieter und das.'),
-        $entry('Zugriff und Aufbewahrungsfrist geprüft', 'Die Schule weiß, dass nur die Lehrkraft der Stunde die Aufnahme hört, auch nicht die Schuladministration, und dass Aufnahmen nach '.$recordingDays.' Tagen gelöscht werden. Das passt zu ihrer Dienstanweisung, zur Einwilligung und zum Löschkonzept. Die Schuladministration bestätigt die Aufbewahrungsfrist in der Plattform.'),
+        $entry('Lehrkräfte unterwiesen', 'Die Lehrkräfte kennen die Regeln: vor jedem Einschalten die Klasse hörbar informieren, die Beamer-Anzeige öffnen oder der Klasse ansagen, dass das Mikro läuft (die Plattform zeigt sie nicht von selbst), nur die Schüler:innen anhaken, die wirklich im Raum sind (die Liste ist ihre Erklärung, und sie verantworten sie), bei Gästen oder später Hinzukommenden das Mikro ausschalten und neu starten, ein Ansteck- oder Headset-Mikrofon nutzen, die Notizen vor der Zusammenfassung lesen und nur Nötiges in die Stundennotizen übernehmen. Die Plattform erzwingt das Lesen und die Richtigkeit der Liste nicht, das hängt an der Unterweisung.'),
+        $entry('Zugriff und Fristen geprüft', 'Die Schule weiß, dass Tuto keinen Ton speichert, dass die Notizen aus der Stunde nur im Browser der Lehrkraft liegen, bis sie etwas in die Stundennotizen übernimmt, und dass der Nachweis jeder Sitzung (wer anwesend war, welche Fassung der Einwilligung galt) nach '.$sessionKeepDays.' Tagen gelöscht wird. Den Nachweis sieht nur die Lehrkraft der Stunde, nicht die Schuladministration; Schüler:innen finden die eigene Anwesenheit in ihrem Datenexport. Die Schuladministration bestätigt die Aufbewahrungsfrist in der Plattform.'),
         $entry('Überprüfung terminiert', 'Folgenabschätzung, Einwilligungstext und Regeln werden regelmäßig überprüft, mindestens einmal im Jahr und bei jeder Änderung der Plattform (Art. 35 Abs. 11 DSGVO). Der nächste Termin steht im Kalender.'),
     ];
 @endphp
 
 @include('filament.pages.privacy-documents.partials.head', [
     'title' => 'Checkliste für die Einführung',
-    'lead' => 'Was eine Schule klären sollte, bevor sie die Lernplattform einsetzt, und zusätzlich, bevor Lehrkräfte Unterricht aufnehmen dürfen. Erledigte Punkte werden abgehakt, mit Datum und Namen.',
+    'lead' => 'Was eine Schule klären sollte, bevor sie Tuto einsetzt, und zusätzlich, bevor sie die KI-Funktionen oder das Tuto-Mikro einschaltet. Erledigte Punkte werden abgehakt, mit Datum und Namen.',
 ])
 
 <dl class="pd-facts">
@@ -62,17 +73,24 @@
     <dd>{{ $printedOn }}</dd>
 </dl>
 
-<h3>Teil A: Einsatz der Lernplattform</h3>
-<p>Diese Punkte gelten für die Plattform insgesamt, auch ohne Aufnahme-Modul.</p>
+<h3>Teil A: Einsatz von Tuto</h3>
+<p>Diese Punkte gelten für Tuto insgesamt, auch ohne KI-Funktionen und ohne Tuto-Mikro.</p>
 
 @include('filament.pages.privacy-documents.partials.tasks', ['tasks' => $general])
 
-<h3>Teil B: Zusätzlich vor dem Aufnahme-Modul</h3>
+<h3>Teil B: Zusätzlich vor den KI-Funktionen</h3>
 <p>
-    Das Aufnahme-Modul nimmt nur Ton auf. Aufnahmen betreffen aber Kinder, sie halten gesprochene Worte fest, und sie können zu Transkripten und KI-Auswertungen führen. Deshalb gelten besondere Anforderungen. Solange nicht alle Punkte erledigt sind, sollte keine Lehrkraft aufnehmen.
+    Mit den KI-Funktionen gehen pseudonymisierte Texte und Arbeitsblätter an einen KI-Anbieter. Solange nicht alle Punkte erledigt sind, bleiben sie ausgeschaltet.
 </p>
 
-@include('filament.pages.privacy-documents.partials.tasks', ['tasks' => $recording])
+@include('filament.pages.privacy-documents.partials.tasks', ['tasks' => $aiFunctions])
+
+<h3>Teil C: Zusätzlich vor dem Tuto-Mikro</h3>
+<p>
+    Das Tuto-Mikro nutzt das Mikrofon der Lehrkraft und macht aus dem Ton der Stunde Notizen. Tuto speichert keinen Ton. Es betrifft aber Kinder und das gesprochene Wort, deshalb gelten besondere Anforderungen. Solange nicht alle Punkte erledigt sind, sollte keine Lehrkraft das Tuto-Mikro einschalten.
+</p>
+
+@include('filament.pages.privacy-documents.partials.tasks', ['tasks' => $mikro])
 
 <h3>Ansprechpartner</h3>
 <dl class="pd-facts">

@@ -2,17 +2,27 @@
 
 namespace Tests\Feature\Privacy;
 
+use App\Ai\LessonAssistant;
+use App\Ai\RecordingAnalyst;
+use App\Ai\Transcriber;
+use App\Filament\Pages\AiSettings;
 use App\Filament\Pages\PrivacyAndAi;
+use App\Models\School;
+use App\Models\SchoolClass;
 use App\Models\User;
 use App\Role;
 use App\UnderstandingLevel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use PHPUnit\Framework\Attributes\DataProvider;
+use ReflectionClass;
+use ReflectionMethod;
+use Tests\Feature\Ai\EnablesSchoolAi;
 use Tests\TestCase;
 
 class PrivacyAndAiTest extends TestCase
 {
+    use EnablesSchoolAi;
     use RefreshDatabase;
 
     /**
@@ -51,10 +61,31 @@ class PrivacyAndAiTest extends TestCase
             ->get('/datenschutz')
             ->assertOk()
             ->assertSee('Datenschutz & KI')
-            ->assertSee('Keine Mitschnitte')
+            ->assertSee('Was Tuto speichert')
+            ->assertSee('Tuto speichert keinen Ton')
             ->assertSee('Wer sieht das?')
+            ->assertSee('Klassenbuch')
             ->assertSee('keine Note')
             ->assertSee('Schulverwaltung');
+    }
+
+    /**
+     * The UI speaks of the Tuto-Mikro and its notes, never of recordings, and the page shows no eye or microphone icons.
+     */
+    #[DataProvider('roles')]
+    public function test_the_page_keeps_the_wording_of_the_board(Role $role): void
+    {
+        $html = $this->actingAs($this->userWith($role))->get('/datenschutz')->assertOk()->getContent();
+        $main = (string) strstr($html, '<main');
+
+        foreach (['Mitschnitt', 'Aufnahme', 'aufnehmen', 'abhören', 'überwach', 'Transkript', 'Lernplattform speichert', 'Anthropic', 'Claude'] as $word) {
+            $this->assertFalse(mb_stripos($main, $word) !== false, "The page says „{$word}“.");
+        }
+
+        // Icons render as inline SVG, so the sources are checked for their names.
+        foreach ([resource_path('views/filament/pages/privacy-and-ai.blade.php'), app_path('Filament/Pages/PrivacyAndAi.php')] as $source) {
+            $this->assertDoesNotMatchRegularExpression('~heroicon-[oms]-(eye|microphone|speaker)|Heroicon::\w*(Eye|Microphone|Speaker)~', (string) file_get_contents($source));
+        }
     }
 
     public function test_guests_are_sent_to_the_login(): void
@@ -80,78 +111,121 @@ class PrivacyAndAiTest extends TestCase
             ->assertSee(Role::Admin->getLabel())
             ->assertSee(Role::Teacher->getLabel())
             ->assertSee(Role::Student->getLabel())
-            ->assertSee('Sieht keine Unterrichts- und Lerndaten')
+            ->assertSee(Role::Operator->getDescription())
             ->assertSee('Schuladministration (eigene Schule)')
+            ->assertSee('Lehrkräfte der Klasse')
             ->assertSee('Plattform-Administration (nur Schuladministrationen)')
             ->assertSee('Plattform-Administration (alle Schulen)')
             ->assertSee('Schule und Registrierung')
             ->assertSee('Ergebnisse ihrer Schule');
     }
 
-    #[DataProvider('roles')]
-    public function test_the_ai_is_described_as_not_active_while_it_is_disabled(Role $role): void
+    /**
+     * Every call the platform can make to an AI provider is a method of LessonAssistant, Transcriber or RecordingAnalyst;
+     * the page names each of them with what goes out.
+     */
+    public function test_the_page_lists_every_ai_function(): void
     {
-        config(['services.anthropic.enabled' => false, 'services.anthropic.model' => 'claude-test-modell']);
+        $methods = collect([LessonAssistant::class, Transcriber::class, RecordingAnalyst::class])
+            ->flatMap(fn (string $interface): array => array_map(
+                fn (ReflectionMethod $method): string => (new ReflectionClass($interface))->getShortName().'::'.$method->getName(),
+                (new ReflectionClass($interface))->getMethods(),
+            ))
+            ->sort()
+            ->values()
+            ->all();
+
+        $this->assertSame($methods, collect(PrivacyAndAi::aiFunctions())->keys()->sort()->values()->all(), 'Every AI call needs an entry on the privacy page.');
+
+        $response = $this->actingAs(User::factory()->student()->create())->get('/datenschutz')->assertOk();
+
+        foreach (PrivacyAndAi::aiFunctions() as $function) {
+            $response->assertSee($function['title'])->assertSee($function['sent'])->assertSee($function['notSent'])->assertSee($function['result']);
+        }
+
+        $response
+            ->assertSee('Hausaufgabe entwerfen')
+            ->assertSee('Förderaufgabe entwerfen')
+            ->assertSee('Abgabe einschätzen')
+            ->assertSee('Stufen einer Frage')
+            ->assertSee('Einfache Sprache')
+            ->assertSee('Tuto-Mikro: Spracherkennung')
+            ->assertSee('Tuto-Mikro: Zusammenfassung')
+            ->assertSee('Benutzernamen, E-Mail-Adressen, Konto-Kennungen');
+    }
+
+    #[DataProvider('roles')]
+    public function test_the_ai_is_described_as_switched_off_while_the_school_has_not_opted_in(Role $role): void
+    {
+        $this->preventRealAiCalls();
+        config(['lernplattform.ai.enabled' => $role === Role::Operator ? false : true]);
 
         $this->actingAs($this->userWith($role))
             ->get('/datenschutz')
             ->assertOk()
-            ->assertSee('nicht aktiv')
+            ->assertSee('KI-Funktionen ausgeschaltet')
             ->assertSee('Demo-Logik')
-            ->assertDontSee('Anthropic (Claude)')
-            ->assertDontSee('claude-test-modell');
+            ->assertSee('Google Gemini')
+            ->assertDontSee('Pseudonymisierte Texte und Arbeitsblätter deiner Schule gehen an')
+            ->assertDontSee('Der Schalter der Plattform ist an.');
     }
 
-    public function test_the_enabled_ai_names_provider_and_model_without_sending_a_request(): void
+    public function test_the_switched_on_ai_names_provider_and_model_without_sending_a_request(): void
     {
+        $this->preventRealAiCalls();
         Http::fake();
-        config(['services.anthropic.enabled' => true, 'services.anthropic.model' => 'claude-test-modell']);
+        $school = $this->enableAiFor(School::factory()->create());
 
-        $this->actingAs(User::factory()->teacher()->create())
+        $this->actingAs(User::factory()->for($school)->teacher()->create())
             ->get('/datenschutz')
             ->assertOk()
-            ->assertSee('KI-Anbindung aktiv')
-            ->assertSee('Anthropic')
-            ->assertSee('claude-test-modell')
-            ->assertSee('Namen, Benutzernamen oder Benutzer-IDs')
-            ->assertDontSee('nicht aktiv');
+            ->assertSee('KI-Funktionen eingeschaltet')
+            ->assertSee('Google Gemini')
+            ->assertSee('gemini-test-model')
+            ->assertSee('Benutzernamen, E-Mail-Adressen, Konto-Kennungen')
+            ->assertDontSee('KI-Funktionen ausgeschaltet');
+
+        // Another school of the same platform has not opted in.
+        $this->actingAs(User::factory()->teacher()->create())->get('/datenschutz')->assertSee('KI-Funktionen ausgeschaltet');
 
         Http::assertNothingSent();
     }
 
-    public function test_the_operator_gets_the_setup_and_the_checklist_for_the_whole_platform(): void
+    public function test_the_operator_gets_the_ai_settings_of_the_platform(): void
     {
         $this->actingAs(User::factory()->operator()->create())
             ->get('/datenschutz')
             ->assertOk()
             ->assertSee('Für die Plattform-Administration')
             ->assertSee('für alle Schulen')
-            ->assertSee('ANTHROPIC_ENABLED=true')
-            ->assertSee('ANTHROPIC_API_KEY')
-            ->assertSee('ANTHROPIC_MODEL')
-            ->assertSee('Auftragsverarbeitungsvertrag')
-            ->assertSee('Datenschutz-Folgenabschätzung')
-            ->assertSee('Eltern und Schüler:innen informiert')
-            ->assertSee('Personalrat')
+            ->assertSee('AI_ENABLED=true')
+            ->assertSee('AI_PROVIDER=gemini')
+            ->assertSee('GEMINI_API_KEY')
+            ->assertSee('AI_MODEL')
+            ->assertSee('AI_TRANSCRIPTION_MODEL')
+            ->assertSee('ollama')
+            ->assertSee('selbst einschaltet')
             ->assertSee('keine Rechtsberatung')
+            ->assertDontSee('ANTHROPIC')
             ->assertDontSee('Für die Schuladministration');
     }
 
-    public function test_the_school_administration_gets_the_checklist_but_no_server_setup(): void
+    public function test_the_school_administration_gets_its_checklist_and_the_way_to_its_switch(): void
     {
-        $this->actingAs(User::factory()->admin()->create())
+        $response = $this->actingAs(User::factory()->admin()->create())
             ->get('/datenschutz')
             ->assertOk()
             ->assertSee('Für die Schuladministration')
-            ->assertSee('von der Plattform-Administration geschaltet, nicht von einzelnen Schulen')
-            ->assertSee('Auftragsverarbeitungsvertrag')
-            ->assertSee('Datenschutz-Folgenabschätzung')
-            ->assertSee('Eltern und Schüler:innen informiert')
-            ->assertSee('Personalrat')
+            ->assertSee('entscheidest du unter „KI-Funktionen“')
+            ->assertSee('href="'.AiSettings::getUrl().'"', false)
             ->assertSee('keine Rechtsberatung')
             ->assertDontSee('Für die Plattform-Administration')
-            ->assertDontSee('ANTHROPIC_ENABLED=true')
-            ->assertDontSee('ANTHROPIC_API_KEY');
+            ->assertDontSee('AI_ENABLED=true')
+            ->assertDontSee('GEMINI_API_KEY');
+
+        foreach (AiSettings::checklistItems() as $item) {
+            $response->assertSee($item['label']);
+        }
     }
 
     #[DataProvider('rolesWithoutAdministration')]
@@ -162,9 +236,8 @@ class PrivacyAndAiTest extends TestCase
             ->assertOk()
             ->assertDontSee('Für die Schuladministration')
             ->assertDontSee('Für die Plattform-Administration')
-            ->assertDontSee('ANTHROPIC_API_KEY')
-            ->assertDontSee('Auftragsverarbeitungsvertrag')
-            ->assertDontSee('Personalrat');
+            ->assertDontSee('GEMINI_API_KEY')
+            ->assertDontSee('Checkliste vor dem Einschalten');
     }
 
     public function test_only_students_get_the_tips_for_their_own_data(): void
@@ -179,15 +252,16 @@ class PrivacyAndAiTest extends TestCase
             ->assertDontSee('Tipps für dich');
     }
 
-    public function test_students_are_warned_that_texts_reach_the_ai_once_it_is_enabled(): void
+    public function test_students_are_warned_that_texts_reach_the_ai_once_their_school_switched_it_on(): void
     {
-        $student = User::factory()->student()->create();
+        $this->preventRealAiCalls();
+        $school = School::factory()->create();
+        $student = User::factory()->student(SchoolClass::factory()->create(['school_id' => $school->getKey()]))->create();
 
-        config(['services.anthropic.enabled' => false]);
         $this->actingAs($student)->get('/datenschutz')->assertDontSee('zur Auswertung an die KI gesendet');
 
-        config(['services.anthropic.enabled' => true]);
-        $this->actingAs($student)->get('/datenschutz')->assertSee('zur Auswertung an die KI gesendet');
+        $this->enableAiFor($school);
+        $this->actingAs($student->fresh())->get('/datenschutz')->assertSee('zur Auswertung an die KI gesendet');
     }
 
     public function test_the_stated_score_ranges_match_the_understanding_levels(): void
