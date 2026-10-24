@@ -47,8 +47,8 @@ class RequestPasswordReset extends BaseRequestPasswordReset
         defer(fn () => $this->sendResetLinkTo($login));
 
         Notification::make()
-            ->title('Schau in dein Postfach')
-            ->body('Wenn zu diesem Konto eine E-Mail-Adresse gespeichert ist, haben wir dir einen Link zum Zurücksetzen geschickt.')
+            ->title(__('Schau in dein Postfach'))
+            ->body(__('Wenn zu diesem Konto eine E-Mail-Adresse gespeichert ist, haben wir dir einen Link zum Zurücksetzen geschickt.'))
             ->success()
             ->send();
 
@@ -87,14 +87,14 @@ class RequestPasswordReset extends BaseRequestPasswordReset
         return $schema
             ->components([
                 $this->getLoginFormComponent(),
-                Text::make('Kein E-Mail-Konto? Die Schulverwaltung kann dein Passwort zurücksetzen.')->color('gray'),
+                Text::make(__('Kein E-Mail-Konto? Die Schulverwaltung kann dein Passwort zurücksetzen.'))->color('gray'),
             ]);
     }
 
     protected function getLoginFormComponent(): Component
     {
         return TextInput::make('login')
-            ->label('Benutzername oder E-Mail')
+            ->label(__('Benutzername oder E-Mail'))
             ->required()
             ->maxLength(255)
             ->autocomplete('username')
@@ -103,21 +103,21 @@ class RequestPasswordReset extends BaseRequestPasswordReset
 
     public function loginAction(): Action
     {
-        return parent::loginAction()->label('Zurück zur Anmeldung');
+        return parent::loginAction()->label(__('Zurück zur Anmeldung'));
     }
 
     protected function getRequestFormAction(): Action
     {
-        return parent::getRequestFormAction()->label('Link zum Zurücksetzen senden');
+        return parent::getRequestFormAction()->label(__('Link zum Zurücksetzen senden'));
     }
 
     public function getTitle(): string|Htmlable
     {
-        return 'Passwort vergessen';
+        return __('Passwort vergessen');
     }
 
     public function getHeading(): string|Htmlable|null
     {
-        return 'Passwort vergessen?';
+        return __('Passwort vergessen?');
     }
 }

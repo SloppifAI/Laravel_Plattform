@@ -37,7 +37,7 @@ class ProfileTest extends TestCase
 
         $this->get($profileUrl)
             ->assertOk()
-            ->assertSee('Mein Profil')
+            ->assertSee('My profile')
             ->assertSee('profil.test');
     }
 
@@ -148,13 +148,13 @@ class ProfileTest extends TestCase
         Livewire::test(EditProfile::class)->assertFormFieldIsEnabled('name');
     }
 
-    public function test_the_minimum_password_length_is_stated_up_front_and_in_german_when_missed(): void
+    public function test_the_minimum_password_length_is_stated_up_front_and_in_words_when_missed(): void
     {
         $user = User::factory()->create(['password' => 'geheim-2026']);
         $this->actingAs($user);
 
         $page = Livewire::test(EditProfile::class)
-            ->assertSee('Mindestens 8 Zeichen.')
+            ->assertSee('At least 8 characters.')
             ->fillForm([
                 'password' => 'max2026',
                 'passwordConfirmation' => 'max2026',
@@ -163,7 +163,7 @@ class ProfileTest extends TestCase
             ->call('save')
             ->assertHasFormErrors(['password']);
 
-        $this->assertContains('Dein Passwort braucht mindestens 8 Zeichen.', $page->errors()->get('data.password'));
+        $this->assertContains('Your password needs at least 8 characters.', $page->errors()->get('data.password'));
     }
 
     public function test_username_and_role_are_shown_but_cannot_be_edited(): void
@@ -174,7 +174,7 @@ class ProfileTest extends TestCase
         Livewire::test(EditProfile::class)
             ->assertFormFieldIsDisabled('username')
             ->assertFormFieldIsDisabled('role')
-            ->assertFormSet(['username' => 'maxi.muster', 'role' => 'Schüler:in'])
+            ->assertFormSet(['username' => 'maxi.muster', 'role' => 'Student'])
             ->set('data.username', 'admin')
             ->set('data.role', Role::Admin->value)
             ->set('data.school_class_id', null)

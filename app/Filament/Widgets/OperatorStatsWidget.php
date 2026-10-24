@@ -40,18 +40,18 @@ class OperatorStatsWidget extends StatsOverviewWidget
         $userCount = fn (Role $role): int => (int) ($usersPerRole[$role->value] ?? 0);
 
         return [
-            Stat::make('Schulen', $schools)
+            Stat::make(__('Schulen'), $schools)
                 ->icon(Heroicon::OutlinedBuildingLibrary)
-                ->description(($schools - $blocked).' aktiv, '.$blocked.' gesperrt')
+                ->description(__(':active aktiv, :blocked gesperrt', ['active' => $schools - $blocked, 'blocked' => $blocked]))
                 ->descriptionIcon($blocked > 0 ? Heroicon::OutlinedNoSymbol : Heroicon::OutlinedCheckCircle)
                 ->url(class_exists(SchoolResource::class) && SchoolResource::canViewAny() ? SchoolResource::getUrl() : null),
-            Stat::make('Schuladministrationen', $userCount(Role::Admin))
+            Stat::make(__('Schuladministrationen'), $userCount(Role::Admin))
                 ->icon(Heroicon::OutlinedCog6Tooth),
-            Stat::make('Lehrkräfte', $userCount(Role::Teacher))
+            Stat::make(__('Lehrkräfte'), $userCount(Role::Teacher))
                 ->icon(Heroicon::OutlinedPencilSquare),
-            Stat::make('Schüler:innen', $userCount(Role::Student))
+            Stat::make(__('Schüler:innen'), $userCount(Role::Student))
                 ->icon(Heroicon::OutlinedAcademicCap),
-            Stat::make('Klassen', SchoolClass::query()->count())
+            Stat::make(__('Klassen'), SchoolClass::query()->count())
                 ->icon(Heroicon::OutlinedUserGroup),
         ];
     }

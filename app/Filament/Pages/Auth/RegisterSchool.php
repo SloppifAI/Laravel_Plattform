@@ -43,11 +43,11 @@ class RegisterSchool extends Register
     {
         return $schema
             ->components([
-                Section::make('Deine Schule')
+                Section::make(__('Deine Schule'))
                     ->statePath('school')
                     ->schema(SchoolForm::fields()),
-                Section::make('Erster Zugang der Schuladministration')
-                    ->description('Damit meldest du dich an und legst danach Klassen und Lehrkräfte an.')
+                Section::make(__('Erster Zugang der Schuladministration'))
+                    ->description(__('Damit meldest du dich an und legst danach Klassen und Lehrkräfte an.'))
                     ->schema([
                         $this->getNameFormComponent(),
                         $this->getUsernameFormComponent(),
@@ -56,38 +56,38 @@ class RegisterSchool extends Register
                         $this->getPasswordConfirmationFormComponent(),
                     ]),
                 Checkbox::make('isAuthorizedToRepresentSchool')
-                    ->label('Ich bin berechtigt, die Schule zu vertreten.')
+                    ->label(__('Ich bin berechtigt, die Schule zu vertreten.'))
                     ->accepted()
                     ->dehydrated(false)
-                    ->validationMessages(['accepted' => 'Bitte bestätige, dass du die Schule vertreten darfst.']),
+                    ->validationMessages(['accepted' => __('Bitte bestätige, dass du die Schule vertreten darfst.')]),
                 Checkbox::make('hasAcceptedPrivacyPolicy')
-                    ->label(new HtmlString('Ich habe die <a href="'.e(route('legal.privacy')).'" target="_blank" rel="noopener" class="underline">Datenschutzerklärung</a> gelesen und akzeptiere sie.'))
+                    ->label(new HtmlString(__('Ich habe die :link gelesen und akzeptiere sie.', ['link' => '<a href="'.e(route('legal.privacy')).'" target="_blank" rel="noopener" class="underline">'.e(__('Datenschutzerklärung')).'</a>'])))
                     ->accepted()
                     ->dehydrated(false)
-                    ->validationMessages(['accepted' => 'Bitte akzeptiere die Datenschutzerklärung.']),
+                    ->validationMessages(['accepted' => __('Bitte akzeptiere die Datenschutzerklärung.')]),
                 DpaAcceptance::isFinal()
                     ? Checkbox::make('hasAcceptedDpa')
-                        ->label(new HtmlString('Ich akzeptiere den <a href="'.e(route('legal.dpa')).'" target="_blank" rel="noopener" class="underline">Auftragsverarbeitungsvertrag (AVV)</a> im Namen der Schule.'))
+                        ->label(new HtmlString(__('Ich akzeptiere den :link im Namen der Schule.', ['link' => '<a href="'.e(route('legal.dpa')).'" target="_blank" rel="noopener" class="underline">'.e(__('Auftragsverarbeitungsvertrag (AVV)')).'</a>'])))
                         ->accepted()
                         ->dehydrated(false)
-                        ->validationMessages(['accepted' => 'Bitte akzeptiere den Auftragsverarbeitungsvertrag, sonst können wir die Daten deiner Schule nicht verarbeiten.'])
-                    : Text::make(new HtmlString('Der <a href="'.e(route('legal.dpa')).'" target="_blank" rel="noopener" class="underline">Auftragsverarbeitungsvertrag (AVV)</a> ist noch ein Entwurf und kann deshalb noch nicht angenommen werden. Du kannst ihn schon lesen. Sobald er freigegeben ist, nimmst du ihn unter „Meine Schule“ an.'))
+                        ->validationMessages(['accepted' => __('Bitte akzeptiere den Auftragsverarbeitungsvertrag, sonst können wir die Daten deiner Schule nicht verarbeiten.')])
+                    : Text::make(new HtmlString(__('Der :link ist noch ein Entwurf und kann deshalb noch nicht angenommen werden. Du kannst ihn schon lesen. Sobald er freigegeben ist, nimmst du ihn unter „Meine Schule“ an.', ['link' => '<a href="'.e(route('legal.dpa')).'" target="_blank" rel="noopener" class="underline">'.e(__('Auftragsverarbeitungsvertrag (AVV)')).'</a>'])))
                         ->color('gray'),
             ]);
     }
 
     protected function getNameFormComponent(): Component
     {
-        return parent::getNameFormComponent()->label('Dein Name')->autofocus(false);
+        return parent::getNameFormComponent()->label(__('Dein Name'))->autofocus(false);
     }
 
     protected function getEmailFormComponent(): Component
     {
         return parent::getEmailFormComponent()
-            ->label('Deine E-Mail-Adresse')
-            ->helperText('Damit kannst du dein Passwort selbst zurücksetzen.')
+            ->label(__('Deine E-Mail-Adresse'))
+            ->helperText(__('Damit kannst du dein Passwort selbst zurücksetzen.'))
             ->required()
-            ->validationMessages(['unique' => 'Zu dieser E-Mail-Adresse gibt es schon ein Konto.']);
+            ->validationMessages(['unique' => __('Zu dieser E-Mail-Adresse gibt es schon ein Konto.')]);
     }
 
     /**
@@ -133,29 +133,29 @@ class RegisterSchool extends Register
     protected function afterRegister(): void
     {
         Notification::make()
-            ->title('Willkommen auf der Lernplattform!')
-            ->body('Lege jetzt Klassen an oder importiere eine Schülerliste.')
+            ->title(__('Willkommen auf der Lernplattform!'))
+            ->body(__('Lege jetzt Klassen an oder importiere eine Schülerliste.'))
             ->success()
             ->send();
     }
 
     public function getRegisterFormAction(): Action
     {
-        return parent::getRegisterFormAction()->label('Schule registrieren');
+        return parent::getRegisterFormAction()->label(__('Schule registrieren'));
     }
 
     public function getTitle(): string|Htmlable
     {
-        return 'Schule registrieren';
+        return __('Schule registrieren');
     }
 
     public function getHeading(): string|Htmlable|null
     {
-        return 'Neue Schule registrieren';
+        return __('Neue Schule registrieren');
     }
 
     public function getSubheading(): string|Htmlable|null
     {
-        return new HtmlString('Deine Schule ist schon dabei? '.$this->loginAction->toHtml());
+        return new HtmlString(e(__('Deine Schule ist schon dabei?')).' '.$this->loginAction->toHtml());
     }
 }

@@ -17,9 +17,9 @@ enum QuestionLevel: string implements HasLabel
     public function getLabel(): string
     {
         return match ($this) {
-            self::Basis => 'Einstieg',
-            self::Standard => 'Standard',
-            self::Plus => 'Profi',
+            self::Basis => __('Einstieg'),
+            self::Standard => __('Standard'),
+            self::Plus => __('Profi'),
         };
     }
 

@@ -87,7 +87,7 @@ class RegistrationTest extends TestCase
             ->fillForm($this->validInput(['classCode' => 'ZZZZZZ']))
             ->call('register')
             ->assertHasFormErrors(['classCode'])
-            ->assertSee('Diesen Klassencode gibt es nicht. Frag deine Lehrkraft.');
+            ->assertSee('This class code does not exist. Ask your teacher.');
 
         $this->assertDatabaseMissing(User::class, ['username' => 'maxi.muster']);
         $this->assertGuest();
@@ -237,7 +237,7 @@ class RegistrationTest extends TestCase
             ->call('register')
             ->assertHasFormErrors(['classCode'])
             ->assertHasNoFormErrors(['username', 'email'])
-            ->assertDontSee('gibt es schon')
+            ->assertDontSee('already taken')
             ->assertDontSee('already been taken');
     }
 
@@ -250,7 +250,7 @@ class RegistrationTest extends TestCase
             ->fillForm($this->validInput(['username' => 'herr.lehrer']))
             ->call('register')
             ->assertHasFormErrors(['username' => 'unique'])
-            ->assertSee('Diesen Benutzernamen gibt es schon');
+            ->assertSee('This username is already taken.');
     }
 
     public function test_the_password_fields_tell_the_browser_not_to_fill_in_a_saved_login(): void
@@ -260,26 +260,26 @@ class RegistrationTest extends TestCase
         $this->assertSame(2, substr_count($html, 'autocomplete="new-password"'));
     }
 
-    public function test_the_minimum_password_length_is_stated_up_front_and_in_german_when_missed(): void
+    public function test_the_minimum_password_length_is_stated_up_front_and_in_words_when_missed(): void
     {
         SchoolClass::factory()->create(['join_code' => 'ABCDEF']);
 
-        $this->get(route('filament.lernplattform.auth.register'))->assertSee('Mindestens 8 Zeichen.');
+        $this->get(route('filament.lernplattform.auth.register'))->assertSee('At least 8 characters.');
 
         $page = Livewire::test(Register::class)
             ->fillForm($this->validInput(['password' => 'max2026', 'passwordConfirmation' => 'max2026']))
             ->call('register')
             ->assertHasFormErrors(['password']);
 
-        $this->assertContains('Dein Passwort braucht mindestens 8 Zeichen.', $page->errors()->get('data.password'));
+        $this->assertContains('Your password needs at least 8 characters.', $page->errors()->get('data.password'));
     }
 
     public function test_the_page_tells_teachers_where_their_access_comes_from(): void
     {
         $this->get(route('filament.lernplattform.auth.register'))
             ->assertOk()
-            ->assertSee('Lehrkräfte erhalten ihren Zugang von der Schulverwaltung.')
-            ->assertSee('Klassencode')
+            ->assertSee('Teachers get their access from the school administration.')
+            ->assertSee('Class code')
             ->assertDontSee('name="data.role"', false);
     }
 

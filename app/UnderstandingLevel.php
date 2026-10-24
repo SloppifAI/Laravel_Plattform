@@ -33,9 +33,9 @@ enum UnderstandingLevel: string implements HasColor, HasIcon, HasLabel
     public function getLabel(): string
     {
         return match ($this) {
-            self::Understood => 'Gut verstanden',
-            self::Partly => 'Teilweise verstanden',
-            self::NeedsSupport => 'Förderbedarf',
+            self::Understood => __('Gut verstanden'),
+            self::Partly => __('Teilweise verstanden'),
+            self::NeedsSupport => __('Förderbedarf'),
         };
     }
 

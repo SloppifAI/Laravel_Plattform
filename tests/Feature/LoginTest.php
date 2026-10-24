@@ -46,7 +46,7 @@ class LoginTest extends TestCase
             ->assertHasNoFormErrors();
 
         $this->assertAuthenticated();
-        $this->get('/')->assertOk()->assertSee('Mein Lernbereich')->assertSee('Neueste Registrierungen');
+        $this->get('/')->assertOk()->assertSee('My learning area')->assertSee('Latest registrations');
     }
 
     public function test_the_login_form_is_prefilled_with_the_demo_credentials(): void
@@ -59,9 +59,9 @@ class LoginTest extends TestCase
     {
         $this->get('/login')
             ->assertOk()
-            ->assertSee('Vom Unterricht zur Hausaufgabe zum Verstehen.')
-            ->assertSee('Demo-Zugänge')
-            ->assertSeeInOrder(['Plattform-Administration', 'hackathon', 'Schuladministration', 'schulleitung', 'Lehrkraft', 'lehrer', 'Schüler:in', 'schueler'])
+            ->assertSee('From the lesson to the homework to understanding.')
+            ->assertSee('Demo accounts')
+            ->assertSeeInOrder(['Platform administration', 'hackathon', 'School administration', 'schulleitung', 'Teacher', 'lehrer', 'Student', 'schueler'])
             ->assertSee('hackathon2026');
     }
 
@@ -81,10 +81,10 @@ class LoginTest extends TestCase
         $this->seed(DatabaseSeeder::class);
 
         $startPages = [
-            'hackathon' => ['Neueste Registrierungen', 'Schuladministrationen'],
-            'schulleitung' => ['Abgaben diese Woche', 'Unterrichtsstunden'],
-            'lehrer' => ['Deine letzten Unterrichtsstunden'],
-            'schueler' => ['Hallo Emilian!'],
+            'hackathon' => ['Latest registrations', 'School administrations'],
+            'schulleitung' => ['Submissions this week', 'Lessons'],
+            'lehrer' => ['Your lessons and the learning progress of your classes at a glance.'],
+            'schueler' => ['Hello Emilian!'],
         ];
 
         foreach ($startPages as $username => $expectedTexts) {
@@ -116,9 +116,9 @@ class LoginTest extends TestCase
         $this->get('/login')
             ->assertOk()
             ->assertSee(route('legal.imprint'))
-            ->assertSee('Impressum')
+            ->assertSee('Legal notice')
             ->assertSee(route('legal.privacy'))
-            ->assertSee('Datenschutzerklärung');
+            ->assertSee('Privacy policy');
     }
 
     public function test_a_wrong_password_is_rejected(): void

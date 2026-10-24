@@ -33,7 +33,7 @@ class SchoolRegistrationTest extends TestCase
             ->call('register')
             ->assertHasNoFormErrors()
             ->assertRedirect()
-            ->assertNotified('Willkommen auf der Lernplattform!');
+            ->assertNotified('Welcome to the learning platform!');
 
         $school = School::sole();
         $this->assertSame('Goethe-Gymnasium', $school->name);
@@ -62,8 +62,8 @@ class SchoolRegistrationTest extends TestCase
             ->call('register')
             ->assertNotified(
                 Notification::make()
-                    ->title('Willkommen auf der Lernplattform!')
-                    ->body('Lege jetzt Klassen an oder importiere eine Schülerliste.')
+                    ->title('Welcome to the learning platform!')
+                    ->body('Set up classes now or import a student list.')
                     ->success(),
             );
     }
@@ -131,7 +131,7 @@ class SchoolRegistrationTest extends TestCase
             ->fillForm($this->validInput(['username' => 'Sabine.Schulleitung']))
             ->call('register')
             ->assertHasFormErrors(['username' => 'unique'])
-            ->assertSee('Diesen Benutzernamen gibt es schon');
+            ->assertSee('This username is already taken.');
 
         $this->assertSame(1, School::count(), 'Only the school of the existing user.');
     }
@@ -280,12 +280,12 @@ class SchoolRegistrationTest extends TestCase
     {
         $this->get(route('filament.lernplattform.auth.register-school'))
             ->assertOk()
-            ->assertSee('Neue Schule registrieren')
-            ->assertSee('Amtliche Schulnummer')
+            ->assertSee('Register a new school')
+            ->assertSee('Official school number')
             // The JavaScript select ships its options as JSON (with an escaped slash), so check the option name only.
-            ->assertSee('Berufskolleg')
-            ->assertSee('Ich bin berechtigt, die Schule zu vertreten.')
-            ->assertSee('Datenschutzerklärung')
+            ->assertSee('Vocational college')
+            ->assertSee('I am authorized to represent the school.')
+            ->assertSee('Privacy policy')
             ->assertSee(route('legal.privacy'), false)
             ->assertSee(route('filament.lernplattform.auth.login'), false)
             ->assertDontSee('name="data.role"', false);

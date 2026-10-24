@@ -11,6 +11,7 @@ use App\Filament\Widgets\AdminStatsWidget;
 use App\Filament\Widgets\OperatorSchoolsWidget;
 use App\Filament\Widgets\OperatorShortcutsWidget;
 use App\Filament\Widgets\OperatorStatsWidget;
+use App\Filament\Widgets\StudentLearningWidget;
 use App\Filament\Widgets\TeacherLessonsWidget;
 use App\Filament\Widgets\TeacherStatsWidget;
 use App\Models\Answer;
@@ -49,19 +50,19 @@ class RoleDashboardsTest extends TestCase
         $statsA = $this->statsOf(AdminStatsWidget::class);
 
         $this->assertSame(
-            ['Schüler:innen' => 3, 'Lehrkräfte' => 2, 'Administration' => 1, 'Klassen' => 1, 'Unterrichtsstunden' => 3, 'Abgaben diese Woche' => 2],
+            ['Students' => 3, 'Teachers' => 2, 'Administration' => 1, 'Classes' => 1, 'Lessons' => 3, 'Submissions this week' => 2],
             array_map(fn (array $stat): mixed => $stat[0], $statsA),
         );
-        $this->assertSame('2 davon mit freigegebener Hausaufgabe', $statsA['Unterrichtsstunden'][1]);
+        $this->assertSame('2 with released homework', $statsA['Lessons'][1]);
 
         $this->actingAs($schoolB['admin']);
         $statsB = $this->statsOf(AdminStatsWidget::class);
 
         $this->assertSame(
-            ['Schüler:innen' => 5, 'Lehrkräfte' => 1, 'Administration' => 2, 'Klassen' => 2, 'Unterrichtsstunden' => 4, 'Abgaben diese Woche' => 4],
+            ['Students' => 5, 'Teachers' => 1, 'Administration' => 2, 'Classes' => 2, 'Lessons' => 4, 'Submissions this week' => 4],
             array_map(fn (array $stat): mixed => $stat[0], $statsB),
         );
-        $this->assertSame('3 davon mit freigegebener Hausaufgabe', $statsB['Unterrichtsstunden'][1]);
+        $this->assertSame('3 with released homework', $statsB['Lessons'][1]);
     }
 
     public function test_admins_open_their_start_page_and_the_other_school_stays_out_of_it(): void
@@ -73,12 +74,12 @@ class RoleDashboardsTest extends TestCase
         $this->actingAs($schoolA['admin'])
             ->get('/')
             ->assertOk()
-            ->assertSee('Abgaben diese Woche')
-            ->assertSee('Benutzer und Klassen pflegen, das Kompetenzraster einsehen.')
+            ->assertSee('Submissions this week')
+            ->assertSee('Manage users and classes, view the competency framework.')
             ->assertSee(UserResource::getUrl())
             ->assertDontSee('Nebenan-Schule Fremdhausen')
-            ->assertDontSee('Neueste Registrierungen')
-            ->assertDontSee('Deine letzten Unterrichtsstunden');
+            ->assertDontSee('Latest registrations')
+            ->assertDontSeeLivewire(TeacherLessonsWidget::class);
     }
 
     public function test_teacher_widgets_only_use_the_teachers_own_lessons(): void
@@ -191,27 +192,27 @@ class RoleDashboardsTest extends TestCase
         $this->actingAs($operator)
             ->get('/')
             ->assertOk()
-            ->assertSee('Überblick über alle Schulen der Plattform.')
-            ->assertSee('Neueste Registrierungen')
+            ->assertSee('Overview of all schools on the platform.')
+            ->assertSee('Latest registrations')
             ->assertSee('Sonnenschule Testhausen')
             ->assertSee('Mondschule Beispielstadt')
-            ->assertSee('Gesperrt')
-            ->assertSee('Aktiv')
+            ->assertSee('Blocked')
+            ->assertSee('Active')
             ->assertDontSee('Agathe Adminname')
             ->assertDontSee('Torsten Lehrername')
             ->assertDontSee('Sabine Schülername')
             ->assertDontSee('Klasse Geheim')
             ->assertDontSee('Geheimthema Bruchrechnung')
-            ->assertDontSee('Deine letzten Unterrichtsstunden')
-            ->assertDontSee('Abgaben diese Woche');
+            ->assertDontSeeLivewire(TeacherLessonsWidget::class)
+            ->assertDontSee('Submissions this week');
 
         $stats = $this->statsOf(OperatorStatsWidget::class);
 
         $this->assertSame(
-            ['Schulen' => 2, 'Schuladministrationen' => 1, 'Lehrkräfte' => 1, 'Schüler:innen' => 2, 'Klassen' => 1],
+            ['Schools' => 2, 'School administrations' => 1, 'Teachers' => 1, 'Students' => 2, 'Classes' => 1],
             array_map(fn (array $stat): mixed => $stat[0], $stats),
         );
-        $this->assertSame('1 aktiv, 1 gesperrt', $stats['Schulen'][1]);
+        $this->assertSame('1 active, 1 blocked', $stats['Schools'][1]);
     }
 
     public function test_the_operator_sees_the_five_newest_registrations_first(): void
@@ -232,8 +233,8 @@ class RoleDashboardsTest extends TestCase
     {
         $this->actingAs(User::factory()->operator()->create());
 
-        Livewire::test(OperatorSchoolsWidget::class)->assertSee('Noch keine Schule registriert.');
-        $this->assertSame(0, $this->statsOf(OperatorStatsWidget::class)['Schulen'][0]);
+        Livewire::test(OperatorSchoolsWidget::class)->assertSee('No school has registered yet.');
+        $this->assertSame(0, $this->statsOf(OperatorStatsWidget::class)['Schools'][0]);
     }
 
     public function test_the_operator_shortcuts_lead_to_the_schools_the_administration_accounts_and_the_competency_framework(): void
@@ -241,7 +242,7 @@ class RoleDashboardsTest extends TestCase
         $response = $this->actingAs(User::factory()->operator()->create())
             ->get('/')
             ->assertOk()
-            ->assertSee('Plattform betreuen')
+            ->assertSee('Look after the platform')
             ->assertSee(UserResource::getUrl())
             ->assertSee(CompetencyResource::getUrl());
 
@@ -260,6 +261,7 @@ class RoleDashboardsTest extends TestCase
             OperatorStatsWidget::class => Role::Operator,
             OperatorSchoolsWidget::class => Role::Operator,
             OperatorShortcutsWidget::class => Role::Operator,
+            StudentLearningWidget::class => Role::Student,
         ];
 
         foreach (Role::cases() as $role) {

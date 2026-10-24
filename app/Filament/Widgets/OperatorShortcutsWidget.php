@@ -34,9 +34,9 @@ class OperatorShortcutsWidget extends Widget
     protected function getViewData(): array
     {
         $shortcuts = [
-            [SchoolResource::class, 'Schulen', 'Registrierte Schulen ansehen, Stammdaten pflegen und Schulen sperren.', Heroicon::OutlinedBuildingLibrary],
-            [UserResource::class, 'Administrationszugänge', 'Zugänge der Schuladministrationen anlegen und zurücksetzen.', Heroicon::OutlinedKey],
-            [CompetencyResource::class, 'Kompetenzraster', 'Der gemeinsame Referenzrahmen aller Schulen.', Heroicon::OutlinedSquares2x2],
+            [SchoolResource::class, __('Schulen'), __('Registrierte Schulen ansehen, Stammdaten pflegen und Schulen sperren.'), Heroicon::OutlinedBuildingLibrary],
+            [UserResource::class, __('Administrationszugänge'), __('Zugänge der Schuladministrationen anlegen und zurücksetzen.'), Heroicon::OutlinedKey],
+            [CompetencyResource::class, __('Kompetenzraster'), __('Der gemeinsame Referenzrahmen aller Schulen.'), Heroicon::OutlinedSquares2x2],
         ];
 
         return [

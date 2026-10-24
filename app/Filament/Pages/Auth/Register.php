@@ -33,7 +33,10 @@ class Register extends BaseRegister
      */
     protected const int MAX_ATTEMPTS_PER_MINUTE = 60;
 
-    private const string UNKNOWN_CLASS_CODE_MESSAGE = 'Diesen Klassencode gibt es nicht. Frag deine Lehrkraft.';
+    private function unknownClassCodeMessage(): string
+    {
+        return __('Diesen Klassencode gibt es nicht. Frag deine Lehrkraft.');
+    }
 
     public function form(Schema $schema): Schema
     {
@@ -45,20 +48,20 @@ class Register extends BaseRegister
                 $this->getPasswordFormComponent(),
                 $this->getPasswordConfirmationFormComponent(),
                 $this->getEmailFormComponent(),
-                Text::make('Lehrkräfte erhalten ihren Zugang von der Schulverwaltung.')->color('gray'),
+                Text::make(__('Lehrkräfte erhalten ihren Zugang von der Schulverwaltung.'))->color('gray'),
             ]);
     }
 
     protected function getNameFormComponent(): Component
     {
-        return parent::getNameFormComponent()->label('Name');
+        return parent::getNameFormComponent()->label(__('Name'));
     }
 
     protected function getUsernameFormComponent(): Component
     {
         return TextInput::make('username')
-            ->label('Benutzername')
-            ->helperText('So meldest du dich an: 3 bis 30 Zeichen, nur Kleinbuchstaben, Zahlen, Punkt, Minus und Unterstrich.')
+            ->label(__('Benutzername'))
+            ->helperText(__('So meldest du dich an: 3 bis 30 Zeichen, nur Kleinbuchstaben, Zahlen, Punkt, Minus und Unterstrich.'))
             ->required()
             ->minLength(3)
             ->maxLength(30)
@@ -66,23 +69,23 @@ class Register extends BaseRegister
             ->unique(User::class, 'username')
             ->autocomplete('username')
             ->validationMessages([
-                'regex' => 'Erlaubt sind nur Kleinbuchstaben, Zahlen, Punkt, Minus und Unterstrich.',
-                'unique' => 'Diesen Benutzernamen gibt es schon. Nimm einen anderen.',
+                'regex' => __('Erlaubt sind nur Kleinbuchstaben, Zahlen, Punkt, Minus und Unterstrich.'),
+                'unique' => __('Diesen Benutzernamen gibt es schon. Nimm einen anderen.'),
             ]);
     }
 
     protected function getClassCodeFormComponent(): Component
     {
         return TextInput::make('classCode')
-            ->label('Klassencode')
-            ->helperText('Den Code zeigt dir deine Lehrkraft, zum Beispiel an der Tafel.')
+            ->label(__('Klassencode'))
+            ->helperText(__('Den Code zeigt dir deine Lehrkraft, zum Beispiel an der Tafel.'))
             ->required()
             ->maxLength(20)
             ->autocomplete('off')
             ->rules([
                 fn (): Closure => function (string $attribute, mixed $value, Closure $fail): void {
                     if ($this->findSchoolClass($value) === null) {
-                        $fail(self::UNKNOWN_CLASS_CODE_MESSAGE);
+                        $fail($this->unknownClassCodeMessage());
                     }
                 },
             ]);
@@ -91,27 +94,27 @@ class Register extends BaseRegister
     protected function getEmailFormComponent(): Component
     {
         return parent::getEmailFormComponent()
-            ->label('E-Mail-Adresse (freiwillig)')
-            ->helperText('Mit einer E-Mail-Adresse kannst du dein Passwort selbst zurücksetzen.')
+            ->label(__('E-Mail-Adresse (freiwillig)'))
+            ->helperText(__('Mit einer E-Mail-Adresse kannst du dein Passwort selbst zurücksetzen.'))
             ->required(false);
     }
 
     protected function getPasswordFormComponent(): Component
     {
         return parent::getPasswordFormComponent()
-            ->label('Passwort')
-            ->helperText('Mindestens 8 Zeichen.')
+            ->label(__('Passwort'))
+            ->helperText(__('Mindestens 8 Zeichen.'))
             ->autocomplete('new-password')
             ->validationMessages([
-                'min' => 'Dein Passwort braucht mindestens 8 Zeichen.',
-                'same' => 'Die beiden Passwörter müssen gleich sein.',
+                'min' => __('Dein Passwort braucht mindestens 8 Zeichen.'),
+                'same' => __('Die beiden Passwörter müssen gleich sein.'),
             ]);
     }
 
     protected function getPasswordConfirmationFormComponent(): Component
     {
         return parent::getPasswordConfirmationFormComponent()
-            ->label('Passwort wiederholen')
+            ->label(__('Passwort wiederholen'))
             ->autocomplete('new-password');
     }
 
@@ -130,7 +133,7 @@ class Register extends BaseRegister
 
         if ($this->findSchoolClass($this->data['classCode'] ?? null) === null) {
             throw ValidationException::withMessages([
-                'data.classCode' => blank($this->data['classCode'] ?? null) ? 'Bitte gib den Klassencode ein.' : self::UNKNOWN_CLASS_CODE_MESSAGE,
+                'data.classCode' => blank($this->data['classCode'] ?? null) ? __('Bitte gib den Klassencode ein.') : $this->unknownClassCodeMessage(),
             ]);
         }
     }
@@ -141,7 +144,7 @@ class Register extends BaseRegister
     protected function handleRegistration(#[SensitiveParameter] array $data): Model
     {
         $schoolClass = $this->findSchoolClass($data['classCode'])
-            ?? throw ValidationException::withMessages(['data.classCode' => self::UNKNOWN_CLASS_CODE_MESSAGE]);
+            ?? throw ValidationException::withMessages(['data.classCode' => $this->unknownClassCodeMessage()]);
 
         return User::create([
             'name' => $data['name'],
@@ -172,34 +175,34 @@ class Register extends BaseRegister
 
     public function loginAction(): Action
     {
-        return parent::loginAction()->label('Anmelden');
+        return parent::loginAction()->label(__('Anmelden'));
     }
 
     public function getRegisterFormAction(): Action
     {
-        return parent::getRegisterFormAction()->label('Konto erstellen');
+        return parent::getRegisterFormAction()->label(__('Konto erstellen'));
     }
 
     public function getTitle(): string|Htmlable
     {
-        return 'Registrieren';
+        return __('Registrieren');
     }
 
     public function getHeading(): string|Htmlable|null
     {
-        return 'Mit Klassencode registrieren';
+        return __('Mit Klassencode registrieren');
     }
 
     public function registerSchoolAction(): Action
     {
         return Action::make('registerSchool')
             ->link()
-            ->label('Schule registrieren')
+            ->label(__('Schule registrieren'))
             ->url(route('filament.lernplattform.auth.register-school'));
     }
 
     public function getSubheading(): string|Htmlable|null
     {
-        return new HtmlString('Du hast schon ein Konto? '.$this->loginAction->toHtml().'<br>Neue Schule? '.$this->registerSchoolAction->toHtml());
+        return new HtmlString(e(__('Du hast schon ein Konto?')).' '.$this->loginAction->toHtml().'<br>'.e(__('Neue Schule?')).' '.$this->registerSchoolAction->toHtml());
     }
 }

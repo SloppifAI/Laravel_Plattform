@@ -18,7 +18,7 @@ class PasswordResetRequestTest extends TestCase
 {
     use RefreshDatabase;
 
-    private const string NEUTRAL_TITLE = 'Schau in dein Postfach';
+    private const string NEUTRAL_TITLE = 'Check your inbox';
 
     /**
      * The account lookup and the mail run after the response; the tests run them right away.
@@ -201,7 +201,7 @@ class PasswordResetRequestTest extends TestCase
     {
         $this->get(route('filament.lernplattform.auth.password-reset.request'))
             ->assertOk()
-            ->assertSee('Benutzername oder E-Mail')
-            ->assertSee('Kein E-Mail-Konto? Die Schulverwaltung kann dein Passwort zurücksetzen.');
+            ->assertSee('Username or email')
+            ->assertSee('No email account? The school administration can reset your password.');
     }
 }

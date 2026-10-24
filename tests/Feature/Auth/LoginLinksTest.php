@@ -14,8 +14,8 @@ class LoginLinksTest extends TestCase
         $this->get('/login')
             ->assertOk()
             ->assertSee(route('filament.lernplattform.auth.register'), false)
-            ->assertSee('Noch kein Konto?')
-            ->assertSee('Mit Klassencode registrieren')
+            ->assertSee('No account yet?')
+            ->assertSee('Register with class code')
             ->assertSee(route('filament.lernplattform.auth.password-reset.request'), false);
     }
 
@@ -23,8 +23,8 @@ class LoginLinksTest extends TestCase
     {
         $this->get('/login')
             ->assertOk()
-            ->assertSee('Neue Schule?')
-            ->assertSee('Schule registrieren')
+            ->assertSee('New school?')
+            ->assertSee('Register school')
             ->assertSee(route('filament.lernplattform.auth.register-school'), false);
     }
 
@@ -32,15 +32,15 @@ class LoginLinksTest extends TestCase
     {
         $this->get(route('filament.lernplattform.auth.register'))
             ->assertOk()
-            ->assertSee('Neue Schule?')
+            ->assertSee('New school?')
             ->assertSee(route('filament.lernplattform.auth.register-school'), false);
     }
 
-    public function test_the_forgot_password_link_is_german_and_reachable_with_the_tab_key(): void
+    public function test_the_forgot_password_link_is_reachable_with_the_tab_key(): void
     {
         $html = $this->get('/login')->assertOk()->getContent();
 
-        $this->assertSame(1, preg_match('/<a\b([^>]*)>(?:\s|<span[^>]*>)*Passwort vergessen\?/', $html, $link));
+        $this->assertSame(1, preg_match('/<a\b([^>]*)>(?:\s|<span[^>]*>)*Forgot your password\?/', $html, $link));
         $this->assertStringContainsString(route('filament.lernplattform.auth.password-reset.request'), $link[1]);
         $this->assertStringNotContainsString('tabindex', $link[1]);
     }

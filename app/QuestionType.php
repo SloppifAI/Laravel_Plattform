@@ -14,18 +14,18 @@ enum QuestionType: string implements HasDescription, HasLabel
     public function getLabel(): string
     {
         return match ($this) {
-            self::Comprehension => 'Verständnis',
-            self::Application => 'Anwendung',
-            self::Reflection => 'Reflexion',
+            self::Comprehension => __('Verständnis'),
+            self::Application => __('Anwendung'),
+            self::Reflection => __('Reflexion'),
         };
     }
 
     public function getDescription(): string
     {
         return match ($this) {
-            self::Comprehension => 'Prüft, ob die Kerninhalte der Stunde verstanden wurden.',
-            self::Application => 'Überträgt das Gelernte auf eine neue Situation.',
-            self::Reflection => 'Bezieht sich auf Situationen aus der Stunde selbst und lässt sich daher kaum von einer KI beantworten.',
+            self::Comprehension => __('Prüft, ob die Kerninhalte der Stunde verstanden wurden.'),
+            self::Application => __('Überträgt das Gelernte auf eine neue Situation.'),
+            self::Reflection => __('Bezieht sich auf Situationen aus der Stunde selbst und lässt sich daher kaum von einer KI beantworten.'),
         };
     }
 }

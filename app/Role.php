@@ -21,20 +21,20 @@ enum Role: string implements HasColor, HasDescription, HasLabel
     public function getLabel(): string
     {
         return match ($this) {
-            self::Operator => 'Plattform-Administration',
-            self::Admin => 'Schuladministration',
-            self::Teacher => 'Lehrkraft',
-            self::Student => 'Schüler:in',
+            self::Operator => __('Plattform-Administration'),
+            self::Admin => __('Schuladministration'),
+            self::Teacher => __('Lehrkraft'),
+            self::Student => __('Schüler:in'),
         };
     }
 
     public function getDescription(): string
     {
         return match ($this) {
-            self::Operator => 'Betreut die Plattform: verwaltet die registrierten Schulen und deren Administrationszugänge, pflegt das Kompetenzraster. Sieht keine Unterrichts- und Lerndaten.',
-            self::Admin => 'Verwaltet Benutzer und Klassen der eigenen Schule und sieht alle Auswertungen dieser Schule.',
-            self::Teacher => 'Erstellt Unterrichtsstunden, gibt Hausaufgaben frei und sieht die Ergebnisse der eigenen Schüler:innen.',
-            self::Student => 'Bearbeitet zugewiesene Hausaufgaben und übt mit „Erklär’s mir“.',
+            self::Operator => __('Betreut die Plattform: verwaltet die registrierten Schulen und deren Administrationszugänge, pflegt das Kompetenzraster. Sieht keine Unterrichts- und Lerndaten.'),
+            self::Admin => __('Verwaltet Benutzer und Klassen der eigenen Schule und sieht alle Auswertungen dieser Schule.'),
+            self::Teacher => __('Erstellt Unterrichtsstunden, gibt Hausaufgaben frei und sieht die Ergebnisse der eigenen Schüler:innen.'),
+            self::Student => __('Bearbeitet zugewiesene Hausaufgaben und übt mit „Erklär’s mir“.'),
         };
     }
 

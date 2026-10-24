@@ -3,11 +3,11 @@
 @endphp
 
 <x-filament-widgets::widget>
-    <x-filament::section heading="Neueste Registrierungen">
+    <x-filament::section :heading="__('Neueste Registrierungen')">
         @if ($schoolsUrl)
             <x-slot name="afterHeader">
                 <x-filament::button tag="a" :href="$schoolsUrl" color="gray" :icon="Heroicon::OutlinedBuildingLibrary">
-                    Alle Schulen
+                    {{ __('Alle Schulen') }}
                 </x-filament::button>
             </x-slot>
         @endif
@@ -17,7 +17,7 @@
                 <x-filament::icon :icon="Heroicon::OutlinedBuildingLibrary" class="size-8 shrink-0 text-primary-600 dark:text-primary-400" />
 
                 <p class="text-sm text-gray-700 dark:text-gray-300">
-                    Noch keine Schule registriert. Sobald sich eine Schule selbst anmeldet, erscheint sie hier.
+                    {{ __('Noch keine Schule registriert. Sobald sich eine Schule selbst anmeldet, erscheint sie hier.') }}
                 </p>
             </div>
         @else
@@ -32,13 +32,13 @@
                         </span>
 
                         <span class="text-sm text-gray-700 tabular-nums dark:text-gray-300">
-                            Registriert am {{ $school->created_at->copy()->locale('de')->isoFormat('D.M.YYYY') }}
+                            {{ __('Registriert am :date', ['date' => $school->created_at->copy()->locale(app()->getLocale())->isoFormat(__('D.M.YYYY'))]) }}
                         </span>
 
                         @if ($school->isBlocked())
-                            <x-filament::badge color="danger" :icon="Heroicon::OutlinedNoSymbol">Gesperrt</x-filament::badge>
+                            <x-filament::badge color="danger" :icon="Heroicon::OutlinedNoSymbol">{{ __('Gesperrt') }}</x-filament::badge>
                         @else
-                            <x-filament::badge color="success" :icon="Heroicon::OutlinedCheckCircle">Aktiv</x-filament::badge>
+                            <x-filament::badge color="success" :icon="Heroicon::OutlinedCheckCircle">{{ __('Aktiv') }}</x-filament::badge>
                         @endif
                     </li>
                 @endforeach

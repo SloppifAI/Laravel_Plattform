@@ -3,9 +3,9 @@
 @endphp
 
 <x-filament-widgets::widget>
-    <x-filament::section heading="Plattform betreuen" description="Schulen, ihre Administrationszugänge und das gemeinsame Kompetenzraster.">
+    <x-filament::section :heading="__('Plattform betreuen')" :description="__('Schulen, ihre Administrationszugänge und das gemeinsame Kompetenzraster.')">
         @if ($shortcuts->isEmpty())
-            <p class="text-sm text-gray-600 dark:text-gray-400">Für dich sind gerade keine Bereiche freigeschaltet.</p>
+            <p class="text-sm text-gray-600 dark:text-gray-400">{{ __('Für dich sind gerade keine Bereiche freigeschaltet.') }}</p>
         @else
             <ul class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 @foreach ($shortcuts as $shortcut)

@@ -7,11 +7,11 @@
 
 <section x-data class="border-t border-dashed border-gray-300 pt-6 dark:border-white/15" aria-labelledby="lp-demo-accounts-heading">
     <h2 id="lp-demo-accounts-heading" class="text-sm font-semibold text-gray-950 dark:text-white">
-        Demo-Zugänge
+        {{ __('Demo-Zugänge') }}
     </h2>
 
     <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-        Wähle eine Rolle, dann stehen ihre Anmeldedaten im Formular. Passwort für alle:
+        {{ __('Wähle eine Rolle, dann stehen ihre Anmeldedaten im Formular. Passwort für alle:') }}
         <span class="font-medium text-gray-950 dark:text-white">{{ $password }}</span>
     </p>
 
@@ -38,7 +38,7 @@
 
                     <span class="min-w-0 flex-1">
                         <span class="block text-sm font-medium text-gray-950 dark:text-white">{{ $role->getLabel() }}</span>
-                        <span class="block truncate text-sm text-gray-600 dark:text-gray-400">Benutzername: {{ $username }}</span>
+                        <span class="block truncate text-sm text-gray-600 dark:text-gray-400">{{ __('Benutzername: :username', ['username' => $username]) }}</span>
                     </span>
 
                     <x-filament::icon

@@ -46,25 +46,25 @@ class AdminStatsWidget extends StatsOverviewWidget
         $userCount = fn (Role $role): int => (int) ($usersPerRole[$role->value] ?? 0);
 
         return [
-            Stat::make('Schüler:innen', $userCount(Role::Student))
+            Stat::make(__('Schüler:innen'), $userCount(Role::Student))
                 ->icon(Heroicon::OutlinedAcademicCap)
                 ->url(UserResource::getUrl()),
-            Stat::make('Lehrkräfte', $userCount(Role::Teacher))
+            Stat::make(__('Lehrkräfte'), $userCount(Role::Teacher))
                 ->icon(Heroicon::OutlinedPencilSquare)
                 ->url(UserResource::getUrl()),
-            Stat::make('Administration', $userCount(Role::Admin))
+            Stat::make(__('Administration'), $userCount(Role::Admin))
                 ->icon(Heroicon::OutlinedCog6Tooth)
                 ->url(UserResource::getUrl()),
-            Stat::make('Klassen', SchoolClass::query()->where('school_id', $schoolId)->count())
+            Stat::make(__('Klassen'), SchoolClass::query()->where('school_id', $schoolId)->count())
                 ->icon(Heroicon::OutlinedUserGroup)
                 ->url(SchoolClassResource::getUrl()),
-            Stat::make('Unterrichtsstunden', $lessons()->count())
+            Stat::make(__('Unterrichtsstunden'), $lessons()->count())
                 ->icon(Heroicon::OutlinedPresentationChartBar)
-                ->description($lessons()->published()->count().' davon mit freigegebener Hausaufgabe')
+                ->description(__(':count davon mit freigegebener Hausaufgabe', ['count' => $lessons()->published()->count()]))
                 ->url(LessonResource::getUrl()),
-            Stat::make('Abgaben diese Woche', Submission::query()->whereRelation('lesson.schoolClass', 'school_id', $schoolId)->where('created_at', '>=', now()->startOfWeek(CarbonInterface::MONDAY))->count())
+            Stat::make(__('Abgaben diese Woche'), Submission::query()->whereRelation('lesson.schoolClass', 'school_id', $schoolId)->where('created_at', '>=', now()->startOfWeek(CarbonInterface::MONDAY))->count())
                 ->icon(Heroicon::OutlinedInboxArrowDown)
-                ->description('seit Montag, '.now()->startOfWeek(CarbonInterface::MONDAY)->locale('de')->isoFormat('D. MMMM')),
+                ->description(__('seit Montag, :date', ['date' => now()->startOfWeek(CarbonInterface::MONDAY)->locale(app()->getLocale())->isoFormat(__('D. MMMM'))])),
         ];
     }
 }

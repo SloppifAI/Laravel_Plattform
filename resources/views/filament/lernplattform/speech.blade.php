@@ -1,8 +1,8 @@
 {{--
     Vorlesen und Diktieren, nur für Schüler:innen (see AppServiceProvider).
 
-    Everything runs on the pupil's device: the browser's own speech synthesis with a local German voice reads
-    aloud, and dictation only appears when the browser confirms it can recognise German on the device.
+    Everything runs on the pupil's device: the browser's own speech synthesis with a local voice of the page language reads
+    aloud, and dictation only appears when the browser confirms it can recognise that language on the device.
     Nothing is requested from or sent to a third party, so no external resource is referenced here.
 
     Wiring: every .fi-section gets a "Vorlesen" button in its header; any element with [data-read-aloud]
@@ -10,6 +10,27 @@
     Put [data-read-aloud] on a wrapper on the card background (e.g. around a chat bubble and its name), not on the
     coloured bubble itself; the button has an opaque surface, but that keeps it unambiguous.
 --}}
+@php
+    // The browser speaks and understands the language of the page; the texts the script shows come from the translation files.
+    $speech = [
+        'lang' => app()->getLocale() === 'en' ? 'en-US' : 'de-DE',
+        'labels' => [
+            'read' => __('Vorlesen'),
+            'dictate' => __('Diktieren'),
+            'setup' => __('Diktieren einrichten'),
+        ],
+        'messages' => [
+            'listening' => __('Ich höre zu …'),
+            'installing' => __('Das deutsche Sprachpaket wird auf dein Gerät geladen …'),
+            'not-allowed' => __('Das Mikrofon ist gesperrt. Erlaube es in den Einstellungen deines Browsers.'),
+            'service-not-allowed' => __('Das Mikrofon ist gesperrt. Erlaube es in den Einstellungen deines Browsers.'),
+            'no-speech' => __('Ich habe nichts gehört.'),
+            'failed' => __('Das hat leider nicht geklappt.'),
+            'ready' => __('Fertig. Du kannst jetzt diktieren.'),
+            'stopped' => __('Ich habe aufgehört zuzuhören.'),
+        ],
+    ];
+@endphp
 @verbatim
 <style>
     .lp-speech-bar {
@@ -157,19 +178,13 @@
         return;
     }
 
-    const LANG = 'de-DE';
     const RATE = 0.9; // a little slower than normal, easier to follow for children
     const SKIP = 'button,input,select,textarea,script,style,svg,template,[hidden],[aria-hidden="true"],.sr-only,.lp-speech-bar,[class*="required-mark"]';
-    const MESSAGES = {
-        listening: 'Ich höre zu …',
-        installing: 'Das deutsche Sprachpaket wird auf dein Gerät geladen …',
-        'not-allowed': 'Das Mikrofon ist gesperrt. Erlaube es in den Einstellungen deines Browsers.',
-        'service-not-allowed': 'Das Mikrofon ist gesperrt. Erlaube es in den Einstellungen deines Browsers.',
-        'no-speech': 'Ich habe nichts gehört.',
-        failed: 'Das hat leider nicht geklappt.',
-        ready: 'Fertig. Du kannst jetzt diktieren.',
-        stopped: 'Ich habe aufgehört zuzuhören.',
-    };
+@endverbatim
+    const LANG = @js($speech['lang']);
+    const LABELS = @js($speech['labels']);
+    const MESSAGES = @js($speech['messages']);
+@verbatim
     const IDLE_MS = 45000; // an open microphone nobody talks to is switched off
     const ICON_START = {
         read: '<svg class="lp-speech-start" viewBox="0 0 20 20" fill="currentColor"><path d="M10.5 3.75a.75.75 0 0 0-1.264-.546L5.203 7H2.667a.75.75 0 0 0-.7.48A6.985 6.985 0 0 0 1.5 10c0 .887.165 1.737.468 2.52.111.29.39.48.7.48h2.535l4.033 3.796a.75.75 0 0 0 1.264-.546V3.75ZM16.45 5.05a.75.75 0 0 0-1.06 1.061 5.5 5.5 0 0 1 0 7.778.75.75 0 0 0 1.06 1.06 7 7 0 0 0 0-9.899Z"/><path d="M14.329 7.172a.75.75 0 0 0-1.061 1.06 2.5 2.5 0 0 1 0 3.536.75.75 0 0 0 1.06 1.06 4 4 0 0 0 0-5.656Z"/></svg>',
@@ -180,7 +195,7 @@
     const synth = 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window ? window.speechSynthesis : null;
     const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition || null;
 
-    let dictationMode = 'none'; // none | downloadable | available, as reported by the browser for on-device German
+    let dictationMode = 'none'; // none | downloadable | available, as reported by the browser for on-device recognition of the page language
     let current = null; // { target, utterance } while reading aloud
     let listening = null; // { field, recognition } while dictating
     let timer = null;
@@ -192,9 +207,10 @@
             return null;
         }
 
-        const local = synth.getVoices().filter((voice) => voice.localService === true && /^de([-_]|$)/i.test(voice.lang));
+        const language = new RegExp(`^${LANG.slice(0, 2)}([-_]|$)`, 'i');
+        const local = synth.getVoices().filter((voice) => voice.localService === true && language.test(voice.lang));
 
-        return local.find((voice) => /^de[-_]DE$/i.test(voice.lang)) || local[0] || null;
+        return local.find((voice) => voice.lang.replace('_', '-').toLowerCase() === LANG.toLowerCase()) || local[0] || null;
     };
 
     // Plain text of the visible parts, one sentence per block so headings and list items do not run together.
@@ -473,13 +489,13 @@
     const upgradeSetupButtons = () => {
         for (const btn of document.querySelectorAll('.lp-speech-btn')) {
             if (btn.speechKind === 'dictate' && !btn.hasAttribute('aria-pressed')) {
-                btn.speechLabel.textContent = 'Diktieren';
+                btn.speechLabel.textContent = LABELS.dictate;
                 btn.setAttribute('aria-pressed', 'false');
             }
         }
     };
 
-    // Asks the browser whether it can recognise German on this device; 'available' is the only state that shows a microphone.
+    // Asks the browser whether it can recognise the page language on this device; 'available' is the only state that shows a microphone.
     const probe = () => {
         let result;
 
@@ -552,7 +568,7 @@
     };
 
     const addReadButton = (target) => {
-        const btn = makeButton('read', target, 'Vorlesen');
+        const btn = makeButton('read', target, LABELS.read);
         const headerContent = target.matches('.fi-section')
             ? target.querySelector(':scope > .fi-section-header > .fi-section-header-content')
             : null;
@@ -585,7 +601,7 @@
 
     const addDictateButton = (field) => {
         const setup = dictationMode === 'downloadable';
-        const btn = makeButton('dictate', field, setup ? 'Diktieren einrichten' : 'Diktieren', !setup);
+        const btn = makeButton('dictate', field, setup ? LABELS.setup : LABELS.dictate, !setup);
         const status = document.createElement('span');
         const bar = document.createElement('div');
 

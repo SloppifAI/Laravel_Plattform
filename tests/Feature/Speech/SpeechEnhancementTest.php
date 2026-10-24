@@ -51,12 +51,12 @@ class SpeechEnhancementTest extends TestCase
         $this->get('/login')->assertOk()->assertDontSee('data-lp-speech', false);
     }
 
-    public function test_read_aloud_only_uses_a_german_voice_that_runs_on_the_device(): void
+    public function test_read_aloud_only_uses_a_voice_of_the_page_language_that_runs_on_the_device(): void
     {
         $script = $this->script();
 
         $this->assertStringContainsString('voice.localService === true', $script);
-        $this->assertStringContainsString('/^de([-_]|$)/i', $script);
+        $this->assertStringContainsString('language.test(voice.lang)', $script);
         $this->assertStringContainsString("'.fi-section, [data-read-aloud]'", $script);
         $this->assertStringContainsString('aria-pressed', $script);
     }
@@ -96,7 +96,12 @@ class SpeechEnhancementTest extends TestCase
         $script = $this->script();
 
         $this->assertStringContainsString('upgradeSetupButtons();', $script);
-        $this->assertStringContainsString("ready: 'Fertig. Du kannst jetzt diktieren.'", $script);
+        $this->assertStringContainsString('? MESSAGES.ready : MESSAGES.failed', $script);
+        $this->assertStringContainsString('Done. You can dictate now.', $script);
+
+        app()->setLocale('de');
+
+        $this->assertStringContainsString('Fertig. Du kannst jetzt diktieren.', $this->script());
     }
 
     public function test_dictation_stops_when_the_page_is_hidden_or_nobody_speaks(): void

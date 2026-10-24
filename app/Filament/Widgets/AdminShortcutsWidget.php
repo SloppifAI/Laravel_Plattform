@@ -2,6 +2,7 @@
 
 namespace App\Filament\Widgets;
 
+use App\Filament\NavigationGroup as AppNavigationGroup;
 use Filament\Facades\Filament;
 use Filament\Navigation\NavigationGroup;
 use Filament\Navigation\NavigationItem;
@@ -31,7 +32,7 @@ class AdminShortcutsWidget extends Widget
     protected function getViewData(): array
     {
         $group = collect(Filament::getNavigation())
-            ->first(fn (NavigationGroup $group): bool => $group->getLabel() === 'Verwaltung');
+            ->first(fn (NavigationGroup $group): bool => $group->getLabel() === AppNavigationGroup::Verwaltung->getLabel());
 
         return [
             'shortcuts' => collect($group?->getItems() ?? [])

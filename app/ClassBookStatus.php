@@ -20,8 +20,8 @@ enum ClassBookStatus: string implements HasColor, HasIcon, HasLabel
     public function getLabel(): string
     {
         return match ($this) {
-            self::Draft => 'Entwurf',
-            self::Confirmed => 'Bestätigt',
+            self::Draft => __('Entwurf'),
+            self::Confirmed => __('Bestätigt'),
         };
     }
 

@@ -43,12 +43,12 @@ enum ConsentStatus: string implements HasColor, HasIcon, HasLabel
     public function getLabel(): string
     {
         return match ($this) {
-            self::Granted => 'Erteilt',
-            self::Partial => 'Teilweise',
-            self::Missing => 'Fehlt',
-            self::Revoked => 'Widerrufen',
-            self::Outdated => 'Veraltet',
-            self::StudentPending => 'Schüler:in-Bestätigung fehlt',
+            self::Granted => __('Erteilt'),
+            self::Partial => __('Teilweise'),
+            self::Missing => __('Fehlt'),
+            self::Revoked => __('Widerrufen'),
+            self::Outdated => __('Veraltet'),
+            self::StudentPending => __('Schüler:in-Bestätigung fehlt'),
         };
     }
 
@@ -58,12 +58,12 @@ enum ConsentStatus: string implements HasColor, HasIcon, HasLabel
     public function getReason(): string
     {
         return match ($this) {
-            self::Granted => 'Einwilligung liegt vor',
-            self::Partial => 'Die Einwilligung deckt nicht alle nötigen Zwecke ab',
-            self::Missing => 'Es liegt keine Einwilligung der Erziehungsberechtigten vor',
-            self::Revoked => 'Die Einwilligung wurde widerrufen',
-            self::Outdated => 'Die Einwilligung gilt nur für eine ältere Fassung der Erklärung',
-            self::StudentPending => 'Die eigene Bestätigung der Schüler:in fehlt',
+            self::Granted => __('Einwilligung liegt vor'),
+            self::Partial => __('Die Einwilligung deckt nicht alle nötigen Zwecke ab'),
+            self::Missing => __('Es liegt keine Einwilligung der Erziehungsberechtigten vor'),
+            self::Revoked => __('Die Einwilligung wurde widerrufen'),
+            self::Outdated => __('Die Einwilligung gilt nur für eine ältere Fassung der Erklärung'),
+            self::StudentPending => __('Die eigene Bestätigung der Schüler:in fehlt'),
         };
     }
 
