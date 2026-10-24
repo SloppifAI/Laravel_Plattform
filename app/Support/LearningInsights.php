@@ -2,6 +2,8 @@
 
 namespace App\Support;
 
+use App\Models\Competency;
+use App\Models\Lesson;
 use App\Models\SchoolClass;
 use App\Models\User;
 use App\Role;
@@ -115,5 +117,86 @@ class LearningInsights
         }
 
         return $needs;
+    }
+
+    /**
+     * A student's own competencies for "Mein Lernstand": strengths, nearly there and those worth practising (below the
+     * support threshold), the latter with the lessons where they showed and the gaps the AI named in those submissions.
+     * Reads only the given student's answers; strongest/weakest first.
+     *
+     * @return array{
+     *     strengths: Collection<int, array{competency: Competency, average: int}>,
+     *     almost: Collection<int, array{competency: Competency, average: int}>,
+     *     practice: Collection<int, array{competency: Competency, average: int, lessons: Collection<int, Lesson>, gaps: list<string>}>
+     * }
+     */
+    public static function studentCompetencies(User $student): array
+    {
+        $answers = static::scoredAnswers([$student->getKey()]);
+        $averages = static::competencyAverages($answers)[$student->getKey()] ?? [];
+        $needs = collect(static::supportNeeds($answers)[$student->getKey()] ?? [])->keyBy('competency_id');
+
+        $competencies = Competency::query()->whereKey(array_keys($averages))->get()->keyBy('id');
+        // Only lessons still delegated to the student, so every link built from them can be opened.
+        $lessons = Lesson::assignedTo($student)
+            ->whereKey($needs->pluck('lesson_ids')->flatten()->unique()->all())
+            ->orderByDesc('held_on')
+            ->get()
+            ->keyBy('id');
+        $gapsByLesson = $student->submissions()
+            ->whereIn('lesson_id', $lessons->keys())
+            ->whereNotNull('evaluated_at')
+            ->get()
+            ->pluck('gaps', 'lesson_id');
+
+        $rows = collect($averages)->map(fn (int $average, int $competencyId): array => [
+            'competency' => $competencies[$competencyId],
+            'average' => $average,
+        ]);
+        $withLevel = fn (UnderstandingLevel $level): Collection => $rows
+            ->filter(fn (array $row): bool => UnderstandingLevel::fromScore($row['average']) === $level);
+
+        return [
+            'strengths' => $withLevel(UnderstandingLevel::Understood)->sortByDesc('average')->values(),
+            'almost' => $withLevel(UnderstandingLevel::Partly)->sortByDesc('average')->values(),
+            'practice' => $withLevel(UnderstandingLevel::NeedsSupport)->sortBy('average')->values()
+                ->map(function (array $row) use ($needs, $lessons, $gapsByLesson): array {
+                    $ownLessons = $lessons->only($needs[$row['competency']->getKey()]['lesson_ids'])->values();
+
+                    return [
+                        ...$row,
+                        'lessons' => $ownLessons,
+                        'gaps' => $ownLessons
+                            ->flatMap(fn (Lesson $lesson): array => $gapsByLesson->get($lesson->getKey()) ?? [])
+                            ->filter()
+                            ->unique()
+                            ->values()
+                            ->all(),
+                    ];
+                }),
+        ];
+    }
+
+    /**
+     * Newer half of the scores against the older half: 'up' or 'down' from a difference of 5 points, otherwise 'steady'.
+     * Null below two scores.
+     *
+     * @param  Collection<int, int>  $scoresOldestFirst
+     * @return 'up'|'down'|'steady'|null
+     */
+    public static function understandingTrend(Collection $scoresOldestFirst): ?string
+    {
+        if ($scoresOldestFirst->count() < 2) {
+            return null;
+        }
+
+        [$older, $newer] = $scoresOldestFirst->values()->split(2);
+        $difference = $newer->avg() - $older->avg();
+
+        return match (true) {
+            $difference >= 5 => 'up',
+            $difference <= -5 => 'down',
+            default => 'steady',
+        };
     }
 }
