@@ -146,3 +146,20 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 - Run `vendor/bin/phpunit` to call the test runner directly. It accepts the same file path and `--filter=testName` arguments.
 
 </laravel-boost-guidelines>
+
+## Graphify
+
+Dieses Projekt hat einen Wissensgraphen in `graphify-out/` (`graph.json`).
+- Vor Codebase-Fragen oder Exploration zuerst `graphify-out/graph.json` nutzen, um Klassen, Beziehungen und betroffene Stellen zu finden, statt breit mit Grep/Glob zu suchen.
+- Nach größeren Codeänderungen den Graphen mit `/graphify` aktualisieren.
+
+<!-- rtk-instructions v2 -->
+# Command output
+
+Command output here is condensed to save tokens, keeping every signal and
+dropping costly noise. Treat it as the complete result: run commands
+normally, and batch related commands into one call to avoid extra turns.
+Truncated results state their recovery path in their own output. Re-run a
+command as `rtk bypass <cmd>` only when its result is unusable: empty when
+output was clearly expected, contradicting its exit code, or garbled.
+<!-- /rtk-instructions -->
