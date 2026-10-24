@@ -3,10 +3,13 @@
 namespace App\Filament\Pages;
 
 use App\Ai\LessonAssistant;
+use App\Filament\NavigationGroup;
 use App\MessageAuthor;
 use App\Models\ExplanationSession;
 use App\Models\Lesson;
+use App\Models\StudentQuestion;
 use App\Models\User;
+use App\Support\AskTeacher;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
@@ -37,7 +40,7 @@ class ExplainIt extends Page
 
     protected static ?string $navigationLabel = 'Erklär’s mir';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Lernen';
+    protected static string|UnitEnum|null $navigationGroup = NavigationGroup::Lernen;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedChatBubbleLeftRight;
 
@@ -176,6 +179,21 @@ class ExplainIt extends Page
     }
 
     /**
+     * For questions to the teacher of the session's lesson. Only a session about a lesson that still belongs to
+     * the student's homework has a teacher to ask, and the session is looked up among the student's own, finished ones included.
+     */
+    public function askTeacherAction(): Action
+    {
+        return AskTeacher::action(function (): array {
+            $session = $this->student()->explanationSessions()->findOrFail($this->sessionId);
+
+            Gate::authorize('createFor', [StudentQuestion::class, $session]);
+
+            return [$session->lesson, $session];
+        });
+    }
+
+    /**
      * Mounted from the list and from the open session with the id as argument, so the id is client-controlled:
      * it is looked up among the student's own sessions only.
      */
@@ -215,14 +233,17 @@ class ExplainIt extends Page
     }
 
     /**
-     * @return array{explanationSession: ExplanationSession|null, earlierSessions: Collection<int, ExplanationSession>}
+     * @return array{explanationSession: ExplanationSession|null, canAskTeacher: bool, earlierSessions: Collection<int, ExplanationSession>}
      */
     protected function getViewData(): array
     {
+        $explanationSession = $this->sessionId === null
+            ? null
+            : $this->student()->explanationSessions()->with(['lesson', 'messages'])->withCount('studentQuestions')->find($this->sessionId);
+
         return [
-            'explanationSession' => $this->sessionId === null
-                ? null
-                : $this->student()->explanationSessions()->with(['lesson', 'messages'])->find($this->sessionId),
+            'explanationSession' => $explanationSession,
+            'canAskTeacher' => $explanationSession !== null && $this->student()->can('createFor', [StudentQuestion::class, $explanationSession]),
             'earlierSessions' => $this->student()->explanationSessions()->latest('id')->get(),
         ];
     }

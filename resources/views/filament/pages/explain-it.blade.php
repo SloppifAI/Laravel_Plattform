@@ -69,6 +69,12 @@
 
                     <x-slot name="afterHeader">
                         <div class="flex flex-wrap items-center gap-2">
+                            @if ($canAskTeacher)
+                                <x-filament::button color="gray" outlined size="sm" icon="heroicon-m-question-mark-circle" wire:click="mountAction('askTeacher')">
+                                    Frage an meine Lehrkraft
+                                </x-filament::button>
+                            @endif
+
                             <x-filament::button color="gray" size="sm" icon="heroicon-m-plus" wire:click="startOver">
                                 Neue Erklärung
                             </x-filament::button>
@@ -129,6 +135,23 @@
                             @endforeach
                         </ol>
                     </div>
+
+                    @if ($explanationSession->lesson === null)
+                        <p class="mt-3 text-sm text-gray-600 dark:text-gray-400">
+                            Fragen an deine Lehrkraft gibt es nur bei Themen aus deinen Hausaufgaben. Zu einem eigenen Thema kannst du hier nur {{ $tutorName }} etwas erklären.
+                        </p>
+                    @elseif (! $canAskTeacher)
+                        <p class="mt-3 text-sm text-gray-600 dark:text-gray-400">
+                            Diese Stunde gehört nicht mehr zu deinen Hausaufgaben. Deshalb kannst du dazu keine neue Frage an deine Lehrkraft stellen.
+                        </p>
+                    @endif
+
+                    @if ($explanationSession->lesson && $explanationSession->student_questions_count > 0)
+                        <p class="mt-3 text-sm text-gray-600 dark:text-gray-400">
+                            Du hast deiner Lehrkraft dazu {{ $explanationSession->student_questions_count === 1 ? 'eine Frage' : $explanationSession->student_questions_count.' Fragen' }} gestellt.
+                            <a href="{{ \App\Filament\Pages\MyQuestions::getUrl() }}" class="font-medium text-primary-600 underline hover:text-primary-500 dark:text-primary-400">Zu meinen Rückfragen</a>
+                        </p>
+                    @endif
 
                     @unless ($explanationSession->isFinished())
                         <div wire:loading.flex wire:target="send" role="status" class="mt-3 items-center gap-2 text-sm text-gray-500 dark:text-gray-400">

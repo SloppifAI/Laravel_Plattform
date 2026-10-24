@@ -45,6 +45,16 @@ class ExplanationSession extends Model
         return $this->hasMany(ExplanationMessage::class)->orderBy('id');
     }
 
+    /**
+     * Questions the student sent to their teacher from this session.
+     *
+     * @return HasMany<StudentQuestion, $this>
+     */
+    public function studentQuestions(): HasMany
+    {
+        return $this->hasMany(StudentQuestion::class);
+    }
+
     public function isFinished(): bool
     {
         return $this->finished_at !== null;
