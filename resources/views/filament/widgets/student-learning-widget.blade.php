@@ -1,4 +1,5 @@
 @php
+    use App\Filament\Pages\ExplainIt;
     use App\UnderstandingLevel;
     use Filament\Support\Icons\Heroicon;
     use Illuminate\Support\Str;
@@ -180,6 +181,53 @@
                 <p class="mt-3 text-sm text-gray-600 dark:text-gray-400">
                     Sobald deine erste Hausaufgabe bewertet ist, steht hier, was schon gut klappt und woran du noch arbeiten kannst.
                 </p>
+            @endif
+        </section>
+
+        {{-- Where practising pays off: the three weakest competencies, one next step each. --}}
+        <section class="lp-card p-6 lg:col-span-3" aria-labelledby="lp-practice">
+            <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                <h3 id="lp-practice" class="text-base font-semibold text-gray-950 dark:text-white">Hier lohnt sich Üben</h3>
+
+                <x-filament::link :href="$progressUrl" :icon="Heroicon::ArrowRight" icon-position="after" size="sm">
+                    Mein Lernstand
+                </x-filament::link>
+            </div>
+
+            @if ($practiceNeeds->isEmpty())
+                <div class="mt-4 flex items-center gap-4 rounded-xl bg-success-50 p-4 dark:bg-success-400/10">
+                    <x-filament::icon :icon="Heroicon::OutlinedCheckBadge" class="size-8 shrink-0 text-success-600 dark:text-success-400" />
+
+                    <p class="text-sm text-gray-800 dark:text-gray-200">
+                        @if ($hasCompetencyData)
+                            <span class="font-semibold">Gut gemacht!</span>
+                            Im Moment musst du nichts dringend üben.
+                        @else
+                            Sobald deine Hausaufgaben bewertet sind, siehst du hier, wo sich Üben lohnt.
+                        @endif
+                    </p>
+                </div>
+            @else
+                <ul class="mt-3 grid gap-1">
+                    @foreach ($practiceNeeds as $need)
+                        <li class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-2">
+                            <span class="min-w-48 flex-1">
+                                <span class="block text-sm text-gray-600 dark:text-gray-400">
+                                    @if ($need['lesson'])
+                                        {{ $need['lesson']->subject }}: {{ $need['lesson']->topic }}
+                                    @else
+                                        {{ $need['competency']->subject ?? 'Fachübergreifend' }}
+                                    @endif
+                                </span>
+                                <span class="block font-medium text-gray-950 dark:text-white">{{ $need['competency']->name }}</span>
+                            </span>
+
+                            <x-filament::link :href="$need['url']" :icon="Heroicon::OutlinedChatBubbleLeftRight" size="sm">
+                                Mit {{ ExplainIt::TUTOR_NAME }} üben
+                            </x-filament::link>
+                        </li>
+                    @endforeach
+                </ul>
             @endif
         </section>
     </div>

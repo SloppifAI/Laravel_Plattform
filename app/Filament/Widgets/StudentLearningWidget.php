@@ -4,15 +4,18 @@ namespace App\Filament\Widgets;
 
 use App\Filament\Pages\ExplainIt;
 use App\Filament\Pages\MyHomework;
+use App\Filament\Pages\MyLearningProgress;
 use App\Filament\Pages\WorkOnHomework;
 use App\Models\Lesson;
 use App\Models\Submission;
 use App\Models\User;
+use App\Support\LearningInsights;
 use App\UnderstandingLevel;
 use Carbon\CarbonInterface;
 use Filament\Support\Icons\Heroicon;
 use Filament\Widgets\Widget;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 
 /**
  * The student's start page: greeting, what's due next, how well they understood their homework so far,
@@ -57,8 +60,21 @@ class StudentLearningWidget extends Widget
         $averageScore = $evaluatedSubmissions->isEmpty() ? null : (int) round($evaluatedSubmissions->avg('understanding_score'));
         $latestFeedback = $evaluatedSubmissions->first(fn (Submission $submission): bool => filled($submission->feedback));
 
+        $competencies = LearningInsights::studentCompetencies($student);
+
         return [
             'firstName' => str($student->name)->before(' ')->toString(),
+            'practiceNeeds' => $competencies['practice']->take(3)->map(function (array $need): array {
+                $lesson = $need['lessons']->first();
+
+                return [
+                    'competency' => $need['competency'],
+                    'lesson' => $lesson,
+                    'url' => ExplainIt::getUrl($lesson ? ['lesson' => $lesson->getKey()] : []),
+                ];
+            }),
+            'hasCompetencyData' => collect($competencies)->contains(fn (Collection $group): bool => $group->isNotEmpty()),
+            'progressUrl' => MyLearningProgress::getUrl(),
             'openCount' => $openHomework->count(),
             'nextHomework' => $openHomework->take(3)->map(fn (Lesson $lesson): array => [
                 'lesson' => $lesson,
