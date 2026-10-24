@@ -3,19 +3,14 @@
 namespace App\Ai\Agents;
 
 use Illuminate\Contracts\JsonSchema\JsonSchema;
-use Laravel\Ai\Contracts\Agent;
 use Laravel\Ai\Contracts\HasStructuredOutput;
-use Laravel\Ai\Enums\Lab;
-use Laravel\Ai\Promptable;
 
 /**
  * Summary, key terms, board sketch and class questions from the notes of a Tuto-Mikro session (see SdkRecordingAnalyst).
- * Provider, model and timeout come from `config('lernplattform.ai.*')`; a model of null means the provider's default model.
+ * Provider, model, timeout and thinking level come from `config('lernplattform.ai.*')` (see LessonAgent).
  */
-class LessonSummarizer implements Agent, HasStructuredOutput
+class LessonSummarizer extends LessonAgent implements HasStructuredOutput
 {
-    use Promptable;
-
     public const int MAX_TERMS = 10;
 
     public const int MAX_OUTLINE = 10;
@@ -42,20 +37,4 @@ class LessonSummarizer implements Agent, HasStructuredOutput
         ];
     }
 
-    public function provider(): Lab|string
-    {
-        $name = (string) config('lernplattform.ai.provider');
-
-        return Lab::tryFrom($name) ?? $name;
-    }
-
-    public function model(): ?string
-    {
-        return config('lernplattform.ai.model') ?: null;
-    }
-
-    public function timeout(): int
-    {
-        return (int) config('lernplattform.ai.timeout', 120);
-    }
 }

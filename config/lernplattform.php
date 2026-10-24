@@ -59,9 +59,8 @@ return [
     | deleted (`php artisan lernplattform:prune-recordings`, scheduled daily, which also sweeps files left by the former
     | recording mode). A session that was never ended and is older than `max_session_hours` accepts nothing more.
     |
-    | `keep_days` is how long the consent forms, the data processing agreement and the privacy documents still say
-    | recordings are kept; nothing of that kind is stored any more. It stays at its value because the accepted
-    | agreement of every school is tied to it (DpaAcceptance::terms()); change it together with those texts.
+    | `keep_days` is how long texts that still describe the former recording mode say recordings are kept; nothing of
+    | that kind is stored any more. The data processing agreement no longer reads it (DpaAcceptance::terms()).
     |
     */
 
@@ -83,8 +82,9 @@ return [
     | accepted version, the text as the school saw it and who accepted it are stored (DpaAcceptance). Change the version
     | whenever the text changes in substance: every school that accepted an older version then sees a prominent request
     | to accept the new one under "Meine Schule", and the operator sees it as outdated in the school list. Values the
-    | text takes from the configuration (retention periods, session lifetime, AI and transcription switched on) are part
-    | of the acceptance as well, see DpaAcceptance::terms(): changing one of them makes every acceptance outdated, too.
+    | text takes from the configuration (retention periods and the transition date, Tuto-Mikro and notification limits,
+    | the longest substitution, session lifetime, the platform's AI switch and provider) are part of the acceptance as
+    | well, see DpaAcceptance::terms(): changing one of them makes every acceptance outdated, too, under the same version.
     |
     | `final` releases the contract and is on by default. A school that never accepted can use nothing but the
     | "Meine Schule" page, and its lessons cannot be recorded, until its administration accepts. With
@@ -103,6 +103,10 @@ return [
     | request is answered by the offline demo logic, so nothing leaves the platform. `provider` and `model` choose the
     | provider from config/ai.php and an optional model (null = the provider's default).
     |
+    | `thinking_level` is how long Gemini thinks before it answers (minimal, low, medium or high; empty = the model's
+    | own default, which is high for Gemini 3 and made a homework check take a minute or more). Other providers ignore
+    | it. Gemini 3 Pro knows only low and high.
+    |
     */
 
     'ai' => [
@@ -111,6 +115,7 @@ return [
         'model' => env('AI_MODEL'),
         'transcription_model' => env('AI_TRANSCRIPTION_MODEL'),
         'timeout' => (int) env('AI_TIMEOUT', 120),
+        'thinking_level' => env('AI_THINKING_LEVEL', 'low'),
     ],
 
     /*

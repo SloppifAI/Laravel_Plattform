@@ -4,15 +4,17 @@ namespace App\Ai\Agents;
 
 use App\Filament\Pages\ExplainIt;
 use Laravel\Ai\Contracts\Agent;
+use Laravel\Ai\Contracts\HasProviderOptions;
 use Laravel\Ai\Enums\Lab;
 use Laravel\Ai\Promptable;
 use Stringable;
 
 /**
- * Base of the lesson agents (see SdkLessonAssistant): provider, model and timeout come from `config('lernplattform.ai.*')`,
- * so switching the provider is a configuration change. A model of null means the provider's default model.
+ * Base of the lesson agents (see SdkLessonAssistant and SdkRecordingAnalyst): provider, model, timeout and Gemini's
+ * thinking level come from `config('lernplattform.ai.*')`, so switching the provider is a configuration change. A model
+ * of null means the provider's default model.
  */
-abstract class LessonAgent implements Agent
+abstract class LessonAgent implements Agent, HasProviderOptions
 {
     use Promptable;
 
@@ -45,5 +47,20 @@ abstract class LessonAgent implements Agent
     public function timeout(): int
     {
         return (int) config('lernplattform.ai.timeout', 120);
+    }
+
+    /**
+     * Gemini 3 thinks at a high level unless told otherwise, which kept a request waiting a minute or more.
+     *
+     * @return array<string, mixed>
+     */
+    public function providerOptions(Lab|string $provider): array
+    {
+        $level = config('lernplattform.ai.thinking_level');
+
+        // The gateways pass the driver name as a string ('gemini'), not the enum.
+        $isGemini = ($provider instanceof Lab ? $provider : Lab::tryFrom($provider)) === Lab::Gemini;
+
+        return $isGemini && filled($level) ? ['thinking_level' => $level] : [];
     }
 }
