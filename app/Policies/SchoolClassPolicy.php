@@ -6,7 +6,7 @@ use App\Models\SchoolClass;
 use App\Models\User;
 
 /**
- * Classes are managed by the administration.
+ * Classes are managed by the administration of their school.
  */
 class SchoolClassPolicy
 {
@@ -17,7 +17,7 @@ class SchoolClassPolicy
 
     public function view(User $user, SchoolClass $schoolClass): bool
     {
-        return $user->isAdmin();
+        return $this->manages($user, $schoolClass);
     }
 
     public function create(User $user): bool
@@ -27,16 +27,21 @@ class SchoolClassPolicy
 
     public function update(User $user, SchoolClass $schoolClass): bool
     {
-        return $user->isAdmin();
+        return $this->manages($user, $schoolClass);
     }
 
     public function delete(User $user, SchoolClass $schoolClass): bool
     {
-        return $user->isAdmin();
+        return $this->manages($user, $schoolClass);
     }
 
     public function deleteAny(User $user): bool
     {
         return $user->isAdmin();
+    }
+
+    private function manages(User $user, SchoolClass $schoolClass): bool
+    {
+        return $user->isAdmin() && $user->isMemberOf($schoolClass->school);
     }
 }

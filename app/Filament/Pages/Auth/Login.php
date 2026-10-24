@@ -2,15 +2,18 @@
 
 namespace App\Filament\Pages\Auth;
 
+use App\Http\Middleware\EnsureSchoolIsActive;
 use App\Role;
 use Filament\Actions\Action;
 use Filament\Auth\Pages\Login as BaseLogin;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\RenderHook;
 use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Filament\View\PanelsRenderHook;
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\HtmlString;
@@ -31,12 +34,42 @@ class Login extends BaseLogin
      * @var array<string, Role>
      */
     public const array DEMO_ACCOUNTS = [
-        'hackathon' => Role::Admin,
+        'hackathon' => Role::Operator,
+        'schulleitung' => Role::Admin,
         'lehrer' => Role::Teacher,
         'schueler' => Role::Student,
     ];
 
     public const string DEMO_PASSWORD = 'hackathon2026';
+
+    public const string BLOCKED_SCHOOL_MESSAGE = 'Deine Schule ist derzeit gesperrt. Bitte wende dich an die Plattform-Administration.';
+
+    /**
+     * Set once the password was right but the user's school is blocked, so only they learn why the login fails.
+     */
+    protected bool $schoolIsBlocked = false;
+
+    /**
+     * Whoever is still signed in after their school was blocked gets signed out here, because Filament's own
+     * sign-out needs a valid session; the panel's middleware already does so and flashes the reason.
+     */
+    public function mount(): void
+    {
+        $user = Filament::auth()->user();
+
+        if ($user !== null && ! $user->canAccessPanel(Filament::getCurrentOrDefaultPanel())) {
+            Filament::auth()->logout();
+            session()->invalidate();
+            session()->regenerateToken();
+            session()->flash(EnsureSchoolIsActive::BLOCKED_SCHOOL_FLASH_KEY, true);
+        }
+
+        if (session()->has(EnsureSchoolIsActive::BLOCKED_SCHOOL_FLASH_KEY)) {
+            $this->addError('data.username', self::BLOCKED_SCHOOL_MESSAGE);
+        }
+
+        parent::mount();
+    }
 
     public function form(Schema $schema): Schema
     {
@@ -101,10 +134,19 @@ class Login extends BaseLogin
         ];
     }
 
+    protected function isUserAllowedToAccessPanel(Authenticatable $user): bool
+    {
+        $isAllowed = parent::isUserAllowedToAccessPanel($user);
+
+        $this->schoolIsBlocked = ! $isAllowed && $user->school?->isBlocked();
+
+        return $isAllowed;
+    }
+
     protected function throwFailureValidationException(): never
     {
         throw ValidationException::withMessages([
-            'data.username' => __('filament-panels::auth/pages/login.messages.failed'),
+            'data.username' => $this->schoolIsBlocked ? self::BLOCKED_SCHOOL_MESSAGE : __('filament-panels::auth/pages/login.messages.failed'),
         ]);
     }
 
@@ -123,7 +165,15 @@ class Login extends BaseLogin
 
     public function getSubheading(): string|Htmlable|null
     {
-        return new HtmlString('Melde dich an und mach dort weiter, wo du aufgehört hast. Noch kein Konto? '.$this->registerAction->toHtml());
+        return new HtmlString('Melde dich an und mach dort weiter, wo du aufgehört hast. Noch kein Konto? '.$this->registerAction->toHtml().'<br>Neue Schule? '.$this->registerSchoolAction->toHtml());
+    }
+
+    public function registerSchoolAction(): Action
+    {
+        return Action::make('registerSchool')
+            ->link()
+            ->label('Schule registrieren')
+            ->url(route('filament.lernplattform.auth.register-school'));
     }
 
     public function registerAction(): Action

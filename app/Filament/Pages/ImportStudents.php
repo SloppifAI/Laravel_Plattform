@@ -68,9 +68,14 @@ class ImportStudents extends Page implements HasTable
     #[Locked]
     public bool $imported = false;
 
+    /**
+     * Only a school administration imports, and only into its own school. Operators see no student records.
+     */
     public static function canAccess(): bool
     {
-        return auth()->user()?->isAdmin() ?? false;
+        $user = auth()->user();
+
+        return ($user?->isAdmin() ?? false) && $user->school_id !== null;
     }
 
     public function mount(): void
@@ -98,7 +103,7 @@ class ImportStudents extends Page implements HasTable
     {
         abort_unless(static::canAccess(), 403);
 
-        $outcome = app(StudentImport::class)->preview($this->uploadedFile()->get());
+        $outcome = app(StudentImport::class)->preview($this->uploadedFile()->get(), auth()->user()->school);
 
         if ($outcome['problem'] !== null) {
             Notification::make()
@@ -136,7 +141,7 @@ class ImportStudents extends Page implements HasTable
                 $file = $this->uploadedFile();
 
                 try {
-                    $outcome = app(StudentImport::class)->import($file->get());
+                    $outcome = app(StudentImport::class)->import($file->get(), auth()->user()->school);
                 } catch (Throwable $exception) {
                     report($exception);
 

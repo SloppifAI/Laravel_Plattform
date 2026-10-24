@@ -20,6 +20,7 @@ class Dashboard extends BaseDashboard
         return match (true) {
             $user->isTeacher() => 'Dein Unterricht und der Lernstand deiner Klassen auf einen Blick.',
             $user->isAdmin() => 'Benutzer, Klassen und Unterricht der Schule im Überblick.',
+            $user->isOperator() => 'Überblick über alle Schulen der Plattform.',
             default => null,
         };
     }

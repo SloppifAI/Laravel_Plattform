@@ -2,17 +2,20 @@
 
 namespace App\Support;
 
-use App\Models\SchoolClass;
+use App\Models\School;
 use App\Models\User;
 use App\Role;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
- * Imports student lists that school software (SchILD-NRW, WebUntis, IServ, ...) exports as CSV.
+ * Imports student lists that school software (SchILD-NRW, WebUntis, IServ, ...) exports as CSV into one school.
  *
  * preview() answers exactly what import() would do without touching the database, import() does it
  * inside one transaction. Faulty rows never abort the run: they are reported as skipped.
+ *
+ * Classes and students are created in, and matched within, the given school only. Usernames and e-mail
+ * addresses are unique across all schools, so a clash with another school is reported without saying whose it is.
  *
  * @phpstan-type ParsedRow array{line: int, lastName: string, firstName: string, class: string, username: string, email: string}
  * @phpstan-type ResultRow array{line: int, name: string, class: string, username: string, status: 'created'|'updated'|'skipped', message: string, password: string|null}
@@ -49,6 +52,8 @@ class StudentImport
     private const string PASSWORD_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
 
     private const int PASSWORD_LENGTH = 12;
+
+    private School $school;
 
     /**
      * @var list<string>
@@ -136,9 +141,9 @@ class StudentImport
      *
      * @return Outcome
      */
-    public function preview(string $content): array
+    public function preview(string $content, School $school): array
     {
-        return $this->process($content, commit: false);
+        return $this->process($content, $school, commit: false);
     }
 
     /**
@@ -146,11 +151,11 @@ class StudentImport
      *
      * @return Outcome
      */
-    public function import(string $content): array
+    public function import(string $content, School $school): array
     {
         set_time_limit(300);
 
-        return $this->process($content, commit: true);
+        return $this->process($content, $school, commit: true);
     }
 
     /**
@@ -185,7 +190,7 @@ class StudentImport
     /**
      * @return Outcome
      */
-    private function process(string $content, bool $commit): array
+    private function process(string $content, School $school, bool $commit): array
     {
         $parsed = $this->parse($content);
 
@@ -193,6 +198,7 @@ class StudentImport
             return ['rows' => [], 'newClasses' => [], 'problem' => $parsed['problem']];
         }
 
+        $this->school = $school;
         $this->seenUsernames = $this->seenEmails = $this->classIds = $this->newClasses = [];
 
         $apply = fn (): array => array_map(fn (array $row): array => $this->applyRow($row, $commit), $parsed['rows']);
@@ -223,12 +229,18 @@ class StudentImport
 
             $existing = User::where('username', $row['username'])->first();
 
+            if ($existing !== null && ! $existing->isMemberOf($this->school)) {
+                // Usernames are unique across schools; which school (or role) holds it is not revealed.
+                return $this->outcome($row, 'skipped', 'Der Benutzername ist schon vergeben. Wähle in der Datei einen anderen.');
+            }
+
             if ($existing !== null && ! $existing->isStudent()) {
                 return $this->outcome($row, 'skipped', sprintf('Der Benutzername gehört zu einem Konto mit der Rolle %s. Es bleibt unverändert.', $existing->role->getLabel()));
             }
         } else {
             // Without a username the same name in the same class is the same person, which keeps a repeated import from creating duplicates.
-            $existing = User::withRole(Role::Student)
+            $existing = $this->school->users()
+                ->withRole(Role::Student)
                 ->where('name', $name)
                 ->whereHas('schoolClass', fn ($query) => $query->where('name', $row['class']))
                 ->whereNotIn('username', $this->seenUsernames)
@@ -287,7 +299,7 @@ class StudentImport
         $classId = $this->schoolClassId($row['class'], $commit);
 
         if ($commit) {
-            User::create([
+            $this->school->users()->create([
                 'name' => $this->fullName($row),
                 'username' => $username,
                 'email' => $row['email'] !== '' ? $row['email'] : null,
@@ -361,17 +373,17 @@ class StudentImport
     }
 
     /**
-     * Looks the class up by name. A missing class is created when committing and only announced otherwise,
+     * Looks the class up by name within the school. A missing class is created when committing and only announced otherwise,
      * then 0 stands for the class that does not exist yet.
      */
     private function schoolClassId(string $name, bool $commit): int
     {
         if (! array_key_exists($name, $this->classIds)) {
-            $schoolClass = SchoolClass::where('name', $name)->first();
+            $schoolClass = $this->school->schoolClasses()->where('name', $name)->first();
 
             if ($schoolClass === null) {
                 $this->newClasses[] = $name;
-                $schoolClass = $commit ? SchoolClass::create(['name' => $name]) : null;
+                $schoolClass = $commit ? $this->school->schoolClasses()->create(['name' => $name]) : null;
             }
 
             $this->classIds[$name] = $schoolClass?->getKey() ?? 0;

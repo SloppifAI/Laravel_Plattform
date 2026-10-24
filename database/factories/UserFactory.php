@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\School;
 use App\Models\SchoolClass;
 use App\Models\User;
 use App\Role;
@@ -34,8 +35,18 @@ class UserFactory extends Factory
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
             'role' => Role::Student,
+            // school_class_id comes first: Laravel resolves attributes in order and student() derives the school from the class.
             'school_class_id' => null,
+            'school_id' => School::factory(),
         ];
+    }
+
+    /**
+     * Runs the platform and belongs to no school.
+     */
+    public function operator(): static
+    {
+        return $this->state(fn (array $attributes) => ['role' => Role::Operator, 'school_id' => null, 'school_class_id' => null]);
     }
 
     public function admin(): static
@@ -49,13 +60,14 @@ class UserFactory extends Factory
     }
 
     /**
-     * A student, in the given class or in a new one.
+     * A student, in the given class or in a new one, and in that class's school.
      */
     public function student(?SchoolClass $schoolClass = null): static
     {
         return $this->state(fn (array $attributes) => [
             'role' => Role::Student,
             'school_class_id' => $schoolClass ?? SchoolClass::factory(),
+            'school_id' => fn (array $attributes) => SchoolClass::find($attributes['school_class_id'])->school_id,
         ]);
     }
 

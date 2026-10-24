@@ -3,6 +3,7 @@
 namespace Tests\Feature\Import;
 
 use App\Filament\Pages\ImportStudents;
+use App\Models\School;
 use App\Models\SchoolClass;
 use App\Models\User;
 use App\Role;
@@ -24,6 +25,7 @@ class ImportStudentsPageTest extends TestCase
 
         $this->actingAs(User::factory()->teacher()->create())->get(self::PAGE_URL)->assertForbidden();
         $this->actingAs(User::factory()->student()->create())->get(self::PAGE_URL)->assertForbidden();
+        $this->actingAs(User::factory()->operator()->create())->get(self::PAGE_URL)->assertForbidden();
         $this->actingAs(User::factory()->admin()->create())
             ->get(self::PAGE_URL)
             ->assertOk()
@@ -37,6 +39,9 @@ class ImportStudentsPageTest extends TestCase
         $this->assertTrue(ImportStudents::canAccess());
 
         $this->actingAs(User::factory()->teacher()->create());
+        $this->assertFalse(ImportStudents::canAccess());
+
+        $this->actingAs(User::factory()->operator()->create());
         $this->assertFalse(ImportStudents::canAccess());
     }
 
@@ -93,6 +98,49 @@ class ImportStudentsPageTest extends TestCase
         $this->assertTrue(password_verify($rows[0]['password'], $anna->password));
         $this->assertSame('skipped', $rows[2]['status']);
         $this->assertNull($rows[2]['password']);
+    }
+
+    public function test_operators_cannot_mount_the_livewire_component(): void
+    {
+        Livewire::actingAs(User::factory()->operator()->create())
+            ->test(ImportStudents::class)
+            ->assertForbidden();
+    }
+
+    public function test_the_import_creates_everything_in_the_school_of_the_admin(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $otherSchool = School::factory()->create();
+
+        Livewire::actingAs($admin)
+            ->test(ImportStudents::class)
+            ->fillForm(['file' => $this->upload("Nachname;Vorname;Klasse\nMüller;Anna;5a\n")])
+            ->call('createPreview')
+            ->callAction('import')
+            ->assertSet('imported', true);
+
+        $anna = User::where('username', 'anna.mueller')->sole();
+        $this->assertSame($admin->school_id, $anna->school_id);
+        $this->assertSame($admin->school_id, $anna->schoolClass->school_id);
+        $this->assertSame(0, $otherSchool->users()->count() + $otherSchool->schoolClasses()->count());
+    }
+
+    public function test_a_username_of_another_school_shows_up_as_a_plain_error_row(): void
+    {
+        $otherSchool = School::factory()->create(['name' => 'Geheimschule Nord']);
+        User::factory()->teacher()->for($otherSchool)->create(['username' => 'krause']);
+        $admin = User::factory()->admin()->create();
+
+        $page = Livewire::actingAs($admin)
+            ->test(ImportStudents::class)
+            ->fillForm(['file' => $this->upload("Nachname;Vorname;Klasse;Benutzername\nKrause;Petra;5a;krause\n")])
+            ->call('createPreview')
+            ->assertSee('Der Benutzername ist schon vergeben.')
+            ->assertDontSee('Geheimschule Nord')
+            ->assertDontSee('Lehrkraft');
+
+        $this->assertSame('skipped', $page->get('outcome')['rows'][0]['status']);
+        $this->assertSame(0, SchoolClass::count());
     }
 
     public function test_the_temporary_upload_is_deleted_after_the_import(): void

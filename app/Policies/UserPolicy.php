@@ -5,40 +5,50 @@ namespace App\Policies;
 use App\Models\User;
 
 /**
- * User management is reserved for the administration.
+ * School administrations manage the people of their own school. The platform operator only manages
+ * administration accounts (to set up schools and help them back in), never teachers' or students' records.
  */
 class UserPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->isAdmin();
+        return $user->isAdmin() || $user->isOperator();
     }
 
     public function view(User $user, User $model): bool
     {
-        return $user->isAdmin();
+        return $this->manages($user, $model);
     }
 
     public function create(User $user): bool
     {
-        return $user->isAdmin();
+        return $user->isAdmin() || $user->isOperator();
     }
 
     public function update(User $user, User $model): bool
     {
-        return $user->isAdmin();
+        return $this->manages($user, $model);
     }
 
     /**
-     * Admins cannot delete themselves, so the platform never loses its last way in by accident.
+     * Nobody deletes themselves, so a school or the platform never loses its last way in by accident.
      */
     public function delete(User $user, User $model): bool
     {
-        return $user->isAdmin() && $user->isNot($model);
+        return $this->manages($user, $model) && $user->isNot($model);
     }
 
     public function deleteAny(User $user): bool
     {
-        return $user->isAdmin();
+        return $user->isAdmin() || $user->isOperator();
+    }
+
+    private function manages(User $user, User $model): bool
+    {
+        if ($user->isOperator()) {
+            return $model->isAdmin() || $model->isOperator();
+        }
+
+        return $user->isAdmin() && ! $model->isOperator() && $user->isMemberOf($model->school);
     }
 }

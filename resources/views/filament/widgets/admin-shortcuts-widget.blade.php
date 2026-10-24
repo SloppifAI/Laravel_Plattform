@@ -3,7 +3,7 @@
 @endphp
 
 <x-filament-widgets::widget>
-    <x-filament::section heading="Verwaltung" description="Benutzer, Klassen und das Kompetenzraster pflegen.">
+    <x-filament::section heading="Verwaltung" description="Benutzer und Klassen pflegen, das Kompetenzraster einsehen.">
         @if ($shortcuts->isEmpty())
             <p class="text-sm text-gray-600 dark:text-gray-400">Für dich sind gerade keine Verwaltungsbereiche freigeschaltet.</p>
         @else

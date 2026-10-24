@@ -6,7 +6,7 @@
 
 <x-filament-panels::page>
     @if ($outcome === null)
-        <div class="grid gap-6 lg:grid-cols-3 lg:items-start">
+        <div class="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:items-start">
             <x-filament::section
                 class="lg:col-span-2"
                 heading="CSV-Datei auswählen"
@@ -30,17 +30,18 @@
                         Optional sind Benutzername und E-Mail.
                     </p>
 
-                    <div class="overflow-x-auto rounded-lg bg-gray-50 p-3 ring-1 ring-gray-950/5 dark:bg-white/5 dark:ring-white/10" tabindex="0" role="region" aria-label="Beispiel einer CSV-Datei">
-                        <pre class="font-mono text-xs text-gray-950 dark:text-white">Nachname;Vorname;Klasse
+                    <div class="rounded-lg bg-gray-50 p-3 ring-1 ring-gray-950/5 md:overflow-x-auto dark:bg-white/5 dark:ring-white/10" tabindex="0" role="region" aria-label="Beispiel einer CSV-Datei">
+                        <pre class="font-mono text-xs break-words whitespace-pre-wrap text-gray-950 md:whitespace-pre dark:text-white">Nachname;Vorname;Klasse
 Müller;Anna;5a
 Öztürk;Mehmet;5b</pre>
                     </div>
 
                     <ul class="list-disc space-y-1 ps-5">
+                        <li>Klassen und Konten entstehen nur in deiner Schule, und es werden nur Schüler:innen deiner Schule aktualisiert.</li>
                         <li>Klassen, die es noch nicht gibt, werden angelegt.</li>
                         <li>Neue Konten bekommen den Benutzernamen <span class="font-mono">vorname.nachname</span> und ein zufälliges Startpasswort.</li>
                         <li>Wer schon da ist (gleicher Benutzername, ohne Benutzernamen gleicher Name in derselben Klasse), wird aktualisiert statt doppelt angelegt.</li>
-                        <li>Konten von Lehrkräften und der Administration bleiben unberührt.</li>
+                        <li>Konten von Lehrkräften und der Administration bleiben unberührt. Ein Benutzername, der auf der Plattform schon vergeben ist, wird übersprungen.</li>
                         <li>Höchstens {{ \App\Support\StudentImport::MAX_ROWS }} Schüler:innen pro Datei.</li>
                     </ul>
                 </div>

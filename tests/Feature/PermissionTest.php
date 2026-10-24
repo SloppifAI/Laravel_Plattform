@@ -35,7 +35,20 @@ class PermissionTest extends TestCase
 
         $this->assertTrue($lesson->teacher->can('update', $lesson));
         $this->assertFalse($otherTeacher->can('update', $lesson));
-        $this->assertTrue(User::factory()->admin()->create()->can('update', $lesson));
+        $this->assertTrue(User::factory()->admin()->for($lesson->schoolClass->school)->create()->can('update', $lesson));
+        $this->assertFalse(User::factory()->admin()->create()->can('update', $lesson));
+        $this->assertFalse(User::factory()->operator()->create()->can('view', $lesson));
+    }
+
+    public function test_free_topic_conversations_stay_private_to_the_student(): void
+    {
+        $student = User::factory()->student()->create();
+        $freeTopic = ExplanationSession::factory()->for($student, 'student')->create(['lesson_id' => null]);
+        $schoolAdmin = User::factory()->admin()->for($student->school)->create();
+
+        $this->assertTrue($student->can('view', $freeTopic));
+        $this->assertFalse($schoolAdmin->can('view', $freeTopic));
+        $this->assertFalse($schoolAdmin->can('delete', $freeTopic));
     }
 
     public function test_students_only_see_published_homework_delegated_to_them(): void

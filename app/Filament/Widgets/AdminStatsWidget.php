@@ -14,9 +14,10 @@ use Carbon\CarbonInterface;
 use Filament\Support\Icons\Heroicon;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
- * School-wide figures for the administration.
+ * Figures of the administration's own school. Nothing from other schools is counted.
  */
 class AdminStatsWidget extends StatsOverviewWidget
 {
@@ -28,7 +29,9 @@ class AdminStatsWidget extends StatsOverviewWidget
 
     public static function canView(): bool
     {
-        return auth()->user()?->isAdmin() ?? false;
+        $user = auth()->user();
+
+        return $user?->isAdmin() && $user->school_id !== null;
     }
 
     /**
@@ -36,7 +39,10 @@ class AdminStatsWidget extends StatsOverviewWidget
      */
     protected function getStats(): array
     {
-        $usersPerRole = User::query()->toBase()->selectRaw('role, count(*) as aggregate')->groupBy('role')->pluck('aggregate', 'role');
+        $schoolId = auth()->user()->school_id;
+        $lessons = fn (): Builder => Lesson::query()->whereRelation('schoolClass', 'school_id', $schoolId);
+
+        $usersPerRole = User::query()->where('school_id', $schoolId)->toBase()->selectRaw('role, count(*) as aggregate')->groupBy('role')->pluck('aggregate', 'role');
         $userCount = fn (Role $role): int => (int) ($usersPerRole[$role->value] ?? 0);
 
         return [
@@ -49,14 +55,14 @@ class AdminStatsWidget extends StatsOverviewWidget
             Stat::make('Administration', $userCount(Role::Admin))
                 ->icon(Heroicon::OutlinedCog6Tooth)
                 ->url(UserResource::getUrl()),
-            Stat::make('Klassen', SchoolClass::query()->count())
+            Stat::make('Klassen', SchoolClass::query()->where('school_id', $schoolId)->count())
                 ->icon(Heroicon::OutlinedUserGroup)
                 ->url(SchoolClassResource::getUrl()),
-            Stat::make('Unterrichtsstunden', Lesson::query()->count())
+            Stat::make('Unterrichtsstunden', $lessons()->count())
                 ->icon(Heroicon::OutlinedPresentationChartBar)
-                ->description(Lesson::query()->published()->count().' davon mit verteilter Hausaufgabe')
+                ->description($lessons()->published()->count().' davon mit verteilter Hausaufgabe')
                 ->url(LessonResource::getUrl()),
-            Stat::make('Abgaben diese Woche', Submission::query()->where('created_at', '>=', now()->startOfWeek(CarbonInterface::MONDAY))->count())
+            Stat::make('Abgaben diese Woche', Submission::query()->whereRelation('lesson.schoolClass', 'school_id', $schoolId)->where('created_at', '>=', now()->startOfWeek(CarbonInterface::MONDAY))->count())
                 ->icon(Heroicon::OutlinedInboxArrowDown)
                 ->description('seit Montag, '.now()->startOfWeek(CarbonInterface::MONDAY)->locale('de')->isoFormat('D. MMMM')),
         ];

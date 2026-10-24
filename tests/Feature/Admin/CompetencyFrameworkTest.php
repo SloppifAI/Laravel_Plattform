@@ -12,6 +12,9 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
 
+/**
+ * The competency framework is shared by all schools: the platform operator maintains it, everybody else only reads.
+ */
 class CompetencyFrameworkTest extends TestCase
 {
     use RefreshDatabase;
@@ -30,9 +33,23 @@ class CompetencyFrameworkTest extends TestCase
             ->assertActionHidden(CreateAction::class);
     }
 
-    public function test_admin_adds_a_cross_subject_competency(): void
+    public function test_school_administrations_look_up_competencies_but_cannot_change_them(): void
     {
+        $competency = Competency::factory()->create();
         $this->actingAs(User::factory()->admin()->create());
+
+        Livewire::test(ManageCompetencies::class)
+            ->assertOk()
+            ->assertCanSeeTableRecords([$competency])
+            ->assertActionVisible(TestAction::make('view')->table($competency))
+            ->assertActionHidden(TestAction::make('edit')->table($competency))
+            ->assertActionHidden(TestAction::make('delete')->table($competency))
+            ->assertActionHidden(CreateAction::class);
+    }
+
+    public function test_operator_adds_a_cross_subject_competency(): void
+    {
+        $this->actingAs(User::factory()->operator()->create());
 
         Livewire::test(ManageCompetencies::class)
             ->callAction(CreateAction::class, [
@@ -49,10 +66,10 @@ class CompetencyFrameworkTest extends TestCase
         ]);
     }
 
-    public function test_admin_edits_a_competency(): void
+    public function test_operator_edits_and_deletes_a_competency(): void
     {
         $competency = Competency::factory()->create();
-        $this->actingAs(User::factory()->admin()->create());
+        $this->actingAs(User::factory()->operator()->create());
 
         Livewire::test(ManageCompetencies::class)
             ->callAction(TestAction::make('edit')->table($competency), ['subject' => 'Deutsch', 'name' => 'Texte planen'])
@@ -61,6 +78,11 @@ class CompetencyFrameworkTest extends TestCase
         $competency->refresh();
         $this->assertSame('Deutsch', $competency->subject);
         $this->assertSame('Texte planen', $competency->name);
+
+        Livewire::test(ManageCompetencies::class)
+            ->callAction(TestAction::make('delete')->table($competency));
+
+        $this->assertModelMissing($competency);
     }
 
     public function test_competencies_can_be_filtered_to_cross_subject_ones(): void

@@ -22,8 +22,9 @@ class ClassCodeTest extends TestCase
 
     public function test_admins_see_the_class_code_in_the_table_and_on_the_edit_page(): void
     {
-        $this->actingAs(User::factory()->admin()->create());
-        $schoolClass = SchoolClass::factory()->create(['join_code' => 'ABCDEF']);
+        $admin = User::factory()->admin()->create();
+        $this->actingAs($admin);
+        $schoolClass = SchoolClass::factory()->for($admin->school)->create(['join_code' => 'ABCDEF', 'teacher_id' => null]);
 
         Livewire::test(ListSchoolClasses::class)
             ->assertTableColumnStateSet('join_code', 'ABCDEF', $schoolClass);
@@ -35,8 +36,9 @@ class ClassCodeTest extends TestCase
 
     public function test_admin_regenerates_the_code_and_the_old_one_stops_working(): void
     {
-        $this->actingAs(User::factory()->admin()->create());
-        $schoolClass = SchoolClass::factory()->create(['join_code' => 'ABCDEF']);
+        $admin = User::factory()->admin()->create();
+        $this->actingAs($admin);
+        $schoolClass = SchoolClass::factory()->for($admin->school)->create(['join_code' => 'ABCDEF', 'teacher_id' => null]);
 
         $page = Livewire::test(EditSchoolClass::class, ['record' => $schoolClass->getRouteKey()])
             ->callAction('regenerateJoinCode')
@@ -72,6 +74,30 @@ class ClassCodeTest extends TestCase
             ->mountAction('classCodes')
             ->assertMountedActionModalSee(['ABCDEF', '7b', route('filament.lernplattform.auth.register')])
             ->assertMountedActionModalDontSee(['GHJKMN', '8c']);
+    }
+
+    public function test_teachers_do_not_see_the_codes_of_colleagues_or_of_other_schools(): void
+    {
+        $teacher = User::factory()->teacher()->create();
+        $colleague = User::factory()->teacher()->for($teacher->school)->create();
+        SchoolClass::factory()->for($teacher, 'teacher')->create(['name' => '7b', 'join_code' => 'ABCDEF']);
+        SchoolClass::factory()->for($colleague, 'teacher')->create(['name' => '8c', 'join_code' => 'GHJKMN']);
+        SchoolClass::factory()->create(['name' => '9d', 'join_code' => 'PQRSTU']);
+        $this->actingAs($teacher);
+
+        Livewire::test(ListLessons::class)
+            ->mountAction('classCodes')
+            ->assertMountedActionModalSee(['ABCDEF', '7b'])
+            ->assertMountedActionModalDontSee(['GHJKMN', '8c', 'PQRSTU', '9d']);
+    }
+
+    public function test_operators_have_no_access_to_class_codes(): void
+    {
+        SchoolClass::factory()->create(['join_code' => 'ABCDEF']);
+        $this->actingAs(User::factory()->operator()->create());
+
+        Livewire::test(ListLessons::class)->assertForbidden();
+        Livewire::test(ListSchoolClasses::class)->assertForbidden();
     }
 
     public function test_a_teacher_without_a_class_is_told_whom_to_ask(): void

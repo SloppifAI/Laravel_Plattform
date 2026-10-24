@@ -42,7 +42,9 @@ class SchoolClassResource extends Resource
      */
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->where('school_id', auth()->user()?->school_id);
+        return parent::getEloquentQuery()
+            ->where('school_id', auth()->user()?->school_id)
+            ->whereNotNull('school_id');
     }
 
     public static function form(Schema $schema): Schema

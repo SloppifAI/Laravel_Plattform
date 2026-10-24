@@ -21,7 +21,9 @@ class LessonFactory extends Factory
     {
         return [
             'school_class_id' => SchoolClass::factory(),
-            'teacher_id' => User::factory()->teacher(),
+            'teacher_id' => fn (array $attributes) => User::factory()->teacher()->state([
+                'school_id' => SchoolClass::find($attributes['school_class_id'])->school_id,
+            ]),
             'subject' => fake()->randomElement(['Biologie', 'Mathematik', 'Geschichte', 'Deutsch']),
             'topic' => fake()->sentence(3),
             'held_on' => fake()->dateTimeBetween('-2 weeks'),

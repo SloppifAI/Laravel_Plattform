@@ -64,7 +64,7 @@ class LessonsTable
             ->filters([
                 SelectFilter::make('school_class_id')
                     ->label('Klasse')
-                    ->relationship('schoolClass', 'name')
+                    ->relationship('schoolClass', 'name', fn (Builder $query): Builder => $query->where('school_id', auth()->user()->school_id))
                     ->preload(),
                 TernaryFilter::make('published_at')
                     ->label('Status')

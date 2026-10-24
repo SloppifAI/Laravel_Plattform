@@ -6,21 +6,27 @@ use App\MessageAuthor;
 use App\Models\Competency;
 use App\Models\ExplanationSession;
 use App\Models\Lesson;
+use App\Models\School;
 use App\Models\SchoolClass;
 use App\Models\Submission;
 use App\Models\User;
 use App\QuestionType;
 use App\Role;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Demo school: two teachers, classes 7a and 7b, and lessons in every state (draft, homework with results, open homework,
- * homework for selected students) plus "Erklär's mir" sessions for Mia Hoffmann (login schueler).
+ * Two demo schools. "Gesamtschule am Lernpark" has a school administration (schulleitung), two teachers, classes 7a and 7b
+ * and lessons in every state (draft, homework with results, open homework, homework for selected students, an open
+ * Förderaufgabe for the competency Mia and Ben need support in) plus "Erklär's mir" sessions for Mia Hoffmann (login schueler). "Gymnasium Musterstadt" is a small second school
+ * (gym-admin, one teacher, one class, one lesson) that shows what the schools cannot see of each other.
+ * The platform operator (hackathon) belongs to no school and is created by DatabaseSeeder.
  *
- * Accounts are updated on every run; lessons and sessions are only created when missing, so changes made while
- * trying out the platform survive re-seeding.
+ * Accounts are updated on every run, which also moves demo accounts and classes of databases from before the schools
+ * existed into the demo school. Lessons and sessions are only created when missing, so changes made while trying out
+ * the platform survive re-seeding.
  */
 class DemoSchoolSeeder extends Seeder
 {
@@ -29,11 +35,14 @@ class DemoSchoolSeeder extends Seeder
     public function run(): void
     {
         DB::transaction(function (): void {
-            $anna = $this->user('lehrer', 'Anna Schneider', Role::Teacher);
-            $weber = $this->user('weber', 'Thomas Weber', Role::Teacher);
+            $school = $this->school('4711', 'Gesamtschule am Lernpark', 'Gesamtschule', 'Fulda', 'Hessen', 'sekretariat@lernpark.example');
 
-            $class7b = SchoolClass::updateOrCreate(['name' => '7b'], ['teacher_id' => $anna->id]);
-            $class7a = SchoolClass::updateOrCreate(['name' => '7a'], ['teacher_id' => $weber->id]);
+            $this->user('schulleitung', 'Petra Krause', Role::Admin, $school);
+            $anna = $this->user('lehrer', 'Anna Schneider', Role::Teacher, $school);
+            $weber = $this->user('weber', 'Thomas Weber', Role::Teacher, $school);
+
+            $class7b = $this->schoolClass($school, '7b', $anna);
+            $class7a = $this->schoolClass($school, '7a', $weber);
 
             $students7b = collect([
                 'schueler' => 'Mia Hoffmann',
@@ -44,25 +53,93 @@ class DemoSchoolSeeder extends Seeder
                 'noah.wagner' => 'Noah Wagner',
                 'emma.fischer' => 'Emma Fischer',
                 'luca.meyer' => 'Luca Meyer',
-            ])->map(fn (string $name, string $username): User => $this->user($username, $name, Role::Student, $class7b));
+            ])->map(fn (string $name, string $username): User => $this->user($username, $name, Role::Student, $school, $class7b));
 
             foreach (['paul.richter' => 'Paul Richter', 'hannah.koch' => 'Hannah Koch', 'leon.wolf' => 'Leon Wolf', 'sophie.neumann' => 'Sophie Neumann'] as $username => $name) {
-                $this->user($username, $name, Role::Student, $class7a);
+                $this->user($username, $name, Role::Student, $school, $class7a);
             }
 
             $this->seedRemedialMathematics($class7b, $anna, $students7b->only(['schueler', 'ben.krueger', 'noah.wagner']));
+            $this->seedPracticeTask($class7b, $anna, $students7b->only(['schueler', 'ben.krueger']));
             $photosynthesis = $this->seedPhotosynthesis($class7b, $anna, $students7b);
             $pythagoras = $this->seedPythagoras($class7b, $anna, $students7b);
             $this->seedFrenchRevolution($class7b, $anna);
             $this->seedExplanationSessions($students7b['schueler'], $photosynthesis, $pythagoras);
+
+            $this->seedGymnasium();
         });
     }
 
-    private function user(string $username, string $name, Role $role, ?SchoolClass $schoolClass = null): User
+    /**
+     * The school number is the natural key; it is unique in the schools table.
+     */
+    private function school(string $number, string $name, string $type, string $city, string $state, string $contactEmail): School
+    {
+        return School::updateOrCreate(
+            ['school_number' => $number],
+            ['name' => $name, 'school_type' => $type, 'city' => $city, 'state' => $state, 'contact_email' => $contactEmail],
+        );
+    }
+
+    /**
+     * A class of the school. A class without a school (from before the schools existed) is adopted by it.
+     * The join code is set here because seeding runs without model events, which would otherwise generate it.
+     */
+    private function schoolClass(School $school, string $name, User $teacher): SchoolClass
+    {
+        $schoolClass = SchoolClass::query()
+            ->where('name', $name)
+            ->where(fn (Builder $query) => $query->whereNull('school_id')->orWhere('school_id', $school->id))
+            ->firstOrNew(['name' => $name]);
+
+        $schoolClass->forceFill([
+            'school_id' => $school->id,
+            'teacher_id' => $teacher->id,
+            'join_code' => $schoolClass->join_code ?? SchoolClass::generateJoinCode(),
+        ])->save();
+
+        return $schoolClass;
+    }
+
+    /**
+     * A second, smaller school whose people and lesson none of the first school's accounts see.
+     */
+    private function seedGymnasium(): void
+    {
+        $school = $this->school('4712', 'Gymnasium Musterstadt', 'Gymnasium', 'Musterstadt', 'Niedersachsen', 'sekretariat@gymnasium-musterstadt.example');
+
+        $this->user('gym-admin', 'Stefan Brandt', Role::Admin, $school);
+        $teacher = $this->user('gym-lehrer', 'Julia Berger', Role::Teacher, $school);
+        $schoolClass = $this->schoolClass($school, '8c', $teacher);
+
+        $students = [
+            $this->user('gym-schueler1', 'Finn Albrecht', Role::Student, $school, $schoolClass),
+            $this->user('gym-schueler2', 'Clara Vogt', Role::Student, $school, $schoolClass),
+        ];
+
+        $this->lesson($schoolClass, $teacher, [
+            'subject' => 'Mathematik',
+            'topic' => 'Lineare Funktionen',
+            'held_on' => $this->daysAgo(2),
+            'published_at' => $this->daysAgo(2, '15:00'),
+            'due_on' => $this->daysAgo(-3),
+            'notes' => 'Mathe 8c – Lineare Funktionen. Steigung als Änderungsrate (Beispiel Handytarif), Funktionsgleichung y = m · x + b, Steigungsdreieck am Graphen ablesen. Übung: Wertetabelle zu Gleichung und Graph zeichnen.',
+            'summary' => 'Eine lineare Funktion hat die Gleichung y = m · x + b. Die Steigung m sagt, wie stark sich y ändert, wenn x um 1 größer wird. Der y-Achsenabschnitt b ist der Wert bei x = 0. Am Graphen liest man die Steigung mit einem Steigungsdreieck ab.',
+        ], $students, [
+            [QuestionType::Application, 'Mathematik', 'Mathematische Darstellungen verwenden',
+                'Zeichne den Graphen der Funktion y = 2 · x − 1 für x von −2 bis 3. Lege zuerst eine Wertetabelle an.',
+                'Wertetabelle: x = −2, −1, 0, 1, 2, 3 ergibt y = −5, −3, −1, 1, 3, 5. Die Punkte liegen auf einer Geraden, die die y-Achse bei −1 schneidet und pro Schritt nach rechts um 2 steigt.'],
+            [QuestionType::Comprehension, 'Mathematik', 'Mathematisch argumentieren',
+                'Erkläre in eigenen Worten, was die Steigung m einer linearen Funktion bedeutet.',
+                'Die Steigung gibt an, um wie viel sich y ändert, wenn x um 1 wächst. Bei positivem m steigt der Graph, bei negativem m fällt er.'],
+        ]);
+    }
+
+    private function user(string $username, string $name, Role $role, School $school, ?SchoolClass $schoolClass = null): User
     {
         return User::updateOrCreate(
             ['username' => $username],
-            ['name' => $name, 'password' => self::PASSWORD, 'role' => $role, 'school_class_id' => $schoolClass?->id],
+            ['name' => $name, 'password' => self::PASSWORD, 'role' => $role, 'school_id' => $school->id, 'school_class_id' => $schoolClass?->id],
         );
     }
 
@@ -181,6 +258,43 @@ class DemoSchoolSeeder extends Seeder
                     ['4,50 + 240 = 244,5. Sie brauchen 122 Packungen.', 30, 'Die Längen wurden addiert statt in die Flächenformel eingesetzt, und die Einheiten passen nicht zusammen. Schrittfolge üben: Skizze – Einheiten angleichen – Formel – Antwortsatz.'],
                 ],
             ],
+        ]);
+    }
+
+    /**
+     * An open Förderaufgabe like the teacher creates it on "Lernstand & Förderbedarf": for "Probleme mathematisch lösen",
+     * where Mia and Ben are below the support threshold after the remedial lesson (the other students have no
+     * evaluated answer there). Nobody has handed it in yet, so Mia finds it on "Mein Lernstand" and her start page.
+     *
+     * @param  iterable<User>  $students
+     */
+    private function seedPracticeTask(SchoolClass $schoolClass, User $teacher, iterable $students): void
+    {
+        $this->lesson($schoolClass, $teacher, [
+            'subject' => 'Mathematik',
+            'topic' => 'Förderaufgabe: Probleme mathematisch lösen',
+            'held_on' => $this->daysAgo(1),
+            'published_at' => $this->daysAgo(1, '14:30'),
+            'due_on' => today()->addDays(6),
+            'practice_competency_id' => Competency::query()->where('subject', 'Mathematik')->where('name', 'Probleme mathematisch lösen')->value('id'),
+            'notes' => <<<'NOTES'
+                Förderaufgabe zur Kompetenz „Probleme mathematisch lösen“.
+
+                Zu einer Problemsituation Fragen stellen, Lösungsstrategien (z. B. Skizze, Rückwärtsarbeiten, Zerlegen) auswählen und Ergebnisse überprüfen.
+
+                Aus der Stunde „Flächeninhalt von Dreiecken (Förderaufgabe)“: Bei Sachaufgaben fehlen die Zwischenschritte. Eingeübt wurde „erst Skizze, dann Einheiten angleichen, dann rechnen“, am Ende wird das Ergebnis auf Plausibilität geprüft.
+                NOTES,
+            'summary' => 'Eine Sachaufgabe löst du in festen Schritten: Zuerst eine Skizze anfertigen und gegebene und gesuchte Größen herausschreiben. Dann die Einheiten angleichen (z. B. cm in m umrechnen), die passende Formel wählen und rechnen. Zum Schluss prüfst du, ob das Ergebnis zur Aufgabe passen kann, und schreibst einen Antwortsatz.',
+        ], $students, [
+            [QuestionType::Comprehension, 'Mathematik', 'Probleme mathematisch lösen',
+                'Beschreibe in eigenen Worten, welche Schritte du bei einer Sachaufgabe nacheinander gehst, bevor und nachdem du rechnest.',
+                'Skizze anfertigen und gegebene und gesuchte Größen aus dem Text herausschreiben; Einheiten angleichen; passende Formel wählen und rechnen; Ergebnis auf Plausibilität prüfen; Antwortsatz schreiben.'],
+            [QuestionType::Application, 'Mathematik', 'Probleme mathematisch lösen',
+                'Der rechteckige Schulgarten ist 8 m lang und 450 cm breit. Ein Sack Rindenmulch reicht für 3 m². Wie viele Säcke werden gebraucht, um den ganzen Garten abzudecken? Fertige zuerst eine Skizze an.',
+                'Einheiten angleichen: 450 cm = 4,50 m. A = 8 m · 4,50 m = 36 m². 36 m² : 3 m² = 12, also werden 12 Säcke gebraucht. Skizze mit den beiden Seitenlängen.'],
+            [QuestionType::Reflection, 'Mathematik', 'Probleme mathematisch lösen',
+                'Bei welchem Schritt einer Sachaufgabe passieren dir die meisten Fehler, und woran merkst du, dass ein Ergebnis nicht stimmen kann? Nenne ein Beispiel.',
+                'Eine ehrliche Selbsteinschätzung (z. B. Einheiten mischen, Maße aus dem Text herausfiltern) und ein Plausibilitätscheck am Beispiel, etwa: 270 Packungen Blumensamen für ein kleines Beet sind unrealistisch, also muss irgendwo ein Rechen- oder Einheitenfehler stecken.'],
         ]);
     }
 

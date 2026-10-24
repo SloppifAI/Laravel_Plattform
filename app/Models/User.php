@@ -25,11 +25,25 @@ class User extends Authenticatable implements FilamentUser
     use HasFactory, Notifiable;
 
     /**
-     * Every registered user may use the platform; what they see inside is decided by their role.
+     * Every user may use the platform unless their school was blocked by the operator;
+     * what they see inside is decided by their role.
      */
     public function canAccessPanel(Panel $panel): bool
     {
-        return true;
+        return ! $this->school?->isBlocked();
+    }
+
+    public function isOperator(): bool
+    {
+        return $this->role === Role::Operator;
+    }
+
+    /**
+     * Whether the user belongs to the given school. Operators belong to none.
+     */
+    public function isMemberOf(?School $school): bool
+    {
+        return $school !== null && $this->school()->is($school);
     }
 
     public function isAdmin(): bool

@@ -2,13 +2,14 @@
 
 namespace App\Providers\Filament;
 
-use App\Filament\Pages\Auth\EditProfile;
 use App\Filament\AvatarProviders\InitialsAvatarProvider;
+use App\Filament\Pages\Auth\EditProfile;
 use App\Filament\Pages\Auth\Login;
 use App\Filament\Pages\Auth\Register;
+use App\Filament\Pages\Auth\RegisterSchool;
 use App\Filament\Pages\Auth\RequestPasswordReset;
+use App\Http\Middleware\EnsureSchoolIsActive;
 use Filament\FontProviders\LocalFontProvider;
-use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
@@ -22,6 +23,7 @@ use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Support\Facades\Route;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 class LernplattformPanelProvider extends PanelProvider
@@ -54,6 +56,9 @@ class LernplattformPanelProvider extends PanelProvider
             ->path('')
             ->login(Login::class)
             ->registration(Register::class)
+            // Guest page for new schools; named filament.lernplattform.auth.register-school like the other auth routes.
+            ->livewireComponents([RegisterSchool::class])
+            ->routes(fn () => Route::get('/schule-registrieren', RegisterSchool::class)->name('auth.register-school'))
             ->passwordReset(RequestPasswordReset::class)
             ->profile(EditProfile::class, isSimple: false)
             ->brandName('Lernplattform')
@@ -89,7 +94,7 @@ class LernplattformPanelProvider extends PanelProvider
             ->renderHook(PanelsRenderHook::FOOTER, fn (): View => view('filament.lernplattform.footer'))
             // Every resource needs a policy, so a missing permission rule fails loudly instead of granting access.
             ->strictAuthorization()
-            ->navigationGroups(['Unterricht', 'Lernen', 'Verwaltung'])
+            ->navigationGroups(['Plattform', 'Unterricht', 'Lernen', 'Verwaltung'])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
@@ -104,8 +109,9 @@ class LernplattformPanelProvider extends PanelProvider
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
             ])
+            // Persistent, so a Livewire request from a page opened before the school was blocked is covered too.
             ->authMiddleware([
-                Authenticate::class,
-            ]);
+                EnsureSchoolIsActive::class,
+            ], isPersistent: true);
     }
 }

@@ -27,6 +27,7 @@
                     <span class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-primary-700 group-aria-pressed:bg-primary-600 group-aria-pressed:text-white dark:bg-primary-400/10 dark:text-primary-300 dark:group-aria-pressed:bg-primary-500">
                         <x-filament::icon
                             :icon="match ($role) {
+                                Role::Operator => Heroicon::OutlinedBuildingLibrary,
                                 Role::Admin => Heroicon::OutlinedCog6Tooth,
                                 Role::Teacher => Heroicon::OutlinedPencilSquare,
                                 Role::Student => Heroicon::OutlinedAcademicCap,
