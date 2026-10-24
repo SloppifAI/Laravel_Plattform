@@ -5,12 +5,14 @@ namespace App\Support;
 use App\Ai\LessonAssistant;
 use App\Models\Competency;
 use App\Models\Lesson;
+use App\Models\Question;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
 /**
  * The "Hausaufgabe mit KI erstellen" step shared by the lesson page and "Heute": the assistant (the real AI or the demo,
- * depending on the school) drafts summary and questions from the saved notes, and the draft replaces what the lesson had.
+ * depending on the school) drafts summary and questions from the saved notes. The draft replaces the summary and the
+ * AI questions the teacher left unedited; the teacher's own and edited questions stay in front.
  */
 final class HomeworkDraft
 {
@@ -20,6 +22,17 @@ final class HomeworkDraft
     public static function isRealAi(Lesson $lesson): bool
     {
         return $lesson->schoolClass->school?->aiEnabled() ?? false;
+    }
+
+    /**
+     * The confirmation before a new draft replaces an existing one.
+     */
+    public static function confirmationText(Lesson $lesson): string
+    {
+        $kept = $lesson->questions()->where('ai_drafted', false)->count();
+
+        return __('Die Zusammenfassung und die KI-Fragen werden durch einen neuen KI-Entwurf ersetzt.')
+            .($kept === 0 ? '' : ' '.trans_choice(':count eigene oder bearbeitete Frage bleibt erhalten.|:count eigene oder bearbeitete Fragen bleiben erhalten.', $kept));
     }
 
     /**
@@ -36,13 +49,19 @@ final class HomeworkDraft
 
         DB::transaction(function () use ($lesson, $draft, $allowedCompetencyIds): void {
             $lesson->update(['summary' => $draft['summary']]);
-            $lesson->questions()->delete();
+            // The callers only draft unreleased homework, so there are no answers; the check is the backstop.
+            $lesson->questions()->where('ai_drafted', true)->whereDoesntHave('answers')->delete();
+
+            $kept = $lesson->questions()->orderBy('id')->get();
+            $kept->each(fn (Question $question, int $index) => $question->update(['position' => $index + 1]));
+
             $lesson->questions()->createMany(collect($draft['questions'])->values()->map(fn (array $question, int $index): array => [
                 'type' => $question['type'],
                 'prompt' => $question['prompt'],
                 'expected_answer' => $question['expected_answer'],
                 'competency_id' => $allowedCompetencyIds->contains($question['competency_id'] ?? null) ? $question['competency_id'] : null,
-                'position' => $index + 1,
+                'position' => $kept->count() + $index + 1,
+                'ai_drafted' => true,
             ])->all());
         });
     }

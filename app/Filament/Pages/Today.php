@@ -169,7 +169,7 @@ class Today extends Page implements HasTable
             ->hidden(fn (Lesson $record): bool => $record->isPublished())
             ->requiresConfirmation(fn (Lesson $record): bool => $record->questions_count > 0)
             ->modalHeading('Hausaufgabe neu erstellen?')
-            ->modalDescription('Zusammenfassung und alle bisherigen Fragen werden durch einen neuen KI-Entwurf ersetzt.')
+            ->modalDescription(fn (Lesson $record): string => HomeworkDraft::confirmationText($record))
             ->modalSubmitActionLabel('Neu erstellen')
             ->action(function (Lesson $record): void {
                 try {

@@ -126,9 +126,12 @@ class DemoLessonAssistant implements LessonAssistant
             $questions[$position]['competency_id'] = $competencyIds === [] ? null : $competencyIds[$position % count($competencyIds)];
         }
 
+        // Like the real AI, the draft does not repeat the teacher's own questions; the demo cannot think up others, so it leaves them out.
+        $ownPrompts = $lesson->questions()->where('ai_drafted', false)->pluck('prompt')->all();
+
         return [
             'summary' => $this->summarize($lesson, $terms, $sentences, $when),
-            'questions' => $questions,
+            'questions' => array_values(array_filter($questions, fn (array $question): bool => ! in_array($question['prompt'], $ownPrompts, true))),
         ];
     }
 

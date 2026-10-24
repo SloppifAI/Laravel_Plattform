@@ -116,7 +116,7 @@ class EditLesson extends EditRecord
                 ->hidden(fn (Lesson $record): bool => $record->isPublished() || $record->isPracticeTask())
                 ->requiresConfirmation(fn (Lesson $record): bool => $record->questions()->exists())
                 ->modalHeading('Hausaufgabe neu erstellen?')
-                ->modalDescription('Zusammenfassung und alle bisherigen Fragen werden durch einen neuen KI-Entwurf ersetzt.')
+                ->modalDescription(fn (Lesson $record): string => HomeworkDraft::confirmationText($record))
                 ->modalSubmitActionLabel('Neu erstellen')
                 ->action(function (Lesson $record): void {
                     // The AI works from the saved notes, so unsaved edits must not get lost.

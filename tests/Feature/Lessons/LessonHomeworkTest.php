@@ -31,10 +31,10 @@ class LessonHomeworkTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_drafting_homework_stores_the_summary_and_replaces_the_questions(): void
+    public function test_drafting_homework_stores_the_summary_and_replaces_the_ai_questions(): void
     {
         $lesson = Lesson::factory()->create(['subject' => 'Biologie']);
-        Question::factory()->for($lesson)->create(['prompt' => 'Alte Frage']);
+        Question::factory()->for($lesson)->aiDrafted()->create(['prompt' => 'Alte Frage']);
         $competency = Competency::factory()->create(['subject' => 'Biologie']);
         $this->mock(LessonAssistant::class, fn (MockInterface $mock) => $mock->shouldReceive('draftHomework')->once()->andReturn([
             'summary' => 'Pflanzen bauen mit Licht aus CO2 und Wasser Glucose auf.',

@@ -119,6 +119,11 @@ class QuestionsRelationManager extends RelationManager
                     ->label('Kompetenz')
                     ->placeholder('–')
                     ->wrap(),
+                TextColumn::make('origin')
+                    ->label(__('Herkunft'))
+                    ->state(fn (Question $record): string => $record->ai_drafted ? __('KI-Entwurf') : __('Eigene Frage'))
+                    ->badge()
+                    ->color(fn (Question $record): string => $record->ai_drafted ? 'gray' : 'primary'),
             ])
             ->headerActions([
                 CreateAction::make()
@@ -153,7 +158,16 @@ class QuestionsRelationManager extends RelationManager
                     ->action(fn (Question $record) => $this->createLevels(collect([$record]), replaceExisting: true)),
                 ViewAction::make()
                     ->hidden(fn (): bool => ! $this->isReadOnly()),
-                EditAction::make(),
+                // A question the teacher changed is theirs from now on, so a new AI draft keeps it. Only this dialog counts:
+                // reordering and the AI levels leave an AI question an AI question.
+                EditAction::make()
+                    ->using(function (Question $record, array $data): Question {
+                        $record->fill($data);
+                        $record->ai_drafted = $record->ai_drafted && $record->isClean();
+                        $record->save();
+
+                        return $record;
+                    }),
                 DeleteAction::make(),
             ])
             ->toolbarActions([

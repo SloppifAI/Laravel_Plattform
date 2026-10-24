@@ -130,9 +130,10 @@ class TodayTest extends TestCase
             ->assertActionHidden('releaseAll');
     }
 
-    public function test_the_draft_replaces_the_questions_and_says_it_is_a_demo_for_schools_without_ai(): void
+    public function test_the_draft_replaces_the_ai_questions_and_says_it_is_a_demo_for_schools_without_ai(): void
     {
-        $lesson = $this->lesson('2026-10-21', ['subject' => 'Biologie'], questions: 1);
+        $lesson = $this->lesson('2026-10-21', ['subject' => 'Biologie']);
+        Question::factory()->for($lesson)->aiDrafted()->create();
         $competency = Competency::factory()->create(['subject' => 'Biologie']);
         $this->mock(LessonAssistant::class, fn (MockInterface $mock) => $mock->shouldReceive('draftHomework')->once()->andReturn([
             'summary' => 'Pflanzen bauen mit Licht Glucose auf.',
@@ -157,6 +158,17 @@ class TodayTest extends TestCase
             [['prompt' => 'Was braucht die Fotosynthese?', 'competency_id' => $competency->id], ['prompt' => 'Was zeigte die Wasserpest?', 'competency_id' => null]],
             $lesson->questions()->get(['prompt', 'competency_id'])->toArray(),
         );
+    }
+
+    public function test_the_confirmation_names_the_own_questions_that_stay(): void
+    {
+        $lesson = $this->lesson('2026-10-21', [], questions: 2);
+        Question::factory()->for($lesson)->aiDrafted()->create();
+        $this->actingAs($this->teacher);
+
+        Livewire::test(Today::class)
+            ->mountAction(TestAction::make('draftHomework')->table($lesson))
+            ->assertMountedActionModalSee('Die Zusammenfassung und die KI-Fragen werden durch einen neuen KI-Entwurf ersetzt. 2 eigene oder bearbeitete Fragen bleiben erhalten.');
     }
 
     public function test_the_draft_of_a_school_with_ai_carries_no_demo_hint(): void

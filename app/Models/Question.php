@@ -14,8 +14,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 /**
  * A homework question with its Erwartungshorizont (`expected_answer`), which students never see. `prompt` is the
  * Standard level; `prompt_basis` (Einstieg) and `prompt_plus` (Profi) are optional variants that share the Erwartungshorizont.
+ * `ai_drafted` marks a question of the AI draft the teacher has not edited; a new draft replaces only those (HomeworkDraft).
  */
-#[Fillable(['lesson_id', 'competency_id', 'type', 'prompt', 'prompt_basis', 'prompt_plus', 'expected_answer', 'position'])]
+#[Fillable(['lesson_id', 'competency_id', 'type', 'prompt', 'prompt_basis', 'prompt_plus', 'expected_answer', 'position', 'ai_drafted'])]
 class Question extends Model
 {
     /** @use HasFactory<QuestionFactory> */
@@ -94,6 +95,7 @@ class Question extends Model
     {
         return [
             'type' => QuestionType::class,
+            'ai_drafted' => 'boolean',
         ];
     }
 }

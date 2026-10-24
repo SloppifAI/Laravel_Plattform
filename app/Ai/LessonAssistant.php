@@ -21,7 +21,9 @@ interface LessonAssistant
     /**
      * Summarise a lesson from the teacher's notes and worksheets and draft exactly five homework questions:
      * two comprehension, two application and one reflection question, each mapped to one of the competencies
-     * returned by Competency::forSubject($lesson->subject).
+     * returned by Competency::forSubject($lesson->subject). The lesson's own and edited questions (`ai_drafted` false)
+     * stay next to the draft (see HomeworkDraft), so the draft does not repeat them; the offline demo leaves out the
+     * questions it would repeat instead of finding others.
      *
      * @return array{summary: string, questions: list<array{type: QuestionType, prompt: string, expected_answer: string, competency_id: int|null}>}
      */

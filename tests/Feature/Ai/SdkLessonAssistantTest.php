@@ -151,6 +151,28 @@ class SdkLessonAssistantTest extends TestCase
         });
     }
 
+    public function test_the_homework_draft_gets_the_own_questions_without_names_and_not_the_ai_ones(): void
+    {
+        $lesson = $this->lesson();
+        Question::factory()->for($lesson)->create(['prompt' => 'Was hat Zacharias Quellenberg an der Wasserpest beobachtet?', 'position' => 1]);
+        Question::factory()->for($lesson)->create(['prompt' => 'Wie hat Berta Lehnhardt den Versuch aufgebaut?', 'position' => 2]);
+        Question::factory()->for($lesson)->aiDrafted()->create(['prompt' => 'Alte KI-Frage, die ersetzt wird', 'position' => 3]);
+        HomeworkDrafter::fake([$this->homeworkAnswer()]);
+
+        $this->assistant()->draftHomework($lesson);
+
+        HomeworkDrafter::assertPrompted(function (AgentPrompt $prompt): bool {
+            $this->assertStringContainsString("Fragen, die die Lehrkraft schon hat und behält (nicht wiederholen):\n- Was hat Schüler:in A an der Wasserpest beobachtet?", $prompt->prompt);
+            $this->assertStringNotContainsString('Quellenberg', $prompt->prompt);
+            $this->assertStringContainsString('den Versuch aufgebaut?', $prompt->prompt);
+            $this->assertStringNotContainsString('Lehnhardt', $prompt->prompt);
+            $this->assertStringNotContainsString('Alte KI-Frage', $prompt->prompt);
+
+            return true;
+        });
+        $this->assertStringContainsString('wiederholst du sie nicht', (new HomeworkDrafter)->instructions());
+    }
+
     public function test_phone_photos_in_heic_reach_the_ai_and_formats_it_cannot_read_do_not(): void
     {
         Storage::fake('local');

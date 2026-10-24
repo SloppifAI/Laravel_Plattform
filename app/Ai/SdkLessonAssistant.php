@@ -54,10 +54,15 @@ class SdkLessonAssistant implements LessonAssistant
         $competencyList = $competencies->isEmpty()
             ? 'Keine hinterlegt – setze competency_id überall auf null.'
             : $competencies->map(fn (Competency $competency): string => "- ID {$competency->id}: {$competency->area} – {$competency->name}")->implode("\n");
+        // The teacher's own and edited questions stay next to the draft (HomeworkDraft), so the AI must not repeat them.
+        $ownQuestions = $lesson->questions()->where('ai_drafted', false)->pluck('prompt')
+            ->map(fn (string $prompt): string => '- '.$pseudonymizer->apply($prompt))
+            ->implode("\n");
 
         $result = $this->askForData(
             new HomeworkDrafter,
-            $this->lessonContext($lesson, $pseudonymizer)."\n\nKompetenzen aus dem Referenzrahmen:\n".$competencyList,
+            $this->lessonContext($lesson, $pseudonymizer)."\n\nKompetenzen aus dem Referenzrahmen:\n".$competencyList
+                .($ownQuestions === '' ? '' : "\n\nFragen, die die Lehrkraft schon hat und behält (nicht wiederholen):\n".$ownQuestions),
             $this->worksheets($lesson),
         );
 
@@ -113,7 +118,7 @@ class SdkLessonAssistant implements LessonAssistant
             $level = $answers->get($question->id)?->level === null ? null : $question->levelFor($answers->get($question->id)->level);
 
             return implode("\n", [
-                "Frage-ID {$question->id} ({$question->type->getLabel()}".($level === null ? '' : ", Stufe: {$level->getLabel()}").'): '.$pseudonymizer->apply($question->promptFor($level ?? QuestionLevel::Standard)),
+                "Frage-ID {$question->id} ({$this->germanLabel($question->type)}".($level === null ? '' : ", Stufe: {$this->germanLabel($level)}").'): '.$pseudonymizer->apply($question->promptFor($level ?? QuestionLevel::Standard)),
                 'Erwartungshorizont: '.$pseudonymizer->apply((string) $question->expected_answer),
                 'Antwort: '.($answers->get($question->id)?->answer ? $pseudonymizer->apply($answers->get($question->id)->answer) : '(keine Antwort)'),
             ]);
@@ -158,7 +163,7 @@ class SdkLessonAssistant implements LessonAssistant
             'Fach: '.$pseudonymizer->apply((string) $lesson->subject),
             'Thema: '.$pseudonymizer->apply((string) $lesson->topic),
             $lesson->summary ? "Zusammenfassung der Lehrkraft:\n".$pseudonymizer->apply($lesson->summary) : null,
-            "Art der Frage: {$question->type->getLabel()}",
+            "Art der Frage: {$this->germanLabel($question->type)}",
             "Frage:\n".$pseudonymizer->apply($question->prompt),
         ])));
 
@@ -363,6 +368,21 @@ class SdkLessonAssistant implements LessonAssistant
     private function text(mixed $value): string
     {
         return is_string($value) ? trim($value) : '';
+    }
+
+    /**
+     * The prompts are German whatever language the interface speaks, so the labels of the enums in them are too.
+     */
+    private function germanLabel(QuestionType|QuestionLevel $case): string
+    {
+        $locale = app()->getLocale();
+        app()->setLocale('de');
+
+        try {
+            return $case->getLabel();
+        } finally {
+            app()->setLocale($locale);
+        }
     }
 
     private function clamp(mixed $score): int
