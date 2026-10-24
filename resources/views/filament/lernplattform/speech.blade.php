@@ -41,6 +41,14 @@
         margin-top: 0.5rem;
     }
 
+    /* Filament's header action area is a plain block: next to buttons or badges the read button would wrap without a gap. */
+    .fi-section-header-after-ctn:has(> .lp-speech-btn) {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
     .lp-speech-btn {
         display: inline-flex;
         align-items: center;
