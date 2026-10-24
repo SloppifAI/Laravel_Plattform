@@ -13,7 +13,11 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         // shortcut: trusts any proxy, fine while the container is only reachable via Coolify's Traefik.
-        $middleware->trustProxies(at: '*');
+        // X-Forwarded-Host stays untrusted: it would let a forged header redirect password reset links to another host.
+        $middleware->trustProxies(
+            at: '*',
+            headers: Request::HEADER_X_FORWARDED_FOR | Request::HEADER_X_FORWARDED_PORT | Request::HEADER_X_FORWARDED_PROTO,
+        );
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
