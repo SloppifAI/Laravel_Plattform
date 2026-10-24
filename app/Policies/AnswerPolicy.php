@@ -1,0 +1,42 @@
+<?php
+
+namespace App\Policies;
+
+use App\Models\Answer;
+use App\Models\User;
+
+/**
+ * Answers are part of their submission and follow its rules.
+ */
+class AnswerPolicy
+{
+    public function viewAny(User $user): bool
+    {
+        return true;
+    }
+
+    public function view(User $user, Answer $answer): bool
+    {
+        return $user->can('view', $answer->submission);
+    }
+
+    public function create(User $user): bool
+    {
+        return $user->isStudent();
+    }
+
+    public function update(User $user, Answer $answer): bool
+    {
+        return false;
+    }
+
+    public function delete(User $user, Answer $answer): bool
+    {
+        return $user->can('delete', $answer->submission);
+    }
+
+    public function deleteAny(User $user): bool
+    {
+        return $user->isAdmin() || $user->isTeacher();
+    }
+}
