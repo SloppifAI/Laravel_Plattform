@@ -2,14 +2,11 @@
 
 namespace App\Providers;
 
-use App\Ai\ClaudeLessonAssistant;
-use App\Ai\ClaudeRecordingAnalyst;
-use App\Ai\DemoLessonAssistant;
-use App\Ai\DemoRecordingAnalyst;
-use App\Ai\DemoTranscriber;
 use App\Ai\LessonAssistant;
 use App\Ai\RecordingAnalyst;
-use App\Ai\SpeechToTextTranscriber;
+use App\Ai\SchoolAwareLessonAssistant;
+use App\Ai\SchoolAwareRecordingAnalyst;
+use App\Ai\SchoolAwareTranscriber;
 use App\Ai\Transcriber;
 use Filament\Forms\Components\Select;
 use Filament\Support\Facades\FilamentView;
@@ -30,17 +27,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->app->bind(LessonAssistant::class, fn (): LessonAssistant => config('services.anthropic.enabled')
-            ? $this->app->make(ClaudeLessonAssistant::class)
-            : $this->app->make(DemoLessonAssistant::class));
+        // Each call goes to the real AI (SDK) only for a school that switched it on, otherwise to the offline demo logic.
+        $this->app->bind(LessonAssistant::class, SchoolAwareLessonAssistant::class);
 
-        // Recordings: audio goes to a speech-to-text provider only with TRANSCRIPTION_ENABLED, the transcript text to Claude only with ANTHROPIC_ENABLED.
-        $this->app->bind(Transcriber::class, fn (): Transcriber => config('services.transcription.enabled')
-            ? $this->app->make(SpeechToTextTranscriber::class)
-            : $this->app->make(DemoTranscriber::class));
-        $this->app->bind(RecordingAnalyst::class, fn (): RecordingAnalyst => config('services.anthropic.enabled')
-            ? $this->app->make(ClaudeRecordingAnalyst::class)
-            : $this->app->make(DemoRecordingAnalyst::class));
+        // Tuto-Mikro: sound segments and notes go to the real AI (SDK) only for a school that switched it on, otherwise the demo answers.
+        $this->app->bind(Transcriber::class, SchoolAwareTranscriber::class);
+        $this->app->bind(RecordingAnalyst::class, SchoolAwareRecordingAnalyst::class);
     }
 
     /**

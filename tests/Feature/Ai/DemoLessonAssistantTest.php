@@ -4,6 +4,7 @@ namespace Tests\Feature\Ai;
 
 use App\Ai\DemoLessonAssistant;
 use App\Ai\LessonAssistant;
+use App\Ai\SchoolAwareLessonAssistant;
 use App\MessageAuthor;
 use App\Models\Competency;
 use App\Models\ExplanationSession;
@@ -28,12 +29,12 @@ class DemoLessonAssistantTest extends TestCase
         - Die Glucose nutzt die Pflanze als Energiespeicher und zum Aufbau von Stärke.
         NOTES;
 
-    public function test_it_is_the_assistant_used_by_default(): void
+    public function test_the_application_binds_the_school_aware_assistant_which_falls_back_to_this_one(): void
     {
-        $this->assertInstanceOf(DemoLessonAssistant::class, app(LessonAssistant::class));
+        $this->assertInstanceOf(SchoolAwareLessonAssistant::class, app(LessonAssistant::class));
     }
 
-    public function test_it_drafts_a_summary_and_four_questions_mapped_to_the_subjects_competencies(): void
+    public function test_it_drafts_a_summary_and_five_questions_mapped_to_the_subjects_competencies(): void
     {
         $lesson = $this->photosynthesisLesson();
         $biology = Competency::factory()->create(['subject' => 'Biologie']);
@@ -50,11 +51,11 @@ class DemoLessonAssistantTest extends TestCase
         $this->assertLessThanOrEqual(5, $sentenceCount);
 
         $this->assertSame(
-            [QuestionType::Comprehension, QuestionType::Comprehension, QuestionType::Application, QuestionType::Reflection],
+            [QuestionType::Comprehension, QuestionType::Comprehension, QuestionType::Application, QuestionType::Application, QuestionType::Reflection],
             array_column($draft['questions'], 'type'),
         );
-        $this->assertStringContainsString('am 21.10.', $draft['questions'][3]['prompt']);
-        $this->assertStringContainsString('Wasserpest', $draft['questions'][3]['prompt']);
+        $this->assertStringContainsString('am 21.10.', $draft['questions'][4]['prompt']);
+        $this->assertStringContainsString('Wasserpest', $draft['questions'][4]['prompt']);
 
         foreach ($draft['questions'] as $question) {
             $this->assertNotSame('', $question['prompt']);
@@ -72,7 +73,7 @@ class DemoLessonAssistantTest extends TestCase
     {
         $draft = app(DemoLessonAssistant::class)->draftHomework($this->photosynthesisLesson());
 
-        $this->assertSame([null, null, null, null], array_column($draft['questions'], 'competency_id'));
+        $this->assertSame([null, null, null, null, null], array_column($draft['questions'], 'competency_id'));
     }
 
     public function test_a_submission_covering_the_lesson_scores_clearly_higher_than_an_off_topic_one(): void

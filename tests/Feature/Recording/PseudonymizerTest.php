@@ -108,6 +108,46 @@ class PseudonymizerTest extends TestCase
         $this->assertSame('M ist ein Buchstabe, Schüler:in A Schüler:in A meldet sich.', $result);
     }
 
+    public function test_hyphenated_names_are_found_however_speech_recognition_writes_them(): void
+    {
+        $result = Pseudonymizer::forPeople(['Anna-Lena Schmidt', 'Jan-Ole Peters'], null)
+            ->apply('Anna Lena hat gefragt, Annalena auch, Lena ebenfalls. Jan Ole und Ole lachen. Anna-Lena auch. Joleo bleibt, Peters und Schmidt nicht. Anna Lena Schmidt meldet sich.');
+
+        $this->assertSame('Schüler:in A hat gefragt, Schüler:in A auch, Schüler:in A ebenfalls. Schüler:in B und Schüler:in B lachen. Schüler:in A auch. Joleo bleibt, Schüler:in B und Schüler:in A nicht. Schüler:in A meldet sich.', $result);
+        $this->assertStringNotContainsStringIgnoringCase('lena', $result);
+    }
+
+    public function test_a_double_barrelled_surname_is_replaced_by_either_half_and_as_written_together(): void
+    {
+        $result = Pseudonymizer::forPeople(['Tim Müller-Schmidt'], 'Eva Meier-Kraft')->apply('Müller Schmidt, Müllerschmidt, Schmidt, Müller-Schmidt und Frau Kraft, Meier-Kraft, Meierkraft.');
+
+        $this->assertSame('Schüler:in A, Schüler:in A, Schüler:in A, Schüler:in A und Frau Lehrkraft, Lehrkraft, Lehrkraft.', $result);
+    }
+
+    public function test_a_hyphen_part_shared_by_two_students_becomes_a_neutral_label(): void
+    {
+        $result = Pseudonymizer::forPeople(['Anna-Lena Schmidt', 'Lena Meyer'], null)->apply('Lena sagt: Anna-Lena Schmidt, Lena Meyer.');
+
+        $this->assertSame('Person sagt: Schüler:in A, Schüler:in B.', $result);
+    }
+
+    public function test_the_class_lead_and_the_assigned_teachers_are_replaced_as_well(): void
+    {
+        $coTeacher = User::factory()->teacher()->create(['name' => 'Petra Krause', 'school_id' => $this->lesson->schoolClass->school_id]);
+        $this->lesson->schoolClass->teachers()->attach($coTeacher);
+        $substitute = User::factory()->teacher()->create(['name' => 'Hans Lindner', 'school_id' => $this->lesson->schoolClass->school_id]);
+        $this->lesson->update(['teacher_id' => $substitute->id]);
+
+        $text = 'Wie Frau Krause letzte Woche erklärt hat, sagt Herr Lindner, und Frau Meier stimmt zu. Anna meldet sich.';
+        $result = Pseudonymizer::forLesson($this->lesson->fresh())->apply($text);
+
+        foreach (['Krause', 'Lindner', 'Meier'] as $name) {
+            $this->assertStringNotContainsString($name, $result, "{$name} must be gone");
+        }
+
+        $this->assertSame('Wie Frau Lehrkraft letzte Woche erklärt hat, sagt Herr Lehrkraft, und Frau Lehrkraft stimmt zu. Schüler:in A meldet sich.', $result);
+    }
+
     public function test_without_people_the_text_stays_as_it_is(): void
     {
         $this->assertSame('Anna spricht.', Pseudonymizer::forPeople([], null)->apply('Anna spricht.'));

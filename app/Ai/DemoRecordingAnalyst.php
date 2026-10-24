@@ -2,11 +2,11 @@
 
 namespace App\Ai;
 
-use App\Models\LessonRecording;
+use App\Models\Lesson;
 use Illuminate\Support\Str;
 
 /**
- * Offline stand-in for the AI: a careful extract of the transcript, computed locally and deterministically.
+ * Offline stand-in for the AI: a careful extract of the notes, computed locally and deterministically.
  * The summary consists of the sentences with the most frequent terms, the key terms are the longest-lived words of
  * the lesson, the board outline pairs each term with the sentence that introduces it and the questions are the
  * sentences that end in a question mark. Nothing is invented and nothing leaves the platform.
@@ -33,9 +33,9 @@ class DemoRecordingAnalyst implements RecordingAnalyst
         'schauen', 'sagen', 'sagt', 'gleich', 'ganz', 'dass', 'wisst', 'wissen', 'Frage', 'Fragen',
     ];
 
-    public function analyse(LessonRecording $recording, string $transcript): array
+    public function analyse(Lesson $lesson, string $text): array
     {
-        $sentences = $this->sentences($transcript);
+        $sentences = $this->sentences($text);
         $terms = $this->keyTerms($sentences);
 
         $summary = implode(' ', $this->keySentences($sentences, $terms));
@@ -56,9 +56,9 @@ class DemoRecordingAnalyst implements RecordingAnalyst
      *
      * @return list<string>
      */
-    private function sentences(string $transcript): array
+    private function sentences(string $notes): array
     {
-        $text = trim((string) preg_replace('/\s+/u', ' ', $transcript));
+        $text = trim((string) preg_replace('/\s+/u', ' ', $notes));
         $sentences = [];
 
         foreach (preg_split('/(?<=[.!?])\s+/u', $text, -1, PREG_SPLIT_NO_EMPTY) ?: [] as $sentence) {

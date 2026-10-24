@@ -14,11 +14,12 @@ use App\UnderstandingLevel;
 use Illuminate\Support\Collection;
 
 /**
- * Offline stand-in for the AI, used while the Claude connection is switched off.
+ * Offline stand-in for the AI, used for every school that has not switched the AI on (see SchoolAwareLessonAssistant).
  *
  * Deterministic text heuristics: it ranks the key terms of the teacher's notes and measures how many of them
  * a student's own text covers. No API call, no database writes. In "Erklär's mir" it speaks as the curious
- * classmate ExplainIt::TUTOR_NAME, in the first person.
+ * classmate ExplainIt::TUTOR_NAME, in the first person. A homework draft has five questions, like the real AI's:
+ * two comprehension, two application and one reflection question.
  */
 class DemoLessonAssistant implements LessonAssistant
 {
@@ -63,6 +64,17 @@ class DemoLessonAssistant implements LessonAssistant
         'weil', 'deshalb', 'dadurch', 'denn', 'daher', 'darum', 'sodass', 'also', 'beispiel', 'bedeutet', 'heißt', 'wenn',
     ];
 
+    /**
+     * Bookish words and abbreviations (lower case) with the everyday words that replace them in "Einfache Sprache";
+     * only those that keep the word order and the case of the words around them.
+     */
+    private const array SIMPLE_WORDS = [
+        'beispielsweise' => 'zum Beispiel', 'z. b.' => 'zum Beispiel', 'z.b.' => 'zum Beispiel', 'd. h.' => 'das heißt',
+        'd.h.' => 'das heißt', 'bzw.' => 'oder', 'ca.' => 'etwa', 'ungefähr' => 'etwa', 'außerdem' => 'auch', 'zudem' => 'auch',
+        'ebenfalls' => 'auch', 'somit' => 'so', 'daher' => 'deshalb', 'dennoch' => 'trotzdem', 'bereits' => 'schon',
+        'lediglich' => 'nur', 'hierbei' => 'dabei', 'erneut' => 'noch einmal', 'zunächst' => 'zuerst', 'anschließend' => 'danach',
+    ];
+
     public function draftHomework(Lesson $lesson): array
     {
         $topic = (string) $lesson->topic;
@@ -93,6 +105,11 @@ class DemoLessonAssistant implements LessonAssistant
                 'type' => QuestionType::Application,
                 'prompt' => "Übertrage das Gelernte auf eine neue Situation: Finde ein eigenes Beispiel außerhalb des Unterrichts, bei dem „{$term(0)}“ eine Rolle spielt, und erkläre daran, was du über „{$term(3)}“ gelernt hast.",
                 'expected_answer' => 'Ein passendes Beispiel überträgt die Inhalte der Stunde richtig: '.$this->expectedAnswer($sentences, [$terms[0] ?? null, $terms[3] ?? null]),
+            ],
+            [
+                'type' => QuestionType::Application,
+                'prompt' => "Stell dir vor, „{$term(1)}“ würde sich verändern oder ganz fehlen: Was würde dann mit „{$term(2)}“ passieren? Begründe deine Vermutung mit dem, was du in der Stunde gelernt hast.",
+                'expected_answer' => 'Eine gute Antwort sagt eine plausible Folge voraus und begründet sie fachlich: '.$this->expectedAnswer($sentences, [$terms[1] ?? null, $terms[2] ?? null]),
             ],
             [
                 'type' => QuestionType::Reflection,
@@ -212,6 +229,60 @@ class DemoLessonAssistant implements LessonAssistant
             'gaps' => $gaps,
             'answers' => $evaluatedAnswers,
         ];
+    }
+
+    /**
+     * Einstieg: the first sentence of the question, cut at its first "und" when it is long, plus a hint that points
+     * to the question's own wording and to the teacher's summary. Profi: the question plus a request for a reason or
+     * a transfer, depending on its type. Neither uses the Erwartungshorizont.
+     */
+    public function differentiateQuestion(Question $question): array
+    {
+        $prompt = trim($question->prompt);
+        $first = $this->splitSentences($prompt)[0] ?? $prompt;
+        $term = preg_match('/„([^“]+)“/u', $prompt, $quoted) ? $quoted[1] : null;
+
+        if ($this->wordCount($first) > 16 && preg_match('/^(.+?\S)\s+und\s/u', $first, $head) && $this->wordCount($head[1]) >= 6) {
+            $first = rtrim($head[1], ' ,;:–-').(str_ends_with($prompt, '?') ? '?' : '.');
+        }
+
+        $hint = $term === null
+            ? 'Tipp: Schreib zwei bis drei kurze Sätze und schau in die Zusammenfassung deiner Lehrkraft.'
+            : "Tipp: Schreib zwei bis drei kurze Sätze. Denk dabei an „{$term}“.";
+
+        return [
+            'basis' => $this->sentenceEnd($first).' '.$hint,
+            'plus' => $this->sentenceEnd($prompt).' '.match ($question->type) {
+                QuestionType::Comprehension => 'Erkläre zusätzlich, warum das so ist, und nenne ein Beispiel aus dem Alltag.',
+                QuestionType::Application => 'Begründe zusätzlich deine Lösung und überlege, in welcher anderen Situation dasselbe gilt.',
+                QuestionType::Reflection => 'Begründe außerdem, was du daraus für dich mitnimmst und was du nächstes Mal anders machen würdest.',
+            },
+        ];
+    }
+
+    /**
+     * Rule-based: everyday words for bookish ones, filler words dropped, and sentences of more than twelve words split
+     * at a semicolon or before "aber"/"doch". Line breaks and bullet points stay, so Markdown keeps its shape.
+     */
+    public function simplify(string $text, Lesson $lesson): string
+    {
+        $pattern = '/(?<![\p{L}])('.implode('|', array_map(fn (string $word): string => preg_quote($word, '/'), array_keys(self::SIMPLE_WORDS))).')(?![\p{L}])/iu';
+
+        $lines = array_map(function (string $line) use ($pattern): string {
+            preg_match('/^(\s*(?:[-*•]|\d+[.)]|#+)\s+)?(.*)$/su', $line, $parts);
+
+            $plain = preg_replace_callback($pattern, function (array $match): string {
+                $replacement = self::SIMPLE_WORDS[mb_strtolower($match[0])];
+
+                return mb_substr($match[0], 0, 1) === mb_strtolower(mb_substr($match[0], 0, 1)) ? $replacement : mb_ucfirst($replacement);
+            }, $parts[2]) ?? $parts[2];
+            // Lower case only: a filler word at the start of a sentence stays, so the sentence keeps its capital letter.
+            $plain = preg_replace('/\s+(?:eigentlich|grundsätzlich|sozusagen|quasi)(?![\p{L}])/u', '', $plain) ?? $plain;
+
+            return $parts[1].implode(' ', array_map($this->splitLongSentence(...), $this->splitSentences($plain)));
+        }, preg_split('/\R/u', trim($text)) ?: []);
+
+        return trim(implode("\n", $lines));
     }
 
     public function askFollowUp(ExplanationSession $session): string
@@ -625,11 +696,8 @@ class DemoLessonAssistant implements LessonAssistant
 
         foreach (preg_split('/\R/u', $text) ?: [] as $line) {
             $line = preg_replace('/^\s*(?:[-–—*•·>#]+|\d+[.)])\s*/u', '', $line) ?? '';
-            $parts = preg_split('/(?<=[.!?])(?<!\b[zZdDuB]\.)(?<!\bbzw\.)(?<!\bca\.)(?<!\busw\.)(?<!\b\d\.)(?<!\b\d\d\.)\s+(?=[\p{Lu}„"])/u', $line) ?: [];
 
-            foreach ($parts as $sentence) {
-                $sentence = trim(preg_replace('/\s+/u', ' ', $sentence) ?? '');
-
+            foreach ($this->splitSentences($line) as $sentence) {
                 if ($this->wordCount($sentence) >= 4) {
                     $sentences[] = preg_match('/[.!?…]$/u', $sentence) ? $sentence : $sentence.'.';
                 }
@@ -637,6 +705,33 @@ class DemoLessonAssistant implements LessonAssistant
         }
 
         return $sentences;
+    }
+
+    /**
+     * The sentences of one line of text as they are written, short ones included.
+     *
+     * @return list<string>
+     */
+    private function splitSentences(string $line): array
+    {
+        $parts = preg_split('/(?<=[.!?])(?<!\b[zZdDuB]\.)(?<!\bbzw\.)(?<!\bca\.)(?<!\busw\.)(?<!\b\d\.)(?<!\b\d\d\.)\s+(?=[\p{Lu}„"])/u', trim($line)) ?: [];
+
+        return array_values(array_filter(array_map(fn (string $sentence): string => trim(preg_replace('/\s+/u', ' ', $sentence) ?? ''), $parts), fn (string $sentence): bool => $sentence !== ''));
+    }
+
+    /**
+     * A sentence of more than twelve words, split at a semicolon or before "aber"/"doch", which both start a main clause.
+     */
+    private function splitLongSentence(string $sentence): string
+    {
+        if ($this->wordCount($sentence) <= 12) {
+            return $sentence;
+        }
+
+        $parts = preg_split('/;\s+|,\s+(?=(?:aber|doch)\s)/u', $sentence) ?: [$sentence];
+        $last = array_key_last($parts);
+
+        return implode(' ', array_map(fn (string $part, int $index): string => mb_ucfirst(trim($part)).($index === $last ? '' : '.'), $parts, array_keys($parts)));
     }
 
     /**

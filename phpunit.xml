@@ -21,6 +21,12 @@
         <!-- The suite boots the whole Filament panel for ~900 tests; 128M runs out and kills the process. -->
         <ini name="memory_limit" value="1G"/>
         <env name="APP_ENV" value="testing"/>
+        <!-- The UI texts are not translated yet, so the suite keeps running with the English Filament strings; tests of the German UI set the default themselves. -->
+        <env name="LERNPLATTFORM_LOCALE" value="en"/>
+        <!-- Never call a real AI from tests; the SDK implementations are tested with the SDK fakes. -->
+        <env name="AI_ENABLED" value="false"/>
+        <env name="GEMINI_API_KEY" value=""/>
+        <env name="LERNPLATTFORM_DPA_FINAL" value="false"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>

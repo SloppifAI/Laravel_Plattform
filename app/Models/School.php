@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /**
  * A school using the platform. Everything below it (classes, people, lessons) is visible only within the school.
@@ -28,6 +29,22 @@ class School extends Model
      * @var list<string>
      */
     public const array RECORDING_CHECKLIST = ['dsfa_done', 'personalrat_agreed', 'parents_informed', 'consent_form_approved', 'retention_set'];
+
+    /**
+     * What the school confirms before its texts may go to the AI provider: the keys of `ai_checklist`.
+     * `paid_tier` matters for Gemini: on the free tier Google may use prompts to improve its products.
+     *
+     * @var list<string>
+     */
+    public const array AI_CHECKLIST = ['dpa_with_provider', 'paid_tier', 'dsfa_done', 'parents_informed'];
+
+    /**
+     * The subjects in which Tuto-Mikro is blocked until the school's administration chooses its own list, because what
+     * is said there touches the beliefs, convictions and intimate life of the children (Art. 9 DSGVO).
+     *
+     * @var list<string>
+     */
+    public const array DEFAULT_MIKRO_BLOCKED_SUBJECTS = ['Religion', 'Ethik', 'Philosophie', 'Sexualkunde', 'Sexualerziehung', 'Werte und Normen', 'LER'];
 
     /**
      * @return HasMany<User, $this>
@@ -243,14 +260,94 @@ class School extends Model
     }
 
     /**
+     * The subjects without Tuto-Mikro: the school's own list, or the suggested one while the school never chose.
+     *
+     * @return list<string>
+     */
+    public function mikroBlockedSubjects(): array
+    {
+        return array_values($this->mikro_blocked_subjects ?? self::DEFAULT_MIKRO_BLOCKED_SUBJECTS);
+    }
+
+    /**
+     * Whether Tuto-Mikro is never available in the subject: a blocked name counts when a word of the subject begins with
+     * it ("Religion" also blocks "Katholische Religion" and "Religionslehre"), ignoring case, odd spaces and doubled spaces.
+     * A name shorter than 4 letters ("LER") has to be a whole word, so that it does not block "Lernen".
+     * shortcut: only word beginnings match, so "Weltreligionen" slips through; the school adds such names itself.
+     */
+    public function blocksMikroForSubject(?string $subject): bool
+    {
+        $normalise = fn (?string $name): string => Str::lower(Str::squish((string) $name));
+        $subject = $normalise($subject);
+
+        foreach ($this->mikroBlockedSubjects() as $blocked) {
+            $blocked = $normalise($blocked);
+            $wholeWord = mb_strlen($blocked) < 4 ? '(?![\p{L}\p{N}])' : '';
+
+            if ($blocked !== '' && preg_match('/(?<![\p{L}\p{N}])'.preg_quote($blocked, '/').$wholeWord.'/u', $subject) === 1) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function aiEnabledBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'ai_enabled_by');
+    }
+
+    public function isAiChecklistComplete(): bool
+    {
+        return collect(self::AI_CHECKLIST)->every(fn (string $item): bool => ($this->ai_checklist[$item] ?? false) === true);
+    }
+
+    /**
+     * Whether the school's texts go to the real AI: the platform has the AI switched on (config lernplattform.ai.enabled)
+     * and the school opted in with the complete checklist. Otherwise the offline demo logic answers.
+     */
+    public function aiEnabled(): bool
+    {
+        return (bool) config('lernplattform.ai.enabled')
+            && $this->ai_enabled_at !== null
+            && ! $this->isBlocked()
+            && $this->isAiChecklistComplete();
+    }
+
+    /**
+     * The columns are not mass assignable on purpose, so no form can set them.
+     *
+     * @throws DomainException when the checklist is incomplete
+     */
+    public function enableAi(User $enabledBy): void
+    {
+        if (! $this->isAiChecklistComplete()) {
+            throw new DomainException('The AI needs the complete checklist.');
+        }
+
+        $this->forceFill(['ai_enabled_at' => now(), 'ai_enabled_by' => $enabledBy->getKey()])->save();
+    }
+
+    public function disableAi(): void
+    {
+        $this->forceFill(['ai_enabled_at' => null, 'ai_enabled_by' => null])->save();
+    }
+
+    /**
      * @return array<string, string>
      */
     protected function casts(): array
     {
         return [
+            'ai_enabled_at' => 'datetime',
+            'ai_checklist' => 'array',
             'recordings_enabled_at' => 'datetime',
             'recording_checklist' => 'array',
             'require_student_consent' => 'boolean',
+            'mikro_blocked_subjects' => 'array',
             'blocked_at' => 'datetime',
             'dpa_accepted_at' => 'datetime',
         ];

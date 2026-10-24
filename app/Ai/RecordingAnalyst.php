@@ -2,13 +2,15 @@
 
 namespace App\Ai;
 
-use App\Models\LessonRecording;
+use App\Models\Lesson;
 
 /**
- * Interprets the transcript of a lesson recording for the teacher. Works on text only, never on audio.
+ * Interprets the notes of a Tuto-Mikro session for the teacher. Works on text only, never on audio.
  *
- * Bound in AppServiceProvider: ClaudeRecordingAnalyst when `services.anthropic.enabled` is true, otherwise the offline
- * DemoRecordingAnalyst. The real implementation pseudonymises names before anything leaves the platform.
+ * The application binds SchoolAwareRecordingAnalyst: the SdkRecordingAnalyst only for a school whose AI is on
+ * (School::aiEnabled()), otherwise the offline DemoRecordingAnalyst. The caller passes a text whose names are already
+ * replaced (Pseudonymizer::forLesson()); the SDK implementation additionally replaces the names in the lesson's
+ * subject and topic. Nothing of the result is stored by the platform.
  */
 interface RecordingAnalyst
 {
@@ -17,6 +19,8 @@ interface RecordingAnalyst
      * the lesson's notes as they are. All texts are German.
      *
      * @return array{summary: string, key_terms: list<string>, board_outline: list<string>, class_questions: list<string>, suggested_notes: string}
+     *
+     * @throws \RuntimeException with a German message the teacher can read when the analysis fails
      */
-    public function analyse(LessonRecording $recording, string $transcript): array;
+    public function analyse(Lesson $lesson, string $text): array;
 }

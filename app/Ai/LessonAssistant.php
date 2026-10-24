@@ -5,6 +5,7 @@ namespace App\Ai;
 use App\Models\Competency;
 use App\Models\ExplanationSession;
 use App\Models\Lesson;
+use App\Models\Question;
 use App\Models\Submission;
 use App\QuestionType;
 use Illuminate\Support\Collection;
@@ -12,14 +13,15 @@ use Illuminate\Support\Collection;
 /**
  * Everything the platform asks an AI to do. Implementations only compute results; callers persist them.
  *
- * Bound in AppServiceProvider: ClaudeLessonAssistant when `services.anthropic.enabled` is true,
- * otherwise the offline DemoLessonAssistant, so the platform works without any API call.
+ * Bound in AppServiceProvider as SchoolAwareLessonAssistant: the SdkLessonAssistant (Laravel AI SDK) for a school that
+ * switched the AI on (School::aiEnabled()), otherwise the offline DemoLessonAssistant, so the platform works without any API call.
  */
 interface LessonAssistant
 {
     /**
-     * Summarise a lesson from the teacher's notes and worksheets and draft homework questions,
-     * each mapped to one of the competencies returned by Competency::forSubject($lesson->subject).
+     * Summarise a lesson from the teacher's notes and worksheets and draft exactly five homework questions:
+     * two comprehension, two application and one reflection question, each mapped to one of the competencies
+     * returned by Competency::forSubject($lesson->subject).
      *
      * @return array{summary: string, questions: list<array{type: QuestionType, prompt: string, expected_answer: string, competency_id: int|null}>}
      */
@@ -43,6 +45,21 @@ interface LessonAssistant
      * @return array{understanding_score: int, feedback: string, gaps: list<string>, answers: array<int, array{score: int, feedback: string}>} answers keyed by question id
      */
     public function evaluateSubmission(Submission $submission): array;
+
+    /**
+     * Two more levels of a homework question for students who need an easier or a more demanding one: `basis`
+     * (Einstieg) is shorter and comes with a hint, `plus` (Profi) asks for a reason or a transfer. Both are measured
+     * against the same Erwartungshorizont, which is never sent to the AI nor revealed in the texts.
+     *
+     * @return array{basis: string, plus: string}
+     */
+    public function differentiateQuestion(Question $question): array;
+
+    /**
+     * The text of a lesson (its summary or a question, written by the teacher) in Einfache Sprache: short sentences,
+     * everyday words, same content. Students' own texts are never passed here.
+     */
+    public function simplify(string $text, Lesson $lesson): string;
 
     /**
      * The tutor's next follow-up question after the student's latest explanation in the session.

@@ -2,21 +2,28 @@
 
 namespace App\Ai;
 
-use App\Models\LessonRecording;
+use App\Models\Lesson;
 
 /**
- * Server-side speech-to-text for a lesson recording. This is the only place in the platform where audio could ever
- * leave the server, so it is bound to the real provider only when `services.transcription.enabled` is true
- * (AppServiceProvider), otherwise to the DemoTranscriber, which cannot process audio.
+ * Speech recognition for one short segment of a Tuto-Mikro session. This is the only place in the platform where
+ * sound could leave the server. The application binds SchoolAwareTranscriber: the SdkTranscriber (Laravel AI SDK,
+ * Gemini by default) only for a school whose AI is on (School::aiEnabled()), otherwise the DemoTranscriber, which
+ * cannot process audio and returns null.
  *
- * Callers must have authorised the recording (LessonRecordingPolicy) and persist the result themselves.
+ * The caller has authorised the session and checked the consent of the present students. The sound is handed over as
+ * bytes in memory and never touches a disk of the platform, so a crashed request leaves nothing behind. The returned
+ * text is not stored anywhere by the platform.
  */
 interface Transcriber
 {
     /**
-     * Transcribe the recording's audio file (German) into plain text.
+     * Recognise the German speech of one segment.
      *
-     * @throws TranscriberException with a German message the teacher can read when no transcription is possible
+     * @param  string  $audio  the bytes of the segment, a complete file
+     * @param  string  $mimeType  the container type of the file (a key of LessonRecording::MIME_TYPES)
+     * @return string|null the recognised text, or null when this implementation does not recognise speech (the demo)
+     *
+     * @throws TranscriberException with a German message the teacher can read when the recognition fails
      */
-    public function transcribe(LessonRecording $recording): string;
+    public function transcribe(Lesson $lesson, string $audio, string $mimeType): ?string;
 }

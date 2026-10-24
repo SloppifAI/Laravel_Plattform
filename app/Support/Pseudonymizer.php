@@ -9,9 +9,11 @@ use App\Models\Lesson;
  * "Lehrkraft"), so a transcript can be handed to an AI without naming anyone.
  *
  * Full names, first names and last names are replaced, case-insensitively, as whole words and with a genitive "s"
- * ("Annas Heft"). A name part shared by several people becomes "Person". Limits: names of people who are not in the
- * class (parents, other teachers) and nicknames are not known and stay in the text; speech recognition that
- * misspells a name defeats the match. The teacher therefore reviews the transcript before every evaluation.
+ * ("Annas Heft"). A hyphenated name ("Anna-Lena") is also found as "Anna Lena", "Annalena" and by either half. A name
+ * part shared by several people becomes "Person". The people known are the students of the class and the teachers of
+ * the lesson: the one who held it, the class lead and the teachers assigned to the class. Limits: names of other people
+ * (parents, other teachers of the school) and nicknames are not known and stay in the text; speech recognition that
+ * misspells a name defeats the match. The teacher therefore reviews the text before every evaluation.
  */
 final class Pseudonymizer
 {
@@ -35,20 +37,24 @@ final class Pseudonymizer
     private function __construct(private readonly array $labels) {}
 
     /**
-     * The students of the lesson's class (labelled A, B, C ... in the order of their ids) and the lesson's teacher.
+     * The students of the lesson's class (labelled A, B, C ... in the order of their ids) and its teachers (the lesson's
+     * teacher, the class lead and the teachers assigned to the class), all labelled "Lehrkraft".
      */
     public static function forLesson(Lesson $lesson): self
     {
+        $class = $lesson->schoolClass;
+
         return self::forPeople(
-            $lesson->schoolClass->students()->orderBy('id')->pluck('name')->all(),
-            $lesson->teacher?->name,
+            $class->students()->orderBy('id')->pluck('name')->all(),
+            array_values(array_filter([$lesson->teacher?->name, $class->teacher?->name, ...$class->teachers()->pluck('name')->all()])),
         );
     }
 
     /**
      * @param  list<string>  $studentNames
+     * @param  string|list<string>|null  $teacherNames  one name or several, all labelled "Lehrkraft"
      */
-    public static function forPeople(array $studentNames, ?string $teacherName): self
+    public static function forPeople(array $studentNames, string|array|null $teacherNames): self
     {
         $labels = [];
 
@@ -59,12 +65,21 @@ final class Pseudonymizer
                 return;
             }
 
-            $parts = array_filter(
-                (array) preg_split('/[\s,;.]+/u', $name, -1, PREG_SPLIT_NO_EMPTY),
-                fn (string $part): bool => mb_strlen($part) >= 2 && ! in_array(mb_strtolower($part), self::PARTICLES, true),
-            );
+            $isName = fn (string $part): bool => mb_strlen($part) >= 2 && ! in_array(mb_strtolower($part), self::PARTICLES, true);
 
-            foreach ([$name, ...$parts] as $entry) {
+            // "Anna-Lena" is a name part, and so is each half of it.
+            $words = array_filter((array) preg_split('/[\s,;.]+/u', $name, -1, PREG_SPLIT_NO_EMPTY), $isName);
+            $halves = array_filter((array) preg_split('/[\s,;.\-]+/u', $name, -1, PREG_SPLIT_NO_EMPTY), $isName);
+
+            // Speech recognition writes "Anna-Lena" as "Anna Lena" or "Annalena".
+            $hyphenated = array_filter($words, fn (string $word): bool => str_contains(trim($word, '-'), '-'));
+            $variants = [
+                ...($hyphenated === [] ? [] : [str_replace('-', ' ', $name)]),
+                ...array_map(fn (string $word): string => str_replace('-', ' ', trim($word, '-')), $hyphenated),
+                ...array_map(fn (string $word): string => str_replace('-', '', $word), $hyphenated),
+            ];
+
+            foreach ([$name, ...$words, ...$halves, ...$variants] as $entry) {
                 $key = mb_strtolower($entry);
                 $labels[$key] = isset($labels[$key]) && $labels[$key] !== $label ? self::AMBIGUOUS_LABEL : $label;
             }
@@ -74,7 +89,7 @@ final class Pseudonymizer
             $add($name, self::STUDENT_LABEL.' '.($index < 26 ? chr(65 + $index) : $index + 1));
         }
 
-        if ($teacherName !== null) {
+        foreach ((array) $teacherNames as $teacherName) {
             $add($teacherName, self::TEACHER_LABEL);
         }
 
