@@ -1,0 +1,11 @@
+{
+    "Forbidden": "Kein Zugriff",
+    "Not Found": "Seite nicht gefunden",
+    "Page Expired": "Sitzung abgelaufen, bitte lade die Seite neu",
+    "Payment Required": "Zahlung erforderlich",
+    "Server Error": "Da ist etwas schiefgelaufen",
+    "Service Unavailable": "Gerade nicht erreichbar, bitte versuche es gleich noch einmal",
+    "This action is unauthorized.": "Dafür fehlt dir die Berechtigung.",
+    "Too Many Requests": "Zu viele Anfragen, bitte warte einen Moment",
+    "Unauthorized": "Bitte melde dich an"
+}
