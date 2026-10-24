@@ -49,15 +49,15 @@ class RecordingSettingsTest extends TestCase
             $this->actingAs(User::factory()->{$role}()->create())->get(RecordingSettings::getUrl())->assertForbidden();
         }
 
-        $this->actingAs($this->admin)->get(RecordingSettings::getUrl())->assertOk()->assertSee('Aufnahmen & Einwilligungen');
+        $this->actingAs($this->admin)->get(RecordingSettings::getUrl())->assertOk()->assertSee('Tuto-Mikro & Einwilligungen');
     }
 
     public function test_the_page_starts_with_recordings_off_and_the_template_for_the_school(): void
     {
-        config(['lernplattform.recordings.keep_days' => 10]);
+        config(['lernplattform.recordings.session_keep_days' => 10]);
 
         $this->page()
-            ->assertSee('Aufnahmen sind ausgeschaltet')
+            ->assertSee('Tuto-Mikro ist ausgeschaltet')
             ->assertSee('Es ist noch keine Fassung veröffentlicht.')
             ->assertActionDisabled('enableRecordings')
             ->assertFormSet([
@@ -116,7 +116,7 @@ class RecordingSettingsTest extends TestCase
             ->fillForm($this->checklist(), 'settingsForm')
             ->assertActionEnabled('enableRecordings')
             ->callAction('enableRecordings')
-            ->assertNotified('Aufnahmen sind freigeschaltet');
+            ->assertNotified('Tuto-Mikro ist freigeschaltet');
 
         $this->school->refresh();
         $this->assertTrue($this->school->recordingsEnabled());
@@ -132,9 +132,9 @@ class RecordingSettingsTest extends TestCase
         $admin = User::factory()->for($school)->admin()->create();
 
         $this->page($admin)
-            ->assertSee('Aufnahmen sind freigeschaltet')
+            ->assertSee('Tuto-Mikro ist freigeschaltet')
             ->callAction('disableRecordings')
-            ->assertNotified('Aufnahmen sind ausgeschaltet');
+            ->assertNotified('Tuto-Mikro ist ausgeschaltet');
 
         $this->assertFalse($school->refresh()->recordingsEnabled());
         $this->assertNull($school->recordings_enabled_by);
@@ -163,7 +163,7 @@ class RecordingSettingsTest extends TestCase
         $this->page($admin)
             ->fillForm(['checklist.dsfa_done' => false], 'settingsForm')
             ->call('saveSettings')
-            ->assertNotified('Aufnahmen ausgeschaltet');
+            ->assertNotified('Tuto-Mikro ausgeschaltet');
 
         $school->refresh();
         $this->assertFalse($school->recordingsEnabled());
@@ -313,6 +313,60 @@ class RecordingSettingsTest extends TestCase
 
         $this->assertNull($other->refresh()->recording_checklist);
         $this->assertNull($other->recordings_enabled_at);
+    }
+
+    public function test_the_form_starts_with_the_suggested_subjects_without_tuto_mikro(): void
+    {
+        $this->assertNull($this->school->mikro_blocked_subjects);
+
+        $this->page()->assertFormSet(['mikro_blocked_subjects' => ['Religion', 'Ethik', 'Philosophie', 'Sexualkunde', 'Sexualerziehung', 'Werte und Normen', 'LER']], 'settingsForm');
+    }
+
+    public function test_the_subjects_without_tuto_mikro_are_saved_tidied_up(): void
+    {
+        $this->page()
+            ->fillForm(['mikro_blocked_subjects' => ['  Kunst ', 'kunst', 'Religion', '  ', 'Werte  und Normen'], ...$this->checklist(false)], 'settingsForm')
+            ->call('saveSettings')
+            ->assertNotified('Gespeichert');
+
+        $school = $this->school->refresh();
+        $this->assertSame(['Kunst', 'Religion', 'Werte und Normen'], $school->mikro_blocked_subjects);
+        $this->assertTrue($school->blocksMikroForSubject(' kunst'));
+        $this->assertFalse($school->blocksMikroForSubject('Ethik'));
+    }
+
+    public function test_an_empty_list_is_the_schools_choice_to_block_nothing(): void
+    {
+        $this->page()
+            ->fillForm(['mikro_blocked_subjects' => [], ...$this->checklist(false)], 'settingsForm')
+            ->call('saveSettings');
+
+        $school = $this->school->refresh();
+        $this->assertSame([], $school->mikro_blocked_subjects);
+        $this->assertFalse($school->blocksMikroForSubject('Religion'));
+    }
+
+    public function test_the_subjects_of_another_school_stay_as_they_are(): void
+    {
+        $other = School::factory()->create(['name' => 'Schiller-Schule']);
+        $other->forceFill(['mikro_blocked_subjects' => ['Kunst']])->save();
+
+        $this->page()
+            ->fillForm(['mikro_blocked_subjects' => ['Musik'], ...$this->checklist(false)], 'settingsForm')
+            ->call('saveSettings');
+
+        $this->assertSame(['Musik'], $this->school->refresh()->mikro_blocked_subjects);
+        $this->assertSame(['Kunst'], $other->refresh()->mikro_blocked_subjects);
+    }
+
+    public function test_a_subject_name_must_stay_short(): void
+    {
+        $this->page()
+            ->fillForm(['mikro_blocked_subjects' => [str_repeat('x', 101)], ...$this->checklist(false)], 'settingsForm')
+            ->call('saveSettings')
+            ->assertHasFormErrors(['mikro_blocked_subjects.0'], 'settingsForm');
+
+        $this->assertNull($this->school->refresh()->mikro_blocked_subjects);
     }
 
     public function test_other_roles_cannot_use_the_livewire_component(): void

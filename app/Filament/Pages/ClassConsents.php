@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\ConsentStatus;
+use App\Filament\NavigationGroup;
 use App\Models\ConsentForm;
 use App\Models\RecordingConsent;
 use App\Models\School;
@@ -11,6 +12,7 @@ use App\Models\User;
 use App\Role;
 use BackedEnum;
 use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Closure;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -32,11 +34,12 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
+use InvalidArgumentException;
 use Livewire\Attributes\Url;
 use UnitEnum;
 
 /**
- * "Einwilligungen": who of a class has consented to lesson recordings. Teachers see the classes they lead or teach, the
+ * "Einwilligungen": who of a class has consented to the Tuto-Mikro in lessons. Teachers see the classes they teach, the
  * school administration every class of its school (RecordingConsentPolicy::manageClass). From here the parent letters
  * are made, paper consents and revocations are recorded, and the status of every student is visible with a label and an icon.
  */
@@ -48,7 +51,7 @@ class ClassConsents extends Page implements HasTable
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedClipboardDocumentCheck;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Unterricht';
+    protected static string|UnitEnum|null $navigationGroup = NavigationGroup::Unterricht;
 
     protected static ?int $navigationSort = 4;
 
@@ -56,7 +59,7 @@ class ClassConsents extends Page implements HasTable
 
     protected static ?string $slug = 'einwilligungen';
 
-    protected ?string $subheading = 'Wer in der Klasse der Tonaufnahme im Unterricht zugestimmt hat. Ohne Einwilligung aller Anwesenden wird nicht aufgenommen.';
+    protected ?string $subheading = 'Wer in der Klasse dem Tuto-Mikro im Unterricht zugestimmt hat. Ohne Einwilligung aller Anwesenden bleibt das Mikro aus.';
 
     #[Url(as: 'klasse')]
     public ?int $classId = null;
@@ -92,7 +95,8 @@ class ClassConsents extends Page implements HasTable
     }
 
     /**
-     * The classes the signed-in user looks after: a teacher the ones they lead or have taught, the administration all.
+     * The classes the signed-in user looks after: a teacher the ones they teach (lead, assigned, substituting), the
+     * administration all. Holding a lesson in a class grants nothing.
      *
      * @return Builder<SchoolClass>
      */
@@ -100,13 +104,10 @@ class ClassConsents extends Page implements HasTable
     {
         $user = auth()->user();
 
-        $query = SchoolClass::query()->where('school_id', $user->school_id)->orderBy('name');
-
-        return $user->isAdmin()
-            ? $query
-            : $query->where(fn (Builder $query): Builder => $query
-                ->where('teacher_id', $user->getKey())
-                ->orWhereHas('lessons', fn (Builder $lessons): Builder => $lessons->where('teacher_id', $user->getKey())));
+        return SchoolClass::query()
+            ->where('school_id', $user->school_id)
+            ->unless($user->isAdmin(), fn (Builder $query) => $query->taughtBy($user))
+            ->orderBy('name');
     }
 
     /**
@@ -225,7 +226,7 @@ class ClassConsents extends Page implements HasTable
             ->modalSubmitActionLabel('Einwilligung erfassen')
             ->modalCancelActionLabel('Abbrechen')
             ->disabled(fn (): bool => $this->currentForm() === null)
-            ->schema(fn (): array => [
+            ->schema(fn (User $record): array => [
                 TextInput::make('guardian_name')
                     ->label('Name der unterschreibenden Person')
                     ->required()
@@ -237,7 +238,7 @@ class ClassConsents extends Page implements HasTable
                     ->required()
                     ->rules([fn (): Closure => function (string $attribute, mixed $value, Closure $fail): void {
                         if (! in_array('audio', (array) $value, true)) {
-                            $fail('Die Tonaufnahme gehört immer dazu: Ohne sie ist keine Einwilligung möglich.');
+                            $fail('Der Ton gehört immer dazu: Ohne ihn ist keine Einwilligung möglich.');
                         }
                     }]),
                 DatePicker::make('given_on')
@@ -246,10 +247,8 @@ class ClassConsents extends Page implements HasTable
                     ->required()
                     ->native(false)
                     ->displayFormat('d.m.Y')
-                    ->minDate(fn (User $record): ?string => collect([
-                        $this->currentForm()?->published_at,
-                        $this->consents()->get($record->getKey())?->latestDeclarationAt(),
-                    ])->filter()->max()?->toDateString())
+                    ->minDate(fn (User $record): ?string => $this->earliestPaperDate($record)?->toDateString())
+                    ->validationMessages(['after_or_equal' => $this->tooEarlyForPaper($record)])
                     ->maxDate(today()),
             ])
             ->action(function (array $data, User $record): void {
@@ -261,14 +260,23 @@ class ClassConsents extends Page implements HasTable
                     return;
                 }
 
-                RecordingConsent::forStudent($record)->grant(
-                    $form,
-                    $data['purposes'],
-                    trim($data['guardian_name']),
-                    RecordingConsent::SOURCE_PAPER,
-                    auth()->user(),
-                    Carbon::parse($data['given_on'])->setTimeFrom(now()),
-                );
+                try {
+                    RecordingConsent::forStudent($record)->grant(
+                        $form,
+                        $data['purposes'],
+                        trim($data['guardian_name']),
+                        RecordingConsent::SOURCE_PAPER,
+                        auth()->user(),
+                        Carbon::parse($data['given_on'])->setTimeFrom(now()),
+                    );
+                } catch (InvalidArgumentException) {
+                    // The parents declared something newer after the dialog was opened: the newer declaration stays.
+                    $this->consentsByStudent = null;
+
+                    Notification::make()->danger()->title('Nicht erfasst')->body($this->tooEarlyForPaper($record))->persistent()->send();
+
+                    return;
+                }
 
                 $this->consentsByStudent = null;
 
@@ -288,22 +296,32 @@ class ClassConsents extends Page implements HasTable
                 return $consent?->granted_at !== null && $consent->revoked_at === null;
             })
             ->modalHeading(fn (User $record): string => "Widerruf für {$record->name} erfassen")
-            ->modalDescription('Nach dem Widerruf wird in keiner Stunde aufgenommen, bei der diese Schüler:in dabei ist, bis die Eltern neu einwilligen.')
+            ->modalDescription('Nach dem Widerruf bleibt das Tuto-Mikro in jeder Stunde aus, in der diese Schüler:in dabei ist, bis die Eltern neu einwilligen.')
             ->modalSubmitActionLabel('Widerruf erfassen')
             ->modalCancelActionLabel('Abbrechen')
-            ->schema([
+            ->schema(fn (User $record): array => [
                 DatePicker::make('revoked_on')
                     ->label('Widerrufen am')
                     ->default(today())
                     ->required()
                     ->native(false)
                     ->displayFormat('d.m.Y')
+                    ->minDate(fn (User $record): ?string => $this->consents()->get($record->getKey())?->granted_at?->toDateString())
+                    ->validationMessages(['after_or_equal' => $this->tooEarlyForRevocation($record)])
                     ->maxDate(today()),
             ])
             ->action(function (array $data, User $record): void {
                 $this->authorizeClass();
 
-                RecordingConsent::forStudent($record)->revoke(auth()->user(), Carbon::parse($data['revoked_on'])->setTimeFrom(now()));
+                try {
+                    RecordingConsent::forStudent($record)->revoke(auth()->user(), Carbon::parse($data['revoked_on'])->setTimeFrom(now()));
+                } catch (InvalidArgumentException) {
+                    $this->consentsByStudent = null;
+
+                    Notification::make()->danger()->title('Nicht erfasst')->body($this->tooEarlyForRevocation($record))->persistent()->send();
+
+                    return;
+                }
 
                 $this->consentsByStudent = null;
 
@@ -327,6 +345,44 @@ class ClassConsents extends Page implements HasTable
 
                 $this->submitLetters('new', $record);
             });
+    }
+
+    /**
+     * The earliest day a paper slip for the student may carry: the day the current text was published or the day the
+     * parents last declared their will, whichever is later. An older slip must not override a newer declaration.
+     */
+    private function earliestPaperDate(User $student): ?CarbonInterface
+    {
+        return collect([
+            $this->currentForm()?->published_at,
+            $this->consents()->get($student->getKey())?->latestDeclarationAt(),
+        ])->filter()->max();
+    }
+
+    /**
+     * Why a paper slip with that date is refused, in the words of the case that applies.
+     */
+    private function tooEarlyForPaper(User $student): string
+    {
+        $consent = $this->consents()->get($student->getKey());
+        $latest = $consent?->latestDeclarationAt();
+        $published = $this->currentForm()?->published_at;
+
+        if ($latest === null || ($published !== null && $published->toDateString() > $latest->toDateString())) {
+            return sprintf('Der aktuelle Text gilt erst seit dem %s. Ein Blatt, das früher unterschrieben wurde, bezieht sich auf einen anderen Text.', $published?->format('d.m.Y') ?? '–');
+        }
+
+        return sprintf('Die Eltern haben zuletzt am %s %s. Ein Blatt, das früher unterschrieben wurde, kann diese jüngere Erklärung nicht überschreiben.', $latest->format('d.m.Y'), $consent->revoked_at !== null ? 'widerrufen' : 'eingewilligt');
+    }
+
+    /**
+     * Why a revocation dated before the consent it revokes is refused.
+     */
+    private function tooEarlyForRevocation(User $student): string
+    {
+        $grantedAt = $this->consents()->get($student->getKey())?->granted_at;
+
+        return sprintf('Die Eltern haben am %s eingewilligt. Ein Widerruf, der früher datiert ist, kann diese jüngere Einwilligung nicht aufheben.', $grantedAt?->format('d.m.Y') ?? '–');
     }
 
     public function statusFor(User $student): ConsentStatus

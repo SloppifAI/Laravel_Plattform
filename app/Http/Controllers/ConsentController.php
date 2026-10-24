@@ -45,8 +45,8 @@ class ConsentController extends Controller
         ], [
             'consent_form.required' => 'Der Text der Einwilligung fehlt. Bitte laden Sie die Seite neu und versuchen Sie es noch einmal.',
             'consent_form.in' => 'Der Text der Einwilligung wurde in der Zwischenzeit geändert. Bitte lesen Sie ihn noch einmal und bestätigen Sie dann erneut.',
-            'purposes.required' => 'Bitte wählen Sie mindestens die Tonaufnahme aus.',
-            'purposes.array' => 'Bitte wählen Sie mindestens die Tonaufnahme aus.',
+            'purposes.required' => 'Bitte wählen Sie mindestens den Ton aus.',
+            'purposes.array' => 'Bitte wählen Sie mindestens den Ton aus.',
             'purposes.*.in' => 'Diese Auswahl ist nicht möglich.',
             'purposes.*.string' => 'Diese Auswahl ist nicht möglich.',
             'guardian_name.required' => 'Bitte tragen Sie Ihren Namen ein.',
@@ -58,7 +58,7 @@ class ConsentController extends Controller
 
         $validator->after(function ($validator) use ($request): void {
             if (! $validator->errors()->has('purposes') && ! in_array('audio', $request->input('purposes', []), true)) {
-                $validator->errors()->add('purposes', 'Die Tonaufnahme ist die Grundlage der anderen Zwecke. Ohne sie ist keine Einwilligung möglich.');
+                $validator->errors()->add('purposes', 'Der Ton ist die Grundlage der anderen Zwecke. Ohne ihn ist keine Einwilligung möglich.');
             }
         });
 

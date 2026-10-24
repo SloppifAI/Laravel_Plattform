@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Consents;
 
+use App\Models\Competency;
 use App\Models\ConsentForm;
 use App\Models\Lesson;
 use App\Models\RecordingConsent;
@@ -253,12 +254,43 @@ class RecordingConsentGateTest extends TestCase
         $this->assertContains('Du leitest diese Klasse nicht und unterrichtest sie nicht.', $result->reasons);
     }
 
-    public function test_a_teacher_with_a_lesson_in_the_class_may_record(): void
+    public function test_an_assigned_teacher_may_record_but_a_lesson_alone_does_not_count(): void
     {
         $colleague = User::factory()->for($this->school)->teacher()->create();
         Lesson::factory()->create(['school_class_id' => $this->schoolClass->getKey(), 'teacher_id' => $colleague->getKey()]);
 
+        $this->assertFalse(RecordingConsentGate::check($this->schoolClass, $this->students, $colleague)->allowed);
+
+        $this->schoolClass->teachers()->attach($colleague);
+
         $this->assertTrue(RecordingConsentGate::check($this->schoolClass, $this->students, $colleague)->allowed);
+    }
+
+    public function test_the_lessons_subject_blocks_when_the_school_blocks_it(): void
+    {
+        $lesson = Lesson::factory()->create(['school_class_id' => $this->schoolClass->getKey(), 'teacher_id' => $this->teacher->getKey(), 'subject' => '  evangelische religion ']);
+        $reason = 'Im Fach evangelische religion ist Tuto-Mikro an deiner Schule nicht möglich.';
+        $this->school->forceFill(['mikro_blocked_subjects' => ['Kunst']])->save();
+
+        $this->assertTrue(RecordingConsentGate::check($this->schoolClass->fresh(), $this->students, $this->teacher, null, $lesson->fresh())->allowed);
+        $this->assertNull(RecordingConsentGate::lessonRefusal($lesson));
+
+        $this->school->forceFill(['mikro_blocked_subjects' => ['Evangelische Religion']])->save();
+        $result = RecordingConsentGate::check($this->schoolClass->fresh(), $this->students, $this->teacher, null, $lesson->fresh());
+
+        $this->assertFalse($result->allowed);
+        $this->assertSame([$reason], $result->reasons);
+        $this->assertSame($reason, RecordingConsentGate::lessonRefusal($lesson->fresh()));
+    }
+
+    public function test_a_foerderaufgabe_never_gets_the_microphone(): void
+    {
+        $task = Lesson::factory()->create(['school_class_id' => $this->schoolClass->getKey(), 'teacher_id' => $this->teacher->getKey(), 'practice_competency_id' => Competency::factory()]);
+
+        $result = RecordingConsentGate::check($this->schoolClass, $this->students, $this->teacher, null, $task);
+
+        $this->assertFalse($result->allowed);
+        $this->assertSame(['Für Förderaufgaben gibt es kein Tuto-Mikro.'], $result->reasons);
     }
 
     public function test_only_teachers_of_the_school_may_record(): void

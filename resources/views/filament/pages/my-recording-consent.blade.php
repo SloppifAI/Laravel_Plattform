@@ -4,9 +4,9 @@
 @endphp
 
 <x-filament-panels::page>
-    <x-filament::section heading="Worum geht es?" :icon="Heroicon::OutlinedMicrophone">
+    <x-filament::section heading="Worum geht es?" :icon="Heroicon::OutlinedSignal">
         <div class="space-y-3 text-sm text-gray-700 dark:text-gray-300">
-            <p>Deine Lehrkraft kann eine Stunde als <strong>Tonaufnahme</strong> aufnehmen. Es gibt kein Bild und kein Video.</p>
+            <p>Deine Lehrkraft kann in einer Stunde das <strong>Tuto-Mikro</strong> einschalten. Es erfasst nur den Ton, es gibt kein Bild und kein Video. Daraus entstehen Notizen aus der Stunde.</p>
             <p>Das geht nur, wenn deine Eltern eingewilligt haben und die ganze Klasse einverstanden ist. Deine Schule möchte, dass auch <strong>du selbst</strong> Ja sagst.</p>
             <p>Du kannst jederzeit deine Meinung ändern. Dir passiert dadurch nichts.</p>
         </div>

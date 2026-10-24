@@ -42,7 +42,7 @@ class ConsentLetterController extends Controller
         $form = $school->currentConsentForm();
 
         if ($form === null) {
-            return $this->back($schoolClass, 'Es gibt noch keine veröffentlichte Einwilligungserklärung.', 'Die Schuladministration veröffentlicht sie unter „Aufnahmen & Einwilligungen“.');
+            return $this->back($schoolClass, 'Es gibt noch keine veröffentlichte Einwilligungserklärung.', 'Die Schuladministration veröffentlicht sie unter „Tuto-Mikro & Einwilligungen“.');
         }
 
         $students = $schoolClass->students()->withRole(Role::Student)->orderBy('name')->get();

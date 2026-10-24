@@ -11,7 +11,7 @@
         <meta name="robots" content="noindex, nofollow, noarchive">
         <meta name="referrer" content="no-referrer">
 
-        <title>Elternbriefe {{ $schoolClass->name }} – Lernplattform</title>
+        <title>Elternbriefe {{ $schoolClass->name }} – Tuto</title>
 
         <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
         <link rel="stylesheet" href="{{ asset('fonts/lexend/lexend.css') }}">
@@ -278,7 +278,7 @@
                 <p><strong>Klasse {{ $schoolClass->name }}</strong>, Schüler:in {{ $letter['name'] }}</p>
 
                 <p>
-                    Sehr geehrte Erziehungsberechtigte, wir möchten einzelne Unterrichtsstunden als reine Tonaufnahme aufzeichnen, damit
+                    Sehr geehrte Erziehungsberechtigte, wir möchten in einzelnen Unterrichtsstunden das Tuto-Mikro einschalten. Es erfasst nur den Ton, damit
                     die Lehrkraft den Unterricht besser nachbereiten kann. Dafür brauchen wir Ihre freiwillige Einwilligung. Sie können sie
                     jederzeit widerrufen.
                 </p>

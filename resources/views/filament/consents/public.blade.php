@@ -14,8 +14,8 @@
     $guardianName = $input['guardian_name'] ?? '';
 @endphp
 
-@section('title', 'Einwilligung zur Tonaufnahme')
-@section('description', 'Einwilligung der Erziehungsberechtigten zur Tonaufnahme im Unterricht')
+@section('title', 'Einwilligung zum Tuto-Mikro')
+@section('description', 'Einwilligung der Erziehungsberechtigten zum Tuto-Mikro im Unterricht')
 
 @push('head')
     <meta name="robots" content="noindex, nofollow, noarchive">
@@ -239,7 +239,7 @@
 @endpush
 
 @section('content')
-    <h1>{{ $form?->title ?? 'Einwilligung zur Tonaufnahme' }}</h1>
+    <h1>{{ $form?->title ?? 'Einwilligung zum Tuto-Mikro' }}</h1>
 
     <dl class="legal-facts">
         <dt>Schule</dt>
@@ -280,7 +280,7 @@
         @elseif ($result === 'revoked')
             <div class="consent-banner consent-banner-danger" role="status">
                 <x-filament::icon :icon="Heroicon::OutlinedXCircle" aria-hidden="true" />
-                <p><strong>Ihre Einwilligung wurde widerrufen.</strong> Ab sofort werden keine Aufnahmen mehr gemacht, bei denen Ihr Kind anwesend ist. Sie können jederzeit neu einwilligen.</p>
+                <p><strong>Ihre Einwilligung wurde widerrufen.</strong> Ab sofort bleibt das Tuto-Mikro aus, wenn Ihr Kind anwesend ist. Sie können jederzeit neu einwilligen.</p>
             </div>
         @elseif ($status === ConsentStatus::Outdated)
             <div class="consent-banner consent-banner-warning" role="status">
@@ -290,7 +290,7 @@
         @elseif ($status === ConsentStatus::Revoked)
             <div class="consent-banner consent-banner-danger" role="status">
                 <x-filament::icon :icon="Heroicon::OutlinedXCircle" aria-hidden="true" />
-                <p><strong>Sie haben Ihre Einwilligung am {{ $consent->revoked_at->format('d.m.Y') }} widerrufen.</strong> Es werden keine Aufnahmen gemacht, bei denen Ihr Kind anwesend ist. Sie können unten jederzeit neu einwilligen.</p>
+                <p><strong>Sie haben Ihre Einwilligung am {{ $consent->revoked_at->format('d.m.Y') }} widerrufen.</strong> Das Tuto-Mikro bleibt aus, wenn Ihr Kind anwesend ist. Sie können unten jederzeit neu einwilligen.</p>
             </div>
         @elseif ($isGranted && $result === null)
             <div class="consent-banner consent-banner-success" role="status">

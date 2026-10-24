@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
 /**
- * One version of a school's consent form for lesson recordings. A published version is never edited: the school
+ * One version of a school's consent form for the Tuto-Mikro in lessons. A published version is never edited: the school
  * publishes a new one instead, and consents given for an older version count as outdated (Art. 7 Abs. 1 DSGVO:
  * every consent can be traced to the exact text it was given for).
  */
@@ -23,14 +23,16 @@ class ConsentForm extends Model
     use HasFactory;
 
     /**
-     * The purposes parents agree to separately. The audio itself is the basis of the other two.
+     * The purposes parents agree to separately. The audio itself is the basis of the other two. "ai_analysis" is what lets the
+     * sound segments (real voices, not pseudonymised) go to the AI provider for speech recognition, and the pseudonymised text for the
+     * summary; while the school's AI is on, the Tuto-Mikro stays off for the whole class without it (LessonRecording::purposesFor()).
      *
      * @var array<string, string>
      */
     public const array PURPOSES = [
-        'audio' => 'Tonaufnahme des Unterrichts',
-        'transcript' => 'Transkript (Text) aus der Aufnahme',
-        'ai_analysis' => 'KI-gestützte Auswertung des Transkripts (nur pseudonymisiert)',
+        'audio' => 'Ton des Unterrichts (Tuto-Mikro)',
+        'transcript' => 'Notizen aus der Stunde (aus dem Ton erkannter Text)',
+        'ai_analysis' => 'Spracherkennung und Zusammenfassung durch den KI-Anbieter (Ton-Abschnitte; Text nur pseudonymisiert)',
     ];
 
     /**
@@ -38,7 +40,7 @@ class ConsentForm extends Model
      *
      * @var array<string, string>
      */
-    public const array PURPOSES_SHORT = ['audio' => 'Aufnahme', 'transcript' => 'Transkript', 'ai_analysis' => 'KI-Auswertung'];
+    public const array PURPOSES_SHORT = ['audio' => 'Ton', 'transcript' => 'Notizen aus der Stunde', 'ai_analysis' => 'KI-Anbieter (Spracherkennung, Zusammenfassung)'];
 
     /**
      * @return BelongsTo<School, $this>
@@ -90,7 +92,7 @@ class ConsentForm extends Model
 
     public static function defaultTitle(): string
     {
-        return 'Einwilligung zur Tonaufnahme im Unterricht';
+        return 'Einwilligung zum Tuto-Mikro im Unterricht';
     }
 
     /**
@@ -99,39 +101,43 @@ class ConsentForm extends Model
      */
     public static function defaultBody(School $school): string
     {
-        $days = (int) config('lernplattform.recordings.keep_days', 14);
+        $sessionDays = (int) config('lernplattform.recordings.session_keep_days', 365);
+        $years = (int) config('lernplattform.retention.school_years_kept', 1);
+        $notesRetention = $years === 1 ? 'zum Ende des Schuljahres' : "nach {$years} Schuljahren";
         $contact = $school->contact_email ?: 'das Sekretariat der Schule';
 
         return <<<MARKDOWN
-        **{$school->name}** möchte einzelne Unterrichtsstunden als reine **Tonaufnahme** aufzeichnen. Dafür brauchen wir Ihre Einwilligung. Sie ist freiwillig.
+        **{$school->name}** möchte in einzelnen Unterrichtsstunden das **Tuto-Mikro** einschalten. Es erfasst ausschließlich den Ton der Stunde. Dafür brauchen wir Ihre Einwilligung. Sie ist freiwillig.
 
-        ## Was wird aufgezeichnet?
+        ## Was erfasst das Tuto-Mikro?
 
-        - Ausschließlich der Ton des Unterrichts. Es gibt keine Bild- und keine Videoaufnahmen.
+        - Ausschließlich den Ton des Unterrichts aus dem Mikro der Lehrkraft. Es gibt kein Bild und kein Video.
         - Im Ton können die Stimme und die mündlichen Beiträge Ihres Kindes zu hören sein.
-        - Es wird nur aufgezeichnet, wenn für alle anwesenden Schüler:innen der Klasse eine Einwilligung vorliegt.
+        - Das Tuto-Mikro ist nur an, wenn für alle anwesenden Schüler:innen der Klasse eine Einwilligung vorliegt.
 
-        ## Wofür wird die Aufnahme verwendet?
+        ## Was passiert mit dem Ton und den Notizen?
 
-        - Zur Unterstützung des Unterrichts: Aus der Aufnahme können ein Transkript (Text) und eine Zusammenfassung für die Lehrkraft entstehen. Die Lehrkraft kann so die Stunde nachbereiten und Schüler:innen gezielter fördern.
-        - Eine KI-Auswertung findet nur statt, wenn Sie ihr unten ausdrücklich zustimmen und die Schule die KI-Anbindung aktiviert hat. Die KI erhält dann ausschließlich pseudonymisierten Text, niemals die Tonaufnahme.
-        - Für andere Zwecke werden die Aufnahmen nicht verwendet.
+        - Der Ton wird in kurzen Abschnitten in Text umgewandelt (Notizen aus der Stunde) und danach sofort gelöscht. Die Plattform speichert keinen Ton.
+        - Für die Umwandlung nutzt die Schule ihre KI-Anbindung: Ist sie aktiviert, gehen die kurzen Ton-Abschnitte zur Spracherkennung an den KI-Anbieter. Diese Ton-Abschnitte werden nicht pseudonymisiert: Darin sind echte Stimmen zu hören, auch gesprochene Namen. Ist die KI-Anbindung nicht aktiviert, verlässt der Ton die Plattform nicht.
+        - Die Notizen bleiben im Browser der Lehrkraft, bis sie etwas daraus in ihre Unterrichtsnotizen übernimmt. Daraus kann die Lehrkraft eine Zusammenfassung und Hausaufgaben erstellen. Dafür erhält die KI nur pseudonymisierten Text: Namen der Klasse werden vorher durch neutrale Bezeichnungen ersetzt.
+        - Ist die KI-Anbindung der Schule aktiviert, läuft das Tuto-Mikro nur, wenn alle anwesenden Eltern auch der Spracherkennung und Zusammenfassung durch den KI-Anbieter unten ausdrücklich zugestimmt haben. Ohne diese Zustimmung bleibt das Tuto-Mikro für die ganze Klasse aus. Ist die KI-Anbindung nicht aktiviert, wird diese Zustimmung nicht gebraucht.
+        - Für andere Zwecke werden Ton und Notizen nicht verwendet.
 
         ## Wer hat Zugriff?
 
-        Nur die Lehrkraft, die die Stunde aufnimmt. Die Aufnahme wird nicht an andere Personen oder Stellen weitergegeben.
+        Nur die Lehrkraft, die die Stunde hält. Ton und Notizen werden nicht an andere Personen oder Stellen weitergegeben, außer an den KI-Anbieter, soweit oben beschrieben.
 
         ## Wie lange wird gespeichert?
 
-        Tonaufnahmen und Transkripte werden nach {$days} Tagen automatisch gelöscht. Was die Lehrkraft daraus selbst in ihre Unterrichtsnotizen übernimmt, wird nach den üblichen Fristen für Unterrichtsdaten aufbewahrt.
+        Ton wird nicht gespeichert. Was die Lehrkraft in ihre Unterrichtsnotizen übernimmt, wird {$notesRetention} gelöscht. Die Plattform vermerkt je Sitzung, wann das Tuto-Mikro lief und für welche Schüler:innen eine Einwilligung vorlag. Dieser Nachweis wird nach {$sessionDays} Tagen gelöscht.
 
         ## Freiwillig und ohne Nachteile
 
-        Sie entscheiden freiwillig. Wenn Sie nicht einwilligen oder später widerrufen, entstehen Ihrem Kind keine Nachteile. Sie können einzelne Zwecke ablehnen und nur den Rest erlauben, die Tonaufnahme selbst ist aber die Grundlage der anderen Zwecke.
+        Sie entscheiden freiwillig. Wenn Sie nicht einwilligen oder später widerrufen, entstehen Ihrem Kind keine Nachteile. Sie können einzelne Zwecke ablehnen und nur den Rest erlauben, der Ton ist aber die Grundlage der anderen Zwecke. Lehnen Sie die Spracherkennung und Zusammenfassung durch den KI-Anbieter ab, bleibt das Tuto-Mikro aus, solange die Schule die KI-Anbindung nutzt.
 
         ## Widerruf
 
-        Sie können Ihre Einwilligung jederzeit mit Wirkung für die Zukunft widerrufen. Nutzen Sie dafür denselben Link, über den Sie die Einwilligung erteilt haben, oder schreiben Sie der Schule. Die Rechtmäßigkeit der Verarbeitung bis zum Widerruf bleibt unberührt (Art. 7 Abs. 3 DSGVO). Möchten Sie, dass vorhandene Aufnahmen früher gelöscht werden, wenden Sie sich bitte an die Schule.
+        Sie können Ihre Einwilligung jederzeit mit Wirkung für die Zukunft widerrufen. Nutzen Sie dafür denselben Link, über den Sie die Einwilligung erteilt haben, oder schreiben Sie der Schule. Die Rechtmäßigkeit der Verarbeitung bis zum Widerruf bleibt unberührt (Art. 7 Abs. 3 DSGVO). Möchten Sie, dass vorhandene Notizen früher gelöscht werden, wenden Sie sich bitte an die Schule.
 
         ## Ihre Rechte und Kontakt
 

@@ -4,7 +4,6 @@ namespace Tests\Feature\Consents;
 
 use App\Filament\Pages\ClassConsents;
 use App\Models\ConsentForm;
-use App\Models\Lesson;
 use App\Models\RecordingConsent;
 use App\Models\School;
 use App\Models\SchoolClass;
@@ -104,6 +103,36 @@ class ConsentLettersTest extends TestCase
         $this->assertSame($this->students->modelKeys(), RecordingConsent::query()->orderBy('id')->pluck('student_id')->all());
     }
 
+    /**
+     * StartSession stores the URL of every GET as "previous": a consent link opened in a browser that is signed in
+     * must not leave its token in the sessions table, and neither must the letters page of the teacher.
+     */
+    public function test_the_plain_tokens_reach_no_session(): void
+    {
+        config(['session.driver' => 'database']);
+
+        $tokens = $this->tokensIn($this->letters());
+        $this->assertCount(3, $tokens);
+
+        foreach ($tokens as $token) {
+            $this->actingAs($this->teacher)->get(route('consents.show', $token))->assertOk();
+        }
+
+        $this->actingAs($this->teacher)->get(ClassConsents::getUrl(['klasse' => $this->schoolClass->getKey()]))->assertOk();
+
+        $sessions = json_encode(DB::table('sessions')->pluck('payload'));
+
+        // Control: the panel page of the same teacher did start a session, so the checks below can fail.
+        $this->assertNotSame('[]', $sessions);
+
+        foreach ($tokens as $token) {
+            $this->assertStringNotContainsString($token, $sessions);
+            $this->assertStringNotContainsString($token, json_encode(session()->all()));
+        }
+
+        $this->assertStringNotContainsString('/einwilligung/', $sessions);
+    }
+
     public function test_the_letters_are_not_indexed_or_cached(): void
     {
         $response = $this->letters()->assertOk();
@@ -197,10 +226,10 @@ class ConsentLettersTest extends TestCase
         $this->letters(user: $admin)->assertOk();
     }
 
-    public function test_a_teacher_who_taught_the_class_may_make_letters(): void
+    public function test_an_assigned_teacher_may_make_letters(): void
     {
         $colleague = User::factory()->for($this->school)->teacher()->create();
-        Lesson::factory()->create(['school_class_id' => $this->schoolClass->getKey(), 'teacher_id' => $colleague->getKey()]);
+        $this->schoolClass->teachers()->attach($colleague);
 
         $this->letters(user: $colleague)->assertOk();
     }
@@ -245,8 +274,8 @@ class ConsentLettersTest extends TestCase
         $this->form->forceFill(['purposes' => ['audio', 'transcript']])->save();
 
         $this->letters()
-            ->assertSee('Tonaufnahme des Unterrichts')
-            ->assertSee('Transkript (Text) aus der Aufnahme')
-            ->assertDontSee('KI-gestützte Auswertung des Transkripts');
+            ->assertSee('Ton des Unterrichts (Tuto-Mikro)')
+            ->assertSee('Notizen aus der Stunde (aus dem Ton erkannter Text)')
+            ->assertDontSee('Spracherkennung und Zusammenfassung durch den KI-Anbieter');
     }
 }

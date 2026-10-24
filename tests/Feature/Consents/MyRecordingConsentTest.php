@@ -35,7 +35,7 @@ class MyRecordingConsentTest extends TestCase
 
     public function test_only_students_of_schools_that_ask_for_the_confirmation_get_the_page(): void
     {
-        $this->actingAs($this->student)->get(MyRecordingConsent::getUrl())->assertOk()->assertSee('Aufnahmen im Unterricht');
+        $this->actingAs($this->student)->get(MyRecordingConsent::getUrl())->assertOk()->assertSee('Tuto-Mikro im Unterricht');
         $this->assertTrue(MyRecordingConsent::canAccess());
 
         $this->school->forceFill(['require_student_consent' => false])->save();

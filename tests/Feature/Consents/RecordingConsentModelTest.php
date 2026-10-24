@@ -100,6 +100,23 @@ class RecordingConsentModelTest extends TestCase
         $this->assertNull($consent->refresh()->revoked_at);
     }
 
+    public function test_a_revocation_dated_before_the_consent_cannot_cancel_it(): void
+    {
+        $form = $this->publishedForm(School::factory()->create());
+        $consent = RecordingConsent::factory()->forForm($form)->create(['granted_at' => now()->subDays(2)]);
+
+        try {
+            $consent->revoke(null, now()->subDays(5));
+            $this->fail('A revocation older than the consent must be refused.');
+        } catch (InvalidArgumentException) {
+            $this->assertNull($consent->refresh()->revoked_at);
+        }
+
+        $consent->revoke(null, now()->subDays(2));
+
+        $this->assertTrue($consent->refresh()->revoked_at->isSameDay(now()->subDays(2)));
+    }
+
     public function test_a_consent_without_a_declaration_has_no_latest_one(): void
     {
         $consent = RecordingConsent::factory()->notAnswered()->create();
@@ -242,17 +259,34 @@ class RecordingConsentModelTest extends TestCase
 
     public function test_the_default_form_names_the_school_and_the_retention(): void
     {
-        config(['lernplattform.recordings.keep_days' => 21]);
+        config(['lernplattform.recordings.session_keep_days' => 21, 'lernplattform.retention.school_years_kept' => 1]);
         $school = School::factory()->create(['name' => 'Goethe-Gymnasium', 'city' => 'Kassel', 'contact_email' => 'sekretariat@goethe.example.test']);
 
         $body = ConsentForm::defaultBody($school);
 
         $this->assertStringContainsString('Goethe-Gymnasium', $body);
         $this->assertStringContainsString('nach 21 Tagen', $body);
+        $this->assertStringContainsString('zum Ende des Schuljahres', $body);
+        $this->assertStringContainsString('Tuto-Mikro', $body);
+        $this->assertStringContainsString('Ton wird nicht gespeichert', $body);
         $this->assertStringContainsString('sekretariat@goethe.example.test', $body);
         $this->assertStringContainsString('jederzeit', $body);
         $this->assertStringContainsString('ohne Nachteile', $body);
         $this->assertStringContainsString('pseudonymisierten', $body);
+    }
+
+    public function test_the_ai_purpose_names_the_sound_that_goes_to_the_provider_and_what_declining_means(): void
+    {
+        $label = ConsentForm::PURPOSES['ai_analysis'];
+        $body = ConsentForm::defaultBody(School::factory()->create());
+
+        // The purpose gates the speech recognition of the sound segments, not only a text summary.
+        $this->assertStringContainsString('Spracherkennung', $label);
+        $this->assertStringContainsString('Ton-Abschnitte', $label);
+        $this->assertStringContainsString('Text nur pseudonymisiert', $label);
+        $this->assertStringContainsString('nicht pseudonymisiert', $body);
+        $this->assertStringContainsString('bleibt das Tuto-Mikro für die ganze Klasse aus', $body);
+        $this->assertStringContainsString('Ist die KI-Anbindung nicht aktiviert, wird diese Zustimmung nicht gebraucht', $body);
     }
 
     public function test_the_form_text_is_rendered_without_raw_html(): void

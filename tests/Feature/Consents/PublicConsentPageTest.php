@@ -80,9 +80,9 @@ class PublicConsentPageTest extends TestCase
             ->assertSee($this->form->title)
             ->assertSee('Was wird aufgezeichnet?')
             ->assertSee('Nur der Ton.')
-            ->assertSee('Tonaufnahme des Unterrichts')
-            ->assertSee('Transkript (Text) aus der Aufnahme')
-            ->assertSee('KI-gestützte Auswertung')
+            ->assertSee('Ton des Unterrichts (Tuto-Mikro)')
+            ->assertSee('Notizen aus der Stunde (aus dem Ton erkannter Text)')
+            ->assertSee('Spracherkennung und Zusammenfassung durch den KI-Anbieter')
             ->assertSee('Ich bin erziehungsberechtigt')
             ->assertDontSee('name="_token"', false)
             ->assertDontSee('Einwilligung widerrufen');
@@ -179,7 +179,7 @@ class PublicConsentPageTest extends TestCase
             ->assertOk()
             ->assertDontSee('Vielen Dank')
             ->assertSee('Einwilligung erteilt am '.now()->format('d.m.Y'))
-            ->assertSee('Tonaufnahme des Unterrichts, Transkript (Text) aus der Aufnahme')
+            ->assertSee('Ton des Unterrichts (Tuto-Mikro), Notizen aus der Stunde (aus dem Ton erkannter Text)')
             ->assertSee('Einwilligung widerrufen');
     }
 
@@ -204,11 +204,11 @@ class PublicConsentPageTest extends TestCase
 
         $this->post(route('consents.store', $this->token), $this->declaration(['purposes' => ['transcript']]))
             ->assertStatus(422)
-            ->assertSee('Die Tonaufnahme ist die Grundlage der anderen Zwecke.');
+            ->assertSee('Der Ton ist die Grundlage der anderen Zwecke.');
 
         $this->post(route('consents.store', $this->token), $this->declaration(['purposes' => []]))
             ->assertStatus(422)
-            ->assertSee('Bitte wählen Sie mindestens die Tonaufnahme aus.');
+            ->assertSee('Bitte wählen Sie mindestens den Ton aus.');
 
         $this->post(route('consents.store', $this->token), $this->declaration(['purposes' => ['audio', 'video']]))
             ->assertStatus(422)

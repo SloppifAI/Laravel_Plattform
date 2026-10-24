@@ -83,15 +83,19 @@ class ClassConsentsTest extends TestCase
     public function test_a_teacher_sees_only_the_classes_they_lead_or_teach(): void
     {
         $taught = SchoolClass::factory()->create(['school_id' => $this->school->getKey(), 'name' => 'Unterrichtete Klasse']);
-        Lesson::factory()->create(['school_class_id' => $taught->getKey(), 'teacher_id' => $this->teacher->getKey()]);
+        $taught->teachers()->attach($this->teacher);
+        $heldOnly = SchoolClass::factory()->create(['school_id' => $this->school->getKey(), 'name' => 'Nur Stunde gehalten']);
+        Lesson::factory()->create(['school_class_id' => $heldOnly->getKey(), 'teacher_id' => $this->teacher->getKey()]);
         $foreign = SchoolClass::factory()->create(['school_id' => $this->school->getKey(), 'name' => 'Fremde Klasse']);
 
         $this->page()
             ->assertSee($this->schoolClass->name)
             ->assertSee('Unterrichtete Klasse')
-            ->assertDontSee('Fremde Klasse');
+            ->assertDontSee('Fremde Klasse')
+            ->assertDontSee('Nur Stunde gehalten');
 
         $this->page(schoolClass: $foreign)->assertForbidden();
+        $this->page(schoolClass: $heldOnly)->assertForbidden();
         $this->page(schoolClass: $taught)->assertSuccessful();
     }
 
@@ -298,6 +302,71 @@ class ClassConsentsTest extends TestCase
             ->assertHasNoFormErrors();
 
         $this->assertSame(['audio', 'transcript'], RecordingConsent::query()->firstOrFail()->purposes);
+    }
+
+    public function test_a_refused_paper_slip_says_why(): void
+    {
+        $student = $this->students->first();
+        $this->form->forceFill(['published_at' => now()->subDays(20)])->save();
+        RecordingConsent::factory()->forForm($this->form)->create([
+            'student_id' => $student->getKey(),
+            'granted_at' => now()->subDays(8),
+            'revoked_at' => now()->subDays(4),
+        ]);
+
+        $page = $this->page()
+            ->callAction(TestAction::make('recordPaperConsent')->table($student), [
+                'guardian_name' => 'Erika Muster',
+                'purposes' => ['audio'],
+                'given_on' => now()->subDays(6)->toDateString(),
+            ])
+            ->assertHasFormErrors(['given_on' => 'after_or_equal']);
+
+        $this->assertSame(
+            'Die Eltern haben zuletzt am '.now()->subDays(4)->format('d.m.Y').' widerrufen. Ein Blatt, das früher unterschrieben wurde, kann diese jüngere Erklärung nicht überschreiben.',
+            $page->errors()->first('mountedActions.0.data.given_on'),
+        );
+    }
+
+    public function test_a_paper_slip_from_before_the_current_text_was_published_is_refused(): void
+    {
+        $student = $this->students->first();
+        $this->form->forceFill(['published_at' => now()->subDays(2)])->save();
+
+        $page = $this->page()
+            ->callAction(TestAction::make('recordPaperConsent')->table($student), [
+                'guardian_name' => 'Erika Muster',
+                'purposes' => ['audio'],
+                'given_on' => now()->subDays(5)->toDateString(),
+            ])
+            ->assertHasFormErrors(['given_on' => 'after_or_equal']);
+
+        $this->assertStringStartsWith('Der aktuelle Text gilt erst seit dem '.now()->subDays(2)->format('d.m.Y').'.', $page->errors()->first('mountedActions.0.data.given_on'));
+
+        $this->assertDatabaseCount('recording_consents', 0);
+    }
+
+    public function test_a_paper_revocation_cannot_predate_the_consent_it_revokes(): void
+    {
+        $student = $this->students->first();
+        $consent = RecordingConsent::factory()->forForm($this->form)->create(['student_id' => $student->getKey(), 'granted_at' => now()->subDays(3)]);
+
+        $page = $this->page()
+            ->callAction(TestAction::make('recordRevocation')->table($student), ['revoked_on' => now()->subDays(6)->toDateString()])
+            ->assertHasFormErrors(['revoked_on' => 'after_or_equal']);
+
+        $this->assertSame(
+            'Die Eltern haben am '.now()->subDays(3)->format('d.m.Y').' eingewilligt. Ein Widerruf, der früher datiert ist, kann diese jüngere Einwilligung nicht aufheben.',
+            $page->errors()->first('mountedActions.0.data.revoked_on'),
+        );
+
+        $this->assertNull($consent->refresh()->revoked_at);
+
+        $this->page()
+            ->callAction(TestAction::make('recordRevocation')->table($student), ['revoked_on' => now()->subDays(3)->toDateString()])
+            ->assertHasNoFormErrors();
+
+        $this->assertTrue($consent->refresh()->revoked_at->isSameDay(now()->subDays(3)));
     }
 
     public function test_the_paper_modal_names_the_latest_declaration(): void

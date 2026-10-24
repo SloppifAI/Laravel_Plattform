@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\ConsentStatus;
+use App\Filament\NavigationGroup;
 use App\Models\RecordingConsent;
 use App\Models\User;
 use BackedEnum;
@@ -13,25 +14,25 @@ use Illuminate\Support\Facades\Gate;
 use UnitEnum;
 
 /**
- * "Aufnahmen im Unterricht" for students: where a school asks for it, the student confirms or withdraws their own
- * agreement once the parents have consented. The page only exists for students of schools that switched recordings on
+ * "Tuto-Mikro im Unterricht" for students: where a school asks for it, the student confirms or withdraws their own
+ * agreement once the parents have consented. The page only exists for students of schools that switched Tuto-Mikro on
  * and require this confirmation, and only ever touches the signed-in student's own record.
  */
 class MyRecordingConsent extends Page
 {
     protected string $view = 'filament.pages.my-recording-consent';
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedMicrophone;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedSignal;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Lernen';
+    protected static string|UnitEnum|null $navigationGroup = NavigationGroup::Lernen;
 
     protected static ?int $navigationSort = 4;
 
-    protected static ?string $title = 'Aufnahmen im Unterricht';
+    protected static ?string $title = 'Tuto-Mikro im Unterricht';
 
-    protected static ?string $slug = 'aufnahmen-im-unterricht';
+    protected static ?string $slug = 'tuto-mikro-im-unterricht';
 
-    protected ?string $subheading = 'Manchmal wird im Unterricht der Ton aufgenommen. Hier siehst du, ob das für dich gilt, und sagst selbst, ob du einverstanden bist.';
+    protected ?string $subheading = 'Manchmal schaltet deine Lehrkraft im Unterricht das Tuto-Mikro ein. Hier siehst du, ob das für dich gilt, und sagst selbst, ob du einverstanden bist.';
 
     public static function canAccess(): bool
     {
@@ -71,7 +72,7 @@ class MyRecordingConsent extends Page
             $consent->withdrawByStudent();
         }
 
-        Notification::make()->success()->title('Du bist nicht mehr einverstanden')->body('Solange du nicht zustimmst, wird in deiner Klasse nicht aufgenommen.')->send();
+        Notification::make()->success()->title('Du bist nicht mehr einverstanden')->body('Solange du nicht zustimmst, bleibt das Tuto-Mikro in deiner Klasse aus.')->send();
     }
 
     /**

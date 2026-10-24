@@ -9,7 +9,7 @@
             color="gray"
             :icon="Heroicon::OutlinedUserGroup"
             heading="Keine Klasse zugeordnet"
-            description="Du leitest keine Klasse und hast in keiner Klasse Unterricht gehalten. Sobald du eine Stunde in einer Klasse anlegst, erscheint sie hier."
+            description="Dir ist noch keine Klasse zugeordnet. Sobald die Schulverwaltung dich einer Klasse zuweist, erscheint sie hier."
         />
     @else
         <div class="flex flex-wrap items-end justify-between gap-4">
@@ -37,7 +37,7 @@
                 color="warning"
                 :icon="Heroicon::OutlinedExclamationTriangle"
                 heading="Es gibt noch keine Einwilligungserklärung"
-                :description="$isAdmin ? 'Veröffentliche zuerst den Text unter „Aufnahmen & Einwilligungen“, dann kannst du Elternbriefe erzeugen.' : 'Die Schuladministration muss zuerst den Text unter „Aufnahmen & Einwilligungen“ veröffentlichen. Erst dann kannst du Elternbriefe erzeugen.'"
+                :description="$isAdmin ? 'Veröffentliche zuerst den Text unter „Tuto-Mikro & Einwilligungen“, dann kannst du Elternbriefe erzeugen.' : 'Die Schuladministration muss zuerst den Text unter „Tuto-Mikro & Einwilligungen“ veröffentlichen. Erst dann kannst du Elternbriefe erzeugen.'"
             />
         @endif
 
@@ -45,8 +45,8 @@
             <x-filament::callout
                 color="info"
                 :icon="Heroicon::OutlinedInformationCircle"
-                heading="Aufnahmen sind für eure Schule noch nicht freigeschaltet"
-                description="Einwilligungen kannst du trotzdem schon einholen. Aufnehmen lässt sich erst, wenn die Schuladministration die Aufnahmen freigeschaltet hat."
+                heading="Tuto-Mikro ist für eure Schule noch nicht freigeschaltet"
+                description="Einwilligungen kannst du trotzdem schon einholen. Einschalten lässt sich das Mikro erst, wenn die Schuladministration es freigeschaltet hat."
             />
         @endif
 
@@ -55,7 +55,7 @@
                 color="info"
                 :icon="Heroicon::OutlinedAcademicCap"
                 heading="Zusätzliche Bestätigung der Schüler:innen"
-                description="Eure Schule verlangt, dass die Schüler:innen nach der Einwilligung der Eltern selbst unter „Aufnahmen im Unterricht“ zustimmen."
+                description="Eure Schule verlangt, dass die Schüler:innen nach der Einwilligung der Eltern selbst unter „Tuto-Mikro im Unterricht“ zustimmen."
             />
         @endif
 
@@ -66,7 +66,7 @@
                 </h2>
 
                 <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                    Aufgenommen wird nur, wenn für alle anwesenden Schüler:innen die Einwilligung vollständig ist.
+                    Das Tuto-Mikro geht nur an, wenn für alle anwesenden Schüler:innen die Einwilligung vollständig ist.
                 </p>
 
                 @if ($statusCounts !== [])

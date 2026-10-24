@@ -126,7 +126,8 @@ class RecordingConsent extends Model
 
     /**
      * Whether a declaration dated $at is older (by calendar day) than the one on file. The latest declaration of the
-     * parents wins, so a paper slip handed in late must not override a later revocation or a later, narrower consent.
+     * parents wins, so a paper slip handed in late must not override a later revocation or a later, narrower consent,
+     * and a paper revocation dated before the consent on file must not cancel it.
      */
     public function predatesLatestDeclaration(CarbonInterface $at): bool
     {
@@ -169,11 +170,17 @@ class RecordingConsent extends Model
 
     /**
      * Withdraws the consent for the future. Idempotent. A revocation recorded from paper names who recorded it.
+     *
+     * @throws InvalidArgumentException when the revocation is dated before the consent it revokes: the latest declaration wins
      */
     public function revoke(?User $recordedBy = null, ?CarbonInterface $at = null): void
     {
         if ($this->granted_at === null || $this->revoked_at !== null) {
             return;
+        }
+
+        if ($at !== null && $this->predatesLatestDeclaration($at)) {
+            throw new InvalidArgumentException('A revocation dated before the consent on file cannot replace it.');
         }
 
         $this->forceFill([
