@@ -18,6 +18,8 @@
         </include>
     </source>
     <php>
+        <!-- The suite boots the whole Filament panel for ~900 tests; 128M runs out and kills the process. -->
+        <ini name="memory_limit" value="1G"/>
         <env name="APP_ENV" value="testing"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
