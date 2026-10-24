@@ -4,7 +4,6 @@ namespace Database\Seeders;
 
 use App\MessageAuthor;
 use App\Models\Competency;
-use App\Models\DpaAcceptance;
 use App\Models\ExplanationSession;
 use App\Models\Lesson;
 use App\Models\School;
@@ -21,7 +20,7 @@ use Illuminate\Support\Facades\DB;
 /**
  * Two demo schools. "Gesamtschule am Lernpark" has a school administration (schulleitung), two teachers, classes 7a and 7b
  * and lessons in every state (draft, homework with results, open homework, homework for selected students, an open
- * Förderaufgabe for the competency Mia and Ben need support in) plus "Erklär's mir" sessions for Mia Hoffmann (login schueler). "Gymnasium Musterstadt" is a small second school
+ * Förderaufgabe for the competency Emilian and Ben need support in) plus "Erklär's mir" sessions for Emilian (login schueler). "Gymnasium Musterstadt" is a small second school
  * (gym-admin, one teacher, one class, one lesson) that shows what the schools cannot see of each other.
  * The platform operator (hackathon) belongs to no school and is created by DatabaseSeeder.
  *
@@ -41,17 +40,17 @@ class DemoSchoolSeeder extends Seeder
             $admin = $this->user('schulleitung', 'Petra Krause', Role::Admin, $school);
             $this->optIntoAi($school, $admin);
             $this->acceptDpa($school, $admin);
-            $anna = $this->user('lehrer', 'Anna Schneider', Role::Teacher, $school);
+            $anna = $this->user('lehrer', 'Frau Sommer', Role::Teacher, $school);
             $weber = $this->user('weber', 'Thomas Weber', Role::Teacher, $school);
 
             $class7b = $this->schoolClass($school, '7b', $anna);
             $class7a = $this->schoolClass($school, '7a', $weber);
-            // Thomas Weber leads 7a and also teaches 7b (assigned, not Klassenleitung); Anna's demo data stay the first thing
+            // Thomas Weber leads 7a and also teaches 7b (assigned, not Klassenleitung); Frau Sommer's demo data stay the first thing
             // she sees, which is why it is not the other way round. Re-seeding keeps assignments the administration added.
             $class7b->teachers()->syncWithoutDetaching([$weber->id]);
 
             $students7b = collect([
-                'schueler' => 'Mia Hoffmann',
+                'schueler' => 'Emilian',
                 'ben.krueger' => 'Ben Krüger',
                 'lena.schulz' => 'Lena Schulz',
                 'jonas.becker' => 'Jonas Becker',
@@ -102,12 +101,12 @@ class DemoSchoolSeeder extends Seeder
     }
 
     /**
-     * The demo schools accepted the released contract, so their people are not held back on "Meine Schule". Only the
-     * first time: re-seeding leaves an existing acceptance alone.
+     * The demo schools always have the current contract accepted, released or not, so their people are never held back
+     * on "Meine Schule". Re-seeding renews an acceptance only when the contract changed since.
      */
     private function acceptDpa(School $school, User $admin): void
     {
-        if (DpaAcceptance::isFinal() && ! $school->hasAcceptedDpa()) {
+        if (! $school->hasAcceptedCurrentDpa()) {
             $school->acceptDpa($admin);
         }
     }
@@ -245,12 +244,12 @@ class DemoSchoolSeeder extends Seeder
             'published_at' => $this->daysAgo(12, '14:10'),
             'due_on' => $this->daysAgo(7),
             'notes' => <<<'NOTES'
-                Mathe 7b – Förderband Flächeninhalt Dreieck (Kleingruppe: Mia, Ben, Noah), 45 min
+                Mathe 7b – Förderband Flächeninhalt Dreieck (Kleingruppe: Emilian, Ben, Noah), 45 min
 
                 Anlass: In der Lernstandsüberprüfung Flächen (Rechteck/Dreieck) Fehler bei der Zuordnung Grundseite – Höhe, Formel oft A = g · h ohne „: 2“. Muss vor Pythagoras sitzen.
 
                 Ablauf:
-                - Rechteck auf Karopapier, Diagonale einzeichnen, auseinanderschneiden → zwei gleiche Dreiecke → A = g · h : 2. Mia: „Ach so, deshalb durch zwei!“
+                - Rechteck auf Karopapier, Diagonale einzeichnen, auseinanderschneiden → zwei gleiche Dreiecke → A = g · h : 2. Emilian: „Ach so, deshalb durch zwei!“
                 - Höhe einzeichnen: Geodreieck senkrecht auf die Grundseite. Beim stumpfwinkligen Dreieck liegt die Höhe außerhalb – Ben noch unsicher.
                 - Förder-AB 3, Nr. 1–6: erst Kästchen zählen, dann rechnen.
                 - Sachaufgabe Beet: alle drei scheitern daran, die richtigen Maße aus dem Text zu holen und die Einheiten (cm/m) anzugleichen.
@@ -294,8 +293,8 @@ class DemoSchoolSeeder extends Seeder
 
     /**
      * An open Förderaufgabe like the teacher creates it on "Lernstand & Förderbedarf": for "Probleme mathematisch lösen",
-     * where Mia and Ben are below the support threshold after the remedial lesson (the other students have no
-     * evaluated answer there). Nobody has handed it in yet, so Mia finds it on "Mein Lernstand" and her start page.
+     * where Emilian and Ben are below the support threshold after the remedial lesson (the other students have no
+     * evaluated answer there). Nobody has handed it in yet, so Emilian finds it on "Mein Lernstand" and his start page.
      *
      * @param  iterable<User>  $students
      */
@@ -390,7 +389,7 @@ class DemoSchoolSeeder extends Seeder
                     ['Bei der Fotosynthese stellt die Pflanze aus Kohlenstoffdioxid und Wasser Traubenzucker her. Dafür braucht sie Licht und das Chlorophyll. Dabei entsteht Sauerstoff, den wir zum Atmen brauchen. Das passiert in den Chloroplasten in den Blättern. Das CO₂ kommt durch die Spaltöffnungen rein.', 85, 'Ausgangsstoffe, Produkte, Licht und Ort sind richtig und vollständig genannt. Es fehlt nur, wie das Wasser in die Pflanze gelangt (über die Wurzeln).'],
                     ['Hypothese: Je näher die Lampe ist, desto mehr Bläschen. Das stimmt, weil bei 10 cm 38 Bläschen waren und bei 50 cm nur 6. Die Bläschen sind Sauerstoff. Gleich bleiben muss die Pflanze.', 70, 'Die Messwerte sind richtig ausgewertet und der Sauerstoff wird erkannt. Die Hypothese beschreibt aber nur die Beobachtung (Abstand) statt den Zusammenhang Licht → Fotosynthese. Bei den Bedingungen fehlen Temperatur und Zählzeit.'],
                     ['Ich finde, der Vergleich passt, weil der Regenwald ganz viel Sauerstoff macht und wir den zum Atmen brauchen. Ohne Regenwald hätten wir keine Luft.', 55, 'Ein Argument für den Vergleich ist genannt. Es fehlt die Gegenseite: Eine Lunge nimmt Sauerstoff auf, die Pflanze gibt ihn ab. „Ohne Regenwald keine Luft“ ist zu stark verallgemeinert.'],
-                    ['Frau Schneider hat Pfeile für Tag und Nacht an die Tafel gemalt. Die Pflanze atmet immer, also auch nachts, sie macht nur nachts keine Fotosynthese. Mir hat geholfen, dass Jonas das gefragt hat, weil ich mir das auch nicht erklären konnte. Die Fabrik mit dem Abfallprodukt fand ich auch gut.', 80, 'Der Unterschied zwischen Tag und Nacht ist richtig wiedergegeben und der eigene Lernweg nachvollziehbar beschrieben. Den Fachbegriff Zellatmung noch verwenden.'],
+                    ['Frau Sommer hat Pfeile für Tag und Nacht an die Tafel gemalt. Die Pflanze atmet immer, also auch nachts, sie macht nur nachts keine Fotosynthese. Mir hat geholfen, dass Jonas das gefragt hat, weil ich mir das auch nicht erklären konnte. Die Fabrik mit dem Abfallprodukt fand ich auch gut.', 80, 'Der Unterschied zwischen Tag und Nacht ist richtig wiedergegeben und der eigene Lernweg nachvollziehbar beschrieben. Den Fachbegriff Zellatmung noch verwenden.'],
                 ],
             ],
             'ben.krueger' => [
@@ -429,7 +428,7 @@ class DemoSchoolSeeder extends Seeder
                     ['Die Pflanze nimmt CO₂ und Wasser auf und macht daraus Zucker und Sauerstoff. Dafür braucht sie Licht. Das ist in den Blättern.', 70, 'Ausgangsstoffe und Produkte sind korrekt. Genauer wäre: in den Chloroplasten, mithilfe von Chlorophyll.'],
                     ['Bei 10 cm waren es 38, bei 30 cm 17 und bei 50 cm 6. Also werden es weniger.', 45, 'Die Messwerte werden nur wiedergegeben. Es fehlen die Hypothese, die Erklärung (weniger Licht → weniger Fotosynthese → weniger Sauerstoff) und die konstanten Bedingungen.'],
                     ['Der Vergleich passt nicht ganz, weil die Lunge Sauerstoff braucht und der Wald Sauerstoff macht. Aber beide sind wichtig für die Luft.', 65, 'Der zentrale Unterschied ist erkannt. Das Urteil könnte deutlicher begründet und abschließend formuliert werden.'],
-                    ['Das war meine Frage :) Pflanzen atmen auch, das ist die Zellatmung, nachts gibt es aber keine Fotosynthese. Mir hat geholfen, dass Frau Schneider das gleich an der Tafel ergänzt hat und nicht erst nächste Woche.', 75, 'Inhalt richtig; die eigene Frage als Lernanlass gut reflektiert.'],
+                    ['Das war meine Frage :) Pflanzen atmen auch, das ist die Zellatmung, nachts gibt es aber keine Fotosynthese. Mir hat geholfen, dass Frau Sommer das gleich an der Tafel ergänzt hat und nicht erst nächste Woche.', 75, 'Inhalt richtig; die eigene Frage als Lernanlass gut reflektiert.'],
                 ],
             ],
             'elif.yilmaz' => [
@@ -504,7 +503,7 @@ class DemoSchoolSeeder extends Seeder
                 Übung: S. 112 Nr. 1–4 (Hypotenuse berechnen), Nr. 5 (Kathete berechnen, umstellen: b² = c² − a²) → viele Fehler beim Umstellen, z. B. b = c − a. Nächste Stunde Wurzelziehen und Umstellen noch mal üben.
                 Taschenrechner: √-Taste erklärt, auf 2 Nachkommastellen runden.
 
-                Notiz: Mia, Ben, Noah brauchen noch Sicherheit bei Flächen (siehe Förderaufgabe). Lena hat schon den Zerlegungsbeweis gesehen → Zusatzaufgabe mitgegeben.
+                Notiz: Emilian, Ben, Noah brauchen noch Sicherheit bei Flächen (siehe Förderaufgabe). Lena hat schon den Zerlegungsbeweis gesehen → Zusatzaufgabe mitgegeben.
                 NOTES,
             'summary' => 'Ausgehend von der Frage, wie man mit einem Seil einen rechten Winkel absteckt, wurde der Satz des Pythagoras entdeckt: In jedem rechtwinkligen Dreieck ist die Summe der Kathetenquadrate gleich dem Hypotenusenquadrat (a² + b² = c²). Die Hypotenuse liegt dem rechten Winkel gegenüber und ist die längste Seite. In Gruppenarbeit wurden Quadrate an Dreiecksseiten verglichen; ein stumpfwinkliges Dreieck diente als Gegenbeispiel dafür, dass der Satz nur für rechtwinklige Dreiecke gilt. Geübt wurde das Berechnen der Hypotenuse; das Umstellen nach einer Kathete wird in der nächsten Stunde vertieft.',
         ], $students, [

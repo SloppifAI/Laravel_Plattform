@@ -32,6 +32,11 @@ final class Pseudonymizer
     private const array PARTICLES = ['von', 'van', 'de', 'der', 'den', 'zu', 'zur', 'vom', 'di', 'da', 'le', 'la', 'el', 'bin', 'ibn'];
 
     /**
+     * Forms of address in a stored name like "Frau Sommer": alone they are no name, so "Frau" elsewhere in a text stays.
+     */
+    private const array SALUTATIONS = ['frau', 'herr', 'fr', 'hr', 'dr', 'prof'];
+
+    /**
      * @param  array<string, string>  $labels  lower-case name (one part or the full name) => label
      */
     private function __construct(private readonly array $labels) {}
@@ -65,7 +70,7 @@ final class Pseudonymizer
                 return;
             }
 
-            $isName = fn (string $part): bool => mb_strlen($part) >= 2 && ! in_array(mb_strtolower($part), self::PARTICLES, true);
+            $isName = fn (string $part): bool => mb_strlen($part) >= 2 && ! in_array(mb_strtolower($part), [...self::PARTICLES, ...self::SALUTATIONS], true);
 
             // "Anna-Lena" is a name part, and so is each half of it.
             $words = array_filter((array) preg_split('/[\s,;.]+/u', $name, -1, PREG_SPLIT_NO_EMPTY), $isName);

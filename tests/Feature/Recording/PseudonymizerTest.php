@@ -101,6 +101,13 @@ class PseudonymizerTest extends TestCase
         $this->assertSame('Der Schüler:in A von Schüler:in A, van Gogh, Schüler:in B und Schüler:in C bin ich, von der Tafel zur Schule.', $result);
     }
 
+    public function test_a_salutation_in_a_stored_name_is_no_name_of_its_own(): void
+    {
+        $result = Pseudonymizer::forPeople(['Emilian'], 'Frau Sommer')->apply('Frau Sommer zeigt die Pflanze, Sommer lobt Emilian. Eine Frau aus dem Labor kommt dazu.');
+
+        $this->assertSame('Lehrkraft zeigt die Pflanze, Lehrkraft lobt Schüler:in A. Eine Frau aus dem Labor kommt dazu.', $result);
+    }
+
     public function test_initials_and_single_letters_are_not_replaced(): void
     {
         $result = Pseudonymizer::forPeople(['Max M. Meier'], null)->apply('M ist ein Buchstabe, Max Meier meldet sich.');

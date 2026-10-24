@@ -40,14 +40,16 @@ class DemoSeederTest extends TestCase
         $this->assertSame(6, $countsAfterFirstRun['lessons']);
     }
 
-    public function test_the_demo_schools_accept_a_released_dpa_once(): void
+    public function test_the_demo_schools_always_have_the_current_dpa_accepted_once(): void
     {
+        config(['lernplattform.dpa.final' => false]);
+
+        $this->seed(DatabaseSeeder::class);
+        $this->seed(DatabaseSeeder::class);
         config(['lernplattform.dpa.final' => true]);
 
-        $this->seed(DatabaseSeeder::class);
-        $this->seed(DatabaseSeeder::class);
-
         School::all()->each(function (School $school): void {
+            $this->assertTrue($school->hasAcceptedCurrentDpa());
             $this->assertFalse($school->mustAcceptDpa());
             $this->assertSame(1, $school->dpaAcceptances()->count());
         });
@@ -80,7 +82,8 @@ class DemoSeederTest extends TestCase
         $this->assertSame($existingAccount->id, User::query()->where('username', 'hackathon')->value('id'));
 
         $mia = User::query()->where('username', 'schueler')->sole();
-        $this->assertSame('Mia Hoffmann', $mia->name);
+        $this->assertSame('Emilian', $mia->name);
+        $this->assertSame('Frau Sommer', $mia->schoolClass->teacher->name);
         $this->assertSame('7b', $mia->schoolClass->name);
         $this->assertSame('lehrer', $mia->schoolClass->teacher->username);
         $this->assertSame('Petra Krause', User::query()->where('username', 'schulleitung')->value('name'));

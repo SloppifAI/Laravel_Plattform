@@ -84,7 +84,7 @@ class LoginTest extends TestCase
             'hackathon' => ['Neueste Registrierungen', 'Schuladministrationen'],
             'schulleitung' => ['Abgaben diese Woche', 'Unterrichtsstunden'],
             'lehrer' => ['Deine letzten Unterrichtsstunden'],
-            'schueler' => ['Hallo Mia!'],
+            'schueler' => ['Hallo Emilian!'],
         ];
 
         foreach ($startPages as $username => $expectedTexts) {
