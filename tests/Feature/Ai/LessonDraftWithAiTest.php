@@ -66,8 +66,8 @@ class LessonDraftWithAiTest extends TestCase
         HomeworkDrafter::assertNeverPrompted();
 
         $notification = $this->sentNotifications()->sole();
-        $this->assertSame('Hausaufgabe erstellt', $notification['title']);
-        $this->assertStringContainsString('Demo-Modus', $notification['body']);
+        $this->assertSame('Homework created', $notification['title']);
+        $this->assertStringContainsString('Demo mode', $notification['body']);
     }
 
     public function test_a_school_with_opt_in_gets_the_ai_draft_without_the_demo_notice(): void
@@ -96,8 +96,8 @@ class LessonDraftWithAiTest extends TestCase
         HomeworkDrafter::assertPromptedTimes(1);
 
         $notification = $this->sentNotifications()->sole();
-        $this->assertSame('Hausaufgabe erstellt', $notification['title']);
-        $this->assertStringNotContainsString('Demo-Modus', $notification['body']);
+        $this->assertSame('Homework created', $notification['title']);
+        $this->assertStringNotContainsString('Demo mode', $notification['body']);
     }
 
     public function test_a_failing_ai_keeps_the_questions_and_does_not_fall_back_to_the_demo_logic(): void
@@ -111,7 +111,7 @@ class LessonDraftWithAiTest extends TestCase
 
         $this->assertSame(['Alte Frage'], $lesson->questions()->pluck('prompt')->all());
         $this->assertNull($lesson->refresh()->summary);
-        $this->assertSame('KI-Entwurf fehlgeschlagen', $this->sentNotifications()->sole()['title']);
+        $this->assertSame('AI draft failed', $this->sentNotifications()->sole()['title']);
     }
 
     /**

@@ -42,16 +42,27 @@ class Today extends Page implements HasTable
 
     protected static ?int $navigationSort = 0;
 
-    protected static ?string $title = 'Heute';
-
     protected static ?string $slug = 'heute';
-
-    protected ?string $subheading = 'Deine Stunden von heute und den letzten Schultagen: Hausaufgabe erstellen, prüfen, freigeben.';
 
     /**
      * How many school days (Monday to Friday) before today still show up.
      */
     private const int SCHOOL_DAYS_BACK = 2;
+
+    public static function getNavigationLabel(): string
+    {
+        return __('Heute');
+    }
+
+    public function getTitle(): string
+    {
+        return __('Heute');
+    }
+
+    public function getSubheading(): string
+    {
+        return __('Deine Stunden von heute und den letzten Schultagen: Hausaufgabe erstellen, prüfen, freigeben.');
+    }
 
     public static function canAccess(): bool
     {
@@ -62,21 +73,20 @@ class Today extends Page implements HasTable
     {
         return [
             Action::make('releaseAll')
-                ->label('Alle bereiten freigeben')
+                ->label(__('Alle bereiten freigeben'))
                 ->icon(Heroicon::OutlinedPaperAirplane)
                 ->visible(fn (): bool => $this->releasableLessons()->isNotEmpty())
                 ->requiresConfirmation()
-                ->modalHeading('Alle bereiten Hausaufgaben freigeben?')
+                ->modalHeading(__('Alle bereiten Hausaufgaben freigeben?'))
                 ->modalDescription(function (): string {
                     $lessons = $this->releasableLessons();
 
-                    return sprintf(
-                        '%s: %s. Jede geht an die ganze Klasse. Die Schüler:innen finden die Fragen danach in ihrem Lernbereich, den Erwartungshorizont sehen sie nicht.',
-                        $lessons->count() === 1 ? '1 Hausaufgabe mit Fragen wartet auf Freigabe' : "{$lessons->count()} Hausaufgaben mit Fragen warten auf Freigabe",
-                        $lessons->map(fn (Lesson $lesson): string => "{$lesson->subject} ({$lesson->schoolClass->name})")->implode(', '),
-                    );
+                    return __(':waiting: :lessons. Jede geht an die ganze Klasse. Die Schüler:innen finden die Fragen danach in ihrem Lernbereich, den Erwartungshorizont sehen sie nicht.', [
+                        'waiting' => trans_choice(':count Hausaufgabe mit Fragen wartet auf Freigabe|:count Hausaufgaben mit Fragen warten auf Freigabe', $lessons->count()),
+                        'lessons' => $lessons->map(fn (Lesson $lesson): string => "{$lesson->subject} ({$lesson->schoolClass->name})")->implode(', '),
+                    ]);
                 })
-                ->modalSubmitActionLabel('Freigeben')
+                ->modalSubmitActionLabel(__('Freigeben'))
                 ->schema([$this->dueOnField()])
                 ->action(function (array $data): void {
                     $teacher = $this->teacher();
@@ -89,8 +99,8 @@ class Today extends Page implements HasTable
                     if ($released === 0) {
                         Notification::make()
                             ->warning()
-                            ->title('Niemand freigegeben')
-                            ->body('In den Klassen sind noch keine Schüler:innen eingetragen.')
+                            ->title(__('Niemand freigegeben'))
+                            ->body(__('In den Klassen sind noch keine Schüler:innen eingetragen.'))
                             ->send();
 
                         return;
@@ -98,10 +108,8 @@ class Today extends Page implements HasTable
 
                     Notification::make()
                         ->success()
-                        ->title($released === 1 ? '1 Hausaufgabe freigegeben' : "{$released} Hausaufgaben freigegeben")
-                        ->body($released < $reached->count()
-                            ? 'Klassen ohne Schüler:innen wurden übersprungen. Abgabe bis '.$dueOn->format('d.m.Y').'.'
-                            : 'Abgabe bis '.$dueOn->format('d.m.Y').'.')
+                        ->title(trans_choice(':count Hausaufgabe freigegeben|:count Hausaufgaben freigegeben', $released))
+                        ->body(($released < $reached->count() ? __('Klassen ohne Schüler:innen wurden übersprungen.').' ' : '').__('Abgabe bis :date.', ['date' => $dueOn->format('d.m.Y')]))
                         ->send();
                 }),
         ];
@@ -115,31 +123,28 @@ class Today extends Page implements HasTable
             ->paginated(false)
             ->columns([
                 TextColumn::make('topic')
-                    ->label('Stunde')
-                    ->description(fn (Lesson $record): string => sprintf(
-                        '%s · %s · Klasse %s',
-                        $record->held_on->isToday() ? 'Heute' : $record->held_on->locale('de')->isoFormat('dd., D.M.'),
-                        $record->subject,
-                        $record->schoolClass->name,
-                    ), position: 'above')
+                    ->label(__('Stunde'))
+                    ->description(fn (Lesson $record): string => __(':day · :subject · Klasse :class', [
+                        'day' => $record->held_on->isToday() ? __('Heute') : $record->held_on->locale(app()->getLocale())->isoFormat(__('dd., D.M.')),
+                        'subject' => $record->subject,
+                        'class' => $record->schoolClass->name,
+                    ]), position: 'above')
                     ->weight(FontWeight::Medium)
                     ->wrap(),
                 TextColumn::make('status')
-                    ->label('Status')
-                    ->state(fn (Lesson $record): string => $record->isPublished() ? 'Freigegeben' : 'Wartet auf Freigabe')
+                    ->label(__('Status'))
+                    ->state(fn (Lesson $record): string => $record->isPublished() ? __('Freigegeben') : __('Wartet auf Freigabe'))
                     ->badge()
-                    ->color(fn (string $state): string => $state === 'Freigegeben' ? 'primary' : 'warning')
-                    ->icon(fn (string $state): Heroicon => $state === 'Freigegeben' ? Heroicon::OutlinedCheckCircle : Heroicon::OutlinedClock),
+                    ->color(fn (string $state): string => $state === __('Freigegeben') ? 'primary' : 'warning')
+                    ->icon(fn (string $state): Heroicon => $state === __('Freigegeben') ? Heroicon::OutlinedCheckCircle : Heroicon::OutlinedClock),
                 TextColumn::make('questions_count')
-                    ->label('Hausaufgabe')
-                    ->state(fn (Lesson $record): string => match (true) {
-                        $record->questions_count === 0 => 'Noch kein Entwurf',
-                        $record->questions_count === 1 => '1 Frage',
-                        default => "{$record->questions_count} Fragen",
-                    })
+                    ->label(__('Hausaufgabe'))
+                    ->state(fn (Lesson $record): string => $record->questions_count === 0
+                        ? __('Noch kein Entwurf')
+                        : trans_choice(':count Frage|:count Fragen', $record->questions_count))
                     ->color(fn (Lesson $record): string => $record->questions_count === 0 ? 'gray' : 'primary'),
                 TextColumn::make('submissions_count')
-                    ->label('Abgegeben')
+                    ->label(__('Abgegeben'))
                     ->state(fn (Lesson $record): ?string => $record->isPublished() && $this->teacher()->can('viewResults', $record) ? "{$record->submissions_count} / {$record->students_count}" : null)
                     ->placeholder('–'),
             ])
@@ -149,11 +154,11 @@ class Today extends Page implements HasTable
                 $this->releaseAction(),
             ])
             ->emptyStateIcon(Heroicon::OutlinedSun)
-            ->emptyStateHeading('Keine Stunde in den letzten Schultagen')
-            ->emptyStateDescription('Erfasse deine Stunde, die KI macht einen Entwurf für die Hausaufgabe, und du gibst ihn in 30 Sekunden frei.')
+            ->emptyStateHeading(__('Keine Stunde in den letzten Schultagen'))
+            ->emptyStateDescription(__('Erfasse deine Stunde, die KI macht einen Entwurf für die Hausaufgabe, und du gibst ihn in 30 Sekunden frei.'))
             ->emptyStateActions([
                 Action::make('create')
-                    ->label('Stunde erfassen')
+                    ->label(__('Stunde erfassen'))
                     ->icon(Heroicon::Plus)
                     ->url(fn (): string => LessonResource::getUrl('create')),
             ]);
@@ -162,15 +167,15 @@ class Today extends Page implements HasTable
     private function draftHomeworkAction(): Action
     {
         return Action::make('draftHomework')
-            ->label('Hausaufgabe mit KI erstellen')
+            ->label(__('Hausaufgabe mit KI erstellen'))
             ->icon(Heroicon::OutlinedSparkles)
             ->color('gray')
             ->authorize('update')
             ->hidden(fn (Lesson $record): bool => $record->isPublished())
             ->requiresConfirmation(fn (Lesson $record): bool => $record->questions_count > 0)
-            ->modalHeading('Hausaufgabe neu erstellen?')
+            ->modalHeading(__('Hausaufgabe neu erstellen?'))
             ->modalDescription(fn (Lesson $record): string => HomeworkDraft::confirmationText($record))
-            ->modalSubmitActionLabel('Neu erstellen')
+            ->modalSubmitActionLabel(__('Neu erstellen'))
             ->action(function (Lesson $record): void {
                 try {
                     HomeworkDraft::create($record);
@@ -179,8 +184,8 @@ class Today extends Page implements HasTable
 
                     Notification::make()
                         ->danger()
-                        ->title('KI-Entwurf fehlgeschlagen')
-                        ->body('Deine Stunde ist gespeichert. Bitte versuche es gleich noch einmal.')
+                        ->title(__('KI-Entwurf fehlgeschlagen'))
+                        ->body(__('Deine Stunde ist gespeichert. Bitte versuche es gleich noch einmal.'))
                         ->send();
 
                     return;
@@ -188,10 +193,10 @@ class Today extends Page implements HasTable
 
                 Notification::make()
                     ->success()
-                    ->title('Hausaufgabe erstellt')
+                    ->title(__('Hausaufgabe erstellt'))
                     ->body(HomeworkDraft::isRealAi($record)
-                        ? 'Prüfe Zusammenfassung und Fragen, bevor du die Hausaufgabe freigibst.'
-                        : 'Demo-Modus – KI-Anbindung vorbereitet, aber nicht aktiv. Zusammenfassung und Fragen sind Beispielentwürfe, bitte prüfe und passe sie an.')
+                        ? __('Prüfe Zusammenfassung und Fragen, bevor du die Hausaufgabe freigibst.')
+                        : __('Demo-Modus – KI-Anbindung vorbereitet, aber nicht aktiv. Zusammenfassung und Fragen sind Beispielentwürfe, bitte prüfe und passe sie an.'))
                     ->persistent()
                     ->send();
             });
@@ -200,15 +205,15 @@ class Today extends Page implements HasTable
     private function releaseAction(): Action
     {
         return Action::make('release')
-            ->label('Freigeben')
+            ->label(__('Freigeben'))
             ->icon(Heroicon::OutlinedPaperAirplane)
             ->authorize('publish')
             ->hidden(fn (Lesson $record): bool => $record->isPublished())
             ->disabled(fn (Lesson $record): bool => $record->questions_count === 0)
-            ->tooltip(fn (Lesson $record): ?string => $record->questions_count === 0 ? 'Lege zuerst Fragen an, zum Beispiel mit der KI.' : null)
-            ->modalHeading('Hausaufgabe freigeben')
-            ->modalDescription(fn (Lesson $record): string => "Für die ganze Klasse {$record->schoolClass->name}. Die Schüler:innen finden die Fragen danach in ihrem Lernbereich. Den Erwartungshorizont sehen sie nicht.")
-            ->modalSubmitActionLabel('Freigeben')
+            ->tooltip(fn (Lesson $record): ?string => $record->questions_count === 0 ? __('Lege zuerst Fragen an, zum Beispiel mit der KI.') : null)
+            ->modalHeading(__('Hausaufgabe freigeben'))
+            ->modalDescription(fn (Lesson $record): string => __('Für die ganze Klasse :class. Die Schüler:innen finden die Fragen danach in ihrem Lernbereich. Den Erwartungshorizont sehen sie nicht.', ['class' => $record->schoolClass->name]))
+            ->modalSubmitActionLabel(__('Freigeben'))
             ->schema([$this->dueOnField()])
             ->action(function (array $data, Lesson $record): void {
                 $dueOn = Carbon::parse($data['due_on']);
@@ -217,8 +222,8 @@ class Today extends Page implements HasTable
                 if ($reached === 0) {
                     Notification::make()
                         ->warning()
-                        ->title('Niemand freigegeben')
-                        ->body("In der Klasse {$record->schoolClass->name} sind noch keine Schüler:innen eingetragen.")
+                        ->title(__('Niemand freigegeben'))
+                        ->body(__('In der Klasse :class sind noch keine Schüler:innen eingetragen.', ['class' => $record->schoolClass->name]))
                         ->send();
 
                     return;
@@ -226,8 +231,8 @@ class Today extends Page implements HasTable
 
                 Notification::make()
                     ->success()
-                    ->title('Hausaufgabe freigegeben')
-                    ->body("Für {$reached} Schüler:innen, Abgabe bis {$dueOn->format('d.m.Y')}.")
+                    ->title(__('Hausaufgabe freigegeben'))
+                    ->body(__('Für :students, Abgabe bis :date.', ['students' => trans_choice(':count Schüler:in|:count Schüler:innen', $reached), 'date' => $dueOn->format('d.m.Y')]))
                     ->send();
             });
     }
@@ -235,7 +240,7 @@ class Today extends Page implements HasTable
     private function dueOnField(): DatePicker
     {
         return DatePicker::make('due_on')
-            ->label('Abgabe bis')
+            ->label(__('Abgabe bis'))
             ->default(today()->addDays(LessonRelease::DEFAULT_DUE_DAYS))
             ->minDate(today())
             ->required();

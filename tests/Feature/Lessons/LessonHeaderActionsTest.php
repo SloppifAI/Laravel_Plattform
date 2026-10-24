@@ -40,7 +40,7 @@ class LessonHeaderActionsTest extends TestCase
 
         Livewire::actingAs($this->teacher)->test(EditLesson::class, ['record' => $lesson->getRouteKey()])
             ->assertActionVisible('classBook')
-            ->assertActionHasLabel('classBook', 'Klassenbuch-Eintrag')
+            ->assertActionHasLabel('classBook', 'Class register entry')
             ->callAction('classBook');
 
         $entry = ClassBookEntry::query()->where('lesson_id', $lesson->id)->sole();

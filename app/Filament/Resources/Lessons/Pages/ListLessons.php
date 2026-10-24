@@ -19,19 +19,19 @@ class ListLessons extends ListRecords
     {
         return [
             Action::make('classCodes')
-                ->label('Klassencodes')
+                ->label(__('Klassencodes'))
                 ->icon(Heroicon::OutlinedKey)
                 ->color('gray')
-                ->modalHeading('Klassencodes')
-                ->modalDescription('Mit dem Code registrieren sich Schüler:innen deiner Klasse. Schreib ihn für die Registrierung an die Tafel.')
+                ->modalHeading(__('Klassencodes'))
+                ->modalDescription(__('Mit dem Code registrieren sich Schüler:innen deiner Klasse. Schreib ihn für die Registrierung an die Tafel.'))
                 ->modalContent(fn (): View => view('filament.resources.lessons.class-codes', [
                     'schoolClasses' => $this->getSchoolClassesWithCodes(),
                     'registrationUrl' => filament()->getRegistrationUrl(),
                 ]))
                 ->modalSubmitAction(false)
-                ->modalCancelActionLabel('Schließen'),
+                ->modalCancelActionLabel(__('Schließen')),
             CreateAction::make()
-                ->label('Stunde erfassen'),
+                ->label(__('Stunde erfassen')),
         ];
     }
 

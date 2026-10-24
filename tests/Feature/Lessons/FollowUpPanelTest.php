@@ -45,9 +45,9 @@ class FollowUpPanelTest extends TestCase
 
         Livewire::test(CreateLesson::class)
             ->fillForm(['school_class_id' => $this->schoolClass->id, 'subject' => 'Biologie', 'held_on' => '2026-10-08'])
-            ->assertSee('Zum Einstieg wiederholen')
+            ->assertSee('Repeat at the start')
             ->assertSee('Was ist Mitose?')
-            ->assertSee('Im Schnitt 30 %, 3 von 3 Antworten unter 50 %')
+            ->assertSee('On average 30 %, 3 of 3 answers below 50 %')
             ->assertSee(LessonStarter::getUrl(['lesson' => $previous]))
             ->assertDontSee('Was ist ein Zellkern?');
     }
@@ -61,14 +61,14 @@ class FollowUpPanelTest extends TestCase
         $form = Livewire::test(CreateLesson::class);
 
         // Class, subject and day are all needed, and the previous lesson must lie before the day.
-        $form->assertDontSee('Zum Einstieg wiederholen');
+        $form->assertDontSee('Repeat at the start');
 
         foreach ([
             ['school_class_id' => $otherClass->id, 'subject' => 'Biologie', 'held_on' => '2026-10-08'],
             ['school_class_id' => $this->schoolClass->id, 'subject' => 'Chemie', 'held_on' => '2026-10-08'],
             ['school_class_id' => $this->schoolClass->id, 'subject' => 'Biologie', 'held_on' => '2026-10-01'],
         ] as $state) {
-            $form->fillForm($state)->assertDontSee('Zum Einstieg wiederholen');
+            $form->fillForm($state)->assertDontSee('Repeat at the start');
         }
     }
 
@@ -84,7 +84,7 @@ class FollowUpPanelTest extends TestCase
 
         Livewire::test(CreateLesson::class)
             ->fillForm(['school_class_id' => $this->schoolClass->id, 'subject' => 'Biologie', 'held_on' => '2026-10-08'])
-            ->assertDontSee('Zum Einstieg wiederholen');
+            ->assertDontSee('Repeat at the start');
     }
 
     public function test_a_teacher_does_not_see_the_lessons_of_colleagues_but_the_administration_does(): void
@@ -115,8 +115,8 @@ class FollowUpPanelTest extends TestCase
         $substitution->end();
 
         // Afterwards neither the lesson page nor a new lesson in that class shows what the class got wrong (the board itself answers 403).
-        Livewire::test(EditLesson::class, ['record' => $draft->getRouteKey()])->assertDontSee('Zum Einstieg wiederholen')->assertDontSee('Was ist Mitose?');
-        Livewire::test(CreateLesson::class)->fillForm($formData)->assertDontSee('Zum Einstieg wiederholen')->assertDontSee('Was ist Mitose?');
+        Livewire::test(EditLesson::class, ['record' => $draft->getRouteKey()])->assertDontSee('Repeat at the start')->assertDontSee('Was ist Mitose?');
+        Livewire::test(CreateLesson::class)->fillForm($formData)->assertDontSee('Repeat at the start')->assertDontSee('Was ist Mitose?');
         $this->get(LessonStarter::getUrl(['lesson' => $previous]))->assertForbidden();
     }
 
@@ -145,14 +145,14 @@ class FollowUpPanelTest extends TestCase
         $this->actingAs($this->teacher);
 
         Livewire::test(EditLesson::class, ['record' => $current->getRouteKey()])
-            ->assertSee('Zum Einstieg wiederholen')
+            ->assertSee('Repeat at the start')
             ->assertSee('Frage der ersten Stunde')
             ->assertSee(LessonStarter::getUrl(['lesson' => $previous]))
             ->assertDontSee('Frage der zweiten Stunde');
 
         // Even when its day is moved behind its own: the lesson is no previous lesson of itself.
         Livewire::test(EditLesson::class, ['record' => $previous->getRouteKey()])
-            ->assertDontSee('Zum Einstieg wiederholen')
+            ->assertDontSee('Repeat at the start')
             ->fillForm(['held_on' => '2026-10-20'])
             ->assertSee('Frage der zweiten Stunde')
             ->assertDontSee('Frage der ersten Stunde');

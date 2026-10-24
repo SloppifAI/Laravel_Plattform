@@ -27,10 +27,10 @@ class TeacherLessonsWidgetTest extends TestCase
         $teacher = User::factory()->teacher()->create();
 
         Livewire::actingAs($teacher)->test(TeacherLessonsWidget::class)
-            ->assertSee('Heute: Hausaufgaben freigeben')
+            ->assertSee('Today: release homework')
             ->assertSeeHtml('href="'.Today::getUrl().'"');
 
-        $this->actingAs($teacher)->get('/')->assertOk()->assertSee('Heute: Hausaufgaben freigeben')->assertSee(Today::getUrl());
+        $this->actingAs($teacher)->get('/')->assertOk()->assertSee('Today: release homework')->assertSee(Today::getUrl());
         $this->actingAs($teacher)->get(Today::getUrl())->assertOk();
     }
 

@@ -60,16 +60,15 @@ class TeacherStatsWidget extends StatsOverviewWidget
         [$practiceTasks, $homework] = $openLessons->partition(fn (Lesson $lesson): bool => $lesson->isPracticeTask());
 
         $description = match ($homework->count()) {
-            0 => 'Gerade läuft keine Hausaufgabe',
-            1 => 'aus 1 laufenden Hausaufgabe',
-            default => "aus {$homework->count()} laufenden Hausaufgaben",
+            0 => __('Gerade läuft keine Hausaufgabe'),
+            default => trans_choice('aus :count laufenden Hausaufgabe|aus :count laufenden Hausaufgaben', $homework->count()),
         };
 
         if ($practiceTasks->isNotEmpty()) {
-            $description .= " · Förderaufgaben: {$practiceTasks->sum('submissions_count')} / {$practiceTasks->sum('students_count')}";
+            $description .= ' · '.__('Förderaufgaben: :submitted / :total', ['submitted' => $practiceTasks->sum('submissions_count'), 'total' => $practiceTasks->sum('students_count')]);
         }
 
-        return Stat::make('Abgaben offener Hausaufgaben', "{$homework->sum('submissions_count')} / {$homework->sum('students_count')}")
+        return Stat::make(__('Abgaben offener Hausaufgaben'), "{$homework->sum('submissions_count')} / {$homework->sum('students_count')}")
             ->icon(Heroicon::OutlinedInboxArrowDown)
             ->description($description);
     }
@@ -82,12 +81,12 @@ class TeacherStatsWidget extends StatsOverviewWidget
             ->first(fn (Lesson $lesson): bool => $teacher->can('viewResults', $lesson));
         $average = $lastLesson?->submissions()->whereNotNull('evaluated_at')->avg('understanding_score');
 
-        $stat = Stat::make('Ø Verständnis der letzten Hausaufgabe', $average === null ? '–' : round($average).' %')
+        $stat = Stat::make(__('Ø Verständnis der letzten Hausaufgabe'), $average === null ? '–' : round($average).' %')
             ->icon(Heroicon::OutlinedLightBulb)
             ->url($lastLesson ? LessonResource::getUrl('edit', ['record' => $lastLesson]) : null);
 
         if ($average === null) {
-            return $stat->description($lastLesson ? "Noch keine Bewertung zu „{$lastLesson->topic}“" : 'Noch keine Hausaufgabe freigegeben');
+            return $stat->description($lastLesson ? __('Noch keine Bewertung zu „:topic“', ['topic' => $lastLesson->topic]) : __('Noch keine Hausaufgabe freigegeben'));
         }
 
         $level = UnderstandingLevel::fromScore((int) round($average));
@@ -106,11 +105,11 @@ class TeacherStatsWidget extends StatsOverviewWidget
         $studentIds = LearningInsights::visibleStudents($teacher)->pluck('id')->all();
         $count = count(LearningInsights::supportNeeds(LearningInsights::scoredAnswers($studentIds)));
 
-        return Stat::make('Schüler:innen mit Förderbedarf', $count)
+        return Stat::make(__('Schüler:innen mit Förderbedarf'), $count)
             ->icon(Heroicon::OutlinedLifebuoy)
             ->description($count > 0
-                ? 'unter '.UnderstandingLevel::SUPPORT_THRESHOLD.' % in mindestens einer Kompetenz'
-                : 'Alle liegen über '.UnderstandingLevel::SUPPORT_THRESHOLD.' %')
+                ? __('unter :threshold % in mindestens einer Kompetenz', ['threshold' => UnderstandingLevel::SUPPORT_THRESHOLD])
+                : __('Alle liegen über :threshold %', ['threshold' => UnderstandingLevel::SUPPORT_THRESHOLD]))
             ->descriptionIcon($count > 0 ? Heroicon::OutlinedLifebuoy : Heroicon::OutlinedCheckCircle)
             ->color($count > 0 ? 'danger' : 'success')
             ->url(LearningProgress::getUrl());

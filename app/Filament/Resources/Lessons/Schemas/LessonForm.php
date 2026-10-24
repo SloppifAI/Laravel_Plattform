@@ -25,12 +25,12 @@ class LessonForm
     {
         return $schema
             ->components([
-                Section::make('Unterrichtsstunde')
+                Section::make(__('Unterrichtsstunde'))
                     ->columns(2)
                     ->columnSpanFull()
                     ->schema([
                         Select::make('school_class_id')
-                            ->label('Klasse')
+                            ->label(__('Klasse'))
                             // Admins: the classes of their school. Teachers: the classes they teach (see LessonPolicy::createFor) plus the
                             // class an existing lesson already sits in, so it stays editable after the assignment ended. Also on the
                             // server: a forged id fails validation.
@@ -40,19 +40,19 @@ class LessonForm
                             ->live()
                             ->required(),
                         DatePicker::make('held_on')
-                            ->label('Gehalten am')
+                            ->label(__('Gehalten am'))
                             ->default(today())
                             ->live()
                             ->required(),
                         TextInput::make('subject')
-                            ->label('Fach')
+                            ->label(__('Fach'))
                             // Suggesting the framework's subjects keeps the competency mapping working.
                             ->datalist(fn (): array => Competency::query()->whereNotNull('subject')->distinct()->orderBy('subject')->pluck('subject')->all())
                             ->live(onBlur: true)
                             ->required()
                             ->maxLength(255),
                         TextInput::make('topic')
-                            ->label('Thema')
+                            ->label(__('Thema'))
                             ->required()
                             ->maxLength(255),
                     ]),
@@ -60,18 +60,18 @@ class LessonForm
                     ->columnSpanFull()
                     ->visible(fn (Get $get, ?Lesson $record): bool => static::previousLessonReview($get, $record) !== null)
                     ->viewData(fn (Get $get, ?Lesson $record): array => static::previousLessonReview($get, $record) ?? []),
-                Section::make('Inhalt der Stunde')
-                    ->description('Daraus erstellt die KI Zusammenfassung und Hausaufgabe. Bitte keine personenbezogenen Daten eintragen.')
+                Section::make(__('Inhalt der Stunde'))
+                    ->description(__('Daraus erstellt die KI Zusammenfassung und Hausaufgabe. Bitte keine personenbezogenen Daten eintragen.'))
                     ->columnSpanFull()
                     ->schema([
                         Textarea::make('notes')
-                            ->label('Notizen')
-                            ->helperText('Stichpunkte, Tafelbild oder Notizen aus der Stunde')
+                            ->label(__('Notizen'))
+                            ->helperText(__('Stichpunkte, Tafelbild oder Notizen aus der Stunde'))
                             ->rows(12)
                             ->required(),
                         FileUpload::make('attachments')
-                            ->label('Arbeitsblätter')
-                            ->helperText('Fotos oder Scans analoger Arbeitsblätter (JPG, PNG, WebP, HEIC oder PDF, max. 10 MB je Datei)')
+                            ->label(__('Arbeitsblätter'))
+                            ->helperText(__('Fotos oder Scans analoger Arbeitsblätter (JPG, PNG, WebP, HEIC oder PDF, max. 10 MB je Datei)'))
                             ->multiple()
                             ->disk('local')
                             ->directory('worksheets')
@@ -85,8 +85,8 @@ class LessonForm
                             // The local disk holds every teacher's worksheets, so only this lesson's paths may be submitted.
                             ->preventFilePathTampering(),
                     ]),
-                Section::make('Zusammenfassung')
-                    ->description('Von der KI erstellt. Die Schüler:innen lesen sie vor den Fragen, du kannst sie vor der Freigabe anpassen.')
+                Section::make(__('Zusammenfassung'))
+                    ->description(__('Von der KI erstellt. Die Schüler:innen lesen sie vor den Fragen, du kannst sie vor der Freigabe anpassen.'))
                     ->columnSpanFull()
                     ->visible(fn (?Lesson $record): bool => filled($record?->summary))
                     ->schema([

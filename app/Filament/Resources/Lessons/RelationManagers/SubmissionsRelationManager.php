@@ -31,11 +31,10 @@ class SubmissionsRelationManager extends RelationManager
 {
     protected static string $relationship = 'submissions';
 
-    protected static ?string $title = 'Abgaben';
-
-    protected static ?string $modelLabel = 'Abgabe';
-
-    protected static ?string $pluralModelLabel = 'Abgaben';
+    public static function getTitle(Model $ownerRecord, string $pageClass): string
+    {
+        return __('Abgaben');
+    }
 
     public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
     {
@@ -46,51 +45,51 @@ class SubmissionsRelationManager extends RelationManager
     {
         return $schema
             ->components([
-                Section::make('Ergebnis der KI-Prüfung')
+                Section::make(__('Ergebnis der KI-Prüfung'))
                     ->columns(2)
                     ->columnSpanFull()
                     ->schema([
-                        self::asUnderstandingBadge(TextEntry::make('understanding_score')->label('Verständnis')),
+                        self::asUnderstandingBadge(TextEntry::make('understanding_score')->label(__('Verständnis'))),
                         TextEntry::make('created_at')
-                            ->label('Abgegeben am')
+                            ->label(__('Abgegeben am'))
                             ->dateTime('d.m.Y H:i'),
                         TextEntry::make('feedback')
-                            ->label('Rückmeldung')
+                            ->label(__('Rückmeldung'))
                             ->placeholder('–')
                             ->columnSpanFull(),
                         TextEntry::make('gaps')
-                            ->label('Lücken')
+                            ->label(__('Lücken'))
                             ->bulleted()
                             ->listWithLineBreaks()
-                            ->placeholder('Keine Lücken erkannt')
+                            ->placeholder(__('Keine Lücken erkannt'))
                             ->columnSpanFull(),
                     ]),
-                Section::make('Zusammenfassung der Schüler:in')
+                Section::make(__('Zusammenfassung der Schüler:in'))
                     ->columnSpanFull()
                     ->schema([
                         TextEntry::make('summary')
                             ->hiddenLabel(),
                     ]),
-                Section::make('Antworten')
+                Section::make(__('Antworten'))
                     ->columnSpanFull()
                     ->schema([
                         RepeatableEntry::make('answers')
                             ->hiddenLabel()
                             ->schema([
                                 TextEntry::make('question.prompt')
-                                    ->label('Frage')
+                                    ->label(__('Frage'))
                                     ->state(fn (Answer $record): string => $record->askedPrompt()),
                                 TextEntry::make('level')
-                                    ->label('Stufe')
+                                    ->label(__('Stufe'))
                                     ->badge()
                                     ->color('gray')
                                     ->state(fn (Answer $record): ?string => $record->level === null ? null : $record->question->levelFor($record->level)->getLabel())
                                     ->visible(fn (Answer $record): bool => $record->level !== null && $record->question->levelFor($record->level) !== QuestionLevel::Standard),
                                 TextEntry::make('answer')
-                                    ->label('Antwort'),
-                                self::asUnderstandingBadge(TextEntry::make('score')->label('Bewertung')),
+                                    ->label(__('Antwort')),
+                                self::asUnderstandingBadge(TextEntry::make('score')->label(__('Bewertung'))),
                                 TextEntry::make('feedback')
-                                    ->label('Rückmeldung')
+                                    ->label(__('Rückmeldung'))
                                     ->placeholder('–'),
                             ]),
                     ]),
@@ -100,31 +99,33 @@ class SubmissionsRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
+            ->modelLabel(__('Abgabe'))
+            ->pluralModelLabel(__('Abgaben'))
             ->modifyQueryUsing(fn (Builder $query): Builder => $query->with('student'))
             ->description(fn (): string => $this->describePendingStudents())
             ->defaultSort('created_at', 'desc')
             ->columns([
                 TextColumn::make('student.name')
-                    ->label('Schüler:in')
+                    ->label(__('Schüler:in'))
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('created_at')
-                    ->label('Abgegeben am')
+                    ->label(__('Abgegeben am'))
                     ->dateTime('d.m.Y H:i')
                     ->sortable(),
-                self::asUnderstandingBadge(TextColumn::make('understanding_score')->label('Verständnis'))
+                self::asUnderstandingBadge(TextColumn::make('understanding_score')->label(__('Verständnis')))
                     ->sortable(),
             ])
             ->recordActions([
                 ViewAction::make()
-                    ->label('Ansehen'),
+                    ->label(__('Ansehen')),
                 DeleteAction::make()
-                    ->label('Zur Überarbeitung zurückgeben')
+                    ->label(__('Zur Überarbeitung zurückgeben'))
                     ->icon(Heroicon::OutlinedArrowUturnLeft)
-                    ->modalHeading('Zur Überarbeitung zurückgeben?')
-                    ->modalDescription('Die Abgabe samt KI-Prüfung wird gelöscht. Die Schüler:in kann die Hausaufgabe danach neu bearbeiten.')
-                    ->modalSubmitActionLabel('Zurückgeben')
-                    ->successNotificationTitle('Abgabe zurückgegeben'),
+                    ->modalHeading(__('Zur Überarbeitung zurückgeben?'))
+                    ->modalDescription(__('Die Abgabe samt KI-Prüfung wird gelöscht. Die Schüler:in kann die Hausaufgabe danach neu bearbeiten.'))
+                    ->modalSubmitActionLabel(__('Zurückgeben'))
+                    ->successNotificationTitle(__('Abgabe zurückgegeben')),
             ]);
     }
 
@@ -138,7 +139,7 @@ class SubmissionsRelationManager extends RelationManager
             ->formatStateUsing(fn (int $state): string => "{$state} % · ".UnderstandingLevel::fromScore($state)->getLabel())
             ->color(fn (int $state): string => UnderstandingLevel::fromScore($state)->getColor())
             ->icon(fn (int $state): Heroicon => UnderstandingLevel::fromScore($state)->getIcon())
-            ->placeholder('Wird noch geprüft');
+            ->placeholder(__('Wird noch geprüft'));
     }
 
     private function describePendingStudents(): string
@@ -147,7 +148,7 @@ class SubmissionsRelationManager extends RelationManager
         $lesson = $this->getOwnerRecord();
 
         if (! $lesson->isPublished()) {
-            return 'Die Hausaufgabe ist noch nicht freigegeben.';
+            return __('Die Hausaufgabe ist noch nicht freigegeben.');
         }
 
         $pendingNames = $lesson->students()
@@ -156,7 +157,7 @@ class SubmissionsRelationManager extends RelationManager
             ->pluck('name');
 
         return $pendingNames->isEmpty()
-            ? 'Alle Schüler:innen haben abgegeben.'
-            : "Noch nicht abgegeben ({$pendingNames->count()}): {$pendingNames->join(', ')}";
+            ? __('Alle Schüler:innen haben abgegeben.')
+            : __('Noch nicht abgegeben (:count): :names', ['count' => $pendingNames->count(), 'names' => $pendingNames->join(', ')]);
     }
 }

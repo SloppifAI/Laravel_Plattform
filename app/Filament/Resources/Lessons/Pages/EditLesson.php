@@ -45,10 +45,13 @@ class EditLesson extends EditRecord
         $lesson = $this->getRecord();
 
         if (! $lesson->isPublished()) {
-            return 'Entwurf – wartet auf Freigabe';
+            return __('Entwurf – wartet auf Freigabe');
         }
 
-        return "Freigegeben für {$lesson->students()->count()} Schüler:innen · Abgabe bis {$lesson->due_on?->format('d.m.Y')}";
+        return __('Freigegeben für :students · Abgabe bis :date', [
+            'students' => trans_choice(':count Schüler:in|:count Schüler:innen', $lesson->students()->count()),
+            'date' => $lesson->due_on?->format('d.m.Y'),
+        ]);
     }
 
     /**
@@ -74,14 +77,14 @@ class EditLesson extends EditRecord
             // The board for the projector: only for the lesson's own teacher, a Förderaufgabe has no class-wide results (LessonStarter 404s),
             // and not for a substitute whose period is over (the board shows what the class got wrong).
             Action::make('starter')
-                ->label('Einstieg nächste Stunde')
+                ->label(__('Einstieg nächste Stunde'))
                 ->icon(Heroicon::OutlinedPresentationChartBar)
                 ->color('gray')
                 ->visible(fn (Lesson $record): bool => ! $record->isPracticeTask() && $record->teacher()->is(auth()->user()) && auth()->user()->can('viewResults', $record))
                 ->url(fn (Lesson $record): string => LessonStarter::getUrl(['lesson' => $record])),
             // The Klassenbuch entry of this lesson: opens the existing one or starts the draft, then the book shows it.
             Action::make('classBook')
-                ->label('Klassenbuch-Eintrag')
+                ->label(__('Klassenbuch-Eintrag'))
                 ->icon(Heroicon::OutlinedBookOpen)
                 ->color('gray')
                 // A Förderaufgabe is made from a competency and not held in the class, so the book has no entry for it.
@@ -104,20 +107,20 @@ class EditLesson extends EditRecord
                 ->label('Tuto-Mikro')
                 ->icon(Heroicon::OutlinedSignal)
                 ->color('gray')
-                ->tooltip(fn (Lesson $record): ?string => auth()->user()?->can('record', [LessonRecording::class, $record]) ? null : 'Tuto-Mikro ist für deine Schule nicht freigeschaltet.')
+                ->tooltip(fn (Lesson $record): ?string => auth()->user()?->can('record', [LessonRecording::class, $record]) ? null : __('Tuto-Mikro ist für deine Schule nicht freigeschaltet.'))
                 // A Förderaufgabe has no lesson notes to take over, and the next step (drafting from the notes) is hidden there as well.
                 ->visible(fn (Lesson $record): bool => RecordingConsentGate::lessonRefusal($record) === null && (auth()->user()?->can('create', [LessonRecording::class, $record]) ?? false))
                 ->url(fn (Lesson $record): string => RecordLesson::getUrl(['lesson' => $record])),
             Action::make('draftHomework')
-                ->label('Hausaufgabe mit KI erstellen')
+                ->label(__('Hausaufgabe mit KI erstellen'))
                 ->icon(Heroicon::OutlinedSparkles)
                 ->authorize('update')
                 // Once released, students may already be working on the questions; a Förderaufgabe is drafted from its competency, not from lesson notes.
                 ->hidden(fn (Lesson $record): bool => $record->isPublished() || $record->isPracticeTask())
                 ->requiresConfirmation(fn (Lesson $record): bool => $record->questions()->exists())
-                ->modalHeading('Hausaufgabe neu erstellen?')
+                ->modalHeading(__('Hausaufgabe neu erstellen?'))
                 ->modalDescription(fn (Lesson $record): string => HomeworkDraft::confirmationText($record))
-                ->modalSubmitActionLabel('Neu erstellen')
+                ->modalSubmitActionLabel(__('Neu erstellen'))
                 ->action(function (Lesson $record): void {
                     // The AI works from the saved notes, so unsaved edits must not get lost.
                     $this->save(shouldRedirect: false, shouldSendSavedNotification: false);
@@ -129,8 +132,8 @@ class EditLesson extends EditRecord
 
                         Notification::make()
                             ->danger()
-                            ->title('KI-Entwurf fehlgeschlagen')
-                            ->body('Deine Stunde ist gespeichert. Bitte versuche es gleich noch einmal.')
+                            ->title(__('KI-Entwurf fehlgeschlagen'))
+                            ->body(__('Deine Stunde ist gespeichert. Bitte versuche es gleich noch einmal.'))
                             ->send();
 
                         return;
@@ -141,41 +144,41 @@ class EditLesson extends EditRecord
 
                     Notification::make()
                         ->success()
-                        ->title('Hausaufgabe erstellt')
+                        ->title(__('Hausaufgabe erstellt'))
                         ->body(HomeworkDraft::isRealAi($record)
-                            ? 'Prüfe Zusammenfassung und Fragen, bevor du die Hausaufgabe freigibst.'
-                            : 'Demo-Modus – KI-Anbindung vorbereitet, aber nicht aktiv. Zusammenfassung und Fragen sind Beispielentwürfe, bitte prüfe und passe sie an.')
+                            ? __('Prüfe Zusammenfassung und Fragen, bevor du die Hausaufgabe freigibst.')
+                            : __('Demo-Modus – KI-Anbindung vorbereitet, aber nicht aktiv. Zusammenfassung und Fragen sind Beispielentwürfe, bitte prüfe und passe sie an.'))
                         ->persistent()
                         ->send();
                 }),
             Action::make('delegate')
-                ->label('Freigeben')
+                ->label(__('Freigeben'))
                 ->icon(Heroicon::OutlinedPaperAirplane)
                 ->authorize('publish')
                 ->hidden(fn (Lesson $record): bool => $record->isPublished())
                 ->disabled(fn (Lesson $record): bool => $record->questions()->doesntExist())
-                ->tooltip(fn (Lesson $record): ?string => $record->questions()->doesntExist() ? 'Lege zuerst Fragen an, zum Beispiel mit der KI.' : null)
-                ->modalHeading('Hausaufgabe freigeben')
-                ->modalDescription('Die Schüler:innen finden die Fragen danach in ihrem Lernbereich. Den Erwartungshorizont sehen sie nicht.')
-                ->modalSubmitActionLabel('Freigeben')
+                ->tooltip(fn (Lesson $record): ?string => $record->questions()->doesntExist() ? __('Lege zuerst Fragen an, zum Beispiel mit der KI.') : null)
+                ->modalHeading(__('Hausaufgabe freigeben'))
+                ->modalDescription(__('Die Schüler:innen finden die Fragen danach in ihrem Lernbereich. Den Erwartungshorizont sehen sie nicht.'))
+                ->modalSubmitActionLabel(__('Freigeben'))
                 ->schema([
                     DatePicker::make('due_on')
-                        ->label('Abgabe bis')
+                        ->label(__('Abgabe bis'))
                         ->default(today()->addDays(7))
                         ->minDate(today())
                         ->required(),
                     Radio::make('audience')
-                        ->label('Für wen?')
+                        ->label(__('Für wen?'))
                         ->options(fn (Lesson $record): array => [
-                            'class' => "Ganze Klasse {$record->schoolClass->name}",
-                            'selected' => 'Ausgewählte Schüler:innen',
+                            'class' => __('Ganze Klasse :class', ['class' => $record->schoolClass->name]),
+                            'selected' => __('Ausgewählte Schüler:innen'),
                         ])
                         // A Förderaufgabe was made for named students, who are already attached to the draft.
                         ->default(fn (Lesson $record): string => $record->isPracticeTask() ? 'selected' : 'class')
                         ->required()
                         ->live(),
                     CheckboxList::make('students')
-                        ->label('Schüler:innen')
+                        ->label(__('Schüler:innen'))
                         ->options(fn (Lesson $record): array => $record->schoolClass->students()->orderBy('name')->pluck('name', 'id')->all())
                         // Only those still in the class: the list offers no one else, so a student who moved away would fail validation unseen.
                         ->default(fn (Lesson $record): array => $record->students()->where('users.school_class_id', $record->school_class_id)->pluck('users.id')->all())
@@ -193,8 +196,8 @@ class EditLesson extends EditRecord
                     if ($reached === 0) {
                         Notification::make()
                             ->warning()
-                            ->title('Niemand ausgewählt')
-                            ->body('In der Klasse sind noch keine Schüler:innen eingetragen.')
+                            ->title(__('Niemand ausgewählt'))
+                            ->body(__('In der Klasse sind noch keine Schüler:innen eingetragen.'))
                             ->send();
 
                         return;
@@ -204,19 +207,22 @@ class EditLesson extends EditRecord
 
                     Notification::make()
                         ->success()
-                        ->title('Hausaufgabe freigegeben')
-                        ->body("Für {$reached} Schüler:innen, Abgabe bis {$dueOn->format('d.m.Y')}.")
+                        ->title(__('Hausaufgabe freigegeben'))
+                        ->body(__('Für :students, Abgabe bis :date.', [
+                            'students' => trans_choice(':count Schüler:in|:count Schüler:innen', $reached),
+                            'date' => $dueOn->format('d.m.Y'),
+                        ]))
                         ->send();
                 }),
             Action::make('withdraw')
-                ->label('Freigabe zurücknehmen')
+                ->label(__('Freigabe zurücknehmen'))
                 ->icon(Heroicon::OutlinedArrowUturnLeft)
                 ->color('gray')
                 ->authorize('update')
                 ->visible(fn (Lesson $record): bool => $record->isPublished() && $record->submissions()->doesntExist())
                 ->requiresConfirmation()
-                ->modalDescription('Die Hausaufgabe verschwindet wieder aus dem Lernbereich der Schüler:innen und wartet wieder auf Freigabe. Das geht nur, solange noch niemand abgegeben hat.')
-                ->modalSubmitActionLabel('Zurücknehmen')
+                ->modalDescription(__('Die Hausaufgabe verschwindet wieder aus dem Lernbereich der Schüler:innen und wartet wieder auf Freigabe. Das geht nur, solange noch niemand abgegeben hat.'))
+                ->modalSubmitActionLabel(__('Zurücknehmen'))
                 ->action(function (Lesson $record): void {
                     LessonRelease::withdraw($record);
 
@@ -224,7 +230,7 @@ class EditLesson extends EditRecord
 
                     Notification::make()
                         ->success()
-                        ->title('Freigabe zurückgenommen')
+                        ->title(__('Freigabe zurückgenommen'))
                         ->send();
                 }),
             DeleteAction::make(),

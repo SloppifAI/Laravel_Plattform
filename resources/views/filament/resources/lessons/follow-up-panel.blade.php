@@ -4,9 +4,9 @@
     use Filament\Support\Icons\Heroicon;
 @endphp
 
-<x-filament::section heading="Zum Einstieg wiederholen" :icon="Heroicon::OutlinedClipboardDocumentCheck">
+<x-filament::section :heading="__('Zum Einstieg wiederholen')" :icon="Heroicon::OutlinedClipboardDocumentCheck">
     <p class="text-sm text-gray-600 dark:text-gray-400">
-        Das hat die Klasse in der letzten Stunde „{{ $previous->topic }}“ vom {{ $previous->held_on->format('d.m.Y') }} noch nicht sicher verstanden.
+        {{ __('Das hat die Klasse in der letzten Stunde „:topic“ vom :date noch nicht sicher verstanden.', ['topic' => $previous->topic, 'date' => $previous->held_on->format('d.m.Y')]) }}
     </p>
 
     <ol class="mt-4 grid list-decimal gap-3 ps-5 marker:text-gray-500 dark:marker:text-gray-400">
@@ -16,9 +16,9 @@
 
                 <span class="block text-sm text-gray-600 tabular-nums dark:text-gray-400">
                     @if ($point['kind'] === 'question')
-                        Im Schnitt {{ $point['average'] }} %, {{ $point['below'] }} von {{ $point['answered'] }} Antworten unter {{ UnderstandingLevel::SUPPORT_THRESHOLD }} %
+                        {{ __('Im Schnitt :average %, :below von :answered Antworten unter :threshold %', ['average' => $point['average'], 'below' => $point['below'], 'answered' => $point['answered'], 'threshold' => UnderstandingLevel::SUPPORT_THRESHOLD]) }}
                     @else
-                        Von {{ $point['count'] }} Schüler:innen als Lücke genannt
+                        {{ trans_choice('Von :count Schüler:in als Lücke genannt|Von :count Schüler:innen als Lücke genannt', $point['count']) }}
                     @endif
                 </span>
             </li>
@@ -34,7 +34,7 @@
             rel="noopener"
             :icon="Heroicon::OutlinedPresentationChartBar"
         >
-            Einstieg der letzten Stunde öffnen
+            {{ __('Einstieg der letzten Stunde öffnen') }}
         </x-filament::link>
     </p>
 </x-filament::section>

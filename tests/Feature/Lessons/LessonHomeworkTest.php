@@ -47,7 +47,7 @@ class LessonHomeworkTest extends TestCase
 
         Livewire::test(EditLesson::class, ['record' => $lesson->getRouteKey()])
             ->callAction('draftHomework')
-            ->assertNotified('Hausaufgabe erstellt');
+            ->assertNotified('Homework created');
 
         $this->assertSame('Pflanzen bauen mit Licht aus CO2 und Wasser Glucose auf.', $lesson->refresh()->summary);
         $this->assertSame([
@@ -65,7 +65,7 @@ class LessonHomeworkTest extends TestCase
 
         Livewire::test(EditLesson::class, ['record' => $lesson->getRouteKey()])
             ->callAction('draftHomework')
-            ->assertNotified('KI-Entwurf fehlgeschlagen');
+            ->assertNotified('AI draft failed');
 
         $this->assertSame(1, $lesson->questions()->count());
         $this->assertNull($lesson->refresh()->summary);
@@ -94,7 +94,7 @@ class LessonHomeworkTest extends TestCase
                 'students' => [$first->id, $third->id],
             ])
             ->assertHasNoFormErrors()
-            ->assertNotified('Hausaufgabe freigegeben');
+            ->assertNotified('Homework released');
 
         $lesson->refresh();
         $this->assertTrue($lesson->isPublished());
@@ -199,7 +199,7 @@ class LessonHomeworkTest extends TestCase
 
         Livewire::test(SubmissionsRelationManager::class, ['ownerRecord' => $lesson, 'pageClass' => EditLesson::class])
             ->assertCanSeeTableRecords([$submission])
-            ->assertSee('Noch nicht abgegeben (1): Mia Muster')
+            ->assertSee('Not handed in yet (1): Mia Muster')
             ->assertSee('80 % · Well understood')
             ->mountAction(TestAction::make(ViewAction::class)->table($submission))
             ->assertMountedActionModalSee(['Licht und Wasser', '40 % · Needs support', 'CO2 fehlt.', $submission->gaps[0]]);
@@ -218,19 +218,19 @@ class LessonHomeworkTest extends TestCase
         $this->actingAs($lesson->teacher);
 
         Livewire::test(EditLesson::class, ['record' => $lesson->getRouteKey()])
-            ->assertSee('Entwurf – wartet auf Freigabe')
-            ->assertActionHasLabel('delegate', 'Freigeben')
+            ->assertSee('Draft – waiting for release')
+            ->assertActionHasLabel('delegate', 'Release')
             ->mountAction('delegate')
-            ->assertMountedActionModalSee('Hausaufgabe freigeben');
+            ->assertMountedActionModalSee('Release homework');
 
         $lesson->update(['published_at' => now(), 'due_on' => today()->addDays(3)]);
         $lesson->students()->sync($schoolClass->students()->pluck('id'));
 
         Livewire::test(EditLesson::class, ['record' => $lesson->getRouteKey()])
-            ->assertSee('Freigegeben für 2 Schüler:innen')
-            ->assertActionHasLabel('withdraw', 'Freigabe zurücknehmen')
+            ->assertSee('Released for 2 students')
+            ->assertActionHasLabel('withdraw', 'Withdraw release')
             ->callAction('withdraw')
-            ->assertNotified('Freigabe zurückgenommen');
+            ->assertNotified('Release withdrawn');
     }
 
     public function test_releasing_a_practice_task_preselects_its_students_and_withdrawing_keeps_them(): void
@@ -247,7 +247,7 @@ class LessonHomeworkTest extends TestCase
             ->assertSchemaStateSet(['audience' => 'selected'])
             ->callMountedAction()
             ->assertHasNoFormErrors()
-            ->assertNotified('Hausaufgabe freigegeben');
+            ->assertNotified('Homework released');
 
         $lesson->refresh();
         $this->assertTrue($lesson->isPublished());
@@ -275,7 +275,7 @@ class LessonHomeworkTest extends TestCase
             ->assertSchemaStateSet(['students' => [$stays->id]])
             ->callMountedAction()
             ->assertHasNoFormErrors()
-            ->assertNotified('Hausaufgabe freigegeben');
+            ->assertNotified('Homework released');
 
         $this->assertSame([$stays->id], $lesson->refresh()->students()->pluck('users.id')->all());
     }
@@ -298,7 +298,7 @@ class LessonHomeworkTest extends TestCase
 
         Livewire::actingAs($lesson->teacher)->test(EditLesson::class, ['record' => $lesson->getRouteKey()])
             ->assertActionVisible('starter')
-            ->assertActionHasLabel('starter', 'Einstieg nächste Stunde')
+            ->assertActionHasLabel('starter', 'Starter for the next lesson')
             ->assertActionHasUrl('starter', LessonStarter::getUrl(['lesson' => $lesson]))
             ->assertActionVisible('record')
             ->assertActionHasLabel('record', 'Tuto-Mikro')

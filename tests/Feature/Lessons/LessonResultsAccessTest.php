@@ -67,7 +67,7 @@ class LessonResultsAccessTest extends TestCase
         $this->openSubmissions($this->substitute)
             ->assertOk()
             ->assertCanSeeTableRecords([$this->submission])
-            ->assertSee('Noch nicht abgegeben (1): Ben Schneider')
+            ->assertSee('Not handed in yet (1): Ben Schneider')
             ->mountAction(TestAction::make(ViewAction::class)->table($this->submission))
             ->assertMountedActionModalSee('Licht und Wasser');
 
@@ -91,7 +91,7 @@ class LessonResultsAccessTest extends TestCase
             ->assertOk()
             ->assertDontSee('Mia Hoffmann')
             ->assertDontSee('Ben Schneider')
-            ->assertDontSee('Noch nicht abgegeben');
+            ->assertDontSee('Not handed in yet');
 
         $managers = $this->relationManagersOf($this->substitute);
         $this->assertContains(QuestionsRelationManager::class, $managers);
@@ -165,23 +165,23 @@ class LessonResultsAccessTest extends TestCase
         $this->substitution(ended: false);
 
         $stats = $this->statsOf();
-        $this->assertSame('1 / 3', $stats['Abgaben offener Hausaufgaben'][0]);
-        $this->assertSame('80 %', $stats['Ø Verständnis der letzten Hausaufgabe'][0]);
-        Livewire::actingAs($this->substitute)->test(TeacherLessonsWidget::class)->assertSee('1 / 2 abgegeben');
+        $this->assertSame('1 / 3', $stats['Submissions for open homework'][0]);
+        $this->assertSame('80 %', $stats['Avg. comprehension of the last homework'][0]);
+        Livewire::actingAs($this->substitute)->test(TeacherLessonsWidget::class)->assertSee('1 / 2 handed in');
 
         ClassSubstitution::query()->delete();
         $this->substitution(ended: true);
 
         $stats = $this->statsOf();
-        $this->assertSame('0 / 1', $stats['Abgaben offener Hausaufgaben'][0]);
-        $this->assertSame('–', $stats['Ø Verständnis der letzten Hausaufgabe'][0]);
-        $this->assertStringContainsString('Eigene Stunde', $stats['Ø Verständnis der letzten Hausaufgabe'][1]);
+        $this->assertSame('0 / 1', $stats['Submissions for open homework'][0]);
+        $this->assertSame('–', $stats['Avg. comprehension of the last homework'][0]);
+        $this->assertStringContainsString('Eigene Stunde', $stats['Avg. comprehension of the last homework'][1]);
 
         Livewire::actingAs($this->substitute)->test(TeacherLessonsWidget::class)
             ->assertSee($this->lesson->topic)
             ->assertSee($own->topic)
-            ->assertSee('0 / 1 abgegeben')
-            ->assertDontSee('1 / 2 abgegeben');
+            ->assertSee('0 / 1 handed in')
+            ->assertDontSee('1 / 2 handed in');
     }
 
     public function test_the_lessons_teacher_and_the_administration_read_the_results(): void

@@ -43,7 +43,7 @@ class TodayTest extends TestCase
 
     public function test_only_teachers_open_the_page(): void
     {
-        $this->actingAs($this->teacher)->get(Today::getUrl())->assertOk()->assertSee('Keine Stunde in den letzten Schultagen', false);
+        $this->actingAs($this->teacher)->get(Today::getUrl())->assertOk()->assertSee('No lesson in the last school days', false);
 
         foreach ([User::factory()->student(), User::factory()->admin(), User::factory()->operator()] as $user) {
             $this->actingAs($user->create())->get(Today::getUrl())->assertForbidden();
@@ -110,14 +110,14 @@ class TodayTest extends TestCase
         $this->actingAs($this->teacher);
 
         Livewire::test(Today::class)
-            ->assertTableColumnStateSet('status', 'Wartet auf Freigabe', $waiting)
-            ->assertTableColumnStateSet('status', 'Freigegeben', $released)
-            ->assertTableColumnStateSet('questions_count', '3 Fragen', $waiting)
-            ->assertTableColumnStateSet('questions_count', 'Noch kein Entwurf', $empty)
-            ->assertTableColumnStateSet('questions_count', '1 Frage', $released)
+            ->assertTableColumnStateSet('status', 'Waiting for release', $waiting)
+            ->assertTableColumnStateSet('status', 'Released', $released)
+            ->assertTableColumnStateSet('questions_count', '3 questions', $waiting)
+            ->assertTableColumnStateSet('questions_count', 'No draft yet', $empty)
+            ->assertTableColumnStateSet('questions_count', '1 question', $released)
             ->assertTableColumnStateSet('submissions_count', '1 / 2', $released)
             ->assertTableColumnStateSet('submissions_count', null, $waiting)
-            ->assertSee(['Wartet auf Freigabe', 'Freigegeben', 'Freigabe in 30 Sekunden']);
+            ->assertSee(['Waiting for release', 'Released', 'Release in 30 seconds']);
     }
 
     public function test_it_shows_an_empty_state_without_lessons(): void
@@ -125,8 +125,8 @@ class TodayTest extends TestCase
         $this->actingAs($this->teacher);
 
         Livewire::test(Today::class)
-            ->assertSee('Keine Stunde in den letzten Schultagen')
-            ->assertDontSee('Freigabe in 30 Sekunden')
+            ->assertSee('No lesson in the last school days')
+            ->assertDontSee('Release in 30 seconds')
             ->assertActionHidden('releaseAll');
     }
 
@@ -148,10 +148,10 @@ class TodayTest extends TestCase
             ->callAction(TestAction::make('draftHomework')->table($lesson))
             ->assertNotified(Notification::make()
                 ->success()
-                ->title('Hausaufgabe erstellt')
-                ->body('Demo-Modus – KI-Anbindung vorbereitet, aber nicht aktiv. Zusammenfassung und Fragen sind Beispielentwürfe, bitte prüfe und passe sie an.')
+                ->title('Homework created')
+                ->body('Demo mode – the AI connection is set up but not active. Summary and questions are sample drafts, please check and adjust them.')
                 ->persistent())
-            ->assertTableColumnStateSet('questions_count', '2 Fragen', $lesson);
+            ->assertTableColumnStateSet('questions_count', '2 questions', $lesson);
 
         $this->assertSame('Pflanzen bauen mit Licht Glucose auf.', $lesson->refresh()->summary);
         $this->assertSame(
@@ -168,7 +168,7 @@ class TodayTest extends TestCase
 
         Livewire::test(Today::class)
             ->mountAction(TestAction::make('draftHomework')->table($lesson))
-            ->assertMountedActionModalSee('Die Zusammenfassung und die KI-Fragen werden durch einen neuen KI-Entwurf ersetzt. 2 eigene oder bearbeitete Fragen bleiben erhalten.');
+            ->assertMountedActionModalSee('The summary and the AI questions are replaced by a new AI draft. 2 questions of your own or edited by you are kept.');
     }
 
     public function test_the_draft_of_a_school_with_ai_carries_no_demo_hint(): void
@@ -186,8 +186,8 @@ class TodayTest extends TestCase
             ->callAction(TestAction::make('draftHomework')->table($lesson))
             ->assertNotified(Notification::make()
                 ->success()
-                ->title('Hausaufgabe erstellt')
-                ->body('Prüfe Zusammenfassung und Fragen, bevor du die Hausaufgabe freigibst.')
+                ->title('Homework created')
+                ->body('Check the summary and the questions before you release the homework.')
                 ->persistent());
     }
 
@@ -199,7 +199,7 @@ class TodayTest extends TestCase
 
         Livewire::test(Today::class)
             ->callAction(TestAction::make('draftHomework')->table($lesson))
-            ->assertNotified('KI-Entwurf fehlgeschlagen');
+            ->assertNotified('AI draft failed');
 
         $this->assertSame(1, $lesson->questions()->count());
     }
@@ -226,8 +226,8 @@ class TodayTest extends TestCase
             ->assertSchemaStateSet(['due_on' => today()->addDays(7)->toDateString()])
             ->callMountedAction()
             ->assertHasNoFormErrors()
-            ->assertNotified('Hausaufgabe freigegeben')
-            ->assertTableColumnStateSet('status', 'Freigegeben', $lesson);
+            ->assertNotified('Homework released')
+            ->assertTableColumnStateSet('status', 'Released', $lesson);
 
         $lesson->refresh();
         $this->assertTrue($lesson->isPublished());
@@ -255,7 +255,7 @@ class TodayTest extends TestCase
 
         Livewire::test(Today::class)
             ->callAction(TestAction::make('release')->table($lesson), data: ['due_on' => today()->addDays(3)->toDateString()])
-            ->assertNotified('Niemand freigegeben');
+            ->assertNotified('Nothing released');
 
         $this->assertFalse($lesson->refresh()->isPublished());
     }
@@ -308,12 +308,12 @@ class TodayTest extends TestCase
         Livewire::test(Today::class)
             ->assertActionVisible('releaseAll')
             ->mountAction('releaseAll')
-            ->assertMountedActionModalSee('2 Hausaufgaben mit Fragen warten auf Freigabe')
+            ->assertMountedActionModalSee('2 homework assignments with questions are waiting for release')
             ->assertSchemaStateSet(['due_on' => today()->addDays(7)->toDateString()])
             ->setActionData(['due_on' => today()->addDays(4)->toDateString()])
             ->callMountedAction()
             ->assertHasNoFormErrors()
-            ->assertNotified('2 Hausaufgaben freigegeben')
+            ->assertNotified('2 homework assignments released')
             ->assertActionHidden('releaseAll');
 
         foreach ([$ready, $secondReady] as $lesson) {

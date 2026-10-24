@@ -25,6 +25,7 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\On;
@@ -35,11 +36,10 @@ class QuestionsRelationManager extends RelationManager
 {
     protected static string $relationship = 'questions';
 
-    protected static ?string $title = 'Hausaufgabe';
-
-    protected static ?string $modelLabel = 'Frage';
-
-    protected static ?string $pluralModelLabel = 'Fragen';
+    public static function getTitle(Model $ownerRecord, string $pageClass): string
+    {
+        return __('Hausaufgabe');
+    }
 
     /**
      * Once released, students may already be answering, and deleting a question would delete their answers.
@@ -54,12 +54,12 @@ class QuestionsRelationManager extends RelationManager
         return $schema
             ->components([
                 Select::make('type')
-                    ->label('Art')
+                    ->label(__('Art'))
                     ->options(QuestionType::class)
                     ->default(QuestionType::Comprehension)
                     ->required(),
                 Select::make('competency_id')
-                    ->label('Kompetenz')
+                    ->label(__('Kompetenz'))
                     ->relationship(
                         'competency',
                         'name',
@@ -69,23 +69,23 @@ class QuestionsRelationManager extends RelationManager
                     ->searchable(['area', 'name'])
                     ->preload(),
                 Textarea::make('prompt')
-                    ->label('Frage')
+                    ->label(__('Frage'))
                     ->rows(3)
                     ->required()
                     ->columnSpanFull(),
                 Textarea::make('prompt_basis')
-                    ->label('Stufe Einstieg (optional)')
-                    ->helperText('Eine leichtere Fassung der Frage mit einem Hinweis. Schüler:innen können sie statt der Standard-Frage wählen.')
+                    ->label(__('Stufe Einstieg (optional)'))
+                    ->helperText(__('Eine leichtere Fassung der Frage mit einem Hinweis. Schüler:innen können sie statt der Standard-Frage wählen.'))
                     ->rows(3)
                     ->columnSpanFull(),
                 Textarea::make('prompt_plus')
-                    ->label('Stufe Profi (optional)')
-                    ->helperText('Eine anspruchsvollere Fassung, die zum Beispiel eine Begründung verlangt. Gemessen wird an demselben Erwartungshorizont.')
+                    ->label(__('Stufe Profi (optional)'))
+                    ->helperText(__('Eine anspruchsvollere Fassung, die zum Beispiel eine Begründung verlangt. Gemessen wird an demselben Erwartungshorizont.'))
                     ->rows(3)
                     ->columnSpanFull(),
                 Textarea::make('expected_answer')
-                    ->label('Erwartungshorizont (nur für dich sichtbar)')
-                    ->helperText('Daran misst die KI die Antworten der Schüler:innen.')
+                    ->label(__('Erwartungshorizont (nur für dich sichtbar)'))
+                    ->helperText(__('Daran misst die KI die Antworten der Schüler:innen.'))
                     ->rows(4)
                     ->required()
                     ->columnSpanFull(),
@@ -96,27 +96,29 @@ class QuestionsRelationManager extends RelationManager
     {
         return $table
             ->recordTitleAttribute('prompt')
+            ->modelLabel(__('Frage'))
+            ->pluralModelLabel(__('Fragen'))
             ->description(fn (): ?string => $this->isReadOnly()
-                ? 'Die Hausaufgabe ist freigegeben. Um Fragen zu ändern, nimm die Freigabe zurück (nur möglich, solange niemand abgegeben hat).'
+                ? __('Die Hausaufgabe ist freigegeben. Um Fragen zu ändern, nimm die Freigabe zurück (nur möglich, solange niemand abgegeben hat).')
                 : null)
             ->reorderable('position')
             ->columns([
                 TextColumn::make('position')
-                    ->label('Nr.'),
+                    ->label(__('Nr.')),
                 TextColumn::make('type')
-                    ->label('Art')
+                    ->label(__('Art'))
                     ->badge(),
                 TextColumn::make('prompt')
-                    ->label('Frage')
+                    ->label(__('Frage'))
                     ->wrap(),
                 TextColumn::make('levels')
-                    ->label('Stufen')
+                    ->label(__('Stufen'))
                     ->state(fn (Question $record): ?string => $record->hasLevels()
                         ? collect($record->availableLevels())->map(fn (QuestionLevel $level): string => $level->getLabel())->implode(' · ')
                         : null)
                     ->placeholder('–'),
                 TextColumn::make('competency.name')
-                    ->label('Kompetenz')
+                    ->label(__('Kompetenz'))
                     ->placeholder('–')
                     ->wrap(),
                 TextColumn::make('origin')
@@ -132,29 +134,29 @@ class QuestionsRelationManager extends RelationManager
                         'position' => ($this->getLesson()->questions()->max('position') ?? 0) + 1,
                     ]),
                 Action::make('differentiateAll')
-                    ->label('Stufen mit KI erstellen')
+                    ->label(__('Stufen mit KI erstellen'))
                     ->icon(Heroicon::OutlinedSparkles)
                     ->color('gray')
                     ->authorize(fn (): bool => Gate::allows('update', $this->getLesson()))
                     ->visible(fn (): bool => ! $this->isReadOnly())
                     ->disabled(fn (): bool => $this->getLesson()->questions()->doesntExist())
                     ->requiresConfirmation()
-                    ->modalHeading('Stufen für alle Fragen erstellen?')
-                    ->modalDescription('Die KI ergänzt bei jeder Frage die fehlenden Stufen Einstieg und Profi. Stufen, die du schon geschrieben hast, bleiben unverändert.')
-                    ->modalSubmitActionLabel('Stufen erstellen')
+                    ->modalHeading(__('Stufen für alle Fragen erstellen?'))
+                    ->modalDescription(__('Die KI ergänzt bei jeder Frage die fehlenden Stufen Einstieg und Profi. Stufen, die du schon geschrieben hast, bleiben unverändert.'))
+                    ->modalSubmitActionLabel(__('Stufen erstellen'))
                     ->action(fn () => $this->createLevels($this->getLesson()->questions()->get(), replaceExisting: false)),
             ])
             ->recordActions([
                 Action::make('differentiate')
-                    ->label('Stufen mit KI erstellen')
+                    ->label(__('Stufen mit KI erstellen'))
                     ->icon(Heroicon::OutlinedSparkles)
                     ->color('gray')
                     ->authorize('update')
                     ->visible(fn (): bool => ! $this->isReadOnly())
                     ->requiresConfirmation(fn (Question $record): bool => $record->hasLevels())
-                    ->modalHeading('Stufen neu erstellen?')
-                    ->modalDescription('Die Stufen dieser Frage werden durch einen neuen KI-Entwurf ersetzt.')
-                    ->modalSubmitActionLabel('Neu erstellen')
+                    ->modalHeading(__('Stufen neu erstellen?'))
+                    ->modalDescription(__('Die Stufen dieser Frage werden durch einen neuen KI-Entwurf ersetzt.'))
+                    ->modalSubmitActionLabel(__('Neu erstellen'))
                     ->action(fn (Question $record) => $this->createLevels(collect([$record]), replaceExisting: true)),
                 ViewAction::make()
                     ->hidden(fn (): bool => ! $this->isReadOnly()),
@@ -210,8 +212,8 @@ class QuestionsRelationManager extends RelationManager
 
             Notification::make()
                 ->danger()
-                ->title('Stufen konnten nicht erstellt werden')
-                ->body(($done > 0 ? "Bei {$done} Fragen sind die Stufen gespeichert. " : '').'Bitte versuche es gleich noch einmal.')
+                ->title(__('Stufen konnten nicht erstellt werden'))
+                ->body(($done > 0 ? trans_choice('Bei :count Frage sind die Stufen gespeichert.|Bei :count Fragen sind die Stufen gespeichert.', $done).' ' : '').__('Bitte versuche es gleich noch einmal.'))
                 ->send();
 
             return;
@@ -219,10 +221,10 @@ class QuestionsRelationManager extends RelationManager
 
         Notification::make()
             ->success()
-            ->title($done === 0 ? 'Alle Fragen haben schon beide Stufen' : "Stufen für {$done} ".($done === 1 ? 'Frage' : 'Fragen').' erstellt')
+            ->title($done === 0 ? __('Alle Fragen haben schon beide Stufen') : trans_choice('Stufen für :count Frage erstellt|Stufen für :count Fragen erstellt', $done))
             ->body($done === 0 ? null : ($this->getLesson()->schoolClass->school?->aiEnabled()
-                ? 'Prüfe die Stufen, bevor du die Hausaufgabe freigibst.'
-                : 'Demo-Modus – KI-Anbindung vorbereitet, aber nicht aktiv. Die Stufen sind Beispielentwürfe, bitte prüfe und passe sie an.'))
+                ? __('Prüfe die Stufen, bevor du die Hausaufgabe freigibst.')
+                : __('Demo-Modus – KI-Anbindung vorbereitet, aber nicht aktiv. Die Stufen sind Beispielentwürfe, bitte prüfe und passe sie an.')))
             ->persistent($done > 0)
             ->send();
     }

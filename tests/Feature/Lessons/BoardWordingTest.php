@@ -17,25 +17,32 @@ use App\Filament\Resources\Lessons\Pages\ListLessons;
 use App\Models\Lesson;
 use App\Models\Question;
 use App\Models\User;
+use Closure;
 use Filament\Actions\View\ActionsIconAlias;
 use Filament\Forms\View\FormsIconAlias;
 use Filament\Support\Facades\FilamentIcon;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 use Tests\Feature\Consents\CreatesConsentFixtures;
 use Tests\TestCase;
 
 /**
  * The glossary of the board: "freigeben" and "Stunde" instead of "verteilen", and for the Tuto-Mikro never
- * "aufnehmen", "Aufnahme", "Mitschnitt", "abhören", "überwachen" or "Transkript"; no microphone, ear or eye icons.
+ * "aufnehmen", "Aufnahme", "Mitschnitt", "abhören", "überwachen" or "Transkript" (in English never "record",
+ * "transcript", "monitor" or "listen in"); no microphone, ear or eye icons. The suite runs in English, so the pages are
+ * rendered once per language and checked against the list of that language.
  */
 class BoardWordingTest extends TestCase
 {
     use CreatesConsentFixtures;
     use RefreshDatabase;
 
-    private const string FORBIDDEN_WORDS = '/aufnahm|aufnehm|aufgenommen|mitschnitt|abhör|überwach|transkript|verteil/iu';
+    private const array FORBIDDEN_WORDS = [
+        'en' => '/record|transcript|monitor|listen in|eavesdrop/iu',
+        'de' => '/aufnahm|aufnehm|aufgenommen|mitschnitt|abhör|überwach|transkript|verteil/iu',
+    ];
 
     /**
      * Source files of the pages above that must stay free of microphone, ear and eye icons.
@@ -73,9 +80,7 @@ class BoardWordingTest extends TestCase
             'ClassConsents' => fn () => Livewire::withQueryParams(['klasse' => $schoolClass->getKey()])->test(ClassConsents::class),
         ];
 
-        foreach ($pages as $name => $page) {
-            $this->assertDoesNotMatchRegularExpression(self::FORBIDDEN_WORDS, $this->visibleText($page()->html()), $name);
-        }
+        $this->assertTheBoardWordingInBothLanguages($pages);
     }
 
     public function test_the_student_pages_use_the_board_wording(): void
@@ -96,9 +101,7 @@ class BoardWordingTest extends TestCase
             'MyRecordingConsent' => fn () => Livewire::test(MyRecordingConsent::class),
         ];
 
-        foreach ($pages as $name => $page) {
-            $this->assertDoesNotMatchRegularExpression(self::FORBIDDEN_WORDS, $this->visibleText($page()->html()), $name);
-        }
+        $this->assertTheBoardWordingInBothLanguages($pages);
     }
 
     public function test_the_administration_pages_use_the_board_wording(): void
@@ -108,9 +111,13 @@ class BoardWordingTest extends TestCase
         $admin = User::factory()->for($school)->admin()->create();
         $this->actingAs($admin);
 
-        foreach ([Dashboard::class, RecordingSettings::class, RolesAndPermissions::class, ImportStudents::class, ListLessons::class] as $page) {
-            $this->assertDoesNotMatchRegularExpression(self::FORBIDDEN_WORDS, $this->visibleText(Livewire::test($page)->html()), $page);
-        }
+        $this->assertTheBoardWordingInBothLanguages([
+            'Dashboard' => fn () => Livewire::test(Dashboard::class),
+            'RecordingSettings' => fn () => Livewire::test(RecordingSettings::class),
+            'RolesAndPermissions' => fn () => Livewire::test(RolesAndPermissions::class),
+            'ImportStudents' => fn () => Livewire::test(ImportStudents::class),
+            'ListLessons' => fn () => Livewire::test(ListLessons::class),
+        ]);
     }
 
     public function test_the_parents_page_and_the_letters_use_the_board_wording(): void
@@ -124,8 +131,8 @@ class BoardWordingTest extends TestCase
         preg_match('#/einwilligung/([A-Za-z0-9]{48})#', $letters->getContent(), $link);
         $page = $this->get(route('consents.show', $link[1]))->assertOk();
 
-        $this->assertDoesNotMatchRegularExpression(self::FORBIDDEN_WORDS, $this->visibleText($page->getContent()), 'public page');
-        $this->assertDoesNotMatchRegularExpression(self::FORBIDDEN_WORDS, $this->visibleText($letters->getContent()), 'letters');
+        $this->assertDoesNotMatchRegularExpression(self::FORBIDDEN_WORDS['de'], $this->visibleText($page->getContent()), 'public page');
+        $this->assertDoesNotMatchRegularExpression(self::FORBIDDEN_WORDS['de'], $this->visibleText($letters->getContent()), 'letters');
         $page->assertSee('Tuto-Mikro');
     }
 
@@ -161,6 +168,24 @@ class BoardWordingTest extends TestCase
 
         // The password field of the login page no longer shows the eye of the heroicons set.
         $this->get('/login')->assertOk()->assertDontSee('M2.036 12.322a1.012', false);
+    }
+
+    /**
+     * Renders every page with the English and with the German default and checks the visible text against the forbidden
+     * words of that language.
+     *
+     * @param  array<string, Closure(): Testable>  $pages
+     */
+    private function assertTheBoardWordingInBothLanguages(array $pages): void
+    {
+        foreach (self::FORBIDDEN_WORDS as $locale => $forbidden) {
+            config(['lernplattform.locale.default' => $locale]);
+            app()->setLocale($locale);
+
+            foreach ($pages as $name => $page) {
+                $this->assertDoesNotMatchRegularExpression($forbidden, $this->visibleText($page()->html()), "{$name} ({$locale})");
+            }
+        }
     }
 
     /**

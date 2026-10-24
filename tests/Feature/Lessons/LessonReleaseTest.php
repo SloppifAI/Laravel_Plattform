@@ -154,7 +154,7 @@ class LessonReleaseTest extends TestCase
 
         Livewire::test(EditLesson::class, ['record' => $viaPage->getRouteKey()])
             ->callAction('delegate', data: ['due_on' => $dueOn->toDateString(), 'audience' => 'selected', 'students' => [$students[0]->id, $students[2]->id]])
-            ->assertNotified('Hausaufgabe freigegeben');
+            ->assertNotified('Homework released');
         LessonRelease::release($viaSupport, $this->teacher, $dueOn, [$students[0]->id, $students[2]->id]);
 
         foreach ([$viaPage, $viaSupport] as $lesson) {

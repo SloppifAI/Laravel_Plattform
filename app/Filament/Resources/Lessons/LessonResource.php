@@ -30,11 +30,17 @@ class LessonResource extends Resource
 
     protected static ?int $navigationSort = 1;
 
-    protected static ?string $modelLabel = 'Unterrichtsstunde';
-
-    protected static ?string $pluralModelLabel = 'Unterrichtsstunden';
-
     protected static ?string $recordTitleAttribute = 'topic';
+
+    public static function getModelLabel(): string
+    {
+        return __('Unterrichtsstunde');
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return __('Unterrichtsstunden');
+    }
 
     public static function form(Schema $schema): Schema
     {

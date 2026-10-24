@@ -120,8 +120,8 @@ class HomeworkRedraftTest extends TestCase
         $own = Question::factory()->for($this->lesson)->create();
 
         $this->manager()
-            ->assertTableColumnStateSet('origin', 'KI-Entwurf', $ai)
-            ->assertTableColumnStateSet('origin', 'Eigene Frage', $own);
+            ->assertTableColumnStateSet('origin', 'AI draft', $ai)
+            ->assertTableColumnStateSet('origin', 'Own question', $own);
     }
 
     public function test_the_confirmation_names_the_own_questions_that_stay(): void
@@ -130,14 +130,14 @@ class HomeworkRedraftTest extends TestCase
 
         Livewire::test(EditLesson::class, ['record' => $this->lesson->getRouteKey()])
             ->mountAction('draftHomework')
-            ->assertMountedActionModalSee('Die Zusammenfassung und die KI-Fragen werden durch einen neuen KI-Entwurf ersetzt.')
-            ->assertMountedActionModalDontSee('bleibt erhalten');
+            ->assertMountedActionModalSee('The summary and the AI questions are replaced by a new AI draft.')
+            ->assertMountedActionModalDontSee('is kept');
 
         Question::factory()->for($this->lesson)->create();
 
         Livewire::test(EditLesson::class, ['record' => $this->lesson->getRouteKey()])
             ->mountAction('draftHomework')
-            ->assertMountedActionModalSee('1 eigene oder bearbeitete Frage bleibt erhalten.');
+            ->assertMountedActionModalSee('1 question of your own or edited by you is kept.');
     }
 
     public function test_the_demo_keeps_an_edited_question_and_does_not_repeat_it(): void

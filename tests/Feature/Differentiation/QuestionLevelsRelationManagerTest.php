@@ -82,7 +82,7 @@ class QuestionLevelsRelationManagerTest extends TestCase
 
         $this->manager()
             ->callAction(TestAction::make('differentiateAll')->table())
-            ->assertNotified('Stufen für 2 Fragen erstellt');
+            ->assertNotified('Levels created for 2 questions');
 
         $this->assertSame(['KI-Einstieg zu Frage ohne Stufen?', 'KI-Profi zu Frage ohne Stufen?'], [$bare->refresh()->prompt_basis, $bare->prompt_plus]);
         $this->assertSame(['Mein eigener Einstieg.', 'KI-Profi zu Frage mit Einstieg?'], [$partly->refresh()->prompt_basis, $partly->prompt_plus]);
@@ -112,8 +112,8 @@ class QuestionLevelsRelationManagerTest extends TestCase
             ->callAction(TestAction::make('differentiateAll')->table())
             ->assertNotified(Notification::make()
                 ->success()
-                ->title('Stufen für 1 Frage erstellt')
-                ->body('Demo-Modus – KI-Anbindung vorbereitet, aber nicht aktiv. Die Stufen sind Beispielentwürfe, bitte prüfe und passe sie an.')
+                ->title('Levels created for 1 question')
+                ->body('Demo mode – the AI connection is set up but not active. The levels are sample drafts, please check and adjust them.')
                 ->persistent());
 
         $question = $this->lesson->questions()->first();
@@ -133,8 +133,8 @@ class QuestionLevelsRelationManagerTest extends TestCase
             ->callAction(TestAction::make('differentiateAll')->table())
             ->assertNotified(Notification::make()
                 ->success()
-                ->title('Stufen für 1 Frage erstellt')
-                ->body('Prüfe die Stufen, bevor du die Hausaufgabe freigibst.')
+                ->title('Levels created for 1 question')
+                ->body('Check the levels before you release the homework.')
                 ->persistent());
     }
 
@@ -186,7 +186,7 @@ class QuestionLevelsRelationManagerTest extends TestCase
 
         $this->manager()
             ->callAction(TestAction::make('differentiateAll')->table())
-            ->assertNotified('Stufen konnten nicht erstellt werden');
+            ->assertNotified('Levels could not be created');
 
         $this->assertSame('Erste Stufe', $first->refresh()->prompt_basis);
         $this->assertNull($second->refresh()->prompt_basis);

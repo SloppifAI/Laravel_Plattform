@@ -58,10 +58,10 @@ class LessonResourceTest extends TestCase
         $this->actingAs($teacher);
 
         $page = Livewire::test(ListLessons::class)
-            ->assertSee(['Wartet auf Freigabe', 'Freigegeben', 'Förderaufgabe'])
-            ->assertDontSee(['Verteilt', 'Entwurf'])
-            ->assertTableColumnStateSet('status', 'Wartet auf Freigabe', $waiting)
-            ->assertTableColumnStateSet('status', 'Freigegeben', $released);
+            ->assertSee(['Waiting for release', 'Released', 'Practice task'])
+            ->assertDontSee(['Distributed', 'Draft'])
+            ->assertTableColumnStateSet('status', 'Waiting for release', $waiting)
+            ->assertTableColumnStateSet('status', 'Released', $released);
 
         // The badge sits under the topic, so it is part of every screen size, the phone cards included.
         $topic = $page->instance()->getTable()->getColumn('topic');
