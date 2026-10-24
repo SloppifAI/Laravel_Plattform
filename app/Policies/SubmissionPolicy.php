@@ -6,7 +6,8 @@ use App\Models\Submission;
 use App\Models\User;
 
 /**
- * A submission is visible to its student, the lesson's teacher and admins.
+ * A submission is visible to its student, the lesson's teacher (not once a substitute's substitution is over, see
+ * LessonPolicy::viewResults()) and admins.
  * Students hand in once; the teacher may delete a submission so the student can redo it.
  */
 class SubmissionPolicy
@@ -22,7 +23,7 @@ class SubmissionPolicy
             return $submission->student()->is($user);
         }
 
-        return $user->can('update', $submission->lesson);
+        return $user->can('viewResults', $submission->lesson);
     }
 
     public function create(User $user): bool
@@ -37,7 +38,7 @@ class SubmissionPolicy
 
     public function delete(User $user, Submission $submission): bool
     {
-        return ! $user->isStudent() && $user->can('update', $submission->lesson);
+        return ! $user->isStudent() && $user->can('viewResults', $submission->lesson);
     }
 
     public function deleteAny(User $user): bool
