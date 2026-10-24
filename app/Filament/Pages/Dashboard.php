@@ -13,12 +13,31 @@ class Dashboard extends BaseDashboard
 {
     public static function getNavigationLabel(): string|Htmlable
     {
-        return __('Mein Lernbereich');
+        /** @var User|null $user */
+        $user = auth()->user();
+
+        return match (true) {
+            (bool) $user?->isTeacher() => __('Mein Unterricht'),
+            (bool) $user?->isAdmin() => __('Schulübersicht'),
+            (bool) $user?->isOperator() => __('Plattformübersicht'),
+            default => __('Mein Lernbereich'),
+        };
     }
 
     public function getTitle(): string|Htmlable
     {
-        return __('Mein Lernbereich');
+        return static::getNavigationLabel();
+    }
+
+    /**
+     * Teachers are greeted by name like students; students get theirs in the widget below the heading.
+     */
+    public function getHeading(): string|Htmlable
+    {
+        /** @var User $user */
+        $user = auth()->user();
+
+        return $user->isTeacher() ? __('Hallo :name!', ['name' => $user->name]) : $this->getTitle();
     }
 
     public function getSubheading(): ?string

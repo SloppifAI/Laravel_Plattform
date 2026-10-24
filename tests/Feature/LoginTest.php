@@ -46,7 +46,7 @@ class LoginTest extends TestCase
             ->assertHasNoFormErrors();
 
         $this->assertAuthenticated();
-        $this->get('/')->assertOk()->assertSee('My learning area')->assertSee('Latest registrations');
+        $this->get('/')->assertOk()->assertSee('Platform overview')->assertSee('Latest registrations');
     }
 
     public function test_the_login_form_is_prefilled_with_the_demo_credentials(): void
