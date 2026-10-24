@@ -11,6 +11,8 @@ use SensitiveParameter;
 
 /**
  * Login with a username instead of Filament's default email field.
+ *
+ * The form is prefilled with the seeded demo user's credentials (see DatabaseSeeder).
  */
 class Login extends BaseLogin
 {
@@ -20,10 +22,11 @@ class Login extends BaseLogin
             ->components([
                 TextInput::make('username')
                     ->label('Benutzername')
+                    ->default('hackathon')
                     ->required()
                     ->autocomplete('username')
                     ->autofocus(),
-                $this->getPasswordFormComponent(),
+                $this->getPasswordFormComponent()->default('hackathon2026'),
                 $this->getRememberFormComponent(),
             ]);
     }
