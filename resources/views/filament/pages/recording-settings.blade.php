@@ -6,23 +6,23 @@
     @if ($recordingsEnabled)
         <x-filament::callout
             color="success"
-            :icon="Heroicon::OutlinedMicrophone"
-            heading="Aufnahmen sind freigeschaltet"
-            :description="'Seit '.$school->recordings_enabled_at->format('d.m.Y').($enabledBy ? ', freigegeben von '.$enabledBy->name : '').'. Lehrkräfte dürfen eine Stunde nur aufnehmen, wenn für alle anwesenden Schüler:innen eine gültige Einwilligung vorliegt.'"
+            :icon="Heroicon::OutlinedSignal"
+            heading="Tuto-Mikro ist freigeschaltet"
+            :description="'Seit '.$school->recordings_enabled_at->format('d.m.Y').($enabledBy ? ', freigegeben von '.$enabledBy->name : '').'. Lehrkräfte dürfen das Mikro nur einschalten, wenn für alle anwesenden Schüler:innen eine gültige Einwilligung vorliegt.'"
         />
     @elseif ($switchedOn)
         <x-filament::callout
             color="warning"
             :icon="Heroicon::OutlinedExclamationTriangle"
-            heading="Aufnahmen sind vorübergehend gesperrt"
-            description="Die Aufnahmen sind freigeschaltet, aber nicht alle Punkte der Checkliste sind bestätigt. Bestätige sie unten, dann geht es weiter."
+            heading="Tuto-Mikro ist vorübergehend gesperrt"
+            description="Das Tuto-Mikro ist freigeschaltet, aber nicht alle Punkte der Checkliste sind bestätigt. Bestätige sie unten, dann geht es weiter."
         />
     @else
         <x-filament::callout
             color="gray"
             :icon="Heroicon::OutlinedNoSymbol"
-            heading="Aufnahmen sind ausgeschaltet"
-            description="Solange sie aus sind, kann keine Lehrkraft eine Stunde aufnehmen. Schalte sie erst frei, wenn die Voraussetzungen unten erfüllt sind."
+            heading="Tuto-Mikro ist ausgeschaltet"
+            description="Solange das Tuto-Mikro aus ist, kann keine Lehrkraft es in einer Stunde einschalten. Schalte es erst frei, wenn die Voraussetzungen unten erfüllt sind."
         />
     @endif
 
@@ -30,7 +30,7 @@
         <div class="space-y-6 lg:col-span-2">
             <x-filament::section
                 heading="1. Voraussetzungen"
-                description="Das bestätigt die Schule selbst. Die Plattform kann es nicht prüfen. Ohne alle fünf Punkte lassen sich die Aufnahmen nicht freischalten."
+                description="Das bestätigt die Schule selbst. Die Plattform kann es nicht prüfen. Ohne alle fünf Punkte lässt sich das Tuto-Mikro nicht freischalten."
                 :icon="Heroicon::OutlinedClipboardDocumentCheck"
             >
                 <form wire:submit="saveSettings" class="space-y-6">
@@ -55,7 +55,7 @@
             </x-filament::section>
 
             <x-filament::section
-                heading="3. Aufnahmen freischalten"
+                heading="3. Tuto-Mikro freischalten"
                 :icon="Heroicon::OutlinedPower"
             >
                 <div class="space-y-4">
@@ -96,7 +96,7 @@
                 @endif
 
                 <p class="mt-3 text-sm text-gray-600 dark:text-gray-400">
-                    Aufnahmen und Transkripte werden nach {{ $keepDays }} Tagen automatisch gelöscht.
+                    Das Tuto-Mikro speichert keinen Ton. Der Nachweis je Sitzung wird nach {{ $sessionDays }} Tagen automatisch gelöscht.
                 </p>
             </x-filament::section>
 

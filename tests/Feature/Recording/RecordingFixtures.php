@@ -3,16 +3,20 @@
 namespace Tests\Feature\Recording;
 
 use App\Filament\Pages\RecordLesson;
+use App\Models\ConsentForm;
 use App\Models\Lesson;
 use App\Models\LessonRecording;
+use App\Models\RecordingConsent;
 use App\Models\School;
 use App\Models\SchoolClass;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Testing\TestResponse;
 
 /**
- * A lesson with its teacher, and everyone who must not get at the teacher's recordings.
+ * A lesson with its teacher, a class whose parents all consented to everything, and everyone who must not get at Tuto-Mikro.
+ * The AI stays off until a test calls enableAi(); the SDK fakes are the test's job.
  */
 trait RecordingFixtures
 {
@@ -22,13 +26,31 @@ trait RecordingFixtures
 
     protected Lesson $lesson;
 
+    protected ConsentForm $form;
+
+    /** @var Collection<int, User> */
+    protected Collection $students;
+
     protected function setUpLesson(): void
     {
         Storage::fake('local');
 
         $this->schoolClass = SchoolClass::factory()->create(['name' => '7b']);
-        $this->switchRecordings($this->schoolClass->school, true);
+        $school = $this->schoolClass->school;
+        $this->switchRecordings($school, true);
+
+        $this->form = ConsentForm::factory()->create(['school_id' => $school->getKey()]);
         $this->teacher = $this->schoolClass->teacher;
+        $this->students = new Collection([
+            User::factory()->student($this->schoolClass)->create(['name' => 'Anna Müller']),
+            User::factory()->student($this->schoolClass)->create(['name' => 'Ben Schneider']),
+            User::factory()->student($this->schoolClass)->create(['name' => 'Cem Yilmaz']),
+        ]);
+
+        foreach ($this->students as $student) {
+            RecordingConsent::factory()->forForm($this->form)->create(['student_id' => $student->getKey()]);
+        }
+
         $this->lesson = Lesson::factory()->for($this->schoolClass)->for($this->teacher, 'teacher')
             ->create(['subject' => 'Biologie', 'topic' => 'Fotosynthese', 'held_on' => '2026-10-01', 'notes' => 'Tafelbild: Licht, Wasser, CO2']);
     }
@@ -41,6 +63,19 @@ trait RecordingFixtures
         $school->forceFill([
             'recording_checklist' => array_fill_keys(School::RECORDING_CHECKLIST, true),
             'recordings_enabled_at' => $on ? now() : null,
+        ])->save();
+    }
+
+    /**
+     * The AI of the platform and the school's opt-in with the complete checklist.
+     */
+    protected function enableAi(): void
+    {
+        config(['lernplattform.ai.enabled' => true]);
+
+        $this->schoolClass->school->forceFill([
+            'ai_checklist' => array_fill_keys(School::AI_CHECKLIST, true),
+            'ai_enabled_at' => now(),
         ])->save();
     }
 
@@ -63,18 +98,40 @@ trait RecordingFixtures
         return RecordLesson::getUrl(['lesson' => $lesson ?? $this->lesson]);
     }
 
-    protected function appendChunk(LessonRecording $recording, int $index, string $bytes, string $contentType = 'audio/webm'): TestResponse
+    /**
+     * @param  iterable<User>|null  $present  everybody of the class when null
+     */
+    protected function startSession(?iterable $present = null, ?User $as = null, bool $attendanceConfirmed = true): TestResponse
+    {
+        $ids = collect($present ?? $this->students)->map->getKey()->values()->all();
+
+        return $this->actingAs($as ?? $this->teacher)->postJson(route('recordings.store', $this->lesson), ['present' => $ids, 'attendance_confirmed' => $attendanceConfirmed]);
+    }
+
+    protected function startedSession(): LessonRecording
+    {
+        $this->startSession()->assertCreated();
+
+        return LessonRecording::query()->latest('id')->firstOrFail();
+    }
+
+    protected function postSegment(LessonRecording $recording, string $bytes = 'webm-bytes', string $contentType = 'audio/webm'): TestResponse
     {
         return $this->call(
             'POST',
-            route('recordings.append', ['recording' => $recording, 'index' => $index]),
+            route('recordings.segment', $recording),
             server: ['CONTENT_TYPE' => $contentType, 'HTTP_ACCEPT' => 'application/json'],
             content: $bytes,
         );
     }
 
-    protected function recordingOf(Lesson $lesson, string $state = 'withAudio'): LessonRecording
+    /**
+     * Every file Tuto-Mikro left on the private disk: always none.
+     *
+     * @return list<string>
+     */
+    protected function filesOnDisk(): array
     {
-        return LessonRecording::factory()->for($lesson)->interrupted()->{$state}()->create();
+        return LessonRecording::disk()->allFiles();
     }
 }

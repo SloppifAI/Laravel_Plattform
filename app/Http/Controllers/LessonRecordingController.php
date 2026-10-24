@@ -2,119 +2,172 @@
 
 namespace App\Http\Controllers;
 
+use App\Ai\RecordingAnalyst;
+use App\Ai\Transcriber;
 use App\Models\Lesson;
 use App\Models\LessonRecording;
-use App\TranscriptStatus;
+use App\Support\Pseudonymizer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rule;
-use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Throwable;
 
 /**
- * Upload and playback of lesson recordings. Everything here is reserved for the recording's own teacher
- * (LessonRecordingPolicy); the file is only ever delivered through these authorised routes.
+ * The endpoints behind the Tuto-Mikro page. Everything here is reserved for the lesson's teacher
+ * (LessonRecordingPolicy).
  *
- * The browser creates the recording once the teacher confirmed the consent and the microphone is available, then
- * posts the raw MediaRecorder chunks one after another and finishes with the duration.
+ * The browser starts a session with the students marked as present (the consent of each of them is checked here, not
+ * only on the page), posts the sound in segments of about 25 seconds, ends the session and asks for the summary of the
+ * notes. Nothing is stored: a segment is recognised from memory within the request (it is never written to a disk),
+ * the recognised text goes back to the browser, and the summary is computed from the text the browser sends and handed
+ * back. Where no segments are sent (recognition on the device, typing), the browser asks `check` at the same rhythm,
+ * so a withdrawn consent or a switched-off Tuto-Mikro stops every kind of session.
  */
 class LessonRecordingController extends Controller
 {
     /**
-     * Creates the recording row; the consent confirmation (who, when) is stored with it. Only where the school's
-     * administration has switched recordings on.
+     * Starts a session: only for the lesson's teacher, in a school whose administration allows recordings, and only when
+     * every present student has a valid consent for the purposes about to be processed. The snapshot (present
+     * students, the teacher's confirmation of that list, consent form version, purposes) is stored with the session.
      */
     public function store(Request $request, Lesson $lesson): JsonResponse
     {
         Gate::authorize('record', [LessonRecording::class, $lesson]);
 
-        $unfinished = LessonRecording::query()
-            ->where('teacher_id', $request->user()->getKey())
-            ->whereNull('finished_at')
-            ->where('started_at', '>', now()->subHours(12))
-            ->count();
-
-        abort_if($unfinished >= (int) config('lernplattform.recordings.max_unfinished'), 429, 'Es gibt schon mehrere nicht beendete Aufnahmen. Lade die Seite neu und lösche, was du nicht brauchst.');
-
         $data = $request->validate([
-            'consent' => ['required', 'accepted'],
-            'mime_type' => ['required', 'string', Rule::in(array_keys(LessonRecording::MIME_TYPES))],
+            'present' => ['required', 'array', 'min:1', 'max:200'],
+            'present.*' => ['integer', 'distinct'],
+            'attendance_confirmed' => ['accepted'],
         ], [
-            'consent.accepted' => 'Bitte bestätige zuerst, dass die Klasse informiert ist und Aufnahmen an deiner Schule erlaubt sind.',
+            'present.required' => 'Wähle zuerst aus, wer heute da ist.',
+            'present.min' => 'Wähle zuerst aus, wer heute da ist.',
+            'attendance_confirmed.accepted' => 'Bestätige, dass nur die angehakten Schüler:innen im Raum sind.',
         ]);
+
+        $students = $lesson->schoolClass->students()->whereKey($data['present'])->get();
+
+        abort_if($students->count() !== count($data['present']), 422, 'Mindestens eine ausgewählte Person gehört nicht zu dieser Klasse.');
+
+        $check = LessonRecording::consentCheck($lesson, $request->user(), $students);
+
+        if (! $check->allowed) {
+            return response()->json(['message' => $check->reasons[0] ?? 'Tuto-Mikro darf jetzt nicht starten.', 'reasons' => $check->reasons], 409);
+        }
+
+        $school = $lesson->schoolClass->school;
 
         $recording = LessonRecording::query()->create([
             'lesson_id' => $lesson->getKey(),
             'teacher_id' => $request->user()->getKey(),
-            'path' => LessonRecording::newPath($lesson, $data['mime_type']),
-            'mime_type' => $data['mime_type'],
-            'consent_confirmed_at' => now(),
             'started_at' => now(),
+            'present_student_ids' => $students->modelKeys(),
+            'attendance_confirmed_at' => now(),
+            'consent_form_version' => $school->currentConsentForm()?->version,
+            'purposes' => LessonRecording::purposesFor($school),
         ]);
 
         return response()->json([
             'id' => $recording->getKey(),
-            'append_url' => route('recordings.append', $recording),
-            'finish_url' => route('recordings.finish', $recording),
-            'transcript_url' => route('recordings.transcript', $recording),
+            // Whether the sound is recognised on the server; without it the browser sends nothing and recognises on the device, if it can.
+            'transcribes' => $school->aiEnabled(),
+            'segment_seconds' => (int) config('lernplattform.recordings.segment_seconds'),
+            'segment_url' => route('recordings.segment', $recording),
+            'check_url' => route('recordings.check', $recording),
+            'end_url' => route('recordings.finish', $recording),
+            'analyse_url' => route('recordings.analyse', $recording),
         ], 201);
     }
 
     /**
-     * Appends the next chunk (raw body, `?index=` counting from 0). A chunk that was already stored is acknowledged
-     * again without being appended twice, so the browser can safely retry after a lost response.
+     * Whether the teacher's Tuto-Mikro session of this lesson is open: the one fact the Beamer display (MikroBoard) asks
+     * for when it cannot hear the Tuto-Mikro tab (another device). Nothing about the class or the notes is in the answer.
      */
-    public function append(Request $request, LessonRecording $recording): JsonResponse
+    public function status(Request $request, Lesson $lesson): JsonResponse
     {
-        Gate::authorize('update', $recording);
+        Gate::authorize('create', [LessonRecording::class, $lesson]);
 
-        $mimeType = strtolower(trim(Str::before((string) $request->header('Content-Type'), ';')));
-        $maxBytes = (int) config('lernplattform.recordings.max_chunk_kb') * 1024;
-        $index = $request->query('index');
+        $recording = LessonRecording::query()
+            ->where('lesson_id', $lesson->getKey())
+            ->where('teacher_id', $request->user()->getKey())
+            ->whereNull('finished_at')
+            ->latest('started_at')
+            ->first();
 
-        abort_unless($mimeType === $recording->mime_type, 415, 'Dieses Audioformat passt nicht zur Aufnahme.');
-        abort_unless(is_string($index) && ctype_digit($index), 422, 'Die Nummer des Teils fehlt.');
-        abort_if((int) $request->header('Content-Length') > $maxBytes, 413, 'Dieser Teil der Aufnahme ist zu groß.');
-
-        $chunk = $request->getContent();
-
-        abort_if($chunk === '', 422, 'Dieser Teil der Aufnahme ist leer.');
-        abort_if(strlen($chunk) > $maxBytes, 413, 'Dieser Teil der Aufnahme ist zu groß.');
-
-        return DB::transaction(function () use ($recording, $chunk, $index): JsonResponse {
-            $current = LessonRecording::query()->lockForUpdate()->findOrFail($recording->getKey());
-
-            abort_if($current->isFinished(), 409, 'Diese Aufnahme ist bereits beendet.');
-
-            if ((int) $index < $current->chunks_received) {
-                return response()->json(['received' => $current->chunks_received, 'duplicate' => true]);
-            }
-
-            abort_if((int) $index > $current->chunks_received, 409, 'Ein früherer Teil der Aufnahme fehlt noch.');
-
-            $this->appendToFile($current, $chunk);
-            $current->increment('chunks_received');
-
-            return response()->json(['received' => $current->chunks_received]);
-        });
+        return response()->json(['on' => $recording !== null && ! $recording->isExpired()]);
     }
 
     /**
-     * Ends the recording and stores its duration. Repeating the call is harmless; a recording without any sound is dropped.
+     * One segment of sound (raw body): recognised from memory, and the text goes back to the browser. The sound is never
+     * written to a disk, so a request that dies leaves nothing behind. The session must still be open, the school's AI
+     * must still be on (the browser only sends segments in that mode, so anything else is refused and the browser turns
+     * the microphone off), and the consent is checked again for every segment, because it can be revoked during the lesson.
+     */
+    public function segment(Request $request, LessonRecording $recording): JsonResponse
+    {
+        Gate::authorize('update', $recording);
+
+        if ($refusal = $this->openRefusal($recording)) {
+            return $refusal;
+        }
+
+        $lesson = $recording->lesson;
+
+        if (! $lesson->schoolClass->school->aiEnabled()) {
+            return response()->json(['message' => 'Die KI ist für deine Schule ausgeschaltet, deshalb wird nichts mehr mitgeschrieben.'], 409);
+        }
+
+        $mimeType = strtolower(trim(Str::before((string) $request->header('Content-Type'), ';')));
+        $maxBytes = (int) config('lernplattform.recordings.max_segment_kb') * 1024;
+
+        abort_unless(array_key_exists($mimeType, LessonRecording::MIME_TYPES), 415, 'Dieses Audioformat wird nicht unterstützt.');
+        abort_if((int) $request->header('Content-Length') > $maxBytes, 413, 'Dieser Abschnitt ist zu groß.');
+
+        $audio = $request->getContent();
+
+        abort_if($audio === '', 422, 'Dieser Abschnitt ist leer.');
+        abort_if(strlen($audio) > $maxBytes, 413, 'Dieser Abschnitt ist zu groß.');
+
+        if ($refusal = $this->consentRefusal($request, $recording, 'Tuto-Mikro darf jetzt nicht weiterlaufen.')) {
+            return $refusal;
+        }
+
+        if (! $recording->audio_sent_to_ai) {
+            $recording->update(['audio_sent_to_ai' => true]);
+        }
+
+        try {
+            $text = app(Transcriber::class)->transcribe($lesson, $audio, $mimeType);
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return response()->json(['message' => 'Ein Abschnitt konnte nicht mitgeschrieben werden.'], 502);
+        }
+
+        return response()->json(['text' => $text === null ? null : trim($text)]);
+    }
+
+    /**
+     * The heartbeat of a session that sends no segments (recognition on the device, or typing): the same checks as in
+     * front of a segment, without any sound. 409 means the browser must turn the microphone off.
+     */
+    public function check(Request $request, LessonRecording $recording): JsonResponse
+    {
+        Gate::authorize('update', $recording);
+
+        return $this->openRefusal($recording)
+            ?? $this->consentRefusal($request, $recording, 'Tuto-Mikro darf jetzt nicht weiterlaufen.')
+            ?? response()->json(['allowed' => true]);
+    }
+
+    /**
+     * Ends the session and stores its duration. Repeating the call is harmless.
      */
     public function finish(Request $request, LessonRecording $recording): JsonResponse
     {
         Gate::authorize('update', $recording);
 
         $data = $request->validate(['duration_seconds' => ['required', 'integer', 'min:0', 'max:86400']]);
-
-        if ($recording->chunks_received === 0) {
-            $recording->delete();
-
-            return response()->json(['discarded' => true]);
-        }
 
         if (! $recording->isFinished()) {
             $recording->update(['finished_at' => now(), 'duration_seconds' => $data['duration_seconds']]);
@@ -124,89 +177,66 @@ class LessonRecordingController extends Controller
     }
 
     /**
-     * The live transcript the teacher's own browser recognised on the device. Only while recording; afterwards the
-     * transcript is edited on the page. Every call, also one without text, is the recorder's heartbeat: it shows the
-     * page that this recording is still running, even while paused.
+     * "Zusammenfassung erstellen": the notes as the teacher reviewed them. The consent of the present students is
+     * checked again first, in every school (a withdrawn consent or a switched-off Tuto-Mikro stops the summary, and in
+     * a school with AI the check includes the consent to the AI analysis). Then the names of the class are replaced
+     * (Pseudonymizer) and the RecordingAnalyst works on the text (the AI only for a school that switched it on).
+     * Nothing is stored; the teacher takes over what she or he wants on the page.
      */
-    public function transcript(Request $request, LessonRecording $recording): JsonResponse
+    public function analyse(Request $request, LessonRecording $recording): JsonResponse
     {
         Gate::authorize('update', $recording);
 
-        abort_if($recording->isFinished(), 409, 'Diese Aufnahme ist bereits beendet.');
+        $data = $request->validate(
+            ['text' => ['required', 'string', 'max:'.(int) config('lernplattform.recordings.max_text_chars')]],
+            ['text.required' => 'Es gibt noch keine Notizen, aus denen Tuto etwas machen kann.', 'text.max' => 'Die Notizen sind zu lang für eine Zusammenfassung.'],
+        );
 
-        $recording->touch();
-
-        $text = trim((string) $request->validate(['transcript' => ['present', 'nullable', 'string', 'max:200000']])['transcript']);
-
-        if ($text !== '') {
-            $recording->update([
-                'transcript' => $text,
-                'transcript_status' => TranscriptStatus::Live,
-                'transcript_source' => LessonRecording::SOURCE_ON_DEVICE,
-            ]);
+        if ($recording->isExpired()) {
+            return $this->expiredResponse();
         }
 
-        return response()->json(['saved' => $text !== '']);
-    }
+        if ($refusal = $this->consentRefusal($request, $recording, 'Die Zusammenfassung darf jetzt nicht erstellt werden.')) {
+            return $refusal;
+        }
 
-    public function stream(LessonRecording $recording): BinaryFileResponse
-    {
-        Gate::authorize('view', $recording);
+        $lesson = $recording->lesson;
 
-        return $this->file($recording, false);
-    }
+        try {
+            $analysis = app(RecordingAnalyst::class)->analyse($lesson, Pseudonymizer::forLesson($lesson)->apply(trim($data['text'])));
+        } catch (Throwable $exception) {
+            report($exception);
 
-    public function download(LessonRecording $recording): BinaryFileResponse
-    {
-        Gate::authorize('view', $recording);
+            return response()->json(['message' => 'Die Zusammenfassung konnte nicht erstellt werden. Deine Notizen sind noch da. Bitte versuche es gleich noch einmal.'], 502);
+        }
 
-        return $this->file($recording, true);
+        return response()->json(['analysis' => $analysis]);
     }
 
     /**
-     * Served by the file response itself so the audio element can seek (range requests); never cached, never sniffed.
+     * Why a session takes nothing more: it is over, or it was never ended and is too old.
      */
-    private function file(LessonRecording $recording, bool $asDownload): BinaryFileResponse
+    private function openRefusal(LessonRecording $recording): ?JsonResponse
     {
-        abort_unless($recording->hasAudio(), 404);
-
-        $path = LessonRecording::disk()->path($recording->path);
-        $headers = ['Content-Type' => $recording->mime_type, 'X-Content-Type-Options' => 'nosniff'];
-
-        if ($asDownload) {
-            $name = Str::slug("Aufnahme {$recording->lesson->subject} {$recording->started_at->format('Y-m-d H-i')}").'.'.LessonRecording::MIME_TYPES[$recording->mime_type];
-            $response = response()->download($path, $name, $headers);
-        } else {
-            $response = response()->file($path, $headers);
+        if ($recording->isFinished()) {
+            return response()->json(['message' => 'Das Mikro ist schon aus.'], 409);
         }
 
-        // The file response marks itself public; a classroom recording must never sit in a shared cache.
-        $response->headers->set('Cache-Control', 'no-store, private');
+        return $recording->isExpired() ? $this->expiredResponse() : null;
+    }
 
-        return $response;
+    private function expiredResponse(): JsonResponse
+    {
+        return response()->json(['message' => 'Diese Sitzung läuft schon zu lange. Starte Tuto-Mikro neu und wähle die Anwesenden noch einmal aus.'], 409);
     }
 
     /**
-     * Appends bytes without any separator; a failed or short write is rolled back so a retry cannot corrupt the file.
+     * The consent check against the snapshot of the session, for the purposes the school's settings call for right now.
      */
-    private function appendToFile(LessonRecording $recording, string $chunk): void
+    private function consentRefusal(Request $request, LessonRecording $recording, string $fallbackMessage): ?JsonResponse
     {
-        $disk = LessonRecording::disk();
-        $disk->makeDirectory(dirname($recording->path));
-        $path = $disk->path($recording->path);
-        $size = is_file($path) ? (int) filesize($path) : 0;
+        $check = LessonRecording::consentCheck($recording->lesson, $request->user(), $recording->presentStudents());
 
-        abort_if($size + strlen($chunk) > (int) config('lernplattform.recordings.max_total_mb') * 1024 * 1024, 413, 'Die Aufnahme ist zu lang für den Speicher.');
-
-        if (@file_put_contents($path, $chunk, FILE_APPEND | LOCK_EX) !== strlen($chunk)) {
-            $handle = @fopen($path, 'r+b');
-
-            if ($handle !== false) {
-                ftruncate($handle, $size);
-                fclose($handle);
-            }
-
-            abort(507, 'Der Speicherplatz reicht nicht aus.');
-        }
+        return $check->allowed ? null : response()->json(['message' => $check->reasons[0] ?? $fallbackMessage, 'reasons' => $check->reasons], 409);
     }
 }

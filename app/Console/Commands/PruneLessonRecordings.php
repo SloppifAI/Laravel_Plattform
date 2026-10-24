@@ -9,51 +9,38 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Storage limitation for lesson recordings: audio is deleted `lernplattform.recordings.keep_days` days after the
- * recording started, file and row together. Files whose row is gone (the lesson, the teacher or the school was
- * deleted, which removes the rows through foreign keys but not the files) are swept as well.
+ * Storage limitation for Tuto-Mikro: sessions are deleted `lernplattform.recordings.session_keep_days` days after they
+ * started, and every file under `recordings/` on the private disk is removed. Tuto-Mikro writes no sound to any disk
+ * (a segment is recognised from memory), so a file there is a leftover of the former recording mode, which stored audio.
  */
 #[Signature('lernplattform:prune-recordings {--dry-run : Nur zählen, nichts löschen}')]
-#[Description('Löscht Unterrichtsaufnahmen, die älter als die Aufbewahrungsfrist sind, und verwaiste Audiodateien')]
+#[Description('Löscht alte Tuto-Mikro-Sitzungen und liegengebliebene Ton-Dateien')]
 class PruneLessonRecordings extends Command
 {
-    /**
-     * Seconds a file without a row must be untouched before it counts as orphaned, so a recording that is just
-     * being created is never swept.
-     */
-    private const int ORPHAN_GRACE_SECONDS = 86400;
-
     public function handle(): int
     {
-        $keepDays = (int) config('lernplattform.recordings.keep_days', 14);
+        $keepDays = (int) config('lernplattform.recordings.session_keep_days', 365);
 
         // A broken setting must never turn into "delete everything".
         if ($keepDays < 1) {
-            $this->error('Ungültige Aufbewahrungs-Einstellung: recordings.keep_days muss mindestens 1 sein.');
+            $this->error('Ungültige Aufbewahrungs-Einstellung: recordings.session_keep_days muss mindestens 1 sein.');
 
             return self::FAILURE;
         }
 
         $dryRun = (bool) $this->option('dry-run');
-        $expired = fn () => LessonRecording::query()->where('started_at', '<', now()->subDays($keepDays));
-        $expiredCount = $expired()->count();
+        $expired = LessonRecording::query()->where('started_at', '<', now()->subDays($keepDays));
+        $expiredCount = $expired->count();
+        $stray = LessonRecording::disk()->allFiles('recordings');
 
         if (! $dryRun) {
-            // One by one, so the model deletes the audio file with the row.
-            $expired()->lazyById()->each(fn (LessonRecording $recording): ?bool => $recording->delete());
+            $expired->delete();
+            LessonRecording::disk()->delete($stray);
+            Log::info('Tuto-Mikro aufgeräumt', ['keep_days' => $keepDays, 'sitzungen' => $expiredCount, 'liegengebliebene_dateien' => count($stray)]);
         }
 
-        $known = LessonRecording::query()->pluck('path')->flip();
-        $orphans = collect(LessonRecording::disk()->allFiles('recordings'))
-            ->reject(fn (string $path): bool => $known->has($path) || LessonRecording::disk()->lastModified($path) > now()->subSeconds(self::ORPHAN_GRACE_SECONDS)->getTimestamp());
-
-        if (! $dryRun) {
-            LessonRecording::disk()->delete($orphans->all());
-            Log::info('Aufnahmen gelöscht', ['keep_days' => $keepDays, 'aufnahmen' => $expiredCount, 'verwaiste_dateien' => $orphans->count()]);
-        }
-
-        $this->info(($dryRun ? 'Probelauf, es wird nichts gelöscht. ' : '')."Aufnahmen werden {$keepDays} Tage aufbewahrt.");
-        $this->table(['Gegenstand', $dryRun ? 'würde gelöscht' : 'gelöscht'], [['Aufnahmen', $expiredCount], ['Verwaiste Audiodateien', $orphans->count()]]);
+        $this->info(($dryRun ? 'Probelauf, es wird nichts gelöscht. ' : '')."Sitzungen werden {$keepDays} Tage aufbewahrt, Ton wird nicht gespeichert.");
+        $this->table(['Gegenstand', $dryRun ? 'würde gelöscht' : 'gelöscht'], [['Sitzungen', $expiredCount], ['Liegengebliebene Ton-Dateien', count($stray)]]);
 
         return self::SUCCESS;
     }

@@ -4,12 +4,11 @@ namespace Database\Factories;
 
 use App\Models\Lesson;
 use App\Models\LessonRecording;
-use App\TranscriptStatus;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * An unfinished recording, as it exists right after the teacher confirmed the consent. The file is not written;
- * tests that need audio use withAudio().
+ * A session that has just started, without anybody marked as present; tests that need a snapshot call presentStudents().
  *
  * @extends Factory<LessonRecording>
  */
@@ -25,11 +24,12 @@ class LessonRecordingFactory extends Factory
         return [
             'lesson_id' => Lesson::factory(),
             'teacher_id' => fn (array $attributes) => Lesson::find($attributes['lesson_id'])->teacher_id,
-            'path' => fn (array $attributes) => LessonRecording::newPath(Lesson::find($attributes['lesson_id']), 'audio/webm'),
-            'mime_type' => 'audio/webm',
-            'consent_confirmed_at' => now()->subMinutes(1),
             'started_at' => now()->subMinutes(1),
-            'transcript_status' => TranscriptStatus::None,
+            'present_student_ids' => [],
+            'attendance_confirmed_at' => now()->subMinutes(1),
+            'consent_form_version' => 1,
+            'purposes' => ['audio', 'transcript'],
+            'audio_sent_to_ai' => false,
         ];
     }
 
@@ -41,39 +41,18 @@ class LessonRecordingFactory extends Factory
         ]);
     }
 
-    /**
-     * Writes a small placeholder file to the 'local' disk (fake it in the test) after the row is created.
-     */
-    public function withAudio(string $contents = 'webm-bytes'): static
-    {
-        return $this->afterCreating(function (LessonRecording $recording) use ($contents): void {
-            LessonRecording::disk()->put($recording->path, $contents);
-        });
-    }
-
-    /**
-     * Never finished and silent for a while (browser closed, connection lost): the page lists it as an ordinary
-     * recording. Without this state a new recording counts as still running (LessonRecording::isLive()).
-     */
-    public function interrupted(): static
-    {
-        return $this->state(fn (array $attributes) => ['updated_at' => now()->subMinutes(10)]);
-    }
-
     public function startedDaysAgo(int $days): static
     {
-        return $this->state(fn (array $attributes) => [
-            'started_at' => now()->subDays($days),
-            'consent_confirmed_at' => now()->subDays($days),
-        ]);
+        return $this->state(fn (array $attributes) => ['started_at' => now()->subDays($days)]);
     }
 
-    public function withTranscript(string $transcript = 'Heute sprechen wir über die Fotosynthese. Was braucht eine Pflanze zum Wachsen?'): static
+    /**
+     * The snapshot of who was present.
+     *
+     * @param  iterable<User>  $students
+     */
+    public function presentStudents(iterable $students): static
     {
-        return $this->state(fn (array $attributes) => [
-            'transcript' => $transcript,
-            'transcript_status' => TranscriptStatus::Done,
-            'transcript_source' => LessonRecording::SOURCE_MANUAL,
-        ]);
+        return $this->state(fn (array $attributes) => ['present_student_ids' => collect($students)->map->getKey()->sort()->values()->all()]);
     }
 }

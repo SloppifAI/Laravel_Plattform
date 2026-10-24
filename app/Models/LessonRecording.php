@@ -2,64 +2,76 @@
 
 namespace App\Models;
 
-use App\TranscriptStatus;
+use App\Support\RecordingConsentGate;
+use App\Support\RecordingConsentResult;
 use Database\Factories\LessonRecordingFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 /**
- * An audio-only recording of a lesson, visible to the lesson's teacher alone (LessonRecordingPolicy).
- * The file lives on the private 'local' disk and is streamed through an authorised route; it is never sent to an AI.
- * Rows and files expire after `lernplattform.recordings.keep_days` (php artisan lernplattform:prune-recordings).
+ * One session of "Tuto-Mikro" in a lesson: the teacher's microphone was on from `started_at` to `finished_at`.
+ *
+ * The row holds session data only, as proof of what was checked: who led it, who was present (the ids the teacher
+ * marked and when the teacher confirmed that list), the version of the consent form and which purposes were checked,
+ * and whether sound segments went to the AI provider's speech recognition. There is no audio and no text: a segment
+ * exists only in the memory of the request that recognises it (it is never written to a disk), and the recognised
+ * text lives in the teacher's browser until the teacher takes something over into the lesson notes. Rows expire after
+ * `lernplattform.recordings.session_keep_days` (php artisan lernplattform:prune-recordings).
  */
-#[Fillable(['lesson_id', 'teacher_id', 'path', 'mime_type', 'chunks_received', 'duration_seconds', 'consent_confirmed_at', 'started_at', 'finished_at', 'transcript', 'transcript_status', 'transcript_source', 'analysis', 'analysed_at'])]
+#[Fillable(['lesson_id', 'teacher_id', 'started_at', 'finished_at', 'duration_seconds', 'present_student_ids', 'attendance_confirmed_at', 'consent_form_version', 'purposes', 'audio_sent_to_ai'])]
 class LessonRecording extends Model
 {
     /** @use HasFactory<LessonRecordingFactory> */
     use HasFactory;
 
     /**
-     * Container types the browsers' MediaRecorder produces, with the file extension used for them.
+     * Container types the browsers' MediaRecorder produces, with the file extension that goes with them.
      *
      * @var array<string, string>
      */
     public const array MIME_TYPES = ['audio/webm' => 'webm', 'audio/ogg' => 'ogg', 'audio/mp4' => 'm4a'];
 
-    public const string SOURCE_ON_DEVICE = 'on_device';
-
-    public const string SOURCE_SERVER = 'server';
-
-    public const string SOURCE_MANUAL = 'manual';
-
     /**
-     * A recording that is not finished counts as running while its last sign of life (a chunk, or the recorder's
-     * heartbeat every 15 seconds, also while paused) is younger than this. The sign of life is `updated_at`, so code
-     * that edits a recording other than the recorder's own requests must not touch it (see RecordLesson::store()).
+     * The disk that held the sound of the former recording mode. Nothing is written there any more; the prune command
+     * still sweeps what is left.
      */
-    public const int LIVE_SECONDS = 90;
-
-    protected static function booted(): void
-    {
-        // Rows removed by a foreign key cascade (lesson, teacher) skip this; the prune command sweeps those files.
-        static::deleted(fn (self $recording): bool => self::disk()->delete($recording->path));
-    }
-
     public static function disk(): FilesystemAdapter
     {
         return Storage::disk('local');
     }
 
     /**
-     * Where a new recording's file goes: random name, grouped by lesson.
+     * What a session is about to process, in the words of the consent form: the sound and the text always, and the
+     * AI analysis when the school's AI is on (the sound then goes to the provider for recognition, the text for the summary).
+     *
+     * @return list<string>
      */
-    public static function newPath(Lesson $lesson, string $mimeType): string
+    public static function purposesFor(School $school): array
     {
-        return 'recordings/'.$lesson->getKey().'/'.strtolower((string) Str::ulid()).'.'.self::MIME_TYPES[$mimeType];
+        return ['audio', 'transcript', ...($school->aiEnabled() ? ['ai_analysis'] : [])];
+    }
+
+    /**
+     * The consent check in front of a session and in front of every later step that sends something to the AI.
+     *
+     * @param  iterable<User>  $presentStudents
+     */
+    public static function consentCheck(Lesson $lesson, User $teacher, iterable $presentStudents): RecordingConsentResult
+    {
+        $result = RecordingConsentGate::check($lesson->schoolClass, $presentStudents, $teacher, self::purposesFor($lesson->schoolClass->school), $lesson);
+
+        // The gate speaks of "Aufnahmen"; Tuto-Mikro does not (the reasons are shown to the teacher as they are).
+        return new RecordingConsentResult(
+            $result->allowed,
+            str_replace('Aufnahmen sind für deine Schule nicht freigeschaltet.', 'Tuto-Mikro ist für deine Schule nicht freigeschaltet.', $result->reasons),
+            $result->studentsLackingConsent,
+            $result->studentReasons,
+        );
     }
 
     /**
@@ -78,27 +90,33 @@ class LessonRecording extends Model
         return $this->belongsTo(User::class, 'teacher_id');
     }
 
+    /**
+     * The students marked as present when the session started.
+     *
+     * @return Collection<int, User>
+     */
+    public function presentStudents(): Collection
+    {
+        return User::query()->whereKey($this->present_student_ids ?? [])->get();
+    }
+
     public function isFinished(): bool
     {
         return $this->finished_at !== null;
     }
 
     /**
-     * Whether the teacher's browser is still recording this one. The page keeps such a recording out of reach of the
-     * delete button and the player, because the file is still being written.
+     * Whether the session was never ended and has been open for longer than a lesson lasts
+     * (`lernplattform.recordings.max_session_hours`): the browser must have crashed. The attendance of that day no
+     * longer authorises anything, a new session needs a fresh declaration.
      */
-    public function isLive(): bool
+    public function isExpired(): bool
     {
-        return ! $this->isFinished() && $this->updated_at->gt(now()->subSeconds(self::LIVE_SECONDS));
-    }
-
-    public function hasAudio(): bool
-    {
-        return self::disk()->exists($this->path);
+        return ! $this->isFinished() && $this->started_at->lt(now()->subHours((int) config('lernplattform.recordings.max_session_hours')));
     }
 
     /**
-     * "12:34" or "1:02:03"; null while the duration is unknown (the recording was cut off).
+     * "12:34" or "1:02:03"; null while the duration is unknown (the session was cut off).
      */
     public function durationLabel(): ?string
     {
@@ -119,12 +137,12 @@ class LessonRecording extends Model
     protected function casts(): array
     {
         return [
-            'consent_confirmed_at' => 'datetime',
             'started_at' => 'datetime',
             'finished_at' => 'datetime',
-            'analysed_at' => 'datetime',
-            'analysis' => 'array',
-            'transcript_status' => TranscriptStatus::class,
+            'present_student_ids' => 'array',
+            'attendance_confirmed_at' => 'datetime',
+            'purposes' => 'array',
+            'audio_sent_to_ai' => 'boolean',
         ];
     }
 }

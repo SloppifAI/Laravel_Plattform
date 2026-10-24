@@ -4,6 +4,7 @@ use App\Http\Controllers\ConsentController;
 use App\Http\Controllers\ConsentLetterController;
 use App\Http\Controllers\LessonRecordingController;
 use App\Http\Controllers\SchoolDpaController;
+use App\Http\Controllers\SwitchLocaleController;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Illuminate\Support\Facades\Route;
@@ -25,6 +26,12 @@ Route::view('/auftragsverarbeitung', 'filament.legal.avv')
     ->name('legal.dpa');
 
 /*
+ * Language switch (login page and user menu): needs the session, so it keeps the web group. A signed-in user's choice is
+ * stored on the account, a guest's in the session; SwitchLocaleController only accepts the configured languages.
+ */
+Route::get('/sprache/{locale}', SwitchLocaleController::class)->name('locale.switch');
+
+/*
  * The same agreement with the master data of the administration's own school filled in. It is not a public page and
  * takes no school parameter: the school is always the one of the signed-in school administration.
  */
@@ -36,18 +43,19 @@ Route::middleware([AuthenticateSession::class, Authenticate::class])->group(func
 });
 
 /*
- * Lesson recordings: upload and playback for the recording's teacher only (LessonRecordingPolicy). The panel's own
- * login and session check guards them, because the recording page is a panel page and uses the same session.
+ * Tuto-Mikro: start, sound segments, end and summary for the session's teacher only (LessonRecordingPolicy). The
+ * panel's own login and session check guards them, because the Tuto-Mikro page is a panel page and uses the same session.
  * CSRF protection comes with the web group applied to this file; the browser sends the token as X-CSRF-TOKEN.
  */
 Route::middleware([AuthenticateSession::class, Authenticate::class])->controller(LessonRecordingController::class)->group(function (): void {
-    // Own counters per route (the third argument): a chunk every ~20 s is normal, a backlog after an outage drains within seconds.
-    Route::post('/aufnahme/{lesson}/start', 'store')->middleware('throttle:10,1,recording-start')->name('recordings.store');
-    Route::post('/aufnahmen/{recording}/teil', 'append')->middleware('throttle:120,1,recording-chunk')->name('recordings.append');
-    Route::post('/aufnahmen/{recording}/ende', 'finish')->name('recordings.finish');
-    Route::put('/aufnahmen/{recording}/transkript', 'transcript')->name('recordings.transcript');
-    Route::get('/aufnahmen/{recording}/audio', 'stream')->name('recordings.stream');
-    Route::get('/aufnahmen/{recording}/download', 'download')->name('recordings.download');
+    // Own counters per route (the third argument): a segment every ~25 s is normal, a backlog after an outage drains within a minute.
+    Route::post('/tuto-mikro/{lesson}/start', 'store')->middleware('throttle:10,1,recording-start')->name('recordings.store');
+    // The Beamer display asks this every 3 s (MikroBoard): only "is a session of this lesson open", for the lesson's teacher.
+    Route::get('/tuto-mikro/{lesson}/status', 'status')->middleware('throttle:60,1,recording-status')->name('recordings.status');
+    Route::post('/tuto-mikro/sitzung/{recording}/abschnitt', 'segment')->middleware('throttle:60,1,recording-segment')->name('recordings.segment');
+    Route::post('/tuto-mikro/sitzung/{recording}/pruefung', 'check')->middleware('throttle:30,1,recording-check')->name('recordings.check');
+    Route::post('/tuto-mikro/sitzung/{recording}/ende', 'finish')->name('recordings.finish');
+    Route::post('/tuto-mikro/sitzung/{recording}/zusammenfassung', 'analyse')->middleware('throttle:20,1,recording-analyse')->name('recordings.analyse');
 });
 
 /*
@@ -55,6 +63,8 @@ Route::middleware([AuthenticateSession::class, Authenticate::class])->controller
  * so a token of the wrong shape never matches a route (404) and unknown tokens get the same 404 from the controller.
  * Like the legal pages it skips the web group: no session means no sessions row with the full URL (and with it the plain
  * token), the IP address and the user agent, and no CSRF token is needed because forging a request already takes the link.
+ * That holds for the application only: the web server's access log (serversideup image: NGINX_ACCESS_LOG, default
+ * /dev/stdout, so the container log) still holds the request line with the link, the IP address and the user agent.
  * The "consent" limiter counts per link and IP, with a high ceiling per IP (AppServiceProvider).
  */
 Route::middleware('throttle:consent')->withoutMiddleware('web')->prefix('/einwilligung/{token}')->where(['token' => '[A-Za-z0-9]{40,64}'])->controller(ConsentController::class)->group(function (): void {

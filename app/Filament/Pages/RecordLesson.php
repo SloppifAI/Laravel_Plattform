@@ -2,31 +2,31 @@
 
 namespace App\Filament\Pages;
 
-use App\Ai\RecordingAnalyst;
-use App\Ai\Transcriber;
-use App\Ai\TranscriberException;
 use App\Filament\Resources\Lessons\LessonResource;
 use App\Models\Lesson;
 use App\Models\LessonRecording;
+use App\Models\User;
 use App\Support\Pseudonymizer;
-use App\TranscriptStatus;
-use Filament\Actions\Action;
+use App\Support\RecordingConsentGate;
+use App\Support\RecordingConsentResult;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Panel;
-use Filament\Support\Enums\Size;
-use Filament\Support\Icons\Heroicon;
-use Illuminate\Support\Collection;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
 use Livewire\Attributes\Locked;
-use Throwable;
 
 /**
- * "Stunde aufnehmen": the teacher's audio-only recording mode. The recorder itself runs in the browser (see the view);
- * this page hosts it and manages the saved recordings: listening, transcript, evaluation, notes and deleting.
+ * "Tuto-Mikro": the teacher's microphone in a lesson. Only the teacher's own microphone is used; the browser cannot
+ * filter other voices, so the page says so. The page itself does two things: the teacher marks who is present and sees
+ * whether the consents allow Tuto-Mikro (RecordingConsentGate, names only on this screen), and the teacher takes over
+ * what Tuto made of the notes into the lesson notes. The microphone, the notes text and the summary live in the
+ * browser and the endpoints of LessonRecordingController (see the view); nothing of the text is stored here.
  *
- * Only the lesson's teacher gets in (LessonRecordingPolicy): not the school administration, not other teachers.
- * The AI never receives audio, and the text only pseudonymised (Pseudonymizer).
+ * Only the lesson's teacher gets in (LessonRecordingPolicy): not the school administration, not other teachers. A
+ * Förderaufgabe and a lesson in a sensitive subject (School::mikroBlockedSubjects) have no page: it answers 403 where
+ * RecordingConsentGate::lessonRefusal() has a reason, as the endpoints do.
  */
 class RecordLesson extends Page
 {
@@ -35,13 +35,11 @@ class RecordLesson extends Page
      */
     private const int MAX_NOTES_BYTES = 60000;
 
-    private const int MAX_TRANSCRIPT_LENGTH = 200000;
-
     protected string $view = 'filament.pages.record-lesson';
 
-    protected static ?string $title = 'Stunde aufnehmen';
+    protected static ?string $title = 'Tuto-Mikro';
 
-    protected static ?string $slug = 'aufnahme/{lesson}';
+    protected static ?string $slug = 'tuto-mikro/{lesson}';
 
     protected static bool $shouldRegisterNavigation = false;
 
@@ -49,11 +47,23 @@ class RecordLesson extends Page
     public Lesson $lesson;
 
     /**
-     * The transcript text boxes, keyed by recording id. Client-controlled: every action re-reads the recording itself.
+     * The ids of the students who are present, from the checkboxes. Client-controlled: the start endpoint checks them again.
      *
-     * @var array<int, string>
+     * @var list<int|string>
      */
-    public array $transcripts = [];
+    public array $present = [];
+
+    /**
+     * The teacher's declaration "only the people ticked are in the room". It belongs to one list: every change of the
+     * list takes it back, and the start endpoint refuses a start without it.
+     */
+    public bool $attendanceConfirmed = false;
+
+    /**
+     * Whether the consents allow starting right now, set by this component only; the page enables "Mikro an" with it.
+     */
+    #[Locked]
+    public bool $canStart = false;
 
     public static function canAccess(): bool
     {
@@ -62,15 +72,17 @@ class RecordLesson extends Page
 
     public static function getRelativeRouteName(Panel $panel): string
     {
-        return 'aufnahme';
+        return 'tuto-mikro';
     }
 
     public function mount(Lesson $lesson): void
     {
         Gate::authorize('create', [LessonRecording::class, $lesson]);
+        // A Förderaufgabe or a lesson in a subject without Tuto-Mikro: the lesson page hides the button, a typed URL gets nothing either.
+        abort_if(RecordingConsentGate::lessonRefusal($lesson) !== null, 403);
 
         $this->lesson = $lesson;
-        $this->reloadRecordings();
+        $this->selectAll();
     }
 
     public function getSubheading(): ?string
@@ -86,183 +98,79 @@ class RecordLesson extends Page
         return [
             LessonResource::getUrl() => LessonResource::getBreadcrumb(),
             LessonResource::getUrl('edit', ['record' => $this->lesson]) => $this->lesson->topic,
-            'Aufnahme',
+            'Tuto-Mikro',
         ];
     }
 
-    /**
-     * Called by the recorder when a recording was saved, so it shows up in the list. Text a teacher is editing stays.
-     * A recording that is still running has no text box yet, so it is read once it is finished.
-     */
-    public function reloadRecordings(): void
+    public function selectAll(): void
     {
-        foreach ($this->recordings()->reject->isLive() as $recording) {
-            $this->transcripts[$recording->getKey()] ??= (string) $recording->transcript;
-        }
+        $this->present = $this->students()->modelKeys();
+        $this->attendanceConfirmed = false;
+        $this->recheck();
     }
 
-    public function saveTranscript(int $recordingId): void
+    public function selectNone(): void
     {
-        $recording = $this->recording($recordingId);
-
-        if ($this->storeTranscript($recording)) {
-            Notification::make()->success()->title('Transkript gespeichert')->send();
-        }
+        $this->present = [];
+        $this->attendanceConfirmed = false;
+        $this->recheck();
     }
 
-    /**
-     * Server-side speech-to-text. Only possible once the transcription is enabled; until then the button is disabled.
-     */
-    public function createTranscript(int $recordingId): void
+    public function updatedPresent(): void
     {
-        $recording = $this->recording($recordingId);
-
-        if (! config('services.transcription.enabled')) {
-            Notification::make()->warning()->title('Transkription noch nicht freigeschaltet')->body('Du kannst den Text unten selbst einfügen oder korrigieren.')->send();
-
-            return;
-        }
-
-        $this->store($recording, ['transcript_status' => TranscriptStatus::Processing]);
-
-        try {
-            $text = app(Transcriber::class)->transcribe($recording);
-        } catch (Throwable $exception) {
-            report($exception);
-            $this->store($recording, ['transcript_status' => TranscriptStatus::Failed]);
-
-            Notification::make()
-                ->danger()
-                ->title('Transkription fehlgeschlagen')
-                ->body($exception instanceof TranscriberException ? $exception->getMessage() : 'Bitte versuche es gleich noch einmal. Du kannst den Text auch selbst einfügen.')
-                ->persistent()
-                ->send();
-
-            return;
-        }
-
-        $this->store($recording, [
-            'transcript' => $text,
-            'transcript_status' => TranscriptStatus::Done,
-            'transcript_source' => LessonRecording::SOURCE_SERVER,
-        ]);
-        $this->transcripts[$recording->getKey()] = $text;
-
-        Notification::make()->success()->title('Transkript erstellt')->body('Bitte lies es einmal durch, bevor du es auswerten lässt.')->send();
+        $this->attendanceConfirmed = false;
+        $this->recheck();
     }
 
     /**
-     * Evaluates the transcript as it stands in the text box (saved first, so what is evaluated is what is stored).
+     * Checks the consents again (also asked for by the page after a refused start, because a consent can change).
      */
-    public function analyse(int $recordingId): void
+    public function recheck(): void
     {
-        $recording = $this->recording($recordingId);
-
-        if (! $this->storeTranscript($recording)) {
-            return;
-        }
-
-        $transcript = (string) $recording->transcript;
-
-        if ($transcript === '') {
-            Notification::make()->warning()->title('Das Transkript ist noch leer')->body('Füge zuerst Text ein oder nimm die Stunde mit Live-Transkript auf.')->send();
-
-            return;
-        }
-
-        try {
-            $analysis = app(RecordingAnalyst::class)->analyse($recording, $transcript);
-        } catch (Throwable $exception) {
-            report($exception);
-
-            Notification::make()
-                ->danger()
-                ->title('Auswertung fehlgeschlagen')
-                ->body('Dein Transkript ist gespeichert. Bitte versuche es gleich noch einmal.')
-                ->persistent()
-                ->send();
-
-            return;
-        }
-
-        $this->store($recording, ['analysis' => $analysis, 'analysed_at' => now()]);
-
-        Notification::make()
-            ->success()
-            ->title('Auswertung fertig')
-            ->body(config('services.anthropic.enabled')
-                ? 'Prüfe die Ergebnisse, bevor du sie übernimmst.'
-                : 'Demo-Modus – KI-Anbindung vorbereitet, aber nicht aktiv. Die Auswertung entstand lokal aus deinem Text, es wurde nichts gesendet.')
-            ->send();
+        $this->canStart = $this->consentCheck()->allowed;
     }
 
-    public function applyToNotes(int $recordingId): void
+    /**
+     * Puts the result of the summary into the lesson notes. What is sent is what the browser shows, and the browser
+     * is not trusted: the rights are checked again and the names of the class are replaced again.
+     */
+    public function applyToNotes(string $text): void
     {
-        $recording = $this->recording($recordingId);
+        Gate::authorize('create', [LessonRecording::class, $this->lesson]);
 
-        if ($this->appendToNotes($recording)) {
+        if ($this->appendToNotes($text)) {
             Notification::make()
                 ->success()
                 ->title('In die Stundennotizen übernommen')
-                ->body('Namen aus deiner Klasse wurden durch Platzhalter ersetzt, weil die Notizen für die KI-Hausaufgabe verwendet werden.')
+                ->body('Namen aus deiner Klasse wurden durch Platzhalter ersetzt, weil die Notizen für die Hausaufgabe der KI verwendet werden.')
                 ->send();
         }
     }
 
     /**
-     * Puts the result into the notes and sends the teacher to the lesson, where "Hausaufgabe mit KI erstellen" takes over.
+     * Puts the result into the notes and sends the teacher to the lesson, where the homework is created from the notes.
      */
-    public function createHomework(int $recordingId): void
+    public function createHomework(string $text): void
     {
-        $recording = $this->recording($recordingId);
+        Gate::authorize('create', [LessonRecording::class, $this->lesson]);
 
         if ($this->lesson->isPublished()) {
-            Notification::make()->warning()->title('Diese Stunde ist schon verteilt')->body('Die Hausaufgabe lässt sich nur für eine Stunde im Entwurf neu erstellen.')->send();
+            Notification::make()->warning()->title('Diese Stunde ist schon freigegeben')->body('Die Hausaufgabe lässt sich nur für eine Stunde im Entwurf neu erstellen.')->send();
 
             return;
         }
 
-        if (! $this->appendToNotes($recording)) {
+        if (! $this->appendToNotes($text)) {
             return;
         }
 
         Notification::make()
             ->success()
-            ->title('Ergebnis steht in den Stundennotizen')
-            ->body('Wähle jetzt oben „Hausaufgabe mit KI erstellen“.')
+            ->title('Das Ergebnis steht in den Stundennotizen')
+            ->body('Erstelle jetzt dort die Hausaufgabe aus deinen Notizen.')
             ->send();
 
         $this->redirect(LessonResource::getUrl('edit', ['record' => $this->lesson]));
-    }
-
-    /**
-     * "Löschen" for one recording (argument `recording`): the audio file, the transcript and the evaluation go with it.
-     */
-    public function deleteRecordingAction(): Action
-    {
-        return Action::make('deleteRecording')
-            ->label('Löschen')
-            ->icon(Heroicon::OutlinedTrash)
-            ->color('danger')
-            ->size(Size::Small)
-            ->requiresConfirmation()
-            ->modalHeading('Aufnahme löschen?')
-            ->modalDescription('Die Audiodatei, das Transkript und die Auswertung werden endgültig gelöscht. Das lässt sich nicht rückgängig machen.')
-            ->modalSubmitActionLabel('Endgültig löschen')
-            ->action(function (array $arguments): void {
-                $recording = $this->recording((int) ($arguments['recording'] ?? 0), 'delete');
-
-                if ($recording->isLive()) {
-                    Notification::make()->warning()->title('Diese Aufnahme läuft gerade')->body('Beende sie zuerst, danach kannst du sie löschen.')->send();
-
-                    return;
-                }
-
-                $recording->delete();
-                unset($this->transcripts[$recording->getKey()]);
-
-                Notification::make()->success()->title('Aufnahme gelöscht')->send();
-            });
     }
 
     /**
@@ -273,118 +181,66 @@ class RecordLesson extends Page
         // The lesson survives in the Livewire snapshot, so every render re-checks the rights.
         Gate::authorize('create', [LessonRecording::class, $this->lesson]);
 
-        $keepDays = (int) config('lernplattform.recordings.keep_days', 14);
-        $canRecord = Gate::allows('record', [LessonRecording::class, $this->lesson]);
+        $school = $this->lesson->schoolClass->school;
+        $consentForm = $school->currentConsentForm();
 
         return [
-            'recordings' => $this->recordings(),
-            'keepDays' => $keepDays,
-            'canRecord' => $canRecord,
-            'transcriptionEnabled' => (bool) config('services.transcription.enabled'),
-            'aiEnabled' => (bool) config('services.anthropic.enabled'),
-            'recorderConfig' => [
-                'canRecord' => $canRecord,
+            'students' => $this->students(),
+            'check' => $this->consentCheck(),
+            'schoolEnabled' => $school->recordingsEnabled(),
+            'aiEnabled' => $school->aiEnabled(),
+            'providerName' => Str::headline((string) config('lernplattform.ai.provider')),
+            'consentFormVersion' => $consentForm?->version,
+            'homeworkLocked' => $this->lesson->isPublished(),
+            'boardUrl' => MikroBoard::getUrl(['lesson' => $this->lesson]),
+            'sessionKeepDays' => (int) config('lernplattform.recordings.session_keep_days'),
+            'sessions' => LessonRecording::query()->where('lesson_id', $this->lesson->getKey())->latest('started_at')->limit(8)->get(),
+            'micConfig' => [
                 'csrf' => csrf_token(),
                 'startUrl' => route('recordings.store', $this->lesson),
-                'chunkSeconds' => (int) config('lernplattform.recordings.chunk_seconds', 20),
-                'bitsPerSecond' => 32000,
+                // What this page was rendered with; the start endpoint decides again (the setting may have changed since).
+                'aiEnabled' => $school->aiEnabled(),
+                'maxTextChars' => (int) config('lernplattform.recordings.max_text_chars'),
+                // The Beamer window listens on this channel (same browser only); it carries "on" or "off" and nothing else.
+                'boardChannel' => MikroBoard::channelName($this->lesson),
             ],
         ];
     }
 
     /**
-     * @return Collection<int, LessonRecording>
+     * @return Collection<int, User>
      */
-    private function recordings(): Collection
+    private function students(): Collection
     {
-        return LessonRecording::query()->where('lesson_id', $this->lesson->getKey())->latest('started_at')->get();
+        return $this->lesson->schoolClass->students()->orderBy('name')->get();
+    }
+
+    private function consentCheck(): RecordingConsentResult
+    {
+        $ids = array_slice(array_values(array_unique(array_map(intval(...), $this->present))), 0, 500);
+
+        return LessonRecording::consentCheck($this->lesson, auth()->user(), $this->lesson->schoolClass->students()->whereKey($ids)->get());
     }
 
     /**
-     * One recording of this lesson, for an ability the teacher holds. The id comes from the browser: a recording of
-     * another lesson or teacher is "not found", never touched.
+     * Appends the text to the lesson's notes. The notes feed the homework draft of the AI, so names of the class are replaced first.
      */
-    private function recording(int $id, string $ability = 'update'): LessonRecording
+    private function appendToNotes(string $text): bool
     {
-        $recording = LessonRecording::query()->where('lesson_id', $this->lesson->getKey())->findOrFail($id);
-
-        Gate::authorize($ability, $recording);
-
-        return $recording;
-    }
-
-    /**
-     * Page edits leave `updated_at` alone: it is the recorder's sign of life (LessonRecording::isLive()), and editing
-     * the transcript of an interrupted recording must not make it look as if it were running again.
-     *
-     * @param  array<string, mixed>  $attributes
-     */
-    private function store(LessonRecording $recording, array $attributes): void
-    {
-        LessonRecording::withoutTimestamps(fn (): bool => $recording->update($attributes));
-    }
-
-    /**
-     * Saves the text box as the recording's transcript. Changed text counts as written by hand (source "manual").
-     */
-    private function storeTranscript(LessonRecording $recording): bool
-    {
-        $text = trim($this->transcripts[$recording->getKey()] ?? (string) $recording->transcript);
-
-        if (mb_strlen($text) > self::MAX_TRANSCRIPT_LENGTH) {
-            Notification::make()->danger()->title('Das Transkript ist zu lang')->body('Es dürfen höchstens '.number_format(self::MAX_TRANSCRIPT_LENGTH, 0, ',', '.').' Zeichen sein.')->send();
-
-            return false;
-        }
-
-        if ($text !== (string) $recording->transcript) {
-            $this->store($recording, $text === '' ? [
-                'transcript' => null,
-                'transcript_status' => TranscriptStatus::None,
-                'transcript_source' => null,
-            ] : [
-                'transcript' => $text,
-                'transcript_status' => TranscriptStatus::Done,
-                'transcript_source' => LessonRecording::SOURCE_MANUAL,
-            ]);
-        }
-
-        $this->transcripts[$recording->getKey()] = $text;
-
-        return true;
-    }
-
-    /**
-     * Appends the evaluation's notes (or, without one, the transcript) to the lesson's notes. The notes feed the
-     * homework draft of the AI, so names of the class are replaced first.
-     */
-    private function appendToNotes(LessonRecording $recording): bool
-    {
-        if (! $this->storeTranscript($recording)) {
-            return false;
-        }
-
-        $text = trim((string) (($recording->analysis['suggested_notes'] ?? '') ?: $recording->transcript));
+        $text = trim($text);
 
         if ($text === '') {
-            Notification::make()->warning()->title('Noch nichts zum Übernehmen')->body('Füge zuerst ein Transkript ein oder lass es auswerten.')->send();
+            Notification::make()->warning()->title('Noch nichts zum Übernehmen')->body('Erstelle zuerst eine Zusammenfassung.')->send();
 
             return false;
         }
 
         $lesson = $this->lesson->refresh();
-        $heading = "Aufnahme vom {$recording->started_at->format('d.m.Y, H:i')} Uhr:";
-        $notes = trim($lesson->notes)."\n\n".$heading."\n".Pseudonymizer::forLesson($lesson)->apply($text);
-        $notes = trim($notes);
+        $heading = 'Tuto-Mikro vom '.now()->format('d.m.Y, H:i').' Uhr:';
+        $notes = trim(trim($lesson->notes)."\n\n".$heading."\n".Pseudonymizer::forLesson($lesson)->apply($text));
 
         if (strlen($notes) > self::MAX_NOTES_BYTES) {
-            Notification::make()
-                ->danger()
-                ->title('Die Stundennotizen wären zu lang')
-                ->body(filled($recording->analysis['suggested_notes'] ?? '')
-                    ? 'Kürze die Notizen in der Stunde, dann klappt die Übernahme.'
-                    : 'Das Transkript ist zu lang für die Notizen. Lass es zuerst auswerten, dann wird die Zusammenfassung übernommen.')
-                ->send();
+            Notification::make()->danger()->title('Die Stundennotizen wären zu lang')->body('Kürze die Notizen in der Stunde, dann klappt die Übernahme.')->send();
 
             return false;
         }

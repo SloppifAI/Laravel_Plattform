@@ -16,7 +16,8 @@ use InvalidArgumentException;
  * criminal offence (§ 201 StGB) and needs a legal basis under the GDPR, so the recording only starts when
  *
  *  - the school has switched recordings on (checklist confirmed) and is not blocked,
- *  - the teacher leads or teaches the class,
+ *  - the teacher leads the class or is assigned to it (SchoolClass::isTaughtBy, also as today's substitute),
+ *  - the lesson is no Förderaufgabe and its subject is not one of the school's sensitive subjects (lessonRefusal),
  *  - every present student belongs to the class and has a current consent: granted, not revoked, for the latest
  *    published version of the form, covering the requested purposes, and confirmed by the student where the school asks for it.
  *
@@ -31,24 +32,39 @@ use InvalidArgumentException;
 final class RecordingConsentGate
 {
     /**
-     * Whether the teacher leads the class (Klassenleitung) or has held a lesson in it.
+     * Whether the teacher teaches the class: leads it, is assigned to it or substitutes in it today. Having held a
+     * lesson there does not count.
      */
     public static function teachesClass(User $teacher, SchoolClass $schoolClass): bool
     {
-        return $teacher->isTeacher()
-            && $teacher->school_id !== null
-            && (int) $teacher->school_id === (int) $schoolClass->school_id
-            && ((int) $schoolClass->teacher_id === (int) $teacher->getKey()
-                || Lesson::query()->where('school_class_id', $schoolClass->getKey())->where('teacher_id', $teacher->getKey())->exists());
+        return $teacher->isTeacher() && $schoolClass->isTaughtBy($teacher);
+    }
+
+    /**
+     * Why Tuto-Mikro is never available in this lesson, in German for the teacher; null when nothing speaks against it.
+     * The "Tuto-Mikro" action of EditLesson asks this too, so it can stay hidden where the page would refuse.
+     */
+    public static function lessonRefusal(Lesson $lesson): ?string
+    {
+        if ($lesson->isPracticeTask()) {
+            return 'Für Förderaufgaben gibt es kein Tuto-Mikro.';
+        }
+
+        $subject = trim((string) $lesson->subject);
+
+        return $lesson->schoolClass->school?->blocksMikroForSubject($subject)
+            ? "Im Fach {$subject} ist Tuto-Mikro an deiner Schule nicht möglich."
+            : null;
     }
 
     /**
      * @param  iterable<User>  $presentStudents  everybody whose voice may be on the recording
      * @param  list<string>|null  $purposes  keys of ConsentForm::PURPOSES that are about to be processed; the tone recording is always included. Null asks for every purpose of the current form.
+     * @param  Lesson|null  $lesson  the lesson the microphone is for: its Förderaufgabe state and its subject are checked as well
      *
      * @throws InvalidArgumentException for an unknown purpose
      */
-    public static function check(SchoolClass $schoolClass, iterable $presentStudents, User $teacher, ?array $purposes = null): RecordingConsentResult
+    public static function check(SchoolClass $schoolClass, iterable $presentStudents, User $teacher, ?array $purposes = null, ?Lesson $lesson = null): RecordingConsentResult
     {
         $unknown = array_diff($purposes ?? [], array_keys(ConsentForm::PURPOSES));
 
@@ -58,6 +74,10 @@ final class RecordingConsentGate
 
         $school = $schoolClass->school;
         $reasons = [];
+
+        if ($lesson !== null && ($refusal = self::lessonRefusal($lesson)) !== null) {
+            $reasons[] = $refusal;
+        }
 
         if ($school === null || ! $school->recordingsEnabled()) {
             $reasons[] = $school?->isBlocked() ? 'Die Schule ist gesperrt.' : 'Aufnahmen sind für deine Schule nicht freigeschaltet.';

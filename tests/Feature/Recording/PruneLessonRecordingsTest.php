@@ -2,11 +2,9 @@
 
 namespace Tests\Feature\Recording;
 
-use App\Models\Lesson;
 use App\Models\LessonRecording;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class PruneLessonRecordingsTest extends TestCase
@@ -21,30 +19,29 @@ class PruneLessonRecordingsTest extends TestCase
         $this->setUpLesson();
     }
 
-    public function test_only_recordings_older_than_the_retention_period_are_deleted_with_their_files(): void
+    private function leftover(string $path): void
     {
-        $expired = LessonRecording::factory()->for($this->lesson)->withAudio()->startedDaysAgo(15)->create();
-        $justExpired = LessonRecording::factory()->for($this->lesson)->withAudio()->startedDaysAgo(14)->create(['started_at' => now()->subDays(14)->subMinute()]);
-        $kept = LessonRecording::factory()->for($this->lesson)->withAudio()->startedDaysAgo(13)->create();
-        $today = LessonRecording::factory()->for($this->lesson)->withAudio()->create();
+        LessonRecording::disk()->put($path, 'bytes');
+    }
+
+    public function test_only_sessions_older_than_the_retention_period_are_deleted(): void
+    {
+        $expired = LessonRecording::factory()->for($this->lesson)->startedDaysAgo(366)->create();
+        $kept = LessonRecording::factory()->for($this->lesson)->startedDaysAgo(364)->create();
+        $today = LessonRecording::factory()->for($this->lesson)->create();
 
         $this->artisan('lernplattform:prune-recordings')->assertSuccessful();
 
         $this->assertModelMissing($expired);
-        $this->assertModelMissing($justExpired);
-        $this->assertFalse(LessonRecording::disk()->exists($expired->path));
-        $this->assertFalse(LessonRecording::disk()->exists($justExpired->path));
         $this->assertModelExists($kept);
         $this->assertModelExists($today);
-        $this->assertTrue(LessonRecording::disk()->exists($kept->path));
-        $this->assertTrue(LessonRecording::disk()->exists($today->path));
     }
 
-    public function test_the_retention_period_is_configurable(): void
+    public function test_the_retention_period_follows_the_setting(): void
     {
-        config(['lernplattform.recordings.keep_days' => 3]);
-        $expired = LessonRecording::factory()->for($this->lesson)->withAudio()->startedDaysAgo(4)->create();
-        $kept = LessonRecording::factory()->for($this->lesson)->withAudio()->startedDaysAgo(2)->create();
+        config(['lernplattform.recordings.session_keep_days' => 7]);
+        $expired = LessonRecording::factory()->for($this->lesson)->startedDaysAgo(8)->create();
+        $kept = LessonRecording::factory()->for($this->lesson)->startedDaysAgo(6)->create();
 
         $this->artisan('lernplattform:prune-recordings')->assertSuccessful();
 
@@ -52,69 +49,43 @@ class PruneLessonRecordingsTest extends TestCase
         $this->assertModelExists($kept);
     }
 
-    public function test_the_default_is_fourteen_days(): void
+    public function test_sound_files_left_by_the_former_mode_are_removed_and_other_files_stay(): void
     {
-        $this->assertSame(14, config('lernplattform.recordings.keep_days'));
+        $this->leftover('recordings/segments/stray.webm');
+        $this->leftover('recordings/1/old-audio-of-the-former-mode.webm');
+        $this->leftover('consent-letters/unrelated.pdf');
+
+        $this->artisan('lernplattform:prune-recordings')->assertSuccessful();
+
+        $this->assertSame(['consent-letters/unrelated.pdf'], LessonRecording::disk()->allFiles());
     }
 
-    public function test_a_broken_setting_deletes_nothing(): void
+    public function test_a_dry_run_deletes_nothing(): void
     {
-        config(['lernplattform.recordings.keep_days' => 0]);
-        $old = LessonRecording::factory()->for($this->lesson)->withAudio()->startedDaysAgo(400)->create();
-
-        $this->artisan('lernplattform:prune-recordings')->assertFailed();
-
-        $this->assertModelExists($old);
-        $this->assertTrue(LessonRecording::disk()->exists($old->path));
-    }
-
-    public function test_a_dry_run_only_counts(): void
-    {
-        $expired = LessonRecording::factory()->for($this->lesson)->withAudio()->startedDaysAgo(20)->create();
+        $expired = LessonRecording::factory()->for($this->lesson)->startedDaysAgo(400)->create();
+        $this->leftover('recordings/segments/stray.webm');
 
         $this->artisan('lernplattform:prune-recordings --dry-run')->assertSuccessful();
 
         $this->assertModelExists($expired);
-        $this->assertTrue(LessonRecording::disk()->exists($expired->path));
+        $this->assertTrue(LessonRecording::disk()->exists('recordings/segments/stray.webm'));
     }
 
-    public function test_audio_files_without_a_row_are_swept_but_fresh_ones_are_not(): void
+    public function test_a_broken_setting_never_turns_into_delete_everything(): void
     {
-        $disk = LessonRecording::disk();
-        $disk->put('recordings/99/orphan.webm', 'old');
-        touch($disk->path('recordings/99/orphan.webm'), now()->subDays(2)->getTimestamp());
-        $disk->put('recordings/99/fresh.webm', 'new');
-        $kept = LessonRecording::factory()->for($this->lesson)->withAudio()->create();
-        touch($disk->path($kept->path), now()->subDays(2)->getTimestamp());
+        config(['lernplattform.recordings.session_keep_days' => 0]);
+        $session = LessonRecording::factory()->for($this->lesson)->startedDaysAgo(400)->create();
 
-        $this->artisan('lernplattform:prune-recordings')->assertSuccessful();
+        $this->artisan('lernplattform:prune-recordings')->assertFailed();
 
-        $this->assertFalse($disk->exists('recordings/99/orphan.webm'));
-        $this->assertTrue($disk->exists('recordings/99/fresh.webm'));
-        $this->assertTrue($disk->exists($kept->path));
+        $this->assertModelExists($session);
     }
 
-    public function test_files_of_a_deleted_lesson_are_swept_as_well(): void
+    public function test_the_command_runs_every_day(): void
     {
-        $recording = LessonRecording::factory()->for($this->lesson)->withAudio()->create();
-        touch(LessonRecording::disk()->path($recording->path), now()->subDays(2)->getTimestamp());
+        $event = collect(app(Schedule::class)->events())->first(fn ($event): bool => str_contains($event->command, 'lernplattform:prune-recordings'));
 
-        // The foreign key removes the row without a model event, so the file stays behind until the sweep.
-        Lesson::query()->whereKey($this->lesson->id)->delete();
-        $this->assertSame(0, LessonRecording::count());
-        $this->assertTrue(LessonRecording::disk()->exists($recording->path));
-
-        $this->artisan('lernplattform:prune-recordings')->assertSuccessful();
-
-        $this->assertFalse(LessonRecording::disk()->exists($recording->path));
-        $this->assertSame([], Storage::disk('local')->allFiles('recordings'));
-    }
-
-    public function test_the_command_is_scheduled_daily(): void
-    {
-        $events = collect(app(Schedule::class)->events())->filter(fn ($event): bool => str_contains((string) $event->command, 'lernplattform:prune-recordings'));
-
-        $this->assertCount(1, $events);
-        $this->assertSame('45 3 * * *', $events->first()->expression);
+        $this->assertNotNull($event, 'The prune command is scheduled');
+        $this->assertSame('45 3 * * *', $event->expression);
     }
 }
