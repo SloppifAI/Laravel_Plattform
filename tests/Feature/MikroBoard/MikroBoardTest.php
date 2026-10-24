@@ -41,8 +41,8 @@ class MikroBoardTest extends TestCase
         $response = $this->actingAs($this->teacher)->get($this->boardUrl())
             ->assertOk()
             ->assertSee('Fotosynthese')
-            ->assertSee('Mikro an')
-            ->assertSee('Mikro aus')
+            ->assertSee('Mic on')
+            ->assertSee('Mic off')
             ->assertSee('tuto-mikro-'.$this->lesson->getKey(), false);
 
         // The configuration is JSON in an attribute, so the slashes of the URL are escaped there.
@@ -62,7 +62,7 @@ class MikroBoardTest extends TestCase
     {
         $this->actingAs($this->teacher)->get($this->pageUrl())
             ->assertOk()
-            ->assertSee('Beamer-Anzeige öffnen')
+            ->assertSee('Open projector view')
             ->assertSee($this->boardUrl(), false)
             ->assertSee('tuto-mikro-'.$this->lesson->getKey(), false);
     }

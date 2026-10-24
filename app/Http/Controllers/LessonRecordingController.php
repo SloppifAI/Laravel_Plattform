@@ -40,19 +40,19 @@ class LessonRecordingController extends Controller
             'present.*' => ['integer', 'distinct'],
             'attendance_confirmed' => ['accepted'],
         ], [
-            'present.required' => 'Wähle zuerst aus, wer heute da ist.',
-            'present.min' => 'Wähle zuerst aus, wer heute da ist.',
-            'attendance_confirmed.accepted' => 'Bestätige, dass nur die angehakten Schüler:innen im Raum sind.',
+            'present.required' => __('Wähle zuerst aus, wer heute da ist.'),
+            'present.min' => __('Wähle zuerst aus, wer heute da ist.'),
+            'attendance_confirmed.accepted' => __('Bestätige, dass nur die angehakten Schüler:innen im Raum sind.'),
         ]);
 
         $students = $lesson->schoolClass->students()->whereKey($data['present'])->get();
 
-        abort_if($students->count() !== count($data['present']), 422, 'Mindestens eine ausgewählte Person gehört nicht zu dieser Klasse.');
+        abort_if($students->count() !== count($data['present']), 422, __('Mindestens eine ausgewählte Person gehört nicht zu dieser Klasse.'));
 
         $check = LessonRecording::consentCheck($lesson, $request->user(), $students);
 
         if (! $check->allowed) {
-            return response()->json(['message' => $check->reasons[0] ?? 'Tuto-Mikro darf jetzt nicht starten.', 'reasons' => $check->reasons], 409);
+            return response()->json(['message' => $check->reasons[0] ?? __('Tuto-Mikro darf jetzt nicht starten.'), 'reasons' => $check->reasons], 409);
         }
 
         $school = $lesson->schoolClass->school;
@@ -114,21 +114,21 @@ class LessonRecordingController extends Controller
         $lesson = $recording->lesson;
 
         if (! $lesson->schoolClass->school->aiEnabled()) {
-            return response()->json(['message' => 'Die KI ist für deine Schule ausgeschaltet, deshalb wird nichts mehr mitgeschrieben.'], 409);
+            return response()->json(['message' => __('Die KI ist für deine Schule ausgeschaltet, deshalb wird nichts mehr mitgeschrieben.')], 409);
         }
 
         $mimeType = strtolower(trim(Str::before((string) $request->header('Content-Type'), ';')));
         $maxBytes = (int) config('lernplattform.recordings.max_segment_kb') * 1024;
 
-        abort_unless(array_key_exists($mimeType, LessonRecording::MIME_TYPES), 415, 'Dieses Audioformat wird nicht unterstützt.');
-        abort_if((int) $request->header('Content-Length') > $maxBytes, 413, 'Dieser Abschnitt ist zu groß.');
+        abort_unless(array_key_exists($mimeType, LessonRecording::MIME_TYPES), 415, __('Dieses Audioformat wird nicht unterstützt.'));
+        abort_if((int) $request->header('Content-Length') > $maxBytes, 413, __('Dieser Abschnitt ist zu groß.'));
 
         $audio = $request->getContent();
 
-        abort_if($audio === '', 422, 'Dieser Abschnitt ist leer.');
-        abort_if(strlen($audio) > $maxBytes, 413, 'Dieser Abschnitt ist zu groß.');
+        abort_if($audio === '', 422, __('Dieser Abschnitt ist leer.'));
+        abort_if(strlen($audio) > $maxBytes, 413, __('Dieser Abschnitt ist zu groß.'));
 
-        if ($refusal = $this->consentRefusal($request, $recording, 'Tuto-Mikro darf jetzt nicht weiterlaufen.')) {
+        if ($refusal = $this->consentRefusal($request, $recording, __('Tuto-Mikro darf jetzt nicht weiterlaufen.'))) {
             return $refusal;
         }
 
@@ -141,7 +141,7 @@ class LessonRecordingController extends Controller
         } catch (Throwable $exception) {
             report($exception);
 
-            return response()->json(['message' => 'Ein Abschnitt konnte nicht mitgeschrieben werden.'], 502);
+            return response()->json(['message' => __('Ein Abschnitt konnte nicht mitgeschrieben werden.')], 502);
         }
 
         return response()->json(['text' => $text === null ? null : trim($text)]);
@@ -156,7 +156,7 @@ class LessonRecordingController extends Controller
         Gate::authorize('update', $recording);
 
         return $this->openRefusal($recording)
-            ?? $this->consentRefusal($request, $recording, 'Tuto-Mikro darf jetzt nicht weiterlaufen.')
+            ?? $this->consentRefusal($request, $recording, __('Tuto-Mikro darf jetzt nicht weiterlaufen.'))
             ?? response()->json(['allowed' => true]);
     }
 
@@ -189,14 +189,14 @@ class LessonRecordingController extends Controller
 
         $data = $request->validate(
             ['text' => ['required', 'string', 'max:'.(int) config('lernplattform.recordings.max_text_chars')]],
-            ['text.required' => 'Es gibt noch keine Notizen, aus denen Tuto etwas machen kann.', 'text.max' => 'Die Notizen sind zu lang für eine Zusammenfassung.'],
+            ['text.required' => __('Es gibt noch keine Notizen, aus denen Tuto etwas machen kann.'), 'text.max' => __('Die Notizen sind zu lang für eine Zusammenfassung.')],
         );
 
         if ($recording->isExpired()) {
             return $this->expiredResponse();
         }
 
-        if ($refusal = $this->consentRefusal($request, $recording, 'Die Zusammenfassung darf jetzt nicht erstellt werden.')) {
+        if ($refusal = $this->consentRefusal($request, $recording, __('Die Zusammenfassung darf jetzt nicht erstellt werden.'))) {
             return $refusal;
         }
 
@@ -207,7 +207,7 @@ class LessonRecordingController extends Controller
         } catch (Throwable $exception) {
             report($exception);
 
-            return response()->json(['message' => 'Die Zusammenfassung konnte nicht erstellt werden. Deine Notizen sind noch da. Bitte versuche es gleich noch einmal.'], 502);
+            return response()->json(['message' => __('Die Zusammenfassung konnte nicht erstellt werden. Deine Notizen sind noch da. Bitte versuche es gleich noch einmal.')], 502);
         }
 
         return response()->json(['analysis' => $analysis]);
@@ -219,7 +219,7 @@ class LessonRecordingController extends Controller
     private function openRefusal(LessonRecording $recording): ?JsonResponse
     {
         if ($recording->isFinished()) {
-            return response()->json(['message' => 'Das Mikro ist schon aus.'], 409);
+            return response()->json(['message' => __('Das Mikro ist schon aus.')], 409);
         }
 
         return $recording->isExpired() ? $this->expiredResponse() : null;
@@ -227,7 +227,7 @@ class LessonRecordingController extends Controller
 
     private function expiredResponse(): JsonResponse
     {
-        return response()->json(['message' => 'Diese Sitzung läuft schon zu lange. Starte Tuto-Mikro neu und wähle die Anwesenden noch einmal aus.'], 409);
+        return response()->json(['message' => __('Diese Sitzung läuft schon zu lange. Starte Tuto-Mikro neu und wähle die Anwesenden noch einmal aus.')], 409);
     }
 
     /**

@@ -55,7 +55,7 @@ class MikroSessionGuardTest extends TestCase
 
         $response = $this->check($recording->id)->assertStatus(409);
 
-        $this->assertStringContainsString('1 von 3', $response->json('message'));
+        $this->assertStringContainsString('1 of 3', $response->json('message'));
     }
 
     public function test_the_school_switching_tuto_mikro_off_stops_a_session_without_segments(): void
@@ -64,7 +64,7 @@ class MikroSessionGuardTest extends TestCase
 
         $this->switchRecordings($this->schoolClass->school, false);
 
-        $this->check($recording->id)->assertStatus(409)->assertJsonPath('message', 'Tuto-Mikro ist für deine Schule nicht freigeschaltet.');
+        $this->check($recording->id)->assertStatus(409)->assertJsonPath('message', 'Tuto-Mikro is not enabled for your school.');
     }
 
     public function test_a_finished_session_fails_the_check(): void
@@ -72,7 +72,7 @@ class MikroSessionGuardTest extends TestCase
         $recording = $this->startedSession();
         $this->postJson(route('recordings.finish', $recording), ['duration_seconds' => 30])->assertOk();
 
-        $this->check($recording->id)->assertStatus(409)->assertJsonPath('message', 'Das Mikro ist schon aus.');
+        $this->check($recording->id)->assertStatus(409)->assertJsonPath('message', 'The mic is already off.');
     }
 
     public function test_nobody_else_can_use_the_check(): void
@@ -104,7 +104,7 @@ class MikroSessionGuardTest extends TestCase
         $this->postSegment($recording)->assertOk();
 
         $this->travel(2)->hours();
-        $this->check($recording->id)->assertStatus(409)->assertJsonPath('message', 'Diese Sitzung läuft schon zu lange. Starte Tuto-Mikro neu und wähle die Anwesenden noch einmal aus.');
+        $this->check($recording->id)->assertStatus(409)->assertJsonPath('message', 'This session has been running for too long. Restart Tuto-Mikro and select who is present again.');
         $this->postSegment($recording)->assertStatus(409);
 
         $this->assertSame(1, $calls);
@@ -143,7 +143,7 @@ class MikroSessionGuardTest extends TestCase
 
         $response = $this->postJson(route('recordings.analyse', $recording), ['text' => self::TEXT])->assertStatus(409);
 
-        $this->assertStringContainsString('1 von 3', $response->json('message'));
+        $this->assertStringContainsString('1 of 3', $response->json('message'));
     }
 
     public function test_the_summary_is_refused_once_the_school_switched_tuto_mikro_off(): void

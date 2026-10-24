@@ -77,7 +77,7 @@ class MikroStartTest extends TestCase
 
         $response = $this->startSession()->assertStatus(409);
 
-        $this->assertStringContainsString('1 von 3', $response->json('message'));
+        $this->assertStringContainsString('1 of 3', $response->json('message'));
         $this->assertSame(0, LessonRecording::count());
 
         // The same student, marked as absent: the lesson can start.
@@ -136,10 +136,10 @@ class MikroStartTest extends TestCase
         $check = LessonRecording::consentCheck($this->lesson, $this->teacher, $this->students);
 
         $this->assertFalse($check->allowed);
-        $this->assertContains('Tuto-Mikro ist für deine Schule nicht freigeschaltet.', $check->reasons);
+        $this->assertContains('Tuto-Mikro is not enabled for your school.', $check->reasons);
 
         foreach ([...$check->reasons, ...$check->studentReasons] as $text) {
-            $this->assertDoesNotMatchRegularExpression('/aufnahm|aufnehm|mitschnitt|transkript/i', $text);
+            $this->assertDoesNotMatchRegularExpression('/aufnahm|aufnehm|mitschnitt|transkript|\brecord|transcript|monitor|listen in/i', $text);
         }
     }
 
@@ -170,7 +170,7 @@ class MikroStartTest extends TestCase
         $this->postJson($url, ['present' => $present])->assertUnprocessable()->assertJsonValidationErrors('attendance_confirmed');
         $this->postJson($url, ['present' => $present, 'attendance_confirmed' => false])->assertUnprocessable()->assertJsonValidationErrors('attendance_confirmed');
         $this->postJson($url, ['present' => $present, 'attendance_confirmed' => 'no'])->assertUnprocessable()->assertJsonValidationErrors('attendance_confirmed');
-        $this->startSession(attendanceConfirmed: false)->assertUnprocessable()->assertJsonPath('message', 'Bestätige, dass nur die angehakten Schüler:innen im Raum sind.');
+        $this->startSession(attendanceConfirmed: false)->assertUnprocessable()->assertJsonPath('message', 'Confirm that only the ticked students are in the room.');
 
         $this->assertSame(0, LessonRecording::count());
 

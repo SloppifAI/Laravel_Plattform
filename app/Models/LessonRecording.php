@@ -63,15 +63,7 @@ class LessonRecording extends Model
      */
     public static function consentCheck(Lesson $lesson, User $teacher, iterable $presentStudents): RecordingConsentResult
     {
-        $result = RecordingConsentGate::check($lesson->schoolClass, $presentStudents, $teacher, self::purposesFor($lesson->schoolClass->school), $lesson);
-
-        // The gate speaks of "Aufnahmen"; Tuto-Mikro does not (the reasons are shown to the teacher as they are).
-        return new RecordingConsentResult(
-            $result->allowed,
-            str_replace('Aufnahmen sind für deine Schule nicht freigeschaltet.', 'Tuto-Mikro ist für deine Schule nicht freigeschaltet.', $result->reasons),
-            $result->studentsLackingConsent,
-            $result->studentReasons,
-        );
+        return RecordingConsentGate::check($lesson->schoolClass, $presentStudents, $teacher, self::purposesFor($lesson->schoolClass->school), $lesson);
     }
 
     /**

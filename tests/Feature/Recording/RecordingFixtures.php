@@ -56,7 +56,7 @@ trait RecordingFixtures
     }
 
     /**
-     * The school administration's switch ("Aufnahmen & Einwilligungen"): on means the whole checklist is confirmed.
+     * The school administration's switch ("Tuto-Mikro & Einwilligungen"): on means the whole checklist is confirmed.
      */
     protected function switchRecordings(School $school, bool $on): void
     {
@@ -91,6 +91,27 @@ trait RecordingFixtures
             'operator' => User::factory()->operator()->create(),
             'teacher of another school' => User::factory()->teacher()->create(),
         ];
+    }
+
+    /**
+     * The sentences the script of the Tuto-Mikro page shows, as the page hands them over in the component config.
+     *
+     * @return array<string, string>
+     */
+    protected function micTexts(string $html): array
+    {
+        $this->assertSame(1, preg_match("/tutoMikro\\(JSON\\.parse\\('(.*?)'\\)\\)\"/s", $html, $match), 'The page hands its config over as JSON');
+
+        // The config sits in an HTML attribute as a JS string literal holding JSON: undo both layers.
+        return json_decode(json_decode('"'.html_entity_decode($match[1]).'"', true, 512, JSON_THROW_ON_ERROR), true, 512, JSON_THROW_ON_ERROR)['texts'];
+    }
+
+    /**
+     * What a reader sees of a page: no scripts or styles, no tags.
+     */
+    protected function visibleText(string $html): string
+    {
+        return html_entity_decode(strip_tags(preg_replace('#<(script|style)\b.*?</\1>#is', '', $html)));
     }
 
     protected function pageUrl(?Lesson $lesson = null): string

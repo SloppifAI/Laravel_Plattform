@@ -86,7 +86,7 @@ class MikroSegmentTest extends TestCase
             throw new RuntimeException('Provider down');
         });
 
-        $this->postSegment($recording)->assertStatus(502)->assertJson(['message' => 'Ein Abschnitt konnte nicht mitgeschrieben werden.']);
+        $this->postSegment($recording)->assertStatus(502)->assertJson(['message' => 'A segment could not be added to the notes.']);
 
         $this->assertSame([], $files);
         $this->assertSame([], $this->filesOnDisk());
@@ -105,7 +105,7 @@ class MikroSegmentTest extends TestCase
         $recording = $this->startedSession();
         Transcription::fake()->preventStrayTranscriptions();
 
-        $this->postSegment($recording)->assertStatus(409)->assertJsonPath('message', 'Die KI ist für deine Schule ausgeschaltet, deshalb wird nichts mehr mitgeschrieben.');
+        $this->postSegment($recording)->assertStatus(409)->assertJsonPath('message', 'AI is switched off for your school, so nothing is added to the notes any more.');
 
         Transcription::assertNothingGenerated();
         $this->assertSame([], $this->filesOnDisk());
@@ -158,7 +158,7 @@ class MikroSegmentTest extends TestCase
 
         $response = $this->postSegment($recording)->assertStatus(409);
 
-        $this->assertStringContainsString('1 von 3', $response->json('message'));
+        $this->assertStringContainsString('1 of 3', $response->json('message'));
         Transcription::assertNothingGenerated();
         $this->assertSame([], $this->filesOnDisk());
         $this->assertFalse($recording->fresh()->audio_sent_to_ai);

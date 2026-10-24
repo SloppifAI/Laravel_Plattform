@@ -135,14 +135,14 @@
 
     <div class="mikro-ring" role="status" aria-live="polite" aria-atomic="true">
         <span class="mikro-symbol" aria-hidden="true" x-text="state === 'on' ? '●' : state === 'off' ? '■' : '…'">…</span>
-        <p class="mikro-word" x-text="state === 'on' ? 'Mikro an' : state === 'off' ? 'Mikro aus' : 'Einen Moment …'">Einen Moment …</p>
+        <p class="mikro-word" x-text="state === 'on' ? @js(__('Mikro an')) : state === 'off' ? @js(__('Mikro aus')) : @js(__('Einen Moment …'))">{{ __('Einen Moment …') }}</p>
     </div>
 
     <p class="mikro-topic">{{ $topic }}</p>
 
-    <p class="mikro-hint" x-cloak x-show="stale">Der Status wird gerade nicht aktualisiert.</p>
+    <p class="mikro-hint" x-cloak x-show="stale">{{ __('Der Status wird gerade nicht aktualisiert.') }}</p>
 
-    <button type="button" class="mikro-fullscreen" x-cloak x-show="canFullscreen && ! fullscreen" x-on:click="enterFullscreen()">Vollbild</button>
+    <button type="button" class="mikro-fullscreen" x-cloak x-show="canFullscreen && ! fullscreen" x-on:click="enterFullscreen()">{{ __('Vollbild') }}</button>
 </div>
 
 @verbatim

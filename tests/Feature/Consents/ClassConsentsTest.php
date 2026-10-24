@@ -55,7 +55,7 @@ class ClassConsentsTest extends TestCase
 
         $this->actingAs(User::factory()->student()->create())->get(ClassConsents::getUrl())->assertForbidden();
         $this->actingAs(User::factory()->operator()->create())->get(ClassConsents::getUrl())->assertForbidden();
-        $this->actingAs($this->teacher)->get(ClassConsents::getUrl())->assertOk()->assertSee('Einwilligungen');
+        $this->actingAs($this->teacher)->get(ClassConsents::getUrl())->assertOk()->assertSee('Consents');
         $this->actingAs(User::factory()->for($this->school)->admin()->create())->get(ClassConsents::getUrl())->assertOk();
     }
 
@@ -137,12 +137,12 @@ class ClassConsentsTest extends TestCase
         RecordingConsent::factory()->forForm($this->form)->revoked()->create(['student_id' => $revoked->getKey()]);
 
         $page = $this->page()
-            ->assertSee('1 von 4 Einwilligungen vollständig')
-            ->assertSeeInOrder([$granted->name, 'Erteilt'])
-            ->assertSee('Teilweise')
-            ->assertSee('Widerrufen')
-            ->assertSee('Fehlt')
-            ->assertSee('Noch kein Brief erzeugt');
+            ->assertSee('1 of 4 consents complete')
+            ->assertSeeInOrder([$granted->name, 'Granted'])
+            ->assertSee('Partial')
+            ->assertSee('Revoked')
+            ->assertSee('Missing')
+            ->assertSee('No letter created yet');
 
         $page->assertCanSeeTableRecords($this->students);
     }
@@ -157,9 +157,9 @@ class ClassConsentsTest extends TestCase
         $this->publishedForm($this->school, 2);
 
         $this->page()
-            ->assertSee('Veraltet')
-            ->assertSee('Fassung 1 (aktuell: 2)')
-            ->assertSee('0 von 4 Einwilligungen vollständig');
+            ->assertSee('Outdated')
+            ->assertSee('version 1 (current: 2)')
+            ->assertSee('0 of 4 consents complete');
     }
 
     public function test_the_student_confirmation_label_shows_for_parents_who_consented_to_the_current_form(): void
@@ -168,8 +168,8 @@ class ClassConsentsTest extends TestCase
         RecordingConsent::factory()->forForm($this->form)->create(['student_id' => $this->students->first()->getKey()]);
 
         $this->page()
-            ->assertSee('Schüler:in-Bestätigung fehlt')
-            ->assertSee('Zusätzliche Bestätigung der Schüler:innen');
+            ->assertSee('Student confirmation missing')
+            ->assertSee('Additional confirmation from the students');
     }
 
     public function test_only_students_of_the_selected_class_are_listed(): void
@@ -323,7 +323,7 @@ class ClassConsentsTest extends TestCase
             ->assertHasFormErrors(['given_on' => 'after_or_equal']);
 
         $this->assertSame(
-            'Die Eltern haben zuletzt am '.now()->subDays(4)->format('d.m.Y').' widerrufen. Ein Blatt, das früher unterschrieben wurde, kann diese jüngere Erklärung nicht überschreiben.',
+            'The parents last withdrew their consent on '.now()->subDays(4)->format('d.m.Y').'. A sheet signed earlier cannot override this more recent declaration.',
             $page->errors()->first('mountedActions.0.data.given_on'),
         );
     }
@@ -341,7 +341,7 @@ class ClassConsentsTest extends TestCase
             ])
             ->assertHasFormErrors(['given_on' => 'after_or_equal']);
 
-        $this->assertStringStartsWith('Der aktuelle Text gilt erst seit dem '.now()->subDays(2)->format('d.m.Y').'.', $page->errors()->first('mountedActions.0.data.given_on'));
+        $this->assertStringStartsWith('The current text has only applied since '.now()->subDays(2)->format('d.m.Y').'.', $page->errors()->first('mountedActions.0.data.given_on'));
 
         $this->assertDatabaseCount('recording_consents', 0);
     }
@@ -356,7 +356,7 @@ class ClassConsentsTest extends TestCase
             ->assertHasFormErrors(['revoked_on' => 'after_or_equal']);
 
         $this->assertSame(
-            'Die Eltern haben am '.now()->subDays(3)->format('d.m.Y').' eingewilligt. Ein Widerruf, der früher datiert ist, kann diese jüngere Einwilligung nicht aufheben.',
+            'The parents consented on '.now()->subDays(3)->format('d.m.Y').'. A withdrawal dated earlier cannot cancel this more recent consent.',
             $page->errors()->first('mountedActions.0.data.revoked_on'),
         );
 
@@ -380,7 +380,7 @@ class ClassConsentsTest extends TestCase
 
         $this->page()
             ->mountAction(TestAction::make('recordPaperConsent')->table($student))
-            ->assertMountedActionModalSee('Die Eltern haben zuletzt am '.now()->subDays(4)->format('d.m.Y').' widerrufen.');
+            ->assertMountedActionModalSee('The parents last withdrew their consent on '.now()->subDays(4)->format('d.m.Y').'.');
     }
 
     public function test_a_paper_consent_needs_a_name_and_the_tone_recording(): void
@@ -467,7 +467,7 @@ class ClassConsentsTest extends TestCase
 
         $this->page()
             ->assertActionDisabled('generateLetters')
-            ->assertSee('Es gibt noch keine Einwilligungserklärung')
+            ->assertSee('There is no consent form yet')
             ->assertActionDisabled(TestAction::make('recordPaperConsent')->table($this->students->first()));
     }
 
@@ -492,13 +492,13 @@ class ClassConsentsTest extends TestCase
     {
         $lonely = User::factory()->for($this->school)->teacher()->create();
 
-        $this->page($lonely)->assertSee('Keine Klasse zugeordnet');
+        $this->page($lonely)->assertSee('No class assigned');
     }
 
     public function test_the_page_hints_when_recordings_are_not_switched_on_yet(): void
     {
         $this->school->disableRecordings();
 
-        $this->page()->assertSee('noch nicht freigeschaltet');
+        $this->page()->assertSee('not enabled for your school yet');
     }
 }

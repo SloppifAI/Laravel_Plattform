@@ -49,7 +49,7 @@ class RecordingSettingsTest extends TestCase
             $this->actingAs(User::factory()->{$role}()->create())->get(RecordingSettings::getUrl())->assertForbidden();
         }
 
-        $this->actingAs($this->admin)->get(RecordingSettings::getUrl())->assertOk()->assertSee('Tuto-Mikro & Einwilligungen');
+        $this->actingAs($this->admin)->get(RecordingSettings::getUrl())->assertOk()->assertSee('Tuto-Mikro & consents');
     }
 
     public function test_the_page_starts_with_recordings_off_and_the_template_for_the_school(): void
@@ -57,15 +57,15 @@ class RecordingSettingsTest extends TestCase
         config(['lernplattform.recordings.session_keep_days' => 10]);
 
         $this->page()
-            ->assertSee('Tuto-Mikro ist ausgeschaltet')
-            ->assertSee('Es ist noch keine Fassung veröffentlicht.')
+            ->assertSee('Tuto-Mikro is off')
+            ->assertSee('No version has been published yet.')
             ->assertActionDisabled('enableRecordings')
             ->assertFormSet([
                 'title' => ConsentForm::defaultTitle(),
                 'body' => ConsentForm::defaultBody($this->school),
                 'purposes' => array_keys(ConsentForm::PURPOSES),
             ], 'consentFormForm')
-            ->assertSee('nach 10 Tagen');
+            ->assertSee('after 10 days');
 
         $this->assertStringContainsString('nach 10 Tagen', ConsentForm::defaultBody($this->school));
     }
@@ -103,7 +103,7 @@ class RecordingSettingsTest extends TestCase
         $this->page()
             ->fillForm($this->checklist(), 'settingsForm')
             ->assertActionDisabled('enableRecordings')
-            ->assertSee('Einwilligungserklärung veröffentlichen');
+            ->assertSee('Publish consent form');
 
         $this->assertNull($this->school->refresh()->recordings_enabled_at);
     }
@@ -116,7 +116,7 @@ class RecordingSettingsTest extends TestCase
             ->fillForm($this->checklist(), 'settingsForm')
             ->assertActionEnabled('enableRecordings')
             ->callAction('enableRecordings')
-            ->assertNotified('Tuto-Mikro ist freigeschaltet');
+            ->assertNotified('Tuto-Mikro is enabled');
 
         $this->school->refresh();
         $this->assertTrue($this->school->recordingsEnabled());
@@ -132,9 +132,9 @@ class RecordingSettingsTest extends TestCase
         $admin = User::factory()->for($school)->admin()->create();
 
         $this->page($admin)
-            ->assertSee('Tuto-Mikro ist freigeschaltet')
+            ->assertSee('Tuto-Mikro is enabled')
             ->callAction('disableRecordings')
-            ->assertNotified('Tuto-Mikro ist ausgeschaltet');
+            ->assertNotified('Tuto-Mikro is off');
 
         $this->assertFalse($school->refresh()->recordingsEnabled());
         $this->assertNull($school->recordings_enabled_by);
@@ -163,7 +163,7 @@ class RecordingSettingsTest extends TestCase
         $this->page($admin)
             ->fillForm(['checklist.dsfa_done' => false], 'settingsForm')
             ->call('saveSettings')
-            ->assertNotified('Tuto-Mikro ausgeschaltet');
+            ->assertNotified('Tuto-Mikro switched off');
 
         $school->refresh();
         $this->assertFalse($school->recordingsEnabled());
@@ -176,7 +176,7 @@ class RecordingSettingsTest extends TestCase
         $this->page()
             ->fillForm([...$this->checklist(false), 'checklist.dsfa_done' => true, 'require_student_consent' => true], 'settingsForm')
             ->call('saveSettings')
-            ->assertNotified('Gespeichert');
+            ->assertNotified('Saved');
 
         $this->school->refresh();
         $this->assertTrue($this->school->require_student_consent);
@@ -190,7 +190,7 @@ class RecordingSettingsTest extends TestCase
         $this->page()
             ->callAction('publishConsentForm')
             ->assertHasNoFormErrors()
-            ->assertNotified('Fassung 1 veröffentlicht');
+            ->assertNotified('Version 1 published');
 
         $form = $this->school->currentConsentForm();
         $this->assertSame(1, $form->version);
@@ -214,7 +214,7 @@ class RecordingSettingsTest extends TestCase
             ->fillForm(['title' => 'Neue Überschrift', 'body' => "## Neu\n\nGeänderter Text.", 'purposes' => ['audio', 'transcript']], 'consentFormForm')
             ->callAction('publishConsentForm')
             ->assertHasNoFormErrors()
-            ->assertNotified('Fassung 2 veröffentlicht');
+            ->assertNotified('Version 2 published');
 
         $second = $school->refresh()->currentConsentForm();
         $this->assertSame(2, $second->version);
@@ -241,7 +241,7 @@ class RecordingSettingsTest extends TestCase
 
         $this->page()
             ->callAction('publishConsentForm')
-            ->assertNotified('Der Text ist unverändert');
+            ->assertNotified('The text is unchanged');
 
         $this->assertSame(1, ConsentForm::query()->count());
         $this->assertTrue($this->school->currentConsentForm()->is($form));
@@ -296,10 +296,10 @@ class RecordingSettingsTest extends TestCase
         $admin = User::factory()->for($school)->admin()->create();
 
         $this->page($admin)
-            ->assertSee('Fassung 2')
-            ->assertSee('Fassung 1')
-            ->assertSee('2 von 4')
-            ->assertSee('1 Einwilligung mit dieser Fassung');
+            ->assertSee('Version 2')
+            ->assertSee('Version 1')
+            ->assertSee('2 of 4')
+            ->assertSee('1 consent with this version');
     }
 
     public function test_the_administration_only_ever_touches_its_own_school(): void
@@ -327,7 +327,7 @@ class RecordingSettingsTest extends TestCase
         $this->page()
             ->fillForm(['mikro_blocked_subjects' => ['  Kunst ', 'kunst', 'Religion', '  ', 'Werte  und Normen'], ...$this->checklist(false)], 'settingsForm')
             ->call('saveSettings')
-            ->assertNotified('Gespeichert');
+            ->assertNotified('Saved');
 
         $school = $this->school->refresh();
         $this->assertSame(['Kunst', 'Religion', 'Werte und Normen'], $school->mikro_blocked_subjects);

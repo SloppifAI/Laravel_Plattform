@@ -28,11 +28,22 @@ class MyRecordingConsent extends Page
 
     protected static ?int $navigationSort = 4;
 
-    protected static ?string $title = 'Tuto-Mikro im Unterricht';
-
     protected static ?string $slug = 'tuto-mikro-im-unterricht';
 
-    protected ?string $subheading = 'Manchmal schaltet deine Lehrkraft im Unterricht das Tuto-Mikro ein. Hier siehst du, ob das für dich gilt, und sagst selbst, ob du einverstanden bist.';
+    public static function getNavigationLabel(): string
+    {
+        return __('Tuto-Mikro im Unterricht');
+    }
+
+    public function getTitle(): string
+    {
+        return __('Tuto-Mikro im Unterricht');
+    }
+
+    public function getSubheading(): string
+    {
+        return __('Manchmal schaltet deine Lehrkraft im Unterricht das Tuto-Mikro ein. Hier siehst du, ob das für dich gilt, und sagst selbst, ob du einverstanden bist.');
+    }
 
     public static function canAccess(): bool
     {
@@ -48,7 +59,7 @@ class MyRecordingConsent extends Page
         $consent = $this->consent();
 
         if ($consent === null || ! in_array($this->parentStatus($consent), [ConsentStatus::Granted, ConsentStatus::Partial], true)) {
-            Notification::make()->warning()->title('Deine Eltern müssen zuerst einwilligen')->body('Danach kannst du hier zustimmen.')->send();
+            Notification::make()->warning()->title(__('Deine Eltern müssen zuerst einwilligen'))->body(__('Danach kannst du hier zustimmen.'))->send();
 
             return;
         }
@@ -57,7 +68,7 @@ class MyRecordingConsent extends Page
 
         $consent->confirmByStudent();
 
-        Notification::make()->success()->title('Danke, du bist einverstanden')->send();
+        Notification::make()->success()->title(__('Danke, du bist einverstanden'))->send();
     }
 
     public function withdraw(): void
@@ -72,7 +83,7 @@ class MyRecordingConsent extends Page
             $consent->withdrawByStudent();
         }
 
-        Notification::make()->success()->title('Du bist nicht mehr einverstanden')->body('Solange du nicht zustimmst, bleibt das Tuto-Mikro in deiner Klasse aus.')->send();
+        Notification::make()->success()->title(__('Du bist nicht mehr einverstanden'))->body(__('Solange du nicht zustimmst, bleibt das Tuto-Mikro in deiner Klasse aus.'))->send();
     }
 
     /**

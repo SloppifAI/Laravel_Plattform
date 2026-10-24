@@ -24,9 +24,10 @@ use Livewire\Attributes\Locked;
  * what Tuto made of the notes into the lesson notes. The microphone, the notes text and the summary live in the
  * browser and the endpoints of LessonRecordingController (see the view); nothing of the text is stored here.
  *
- * Only the lesson's teacher gets in (LessonRecordingPolicy): not the school administration, not other teachers. A
- * Förderaufgabe and a lesson in a sensitive subject (School::mikroBlockedSubjects) have no page: it answers 403 where
- * RecordingConsentGate::lessonRefusal() has a reason, as the endpoints do.
+ * Only the lesson's teacher gets in (LessonRecordingPolicy), and only while they teach the class: not the school
+ * administration, not other teachers, not a substitute whose period is over. A Förderaufgabe and a lesson in a
+ * sensitive subject (School::mikroBlockedSubjects) have no page: it answers 403 where RecordingConsentGate::lessonRefusal()
+ * has a reason, as the endpoints do.
  */
 class RecordLesson extends Page
 {
@@ -141,8 +142,8 @@ class RecordLesson extends Page
         if ($this->appendToNotes($text)) {
             Notification::make()
                 ->success()
-                ->title('In die Stundennotizen übernommen')
-                ->body('Namen aus deiner Klasse wurden durch Platzhalter ersetzt, weil die Notizen für die Hausaufgabe der KI verwendet werden.')
+                ->title(__('In die Stundennotizen übernommen'))
+                ->body(__('Namen aus deiner Klasse wurden durch Platzhalter ersetzt, weil die Notizen für die Hausaufgabe der KI verwendet werden.'))
                 ->send();
         }
     }
@@ -155,7 +156,7 @@ class RecordLesson extends Page
         Gate::authorize('create', [LessonRecording::class, $this->lesson]);
 
         if ($this->lesson->isPublished()) {
-            Notification::make()->warning()->title('Diese Stunde ist schon freigegeben')->body('Die Hausaufgabe lässt sich nur für eine Stunde im Entwurf neu erstellen.')->send();
+            Notification::make()->warning()->title(__('Diese Stunde ist schon freigegeben'))->body(__('Die Hausaufgabe lässt sich nur für eine Stunde im Entwurf neu erstellen.'))->send();
 
             return;
         }
@@ -166,8 +167,8 @@ class RecordLesson extends Page
 
         Notification::make()
             ->success()
-            ->title('Das Ergebnis steht in den Stundennotizen')
-            ->body('Erstelle jetzt dort die Hausaufgabe aus deinen Notizen.')
+            ->title(__('Das Ergebnis steht in den Stundennotizen'))
+            ->body(__('Erstelle jetzt dort die Hausaufgabe aus deinen Notizen.'))
             ->send();
 
         $this->redirect(LessonResource::getUrl('edit', ['record' => $this->lesson]));
@@ -203,7 +204,62 @@ class RecordLesson extends Page
                 'maxTextChars' => (int) config('lernplattform.recordings.max_text_chars'),
                 // The Beamer window listens on this channel (same browser only); it carries "on" or "off" and nothing else.
                 'boardChannel' => MikroBoard::channelName($this->lesson),
+                'texts' => $this->browserTexts(),
             ],
+        ];
+    }
+
+    /**
+     * Every sentence the script of the page shows (bar, warnings, errors, announcements) in the teacher's language.
+     * The script sits in a @verbatim block, so the texts travel with the component config instead.
+     *
+     * @return array<string, string>
+     */
+    private function browserTexts(): array
+    {
+        return [
+            'micOn' => __('Mikro an'),
+            'micOff' => __('Mikro aus'),
+            'barOn' => __('Mikro an – Tuto schreibt mit'),
+            'barManual' => __('Mikro aus – du schreibst die Notizen selbst'),
+            'barLastPart' => __('Der letzte Teil wird noch mitgeschrieben'),
+            'barMuted' => __('Kein Ton: Mikro stumm oder getrennt'),
+            'askingBrowser' => __('Dein Browser fragt jetzt nach dem Mikrofon.'),
+            'settingsChanged' => __('Die Einstellungen deiner Schule haben sich geändert. Lade die Seite neu und schalte Tuto-Mikro noch einmal an.'),
+            'cannotSplit' => __('Dein Browser kann den Ton nicht in Abschnitte teilen. Bitte probiere eine aktuelle Version von Chrome, Edge, Firefox oder Safari.'),
+            'announceManual' => __('Das Mikro bleibt aus. Du schreibst die Notizen selbst.'),
+            'announceOn' => __('Mikro an. Tuto schreibt mit.'),
+            'mayNotContinue' => __('Tuto-Mikro darf nicht weiterlaufen.'),
+            'micIsOff' => __('Das Mikro ist aus.'),
+            'loginExpiredMicOff' => __('Deine Anmeldung ist abgelaufen. Das Mikro ist aus. Kopiere deine Notizen, bevor du die Seite neu lädst.'),
+            'startNotEnabled' => __('Tuto-Mikro ist für deine Schule gerade nicht freigeschaltet. Die Schuladministration entscheidet darüber.'),
+            'loginExpiredReload' => __('Deine Anmeldung ist abgelaufen. Lade die Seite neu und melde dich gegebenenfalls an.'),
+            'consentsNotEnough' => __('Die Einwilligungen reichen nicht aus.'),
+            'consentsSeeAbove' => __('Was fehlt, steht oben unter „Wer ist heute da?“.'),
+            'chooseWhoIsHere' => __('Wähle zuerst aus, wer heute da ist.'),
+            'tooManyStarts' => __('Du hast zu oft gestartet. Warte eine Minute und versuche es noch einmal.'),
+            'startFailed' => __('Tuto-Mikro konnte nicht starten. Bitte lade die Seite neu und versuche es noch einmal.'),
+            'micPromptDeclined' => __('Das Mikrofon wurde nicht freigegeben: Du hast die Anfrage des Browsers abgelehnt oder das Fenster geschlossen. Drücke noch einmal „Mikro an“ und wähle „Zulassen“.'),
+            'micBlockedByBrowser' => __('Der Browser hat den Zugriff auf das Mikrofon nicht erlaubt. Wie du ihn erlaubst, steht unten.'),
+            'micDeclinedSeeHelp' => __('Das Mikrofon wurde nicht freigegeben: Du hast die Anfrage des Browsers abgelehnt oder das Fenster geschlossen. Fragt der Browser nicht mehr nach, hilft die Anleitung unten.'),
+            'micSecurity' => __('Der Browser erlaubt dieser Seite hier keinen Zugriff auf das Mikrofon. Das liegt meist an einer ungesicherten Verbindung (http statt https).'),
+            'micNotFound' => __('Es wurde kein Mikrofon gefunden. Schließe ein Headset oder ein Ansteckmikrofon an und versuche es noch einmal.'),
+            'micBusy' => __('Das Mikrofon wird gerade von einem anderen Programm benutzt. Schließe es dort und versuche es noch einmal.'),
+            'micFailed' => __('Das Mikrofon konnte nicht gestartet werden. Bitte versuche es noch einmal.'),
+            'interrupted' => __('Tuto-Mikro wurde vom Browser unterbrochen.'),
+            'interruptedMicOff' => __('Tuto-Mikro wurde vom Browser unterbrochen. Das Mikro ist aus.'),
+            'connectionTooSlow' => __('Die Verbindung ist zu langsam: Ein Teil der Stunde fehlt in den Notizen.'),
+            'segmentLost' => __('Ein Teil der Stunde konnte nicht mitgeschrieben werden und fehlt in den Notizen. Das Mikro ist weiter an.'),
+            'announceStopping' => __('Mikro aus. Der letzte Teil wird noch mitgeschrieben.'),
+            'announceStopped' => __('Mikro aus. Die Notizen aus der Stunde stehen unten. Prüfe sie und erstelle dann die Zusammenfassung.'),
+            'micDisconnected' => __('Das Mikrofon wurde getrennt oder gesperrt. Das Mikro ist aus.'),
+            'speechUnavailable' => __('Tuto kann hier nicht mitschreiben, weil die Spracherkennung auf diesem Gerät nicht läuft. Das Mikro ist aus, du kannst die Notizen selbst tippen.'),
+            'summaryLoginExpired' => __('Deine Anmeldung ist abgelaufen. Kopiere deine Notizen und lade die Seite neu.'),
+            'summaryFailed' => __('Die Zusammenfassung konnte nicht erstellt werden. Deine Notizen sind noch da.'),
+            'summaryNoAnswer' => __('Die Zusammenfassung konnte nicht erstellt werden, die Verbindung hat nicht geantwortet. Deine Notizen sind noch da.'),
+            'summaryReady' => __('Die Zusammenfassung ist fertig. Prüfe sie, bevor du etwas übernimmst.'),
+            'discardConfirm' => __('Die Notizen aus der Stunde werden gelöscht. Was du schon übernommen hast, bleibt in den Stundennotizen. Fortfahren?'),
+            'notesDeleted' => __('Die Notizen sind gelöscht.'),
         ];
     }
 
@@ -230,17 +286,18 @@ class RecordLesson extends Page
         $text = trim($text);
 
         if ($text === '') {
-            Notification::make()->warning()->title('Noch nichts zum Übernehmen')->body('Erstelle zuerst eine Zusammenfassung.')->send();
+            Notification::make()->warning()->title(__('Noch nichts zum Übernehmen'))->body(__('Erstelle zuerst eine Zusammenfassung.'))->send();
 
             return false;
         }
 
         $lesson = $this->lesson->refresh();
+        // What lands in the notes stays German like the notes themselves: the AI reads them for the homework draft.
         $heading = 'Tuto-Mikro vom '.now()->format('d.m.Y, H:i').' Uhr:';
         $notes = trim(trim($lesson->notes)."\n\n".$heading."\n".Pseudonymizer::forLesson($lesson)->apply($text));
 
         if (strlen($notes) > self::MAX_NOTES_BYTES) {
-            Notification::make()->danger()->title('Die Stundennotizen wären zu lang')->body('Kürze die Notizen in der Stunde, dann klappt die Übernahme.')->send();
+            Notification::make()->danger()->title(__('Die Stundennotizen wären zu lang'))->body(__('Kürze die Notizen in der Stunde, dann klappt die Übernahme.'))->send();
 
             return false;
         }

@@ -144,6 +144,9 @@
 
 <script>
     window.tutoMikro = (config) => {
+        // Every sentence comes from the server in the teacher's language (RecordLesson::browserTexts()).
+        const t = config.texts;
+
         // Native objects stay out of Alpine's reactive state: proxies around a MediaRecorder break its methods.
         let stream = null;
         let recorder = null;
@@ -170,6 +173,7 @@
 
         const MAX_QUEUED_SEGMENTS = 6;
         const HIDE_NAMES_KEY = 'tuto-mikro-hide-names';
+        const TITLE_PREFIX = '● ' + t.micOn + ' – ';
         const ALLOWED_TYPES = ['audio/webm', 'audio/ogg', 'audio/mp4'];
         const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
         const baseType = (type) => String(type || '').split(';')[0].trim().toLowerCase();
@@ -317,20 +321,20 @@
             // The bar says it in words, in colour and in its symbol: Mikro an in blue, Mikro aus in red.
             get barLabel() {
                 if (this.listening) {
-                    return 'Mikro an – Tuto schreibt mit';
+                    return t.barOn;
                 }
 
-                return this.phase === 'on' ? 'Mikro aus – du schreibst die Notizen selbst' : 'Mikro aus';
+                return this.phase === 'on' ? t.barManual : t.micOff;
             },
 
             // The second line of the bar: whatever endangers the notes, in the place nobody can scroll away from.
             get barNote() {
                 if (this.phase === 'stopping') {
-                    return 'Der letzte Teil wird noch mitgeschrieben';
+                    return t.barLastPart;
                 }
 
                 if (this.listening && this.muted) {
-                    return 'Kein Ton: Mikro stumm oder getrennt';
+                    return t.barMuted;
                 }
 
                 return '';
@@ -401,7 +405,7 @@
                 // Nobody could listen without the school's AI and without recognition on the device: then the
                 // microphone is not opened at all, and the bar does not claim that Tuto writes along.
                 if (config.aiEnabled || this.sttAvailable) {
-                    this.announce('Dein Browser fragt jetzt nach dem Mikrofon.');
+                    this.announce(t.askingBrowser);
 
                     try {
                         stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
@@ -442,7 +446,7 @@
 
                 // The school's AI setting changed after this page was loaded: the microphone was opened (or not) for another mode.
                 if (this.mode !== 'manual' && !stream) {
-                    this.cancelStart('Die Einstellungen deiner Schule haben sich geändert. Lade die Seite neu und schalte Tuto-Mikro noch einmal an.');
+                    this.cancelStart(t.settingsChanged);
                     this.endQuietly();
 
                     return;
@@ -456,7 +460,7 @@
                 this.taken = false;
 
                 if (this.mode === 'server' && !this.startSegment(body.segment_seconds)) {
-                    this.cancelStart('Dein Browser kann den Ton nicht in Abschnitte teilen. Bitte probiere eine aktuelle Version von Chrome, Edge, Firefox oder Safari.');
+                    this.cancelStart(t.cannotSplit);
                     this.endQuietly();
 
                     return;
@@ -471,7 +475,7 @@
                     this.muted = track.muted;
                 });
 
-                originalTitle = document.title.replace(/^● Mikro an – /, '');
+                originalTitle = document.title.startsWith(TITLE_PREFIX) ? document.title.slice(TITLE_PREFIX.length) : document.title;
                 startedAt = performance.now();
                 this.phase = 'on';
                 this.micState = 'granted';
@@ -489,7 +493,7 @@
                     heartbeatTimer = setInterval(() => this.heartbeat(), body.segment_seconds * 1000);
                 }
 
-                this.announce(this.mode === 'manual' ? 'Das Mikro bleibt aus. Du schreibst die Notizen selbst.' : 'Mikro an. Tuto schreibt mit.');
+                this.announce(this.mode === 'manual' ? t.announceManual : t.announceOn);
 
                 if (this.mode === 'device') {
                     this.startSpeech();
@@ -508,10 +512,10 @@
                     if (response.status === 409) {
                         const body = await response.json().catch(() => ({}));
 
-                        this.fail(`${body.message || 'Tuto-Mikro darf nicht weiterlaufen.'} Das Mikro ist aus.`);
+                        this.fail(`${body.message || t.mayNotContinue} ${t.micIsOff}`);
                         this.$wire.recheck();
                     } else if ([401, 419].includes(response.status)) {
-                        this.fail('Deine Anmeldung ist abgelaufen. Das Mikro ist aus. Kopiere deine Notizen, bevor du die Seite neu lädst.');
+                        this.fail(t.loginExpiredMicOff);
                     }
                 } catch (error) {
                     // No connection or no answer in time: the next beat asks again.
@@ -528,21 +532,21 @@
             describeStartError(status, body) {
                 switch (status) {
                     case 403:
-                        return 'Tuto-Mikro ist für deine Schule gerade nicht freigeschaltet. Die Schuladministration entscheidet darüber.';
+                        return t.startNotEnabled;
                     case 401:
                     case 419:
-                        return 'Deine Anmeldung ist abgelaufen. Lade die Seite neu und melde dich gegebenenfalls an.';
+                        return t.loginExpiredReload;
                     case 409:
                         // The reasons are on the page; they are read again, because a consent may just have changed.
                         this.$wire.recheck();
 
-                        return `${body.message || 'Die Einwilligungen reichen nicht aus.'} Was fehlt, steht oben unter „Wer ist heute da?“.`;
+                        return `${body.message || t.consentsNotEnough} ${t.consentsSeeAbove}`;
                     case 422:
-                        return body.message || 'Wähle zuerst aus, wer heute da ist.';
+                        return body.message || t.chooseWhoIsHere;
                     case 429:
-                        return 'Du hast zu oft gestartet. Warte eine Minute und versuche es noch einmal.';
+                        return t.tooManyStarts;
                     default:
-                        return 'Tuto-Mikro konnte nicht starten. Bitte lade die Seite neu und versuche es noch einmal.';
+                        return t.startFailed;
                 }
             },
 
@@ -553,30 +557,28 @@
                         await this.checkPermission();
 
                         if (this.micState === 'prompt') {
-                            this.error = 'Das Mikrofon wurde nicht freigegeben: Du hast die Anfrage des Browsers abgelehnt oder das Fenster geschlossen. Drücke noch einmal „Mikro an“ und wähle „Zulassen“.';
+                            this.error = t.micPromptDeclined;
                         } else {
                             this.accessDenied = true;
-                            this.error = this.micState === 'denied'
-                                ? 'Der Browser hat den Zugriff auf das Mikrofon nicht erlaubt. Wie du ihn erlaubst, steht unten.'
-                                : 'Das Mikrofon wurde nicht freigegeben: Du hast die Anfrage des Browsers abgelehnt oder das Fenster geschlossen. Fragt der Browser nicht mehr nach, hilft die Anleitung unten.';
+                            this.error = this.micState === 'denied' ? t.micBlockedByBrowser : t.micDeclinedSeeHelp;
                         }
 
                         break;
                     case 'SecurityError':
-                        this.error = 'Der Browser erlaubt dieser Seite hier keinen Zugriff auf das Mikrofon. Das liegt meist an einer ungesicherten Verbindung (http statt https).';
+                        this.error = t.micSecurity;
 
                         break;
                     case 'NotFoundError':
                     case 'OverconstrainedError':
-                        this.error = 'Es wurde kein Mikrofon gefunden. Schließe ein Headset oder ein Ansteckmikrofon an und versuche es noch einmal.';
+                        this.error = t.micNotFound;
 
                         break;
                     case 'NotReadableError':
-                        this.error = 'Das Mikrofon wird gerade von einem anderen Programm benutzt. Schließe es dort und versuche es noch einmal.';
+                        this.error = t.micBusy;
 
                         break;
                     default:
-                        this.error = 'Das Mikrofon konnte nicht gestartet werden. Bitte versuche es noch einmal.';
+                        this.error = t.micFailed;
                 }
 
                 this.focusOn('errorNotice');
@@ -622,7 +624,7 @@
                         this.enqueue(new Blob(parts, { type: mimeType }));
                     }
                 };
-                next.onerror = () => this.fail('Tuto-Mikro wurde vom Browser unterbrochen.');
+                next.onerror = () => this.fail(t.interrupted);
 
                 try {
                     next.start();
@@ -639,7 +641,7 @@
                 clearTimeout(segmentTimer);
                 segmentTimer = setTimeout(() => {
                     if (this.phase === 'on' && !this.startSegment(seconds)) {
-                        this.fail('Tuto-Mikro wurde vom Browser unterbrochen. Das Mikro ist aus.');
+                        this.fail(t.interruptedMicOff);
                     }
                 }, seconds * 1000);
 
@@ -652,7 +654,7 @@
 
                 while (queue.length > MAX_QUEUED_SEGMENTS) {
                     queue.shift();
-                    this.warning = 'Die Verbindung ist zu langsam: Ein Teil der Stunde fehlt in den Notizen.';
+                    this.warning = t.connectionTooSlow;
                 }
 
                 this.flush();
@@ -700,14 +702,14 @@
                         if (response.status === 409) {
                             const body = await response.json().catch(() => ({}));
 
-                            this.fail(`${body.message || 'Tuto-Mikro darf nicht weiterlaufen.'} Das Mikro ist aus.`);
+                            this.fail(`${body.message || t.mayNotContinue} ${t.micIsOff}`);
                             this.$wire.recheck();
 
                             return false;
                         }
 
                         if ([401, 419].includes(response.status)) {
-                            this.fail('Deine Anmeldung ist abgelaufen. Das Mikro ist aus. Kopiere deine Notizen, bevor du die Seite neu lädst.');
+                            this.fail(t.loginExpiredMicOff);
 
                             return false;
                         }
@@ -722,7 +724,7 @@
                     await sleep(1500 * (attempt + 1));
                 }
 
-                this.warning = 'Ein Teil der Stunde konnte nicht mitgeschrieben werden und fehlt in den Notizen. Das Mikro ist weiter an.';
+                this.warning = t.segmentLost;
                 this.announce(this.warning);
 
                 return true;
@@ -805,7 +807,7 @@
                 clearTimeout(segmentTimer);
                 this.elapsed = Math.floor((performance.now() - startedAt) / 1000);
                 this.syncTitle();
-                this.announce('Mikro aus. Der letzte Teil wird noch mitgeschrieben.');
+                this.announce(t.announceStopping);
 
                 const speechSettled = this.stopSpeech(true);
                 const stopped = new Promise((resolve) => {
@@ -836,7 +838,7 @@
                 this.syncTitle();
                 this.$wire.$refresh();
                 this.focusOn('notesField');
-                this.announce('Mikro aus. Die Notizen aus der Stunde stehen unten. Prüfe sie und erstelle dann die Zusammenfassung.');
+                this.announce(t.announceStopped);
             },
 
             // Tells the server the session is over; a failure only means the end time is missing in the session list.
@@ -903,7 +905,7 @@
 
             trackEnded() {
                 if (this.phase === 'on') {
-                    this.fail('Das Mikrofon wurde getrennt oder gesperrt. Das Mikro ist aus.');
+                    this.fail(t.micDisconnected);
                 }
             },
 
@@ -949,7 +951,7 @@
             },
 
             syncTitle() {
-                document.title = (this.listening ? '● Mikro an – ' : '') + originalTitle;
+                document.title = (this.listening ? TITLE_PREFIX : '') + originalTitle;
             },
 
             async lockScreen() {
@@ -1018,7 +1020,7 @@
                 };
                 instance.onerror = (event) => {
                     if (['not-allowed', 'service-not-allowed', 'language-not-supported'].includes(event.error)) {
-                        this.goManual('Tuto kann hier nicht mitschreiben, weil die Spracherkennung auf diesem Gerät nicht läuft. Das Mikro ist aus, du kannst die Notizen selbst tippen.');
+                        this.goManual(t.speechUnavailable);
                     }
                 };
                 instance.onend = () => {
@@ -1088,15 +1090,15 @@
 
                     if (!response.ok) {
                         this.result = null;
-                        this.resultError = body.message || (response.status === 419 ? 'Deine Anmeldung ist abgelaufen. Kopiere deine Notizen und lade die Seite neu.' : 'Die Zusammenfassung konnte nicht erstellt werden. Deine Notizen sind noch da.');
+                        this.resultError = body.message || (response.status === 419 ? t.summaryLoginExpired : t.summaryFailed);
                     } else {
                         this.result = body.analysis;
-                        this.announce('Die Zusammenfassung ist fertig. Prüfe sie, bevor du etwas übernimmst.');
+                        this.announce(t.summaryReady);
                         this.focusOn('resultHeading');
                     }
                 } catch (error) {
                     this.result = null;
-                    this.resultError = 'Die Zusammenfassung konnte nicht erstellt werden, die Verbindung hat nicht geantwortet. Deine Notizen sind noch da.';
+                    this.resultError = t.summaryNoAnswer;
                 }
 
                 this.summarising = false;
@@ -1123,12 +1125,12 @@
             },
 
             discard() {
-                if (this.notes.trim() === '' || window.confirm('Die Notizen aus der Stunde werden gelöscht. Was du schon übernommen hast, bleibt in den Stundennotizen. Fortfahren?')) {
+                if (this.notes.trim() === '' || window.confirm(t.discardConfirm)) {
                     this.notes = '';
                     this.result = null;
                     this.resultError = '';
                     this.taken = false;
-                    this.announce('Die Notizen sind gelöscht.');
+                    this.announce(t.notesDeleted);
                 }
             },
         };

@@ -42,11 +42,22 @@ class RecordingSettings extends Page
 
     protected static ?int $navigationSort = 8;
 
-    protected static ?string $title = 'Tuto-Mikro & Einwilligungen';
-
     protected static ?string $slug = 'tuto-mikro-einstellungen';
 
-    protected ?string $subheading = 'Ob Lehrkräfte das Tuto-Mikro im Unterricht einschalten dürfen, und welchen Text die Eltern dafür bestätigen.';
+    public static function getNavigationLabel(): string
+    {
+        return __('Tuto-Mikro & Einwilligungen');
+    }
+
+    public function getTitle(): string
+    {
+        return __('Tuto-Mikro & Einwilligungen');
+    }
+
+    public function getSubheading(): string
+    {
+        return __('Ob Lehrkräfte das Tuto-Mikro im Unterricht einschalten dürfen, und welchen Text die Eltern dafür bestätigen.');
+    }
 
     /**
      * @var array<string, mixed>|null
@@ -89,24 +100,24 @@ class RecordingSettings extends Page
 
         return [
             'dsfa_done' => [
-                'label' => 'Datenschutz-Folgenabschätzung durchgeführt',
-                'help' => 'Das Tuto-Mikro erfasst den Ton von Kindern im Unterricht, das ist eine Verarbeitung mit hohem Risiko. Vor dem Start braucht die Schule eine dokumentierte Datenschutz-Folgenabschätzung (Art. 35 DSGVO).',
+                'label' => __('Datenschutz-Folgenabschätzung durchgeführt'),
+                'help' => __('Das Tuto-Mikro erfasst den Ton von Kindern im Unterricht, das ist eine Verarbeitung mit hohem Risiko. Vor dem Start braucht die Schule eine dokumentierte Datenschutz-Folgenabschätzung (Art. 35 DSGVO).'),
             ],
             'personalrat_agreed' => [
-                'label' => 'Personalrat beteiligt',
-                'help' => 'Das Tuto-Mikro erfasst auch die Stimmen der Lehrkräfte. Der Personalrat wurde beteiligt oder hat zugestimmt, soweit das Landesrecht es verlangt.',
+                'label' => __('Personalrat beteiligt'),
+                'help' => __('Das Tuto-Mikro erfasst auch die Stimmen der Lehrkräfte. Der Personalrat wurde beteiligt oder hat zugestimmt, soweit das Landesrecht es verlangt.'),
             ],
             'parents_informed' => [
-                'label' => 'Eltern vorab informiert',
-                'help' => 'Die Eltern wissen, dass die Schule das Tuto-Mikro einsetzen will, zum Beispiel vom Elternabend oder aus einem Brief. Die Einwilligung selbst holst du über die Elternbriefe unter „Einwilligungen“ ein.',
+                'label' => __('Eltern vorab informiert'),
+                'help' => __('Die Eltern wissen, dass die Schule das Tuto-Mikro einsetzen will, zum Beispiel vom Elternabend oder aus einem Brief. Die Einwilligung selbst holst du über die Elternbriefe unter „Einwilligungen“ ein.'),
             ],
             'consent_form_approved' => [
-                'label' => 'Einwilligungserklärung geprüft und freigegeben',
-                'help' => 'Der veröffentlichte Text unten wurde mit der oder dem Datenschutzbeauftragten abgestimmt und passt zu eurer Schule. Nach jeder neuen Fassung bestätigst du das erneut.',
+                'label' => __('Einwilligungserklärung geprüft und freigegeben'),
+                'help' => __('Der veröffentlichte Text unten wurde mit der oder dem Datenschutzbeauftragten abgestimmt und passt zu eurer Schule. Nach jeder neuen Fassung bestätigst du das erneut.'),
             ],
             'retention_set' => [
-                'label' => 'Aufbewahrungsfrist festgelegt',
-                'help' => "Das Tuto-Mikro speichert keinen Ton. Der Nachweis je Sitzung wird nach {$days} Tagen automatisch gelöscht, übernommene Notizen folgen den Fristen der Unterrichtsdaten. Die Fristen stehen im Text der Einwilligung und passen zum Löschkonzept der Schule.",
+                'label' => __('Aufbewahrungsfrist festgelegt'),
+                'help' => __('Das Tuto-Mikro speichert keinen Ton. Der Nachweis je Sitzung wird nach :days Tagen automatisch gelöscht, übernommene Notizen folgen den Fristen der Unterrichtsdaten. Die Fristen stehen im Text der Einwilligung und passen zum Löschkonzept der Schule.', ['days' => $days]),
             ],
         ];
     }
@@ -121,11 +132,11 @@ class RecordingSettings extends Page
                     ->live()
                 )->values()->all(),
                 Toggle::make('require_student_consent')
-                    ->label('Schüler:innen bestätigen zusätzlich selbst')
-                    ->helperText('Je nach Bundesland und Schule reicht die Einwilligung der Eltern nicht, wenn die Schüler:innen schon einsichtsfähig sind. Dann bestätigt jede Schüler:in unter „Tuto-Mikro im Unterricht“ ihr Einverständnis, bevor in ihrer Klasse das Tuto-Mikro an ist.'),
+                    ->label(__('Schüler:innen bestätigen zusätzlich selbst'))
+                    ->helperText(__('Je nach Bundesland und Schule reicht die Einwilligung der Eltern nicht, wenn die Schüler:innen schon einsichtsfähig sind. Dann bestätigt jede Schüler:in unter „Tuto-Mikro im Unterricht“ ihr Einverständnis, bevor in ihrer Klasse das Tuto-Mikro an ist.')),
                 TagsInput::make('mikro_blocked_subjects')
-                    ->label('Fächer ohne Tuto-Mikro')
-                    ->helperText('In diesen Fächern lässt sich das Tuto-Mikro nie einschalten, auch nicht mit Einwilligung: Dort geht es oft um Glauben, Überzeugungen oder Persönliches. Gesperrt ist eine Stunde, wenn ein Wort ihres Fachs so beginnt, Groß- und Kleinschreibung egal: „Religion“ sperrt auch „Katholische Religion“ und „Religionslehre“. Kurze Kürzel wie „LER“ müssen als ganzes Wort dastehen. Weitere Fächer schreibst du einfach dazu, mit Enter.')
+                    ->label(__('Fächer ohne Tuto-Mikro'))
+                    ->helperText(__('In diesen Fächern lässt sich das Tuto-Mikro nie einschalten, auch nicht mit Einwilligung: Dort geht es oft um Glauben, Überzeugungen oder Persönliches. Gesperrt ist eine Stunde, wenn ein Wort ihres Fachs so beginnt, Groß- und Kleinschreibung egal: „Religion“ sperrt auch „Katholische Religion“ und „Religionslehre“. Kurze Kürzel wie „LER“ müssen als ganzes Wort dastehen. Weitere Fächer schreibst du einfach dazu, mit Enter.'))
                     ->suggestions(School::DEFAULT_MIKRO_BLOCKED_SUBJECTS)
                     ->nestedRecursiveRules(['string', 'max:100'])
                     ->rules(['max:50']),
@@ -138,23 +149,23 @@ class RecordingSettings extends Page
         return $schema
             ->components([
                 TextInput::make('title')
-                    ->label('Überschrift')
+                    ->label(__('Überschrift'))
                     ->required()
                     ->maxLength(150),
                 Textarea::make('body')
-                    ->label('Text der Einwilligung')
-                    ->helperText('Markdown: „## Überschrift“, „- Aufzählung“, „**fett**“. HTML wird entfernt. Die Vorlage ist ein Entwurf und keine Rechtsberatung: Passe sie mit deiner oder deinem Datenschutzbeauftragten an.')
+                    ->label(__('Text der Einwilligung'))
+                    ->helperText(__('Markdown: „## Überschrift“, „- Aufzählung“, „**fett**“. HTML wird entfernt. Die Vorlage ist ein Entwurf und keine Rechtsberatung: Passe sie mit deiner oder deinem Datenschutzbeauftragten an.'))
                     ->required()
                     ->rows(18)
                     ->maxLength(20000),
                 CheckboxList::make('purposes')
-                    ->label('Zwecke, denen die Eltern einzeln zustimmen')
-                    ->options(ConsentForm::PURPOSES)
-                    ->helperText('Der Ton ist immer dabei. Die Notizen aus der Stunde und die KI-Spracherkennung bauen darauf auf.')
+                    ->label(__('Zwecke, denen die Eltern einzeln zustimmen'))
+                    ->options(array_map(fn (string $label): string => __($label), ConsentForm::PURPOSES))
+                    ->helperText(__('Der Ton ist immer dabei. Die Notizen aus der Stunde und die KI-Spracherkennung bauen darauf auf.'))
                     ->required()
                     ->rules([fn (): Closure => function (string $attribute, mixed $value, Closure $fail): void {
                         if (! in_array('audio', (array) $value, true)) {
-                            $fail('Der Ton gehört immer dazu: Notizen aus der Stunde und KI-Spracherkennung bauen darauf auf.');
+                            $fail(__('Der Ton gehört immer dazu: Notizen aus der Stunde und KI-Spracherkennung bauen darauf auf.'));
                         }
                     }]),
             ])
@@ -173,24 +184,24 @@ class RecordingSettings extends Page
         if ($school->recordings_enabled_at !== null && ! $school->isRecordingChecklistComplete()) {
             $school->disableRecordings();
 
-            Notification::make()->warning()->title('Tuto-Mikro ausgeschaltet')->body('Eine Bestätigung der Checkliste fehlt, deshalb ist das Tuto-Mikro wieder aus.')->send();
+            Notification::make()->warning()->title(__('Tuto-Mikro ausgeschaltet'))->body(__('Eine Bestätigung der Checkliste fehlt, deshalb ist das Tuto-Mikro wieder aus.'))->send();
 
             return;
         }
 
-        Notification::make()->success()->title('Gespeichert')->send();
+        Notification::make()->success()->title(__('Gespeichert'))->send();
     }
 
     public function enableRecordingsAction(): Action
     {
         return Action::make('enableRecordings')
-            ->label('Tuto-Mikro freischalten')
+            ->label(__('Tuto-Mikro freischalten'))
             ->icon(Heroicon::OutlinedSignal)
             ->requiresConfirmation()
-            ->modalHeading('Tuto-Mikro freischalten?')
-            ->modalDescription('Danach dürfen Lehrkräfte das Tuto-Mikro in ihrer Stunde einschalten, sobald für alle anwesenden Schüler:innen eine gültige Einwilligung vorliegt. Du kannst es jederzeit wieder ausschalten.')
-            ->modalSubmitActionLabel('Ja, freischalten')
-            ->modalCancelActionLabel('Noch nicht')
+            ->modalHeading(__('Tuto-Mikro freischalten?'))
+            ->modalDescription(__('Danach dürfen Lehrkräfte das Tuto-Mikro in ihrer Stunde einschalten, sobald für alle anwesenden Schüler:innen eine gültige Einwilligung vorliegt. Du kannst es jederzeit wieder ausschalten.'))
+            ->modalSubmitActionLabel(__('Ja, freischalten'))
+            ->modalCancelActionLabel(__('Noch nicht'))
             ->visible(fn (): bool => $this->school()->recordings_enabled_at === null)
             ->disabled(fn (): bool => $this->missingSteps() !== [])
             ->action(function (): void {
@@ -199,33 +210,33 @@ class RecordingSettings extends Page
                 try {
                     $this->school()->enableRecordings($this->actor());
                 } catch (DomainException) {
-                    Notification::make()->danger()->title('Noch nicht möglich')->body('Bestätige zuerst alle Punkte der Checkliste und veröffentliche eine Einwilligungserklärung.')->send();
+                    Notification::make()->danger()->title(__('Noch nicht möglich'))->body(__('Bestätige zuerst alle Punkte der Checkliste und veröffentliche eine Einwilligungserklärung.'))->send();
 
                     return;
                 }
 
-                Notification::make()->success()->title('Tuto-Mikro ist freigeschaltet')->send();
+                Notification::make()->success()->title(__('Tuto-Mikro ist freigeschaltet'))->send();
             });
     }
 
     public function disableRecordingsAction(): Action
     {
         return Action::make('disableRecordings')
-            ->label('Tuto-Mikro ausschalten')
+            ->label(__('Tuto-Mikro ausschalten'))
             ->icon(Heroicon::OutlinedStopCircle)
             ->color('danger')
             ->requiresConfirmation()
-            ->modalHeading('Tuto-Mikro ausschalten?')
-            ->modalDescription('Lehrkräfte können das Tuto-Mikro dann nicht mehr einschalten. Vorhandene Einwilligungen bleiben bestehen, vorhandener Ton und vorhandene Notizen aus der Stunde werden nach der üblichen Frist gelöscht.')
-            ->modalSubmitActionLabel('Ja, ausschalten')
-            ->modalCancelActionLabel('Abbrechen')
+            ->modalHeading(__('Tuto-Mikro ausschalten?'))
+            ->modalDescription(__('Lehrkräfte können das Tuto-Mikro dann nicht mehr einschalten. Vorhandene Einwilligungen bleiben bestehen, vorhandener Ton und vorhandene Notizen aus der Stunde werden nach der üblichen Frist gelöscht.'))
+            ->modalSubmitActionLabel(__('Ja, ausschalten'))
+            ->modalCancelActionLabel(__('Abbrechen'))
             ->visible(fn (): bool => $this->school()->recordings_enabled_at !== null)
             ->action(function (): void {
                 Gate::authorize('create', [ConsentForm::class, $this->school()]);
 
                 $this->school()->disableRecordings();
 
-                Notification::make()->success()->title('Tuto-Mikro ist ausgeschaltet')->send();
+                Notification::make()->success()->title(__('Tuto-Mikro ist ausgeschaltet'))->send();
             });
     }
 
@@ -236,15 +247,15 @@ class RecordingSettings extends Page
     public function publishConsentFormAction(): Action
     {
         return Action::make('publishConsentForm')
-            ->label(fn (): string => $this->school()->currentConsentForm() === null ? 'Als Version 1 veröffentlichen' : 'Als neue Version veröffentlichen')
+            ->label(fn (): string => $this->school()->currentConsentForm() === null ? __('Als Version 1 veröffentlichen') : __('Als neue Version veröffentlichen'))
             ->icon(Heroicon::OutlinedDocumentCheck)
             ->requiresConfirmation()
-            ->modalHeading('Neue Fassung veröffentlichen?')
+            ->modalHeading(__('Neue Fassung veröffentlichen?'))
             ->modalDescription(fn (): string => $this->school()->currentConsentForm() === null
-                ? 'Die Eltern sehen diesen Text unter dem Link im Elternbrief.'
-                : 'Alle bisherigen Einwilligungen gelten dann als veraltet, und die Eltern müssen dem neuen Text noch einmal zustimmen. Bis dahin bleibt das Tuto-Mikro aus. Außerdem nimmst du die Bestätigung „Einwilligungserklärung geprüft“ zurück.')
-            ->modalSubmitActionLabel('Ja, veröffentlichen')
-            ->modalCancelActionLabel('Noch nicht')
+                ? __('Die Eltern sehen diesen Text unter dem Link im Elternbrief.')
+                : __('Alle bisherigen Einwilligungen gelten dann als veraltet, und die Eltern müssen dem neuen Text noch einmal zustimmen. Bis dahin bleibt das Tuto-Mikro aus. Außerdem nimmst du die Bestätigung „Einwilligungserklärung geprüft“ zurück.'))
+            ->modalSubmitActionLabel(__('Ja, veröffentlichen'))
+            ->modalCancelActionLabel(__('Noch nicht'))
             ->action(function (): void {
                 $school = $this->school();
 
@@ -255,7 +266,7 @@ class RecordingSettings extends Page
                 $current = $school->currentConsentForm();
 
                 if ($current?->title === $data['title'] && $current->body === $data['body'] && $current->purposes === $purposes) {
-                    Notification::make()->info()->title('Der Text ist unverändert')->body('Es gibt keine neue Fassung, die Einwilligungen bleiben gültig.')->send();
+                    Notification::make()->info()->title(__('Der Text ist unverändert'))->body(__('Es gibt keine neue Fassung, die Einwilligungen bleiben gültig.'))->send();
 
                     return;
                 }
@@ -281,8 +292,8 @@ class RecordingSettings extends Page
 
                 Notification::make()
                     ->success()
-                    ->title("Fassung {$form->version} veröffentlicht")
-                    ->body($current === null ? null : 'Bisherige Einwilligungen gelten jetzt als veraltet. Bestätige unter „Voraussetzungen“ erneut, dass der Text geprüft ist.')
+                    ->title(__('Fassung :version veröffentlicht', ['version' => $form->version]))
+                    ->body($current === null ? null : __('Bisherige Einwilligungen gelten jetzt als veraltet. Bestätige unter „Voraussetzungen“ erneut, dass der Text geprüft ist.'))
                     ->send();
             });
     }
@@ -300,7 +311,7 @@ class RecordingSettings extends Page
             ->values();
 
         if ($this->school()->currentConsentForm() === null) {
-            $missing->push('Einwilligungserklärung veröffentlichen');
+            $missing->push(__('Einwilligungserklärung veröffentlichen'));
         }
 
         return $missing->all();

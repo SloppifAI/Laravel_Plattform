@@ -132,7 +132,7 @@ class MikroSummaryTest extends TestCase
 
         $this->postJson(route('recordings.analyse', $recording), ['text' => self::TEXT])
             ->assertStatus(502)
-            ->assertJson(['message' => 'Die Zusammenfassung konnte nicht erstellt werden. Deine Notizen sind noch da. Bitte versuche es gleich noch einmal.']);
+            ->assertJson(['message' => 'The summary could not be created. Your notes are still there. Please try again in a moment.']);
 
         $this->assertEquals($before, $this->snapshotOfTheDatabase());
     }

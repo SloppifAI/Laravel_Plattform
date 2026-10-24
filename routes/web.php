@@ -5,6 +5,7 @@ use App\Http\Controllers\ConsentLetterController;
 use App\Http\Controllers\LessonRecordingController;
 use App\Http\Controllers\SchoolDpaController;
 use App\Http\Controllers\SwitchLocaleController;
+use App\Http\Middleware\SetLocale;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Illuminate\Support\Facades\Route;
@@ -45,9 +46,10 @@ Route::middleware([AuthenticateSession::class, Authenticate::class])->group(func
 /*
  * Tuto-Mikro: start, sound segments, end and summary for the session's teacher only (LessonRecordingPolicy). The
  * panel's own login and session check guards them, because the Tuto-Mikro page is a panel page and uses the same session.
- * CSRF protection comes with the web group applied to this file; the browser sends the token as X-CSRF-TOKEN.
+ * CSRF protection comes with the web group applied to this file; the browser sends the token as X-CSRF-TOKEN. SetLocale
+ * (the panel's own middleware) makes the messages of the JSON answers follow the teacher's language.
  */
-Route::middleware([AuthenticateSession::class, Authenticate::class])->controller(LessonRecordingController::class)->group(function (): void {
+Route::middleware([AuthenticateSession::class, Authenticate::class, SetLocale::class])->controller(LessonRecordingController::class)->group(function (): void {
     // Own counters per route (the third argument): a segment every ~25 s is normal, a backlog after an outage drains within a minute.
     Route::post('/tuto-mikro/{lesson}/start', 'store')->middleware('throttle:10,1,recording-start')->name('recordings.store');
     // The Beamer display asks this every 3 s (MikroBoard): only "is a session of this lesson open", for the lesson's teacher.

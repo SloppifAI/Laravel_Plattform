@@ -35,7 +35,7 @@ class MyRecordingConsentTest extends TestCase
 
     public function test_only_students_of_schools_that_ask_for_the_confirmation_get_the_page(): void
     {
-        $this->actingAs($this->student)->get(MyRecordingConsent::getUrl())->assertOk()->assertSee('Tuto-Mikro im Unterricht');
+        $this->actingAs($this->student)->get(MyRecordingConsent::getUrl())->assertOk()->assertSee('Tuto-Mikro in lessons');
         $this->assertTrue(MyRecordingConsent::canAccess());
 
         $this->school->forceFill(['require_student_consent' => false])->save();
@@ -61,10 +61,10 @@ class MyRecordingConsentTest extends TestCase
     {
         Livewire::actingAs($this->student)
             ->test(MyRecordingConsent::class)
-            ->assertSee('Sobald deine Eltern eingewilligt haben')
-            ->assertDontSee('Ich bin einverstanden')
+            ->assertSee('As soon as your parents have consented')
+            ->assertDontSee('I agree')
             ->call('confirm')
-            ->assertNotified('Deine Eltern müssen zuerst einwilligen');
+            ->assertNotified('Your parents have to consent first');
 
         $this->assertDatabaseCount('recording_consents', 0);
     }
@@ -75,18 +75,18 @@ class MyRecordingConsentTest extends TestCase
 
         $page = Livewire::actingAs($this->student)
             ->test(MyRecordingConsent::class)
-            ->assertSee('Liegt vor')
-            ->assertSee('Noch nicht gesagt')
-            ->assertSee('Ich bin einverstanden')
+            ->assertSee('On file')
+            ->assertSee('Not said yet')
+            ->assertSee('I agree')
             ->call('confirm')
-            ->assertNotified('Danke, du bist einverstanden');
+            ->assertNotified('Thanks, you agree');
 
         $this->assertNotNull($consent->refresh()->student_confirmed_at);
 
-        $page->assertSee('Ja, seit '.now()->format('d.m.Y'))
-            ->assertSee('Ich bin nicht mehr einverstanden')
+        $page->assertSee('Yes, since '.now()->format('d.m.Y'))
+            ->assertSee('I no longer agree')
             ->call('withdraw')
-            ->assertNotified('Du bist nicht mehr einverstanden');
+            ->assertNotified('You no longer agree');
 
         $this->assertNull($consent->refresh()->student_confirmed_at);
     }
@@ -95,13 +95,13 @@ class MyRecordingConsentTest extends TestCase
     {
         $consent = RecordingConsent::factory()->forForm($this->form)->revoked()->create(['student_id' => $this->student->getKey()]);
 
-        Livewire::actingAs($this->student)->test(MyRecordingConsent::class)->call('confirm')->assertNotified('Deine Eltern müssen zuerst einwilligen');
+        Livewire::actingAs($this->student)->test(MyRecordingConsent::class)->call('confirm')->assertNotified('Your parents have to consent first');
         $this->assertNull($consent->refresh()->student_confirmed_at);
 
         $consent->forceFill(['revoked_at' => null])->save();
         $this->publishedForm($this->school, 2);
 
-        Livewire::actingAs($this->student)->test(MyRecordingConsent::class)->call('confirm')->assertNotified('Deine Eltern müssen zuerst einwilligen');
+        Livewire::actingAs($this->student)->test(MyRecordingConsent::class)->call('confirm')->assertNotified('Your parents have to consent first');
         $this->assertNull($consent->refresh()->student_confirmed_at);
     }
 

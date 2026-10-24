@@ -11,7 +11,7 @@ use Illuminate\Support\Collection;
 final readonly class RecordingConsentResult
 {
     /**
-     * @param  list<string>  $reasons  German sentences for the teacher, empty when allowed
+     * @param  list<string>  $reasons  sentences for the teacher in the active language, empty when allowed
      * @param  Collection<int, User>  $studentsLackingConsent  keyed by student id
      * @param  array<int, string>  $studentReasons  why each of those students blocks the recording, keyed by student id
      */

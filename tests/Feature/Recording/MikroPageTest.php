@@ -55,11 +55,11 @@ class MikroPageTest extends TestCase
         $this->actingAs($this->teacher)->get($this->pageUrl())
             ->assertOk()
             ->assertSee('Tuto-Mikro')
-            ->assertSee('Wer ist heute da?')
-            ->assertSee('Notizen aus der Stunde')
-            ->assertSee('Zusammenfassung erstellen')
-            ->assertSee('Mikro an')
-            ->assertSee('Mikro aus');
+            ->assertSee('Who is here today?')
+            ->assertSee('Notes from the lesson')
+            ->assertSee('Create summary')
+            ->assertSee('Mic on')
+            ->assertSee('Mic off');
     }
 
     public function test_the_page_lives_at_a_url_without_recording_words(): void
@@ -90,8 +90,17 @@ class MikroPageTest extends TestCase
         $this->page()
             ->assertSet('present', $this->students->modelKeys())
             ->assertSet('canStart', true)
-            ->assertSee('Alle 3 anwesenden Schüler:innen haben eingewilligt')
-            ->assertSee('Fassung '.$this->form->version);
+            ->assertSee('All 3 students present have consented')
+            ->assertSee('version '.$this->form->version.' of the consent form');
+    }
+
+    public function test_the_confirmation_speaks_of_one_student_in_the_singular(): void
+    {
+        $this->page()
+            ->set('present', [$this->students[0]->id])
+            ->assertSet('canStart', true)
+            ->assertSee('The student present has consented')
+            ->assertDontSee('All 1 students');
     }
 
     public function test_a_student_without_consent_blocks_the_start_and_is_named_to_the_teacher_only(): void
@@ -100,17 +109,17 @@ class MikroPageTest extends TestCase
 
         $page = $this->page()
             ->assertSet('canStart', false)
-            ->assertSee('Tuto-Mikro kann noch nicht starten.')
-            ->assertSee('Für 1 von 3 anwesenden Schüler:innen liegt keine gültige Einwilligung vor.')
+            ->assertSee('Tuto-Mikro cannot start yet.')
+            ->assertSee('Valid consent is missing for 1 of 3 students present.')
             ->assertSee('Ben Schneider')
-            ->assertSee('Es liegt keine Einwilligung der Erziehungsberechtigten vor');
+            ->assertSee('There is no consent from the parents or guardians');
 
         // Marked as absent, the lesson can start; the reason disappears with the tick.
         $page->set('present', [$this->students[0]->id, $this->students[2]->id])
             ->assertSet('canStart', true)
-            ->assertDontSee('Es liegt keine Einwilligung der Erziehungsberechtigten vor');
+            ->assertDontSee('There is no consent from the parents or guardians');
 
-        $page->call('selectNone')->assertSet('canStart', false)->assertSee('Es sind keine anwesenden Schüler:innen angegeben.');
+        $page->call('selectNone')->assertSet('canStart', false)->assertSee('No students present have been specified.');
         $page->call('selectAll')->assertSet('canStart', false);
     }
 
@@ -122,14 +131,14 @@ class MikroPageTest extends TestCase
 
         $this->enableAi();
 
-        $this->page()->assertSet('canStart', false)->assertSee('Die Einwilligung deckt nicht alle nötigen Zwecke ab');
+        $this->page()->assertSet('canStart', false)->assertSee('The consent does not cover all required purposes');
     }
 
     public function test_a_school_without_the_switch_cannot_start_and_is_told_in_the_words_of_tuto_mikro(): void
     {
         $this->switchRecordings($this->schoolClass->school, false);
 
-        $page = $this->page()->assertSet('canStart', false)->assertSee('Tuto-Mikro ist für deine Schule nicht freigeschaltet.');
+        $page = $this->page()->assertSet('canStart', false)->assertSee('Tuto-Mikro is not enabled for your school.');
 
         $this->assertDoesNotMatchRegularExpression(self::FORBIDDEN_WORDS, $page->html());
     }
@@ -170,16 +179,17 @@ class MikroPageTest extends TestCase
         // The bar: fixed, a status region read aloud, one state per colour and wording.
         $this->assertMatchesRegularExpression('/<div class="lp-mic-bar" role="status" aria-live="polite" aria-atomic="true"/', $html);
         $this->assertStringContainsString("x-bind:data-state=\"listening ? 'on' : 'off'\"", $html);
-        $this->assertStringContainsString('Mikro an – Tuto schreibt mit', $html);
-        $this->assertStringContainsString("return 'Mikro an – Tuto schreibt mit';", $html);
-        $this->assertStringContainsString("return this.phase === 'on' ? 'Mikro aus – du schreibst die Notizen selbst' : 'Mikro aus';", $html);
-        $this->assertStringContainsString('<span x-text="barLabel">Mikro aus</span>', $html);
+        $this->assertSame('Mic on – Tuto is taking notes', $this->micTexts($html)['barOn']);
+        $this->assertStringContainsString('return t.barOn;', $html);
+        $this->assertStringContainsString("return this.phase === 'on' ? t.barManual : t.micOff;", $html);
+        $this->assertStringContainsString('<span x-text="barLabel">Mic off</span>', $html);
         $this->assertMatchesRegularExpression('/\.lp-mic-bar \{[^}]*position: fixed;[^}]*inset-inline: 0;[^}]*background: var\(--danger-100/s', $html);
         $this->assertMatchesRegularExpression('/\.lp-mic-bar\[data-state="on"\] \{[^}]*background: var\(--primary-100/s', $html);
 
         // The blue ring around the window while listening, and the title prefix.
         $this->assertStringContainsString('class="lp-mic-ring" x-cloak x-show="listening" aria-hidden="true"', $html);
-        $this->assertStringContainsString("'● Mikro an – '", $html);
+        $this->assertStringContainsString("const TITLE_PREFIX = '● ' + t.micOn + ' – ';", $html);
+        $this->assertSame('Mic on', $this->micTexts($html)['micOn']);
 
         // Screen readers get warnings and results too; the pulse respects reduced motion.
         $this->assertMatchesRegularExpression('/<p class="lp-mic-sr" role="status" aria-live="polite" x-text="announcement">/', $html);
@@ -193,32 +203,32 @@ class MikroPageTest extends TestCase
         $this->assertStringContainsString('getUserMedia({ audio: true, video: false })', $html);
         $this->assertSame(1, substr_count($html, 'navigator.mediaDevices.getUserMedia('));
         $this->assertStringContainsString("permissions.query({ name: 'microphone' })", $html);
-        $this->assertStringContainsString('Das Mikrofon ist für diese Seite blockiert.', $html);
+        $this->assertStringContainsString('The microphone is blocked for this page.', $html);
     }
 
     public function test_the_page_is_honest_about_the_microphone_and_the_voices_it_cannot_separate(): void
     {
         $content = $this->content($this->html());
 
-        $this->assertStringContainsString('Nur dein Mikrofon.', $content);
-        $this->assertStringContainsString('Ansteckmikrofon', $content);
-        $this->assertStringContainsString('Headset', $content);
-        $this->assertStringContainsString('Der Browser kann Stimmen nicht trennen', $content);
-        $this->assertStringContainsString('auch Stimmen aus der Klasse', $content);
-        $this->assertStringContainsString('Der Ton wird nicht gespeichert.', $content);
-        $this->assertStringContainsString('Verlässt du die Seite, sind die Notizen weg.', $content);
+        $this->assertStringContainsString('Only your microphone.', $content);
+        $this->assertStringContainsString('lapel microphone', $content);
+        $this->assertStringContainsString('headset', $content);
+        $this->assertStringContainsString('The browser cannot separate voices', $content);
+        $this->assertStringContainsString('including voices from the class', $content);
+        $this->assertStringContainsString('The audio is not stored.', $content);
+        $this->assertStringContainsString('If you leave the page, the notes are gone.', $content);
     }
 
     public function test_the_page_names_the_destination_of_the_sound_only_with_the_school_ai(): void
     {
-        $this->assertStringContainsString('Der Ton verlässt dein Gerät nicht', $this->content($this->html()));
+        $this->assertStringContainsString('the audio does not leave your device', $this->content($this->html()));
 
         $this->enableAi();
         $content = $this->content($this->html());
 
-        $this->assertStringContainsString('zur Spracherkennung an Gemini', $content);
-        $this->assertStringContainsString('Bei uns läuft er nur durch den Arbeitsspeicher und wird nirgends abgelegt.', $content);
-        $this->assertStringNotContainsString('Der Ton verlässt dein Gerät nicht', $content);
+        $this->assertStringContainsString('goes to Gemini for speech recognition', $content);
+        $this->assertStringContainsString('On our side it only passes through memory and is not saved anywhere.', $content);
+        $this->assertStringNotContainsString('the audio does not leave your device', $content);
     }
 
     public function test_the_notes_are_reviewed_in_the_browser_and_the_page_warns_before_it_is_left(): void
@@ -227,12 +237,12 @@ class MikroPageTest extends TestCase
 
         $this->assertMatchesRegularExpression('/<textarea[^>]*x-model="notes"/', $html);
         $this->assertStringContainsString("window.addEventListener('beforeunload'", $html);
-        $this->assertStringContainsString('Lies den Text durch und korrigiere Erkennungsfehler', $html);
-        $this->assertStringContainsString('Zusammenfassung erstellen', $html);
-        $this->assertStringContainsString('In Stundennotizen übernehmen', $html);
-        $this->assertStringContainsString('Hausaufgabe daraus erstellen', $html);
-        $this->assertStringContainsString('Tafelbild-Vorschlag', $html);
-        $this->assertStringContainsString('Fragen aus der Klasse', $html);
+        $this->assertStringContainsString('Read through the text and correct recognition errors', $html);
+        $this->assertStringContainsString('Create summary', $html);
+        $this->assertStringContainsString('Add to lesson notes', $html);
+        $this->assertStringContainsString('Create homework from it', $html);
+        $this->assertStringContainsString('Board layout suggestion', $html);
+        $this->assertStringContainsString('Questions from the class', $html);
 
         // The notes are never a property of the server component, so they never travel with a Livewire request.
         $this->assertStringNotContainsString('wire:model="notes"', $html);
@@ -249,8 +259,8 @@ class MikroPageTest extends TestCase
     {
         $page = $this->page()
             ->assertSet('attendanceConfirmed', false)
-            ->assertSee('Ich bestätige:')
-            ->assertSee('Nur die Schüler:innen, die hier angehakt sind, sind im Raum.')
+            ->assertSee('I confirm:')
+            ->assertSee('Only the students ticked here are in the room.')
             ->assertSeeHtml('wire:model.live="attendanceConfirmed"');
 
         $page->set('attendanceConfirmed', true)->assertSet('attendanceConfirmed', true);
@@ -266,7 +276,7 @@ class MikroPageTest extends TestCase
 
         $this->assertStringContainsString('this.$wire.canStart && this.$wire.attendanceConfirmed && this.phase', $html);
         $this->assertStringContainsString('attendance_confirmed: this.$wire.attendanceConfirmed', $html);
-        $this->assertStringContainsString('Bestätige oben noch, dass nur die Angehakten im Raum sind.', $html);
+        $this->assertStringContainsString('Above, also confirm that only the ticked students are in the room.', $html);
     }
 
     public function test_hidden_names_show_no_name_no_number_and_no_reason_and_the_choice_is_remembered(): void
@@ -276,10 +286,10 @@ class MikroPageTest extends TestCase
         $content = $this->content($html);
 
         // Neither a position in the class list nor the highlight or the reason of a single student is visible while the names are hidden.
-        $this->assertDoesNotMatchRegularExpression('/Schüler:in\s+(\{\{|\d)/u', $content);
-        $this->assertStringContainsString('<span x-cloak x-show="hideNames">Schüler:in</span>', $content);
+        $this->assertDoesNotMatchRegularExpression('/Student\s+(\{\{|\d)/u', $content);
+        $this->assertStringContainsString('<span x-cloak x-show="hideNames">Student</span>', $content);
         $this->assertStringContainsString('<span x-cloak x-show="! hideNames">Ben Schneider</span>', $content);
-        $this->assertMatchesRegularExpression('/<span x-cloak x-show="! hideNames" class="[^"]*">\s*<svg[^>]*>.*?<\/svg>\s*Es liegt keine Einwilligung der Erziehungsberechtigten vor/s', $content);
+        $this->assertMatchesRegularExpression('/<span x-cloak x-show="! hideNames" class="[^"]*">\s*<svg[^>]*>.*?<\/svg>\s*There is no consent from the parents or guardians/s', $content);
         $this->assertStringContainsString("x-bind:class=\"hideNames ? 'ring-gray-950/10 dark:ring-white/10' : 'bg-warning-50 ring-warning-600/30 dark:bg-warning-500/10'\"", $content);
 
         $this->assertStringContainsString('x-on:click="toggleNames()"', $content);
@@ -296,7 +306,7 @@ class MikroPageTest extends TestCase
         $this->assertStringContainsString('if (config.aiEnabled || this.sttAvailable) {', $html);
         $this->assertSame(1, substr_count($html, 'navigator.mediaDevices.getUserMedia('));
         $this->assertStringContainsString("return this.phase === 'on' && this.mode !== 'manual';", $html);
-        $this->assertStringContainsString('Mikro aus – du schreibst die Notizen selbst', $html);
+        $this->assertSame('Mic off – you write the notes yourself', $this->micTexts($html)['barManual']);
 
         $this->enableAi();
 
@@ -319,12 +329,12 @@ class MikroPageTest extends TestCase
         $recording = LessonRecording::factory()->for($this->lesson)->presentStudents($this->students)->finished(2700)->create(['audio_sent_to_ai' => true]);
 
         $this->page()
-            ->assertSee('Tuto-Mikro in dieser Stunde')
+            ->assertSee('Tuto-Mikro in this lesson')
             ->assertSee('10:15')
-            ->assertSee('Dauer 45:00')
-            ->assertSee('3 anwesend')
-            ->assertSee('Ton zur Spracherkennung an Gemini gesendet')
-            ->assertSee('Es gibt keinen Ton und keinen Text.');
+            ->assertSee('Duration 45:00')
+            ->assertSee('3 present')
+            ->assertSee('Audio sent to Gemini for speech recognition')
+            ->assertSee('There is no audio and no text.');
 
         $this->assertSame(1, LessonRecording::query()->whereKey($recording->id)->count());
     }
@@ -333,7 +343,7 @@ class MikroPageTest extends TestCase
     {
         $this->page()
             ->call('applyToNotes', "Zusammenfassung:\nAnna Müller fragt nach dem Licht.")
-            ->assertNotified('In die Stundennotizen übernommen');
+            ->assertNotified('Added to the lesson notes');
 
         $notes = $this->lesson->fresh()->notes;
 
@@ -345,8 +355,8 @@ class MikroPageTest extends TestCase
 
     public function test_nothing_is_taken_over_without_text_or_beyond_the_size_limit(): void
     {
-        $this->page()->call('applyToNotes', '   ')->assertNotified('Noch nichts zum Übernehmen');
-        $this->page()->call('applyToNotes', str_repeat('Licht ', 11000))->assertNotified('Die Stundennotizen wären zu lang');
+        $this->page()->call('applyToNotes', '   ')->assertNotified('Nothing to take over yet');
+        $this->page()->call('applyToNotes', str_repeat('Licht ', 11000))->assertNotified('The lesson notes would be too long');
 
         $this->assertSame('Tafelbild: Licht, Wasser, CO2', $this->lesson->fresh()->notes);
     }
@@ -365,10 +375,10 @@ class MikroPageTest extends TestCase
         $this->lesson->update(['published_at' => now(), 'due_on' => today()->addWeek()]);
 
         $this->page()
-            ->assertSee('Diese Stunde ist schon freigegeben')
+            ->assertSee('This lesson is already released')
             ->call('createHomework', 'Zusammenfassung: Fotosynthese.')
             ->assertNoRedirect()
-            ->assertNotified('Diese Stunde ist schon freigegeben');
+            ->assertNotified('This lesson is already released');
 
         $this->assertSame('Tafelbild: Licht, Wasser, CO2', $this->lesson->fresh()->notes);
     }

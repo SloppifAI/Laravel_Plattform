@@ -68,8 +68,8 @@ class RecordingConsentGateTest extends TestCase
 
         $this->assertFalse($result->allowed);
         $this->assertSame([$newcomer->getKey()], $result->studentsLackingConsent->keys()->all());
-        $this->assertStringContainsString('Es liegt keine Einwilligung', $result->studentReasons[$newcomer->getKey()]);
-        $this->assertContains('Für 1 von 4 anwesenden Schüler:innen liegt keine gültige Einwilligung vor.', $result->reasons);
+        $this->assertStringContainsString('There is no consent', $result->studentReasons[$newcomer->getKey()]);
+        $this->assertContains('Valid consent is missing for 1 of 4 students present.', $result->reasons);
     }
 
     public function test_a_letter_without_an_answer_counts_as_missing(): void
@@ -92,7 +92,7 @@ class RecordingConsentGateTest extends TestCase
         $result = RecordingConsentGate::check($this->schoolClass, $this->students, $this->teacher);
 
         $this->assertFalse($result->allowed);
-        $this->assertSame('Die Einwilligung wurde widerrufen', $result->studentReasons[$student->getKey()]);
+        $this->assertSame('The consent was revoked', $result->studentReasons[$student->getKey()]);
     }
 
     public function test_a_consent_for_an_older_version_of_the_form_blocks_everyone_until_confirmed_again(): void
@@ -103,7 +103,7 @@ class RecordingConsentGateTest extends TestCase
 
         $this->assertFalse($result->allowed);
         $this->assertCount(3, $result->studentsLackingConsent);
-        $this->assertStringContainsString('ältere Fassung', $result->studentReasons[$this->students->first()->getKey()]);
+        $this->assertStringContainsString('older version', $result->studentReasons[$this->students->first()->getKey()]);
     }
 
     public function test_a_consent_covering_only_part_of_the_requested_purposes_blocks(): void
@@ -117,7 +117,7 @@ class RecordingConsentGateTest extends TestCase
 
         $this->assertFalse($result->allowed);
         $this->assertSame([$student->getKey()], $result->studentsLackingConsent->keys()->all());
-        $this->assertStringContainsString('nicht alle nötigen Zwecke', $result->studentReasons[$student->getKey()]);
+        $this->assertStringContainsString('does not cover all required purposes', $result->studentReasons[$student->getKey()]);
     }
 
     public function test_without_a_list_of_purposes_the_check_asks_for_everything_the_form_offers(): void
@@ -129,7 +129,7 @@ class RecordingConsentGateTest extends TestCase
 
         $this->assertFalse($result->allowed);
         $this->assertSame([$student->getKey()], $result->studentsLackingConsent->keys()->all());
-        $this->assertStringContainsString('nicht alle nötigen Zwecke', $result->studentReasons[$student->getKey()]);
+        $this->assertStringContainsString('does not cover all required purposes', $result->studentReasons[$student->getKey()]);
 
         $this->assertTrue(RecordingConsentGate::check($this->schoolClass, $this->students, $this->teacher, ['audio'])->allowed);
         $this->assertFalse(RecordingConsentGate::check($this->schoolClass, $this->students, $this->teacher, ['audio', 'transcript'])->allowed);
@@ -170,7 +170,7 @@ class RecordingConsentGateTest extends TestCase
 
         $this->assertFalse($result->allowed);
         $this->assertSame(array_values($this->students->skip(1)->modelKeys()), $result->studentsLackingConsent->keys()->all());
-        $this->assertStringContainsString('Bestätigung der Schüler:in', $result->studentReasons[$this->students->last()->getKey()]);
+        $this->assertStringContainsString('own confirmation is missing', $result->studentReasons[$this->students->last()->getKey()]);
 
         foreach ($this->students as $student) {
             RecordingConsent::query()->where('student_id', $student->getKey())->firstOrFail()->confirmByStudent();
@@ -191,7 +191,7 @@ class RecordingConsentGateTest extends TestCase
         $result = RecordingConsentGate::check($this->schoolClass->refresh(), $this->students, $this->teacher);
 
         $this->assertFalse($result->allowed);
-        $this->assertContains('Aufnahmen sind für deine Schule nicht freigeschaltet.', $result->reasons);
+        $this->assertContains('Tuto-Mikro is not enabled for your school.', $result->reasons);
         $this->assertTrue($result->studentsLackingConsent->isEmpty());
     }
 
@@ -209,7 +209,7 @@ class RecordingConsentGateTest extends TestCase
         $result = RecordingConsentGate::check($this->schoolClass->refresh(), $this->students, $this->teacher);
 
         $this->assertFalse($result->allowed);
-        $this->assertContains('Die Schule ist gesperrt.', $result->reasons);
+        $this->assertContains('The school is blocked.', $result->reasons);
     }
 
     public function test_a_school_without_a_published_form_blocks(): void
@@ -219,7 +219,7 @@ class RecordingConsentGateTest extends TestCase
         $result = RecordingConsentGate::check($this->schoolClass->refresh(), $this->students, $this->teacher);
 
         $this->assertFalse($result->allowed);
-        $this->assertContains('Die Schule hat noch keine Einwilligungserklärung veröffentlicht.', $result->reasons);
+        $this->assertContains('The school has not published a consent form yet.', $result->reasons);
     }
 
     public function test_a_student_from_another_class_blocks_even_with_a_valid_consent(): void
@@ -232,7 +232,7 @@ class RecordingConsentGateTest extends TestCase
 
         $this->assertFalse($result->allowed);
         $this->assertSame([$visitor->getKey()], $result->studentsLackingConsent->keys()->all());
-        $this->assertSame('Gehört nicht zu dieser Klasse', $result->studentReasons[$visitor->getKey()]);
+        $this->assertSame('Does not belong to this class', $result->studentReasons[$visitor->getKey()]);
     }
 
     public function test_a_student_of_another_school_blocks(): void
@@ -251,7 +251,7 @@ class RecordingConsentGateTest extends TestCase
         $result = RecordingConsentGate::check($this->schoolClass, $this->students, $colleague);
 
         $this->assertFalse($result->allowed);
-        $this->assertContains('Du leitest diese Klasse nicht und unterrichtest sie nicht.', $result->reasons);
+        $this->assertContains('You are not the form teacher of this class and do not teach it.', $result->reasons);
     }
 
     public function test_an_assigned_teacher_may_record_but_a_lesson_alone_does_not_count(): void
@@ -269,7 +269,7 @@ class RecordingConsentGateTest extends TestCase
     public function test_the_lessons_subject_blocks_when_the_school_blocks_it(): void
     {
         $lesson = Lesson::factory()->create(['school_class_id' => $this->schoolClass->getKey(), 'teacher_id' => $this->teacher->getKey(), 'subject' => '  evangelische religion ']);
-        $reason = 'Im Fach evangelische religion ist Tuto-Mikro an deiner Schule nicht möglich.';
+        $reason = 'Tuto-Mikro is not possible in evangelische religion at your school.';
         $this->school->forceFill(['mikro_blocked_subjects' => ['Kunst']])->save();
 
         $this->assertTrue(RecordingConsentGate::check($this->schoolClass->fresh(), $this->students, $this->teacher, null, $lesson->fresh())->allowed);
@@ -290,7 +290,7 @@ class RecordingConsentGateTest extends TestCase
         $result = RecordingConsentGate::check($this->schoolClass, $this->students, $this->teacher, null, $task);
 
         $this->assertFalse($result->allowed);
-        $this->assertSame(['Für Förderaufgaben gibt es kein Tuto-Mikro.'], $result->reasons);
+        $this->assertSame(['There is no Tuto-Mikro for practice tasks.'], $result->reasons);
     }
 
     public function test_only_teachers_of_the_school_may_record(): void
@@ -307,7 +307,7 @@ class RecordingConsentGateTest extends TestCase
         $result = RecordingConsentGate::check($this->schoolClass, [], $this->teacher);
 
         $this->assertFalse($result->allowed);
-        $this->assertContains('Es sind keine anwesenden Schüler:innen angegeben.', $result->reasons);
+        $this->assertContains('No students present have been specified.', $result->reasons);
     }
 
     public function test_only_the_students_present_count(): void

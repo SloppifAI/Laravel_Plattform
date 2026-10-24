@@ -24,14 +24,17 @@ class MikroBoard extends Page
 
     protected string $view = 'filament.pages.mikro-board';
 
-    protected static ?string $title = 'Tuto-Mikro am Beamer';
-
     protected static ?string $slug = 'tuto-mikro/{lesson}/beamer';
 
     protected static bool $shouldRegisterNavigation = false;
 
     #[Locked]
     public Lesson $lesson;
+
+    public function getTitle(): string
+    {
+        return __('Tuto-Mikro am Beamer');
+    }
 
     public static function canAccess(): bool
     {

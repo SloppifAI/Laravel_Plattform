@@ -41,19 +41,19 @@ final class RecordingConsentGate
     }
 
     /**
-     * Why Tuto-Mikro is never available in this lesson, in German for the teacher; null when nothing speaks against it.
+     * Why Tuto-Mikro is never available in this lesson, in the teacher's language; null when nothing speaks against it.
      * The "Tuto-Mikro" action of EditLesson asks this too, so it can stay hidden where the page would refuse.
      */
     public static function lessonRefusal(Lesson $lesson): ?string
     {
         if ($lesson->isPracticeTask()) {
-            return 'Für Förderaufgaben gibt es kein Tuto-Mikro.';
+            return __('Für Förderaufgaben gibt es kein Tuto-Mikro.');
         }
 
         $subject = trim((string) $lesson->subject);
 
         return $lesson->schoolClass->school?->blocksMikroForSubject($subject)
-            ? "Im Fach {$subject} ist Tuto-Mikro an deiner Schule nicht möglich."
+            ? __('Im Fach :subject ist Tuto-Mikro an deiner Schule nicht möglich.', ['subject' => $subject])
             : null;
     }
 
@@ -80,25 +80,25 @@ final class RecordingConsentGate
         }
 
         if ($school === null || ! $school->recordingsEnabled()) {
-            $reasons[] = $school?->isBlocked() ? 'Die Schule ist gesperrt.' : 'Aufnahmen sind für deine Schule nicht freigeschaltet.';
+            $reasons[] = $school?->isBlocked() ? __('Die Schule ist gesperrt.') : __('Tuto-Mikro ist für deine Schule nicht freigeschaltet.');
         }
 
         if (! self::teachesClass($teacher, $schoolClass)) {
-            $reasons[] = 'Du leitest diese Klasse nicht und unterrichtest sie nicht.';
+            $reasons[] = __('Du leitest diese Klasse nicht und unterrichtest sie nicht.');
         }
 
         /** @var Collection<int, User> $students */
         $students = collect($presentStudents)->keyBy(fn (User $student): int => $student->getKey());
 
         if ($students->isEmpty()) {
-            $reasons[] = 'Es sind keine anwesenden Schüler:innen angegeben.';
+            $reasons[] = __('Es sind keine anwesenden Schüler:innen angegeben.');
         }
 
         $form = $school?->currentConsentForm();
         $purposes = array_values(array_unique(['audio', ...($purposes ?? $form?->purposes ?? [])]));
 
         if ($school?->recordingsEnabled() && $form === null) {
-            $reasons[] = 'Die Schule hat noch keine Einwilligungserklärung veröffentlicht.';
+            $reasons[] = __('Die Schule hat noch keine Einwilligungserklärung veröffentlicht.');
         }
 
         $consents = RecordingConsent::query()->whereIn('student_id', $students->keys())->get()->keyBy('student_id');
@@ -106,7 +106,7 @@ final class RecordingConsentGate
 
         foreach ($students as $id => $student) {
             if (! $student->isStudent() || (int) $student->school_class_id !== (int) $schoolClass->getKey()) {
-                $studentReasons[$id] = 'Gehört nicht zu dieser Klasse';
+                $studentReasons[$id] = __('Gehört nicht zu dieser Klasse');
 
                 continue;
             }
@@ -121,7 +121,7 @@ final class RecordingConsentGate
         $lacking = $students->only(array_keys($studentReasons));
 
         if ($lacking->isNotEmpty()) {
-            $reasons[] = sprintf('Für %d von %d anwesenden Schüler:innen liegt keine gültige Einwilligung vor.', $lacking->count(), $students->count());
+            $reasons[] = __('Für :lacking von :total anwesenden Schüler:innen liegt keine gültige Einwilligung vor.', ['lacking' => $lacking->count(), 'total' => $students->count()]);
         }
 
         return new RecordingConsentResult($reasons === [], $reasons, $lacking, $studentReasons);

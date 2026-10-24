@@ -20,7 +20,7 @@ class MikroBlockedSubjectTest extends TestCase
     use RecordingFixtures;
     use RefreshDatabase;
 
-    private const string REASON = 'Im Fach Religion ist Tuto-Mikro an deiner Schule nicht möglich.';
+    private const string REASON = 'Tuto-Mikro is not possible in Religion at your school.';
 
     protected function setUp(): void
     {
@@ -44,7 +44,7 @@ class MikroBlockedSubjectTest extends TestCase
         foreach (['Religion', 'Ethik', 'Philosophie', 'Sexualkunde', 'Sexualerziehung', 'Werte und Normen', 'LER'] as $subject) {
             $this->changeSubject($subject);
 
-            $this->startSession()->assertConflict()->assertJsonPath('message', "Im Fach {$subject} ist Tuto-Mikro an deiner Schule nicht möglich.");
+            $this->startSession()->assertConflict()->assertJsonPath('message', "Tuto-Mikro is not possible in {$subject} at your school.");
         }
 
         $this->assertSame(0, LessonRecording::query()->count());
@@ -128,16 +128,21 @@ class MikroBlockedSubjectTest extends TestCase
 
         $this->postJson(route('recordings.check', $recording))
             ->assertConflict()
-            ->assertJsonPath('message', 'Im Fach Biologie ist Tuto-Mikro an deiner Schule nicht möglich.');
+            ->assertJsonPath('message', 'Tuto-Mikro is not possible in Biologie at your school.');
     }
 
-    public function test_the_page_opens_and_says_why_the_microphone_cannot_start(): void
+    public function test_the_page_does_not_open_for_a_blocked_subject_even_by_url(): void
     {
+        $this->page()->assertOk();
+
         $this->changeSubject('Religion');
 
-        $this->page()
-            ->assertSet('canStart', false)
-            ->assertSee(self::REASON);
+        $this->actingAs($this->teacher)->get($this->pageUrl())->assertForbidden();
+        $this->page()->assertForbidden();
+
+        $this->blockSubjects([]);
+
+        $this->actingAs($this->teacher)->get($this->pageUrl())->assertOk();
     }
 
     public function test_the_lesson_refusal_is_there_for_the_lesson_screen_to_ask(): void
@@ -146,19 +151,19 @@ class MikroBlockedSubjectTest extends TestCase
 
         $this->changeSubject('Ethik');
 
-        $this->assertSame('Im Fach Ethik ist Tuto-Mikro an deiner Schule nicht möglich.', RecordingConsentGate::lessonRefusal($this->lesson->refresh()));
+        $this->assertSame('Tuto-Mikro is not possible in Ethik at your school.', RecordingConsentGate::lessonRefusal($this->lesson->refresh()));
     }
 
     public function test_a_foerderaufgabe_has_no_page_and_cannot_start(): void
     {
         $task = Lesson::factory()->for($this->schoolClass)->for($this->teacher, 'teacher')->create(['practice_competency_id' => Competency::factory()]);
 
-        $this->actingAs($this->teacher)->get($this->pageUrl($task))->assertNotFound();
+        $this->actingAs($this->teacher)->get($this->pageUrl($task))->assertForbidden();
 
         $this->actingAs($this->teacher)
             ->postJson(route('recordings.store', $task), ['present' => $this->students->modelKeys(), 'attendance_confirmed' => true])
             ->assertConflict()
-            ->assertJsonPath('message', 'Für Förderaufgaben gibt es kein Tuto-Mikro.');
+            ->assertJsonPath('message', 'There is no Tuto-Mikro for practice tasks.');
 
         $this->assertSame(0, LessonRecording::query()->count());
     }
