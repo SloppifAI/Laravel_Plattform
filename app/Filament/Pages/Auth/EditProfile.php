@@ -5,10 +5,12 @@ namespace App\Filament\Pages\Auth;
 use App\Support\PersonalDataExport;
 use Filament\Actions\Action;
 use Filament\Auth\Pages\EditProfile as BaseEditProfile;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Component;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Contracts\Support\Htmlable;
 use SensitiveParameter;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -18,7 +20,10 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 class EditProfile extends BaseEditProfile
 {
-    protected static ?string $title = 'Mein Profil';
+    public function getTitle(): string|Htmlable
+    {
+        return __('Mein Profil');
+    }
 
     public function form(Schema $schema): Schema
     {
@@ -26,27 +31,41 @@ class EditProfile extends BaseEditProfile
             ->components([
                 $this->getNameFormComponent(),
                 TextInput::make('username')
-                    ->label('Benutzername')
-                    ->helperText('Damit meldest du dich an. Ändern kann ihn nur die Schulverwaltung.')
+                    ->label(__('Benutzername'))
+                    ->helperText(__('Damit meldest du dich an. Ändern kann ihn nur die Schulverwaltung.'))
                     ->disabled()
                     ->dehydrated(false),
                 TextInput::make('role')
-                    ->label('Rolle')
+                    ->label(__('Rolle'))
                     ->formatStateUsing(fn (): string => $this->getUser()->role->getLabel())
                     ->disabled()
                     ->dehydrated(false),
                 $this->getEmailFormComponent(),
+                Select::make('locale')
+                    ->label(__('Sprache'))
+                    ->options(config('lernplattform.locale.available'))
+                    ->formatStateUsing(fn (): string => app()->getLocale())
+                    ->selectablePlaceholder(false)
+                    ->required(),
                 $this->getPasswordFormComponent(),
                 $this->getPasswordConfirmationFormComponent(),
                 $this->getCurrentPasswordFormComponent(),
             ]);
     }
 
+    /**
+     * A new language is only visible after a reload: the page that just saved it was rendered in the old one.
+     */
+    protected function getRedirectUrl(): ?string
+    {
+        return $this->getUser()->wasChanged('locale') ? static::getUrl() : null;
+    }
+
     protected function getNameFormComponent(): Component
     {
         return parent::getNameFormComponent()
-            ->label('Name')
-            ->helperText(fn (): ?string => $this->getUser()->isStudent() ? 'Ändern kann ihn nur die Schulverwaltung.' : null)
+            ->label(__('Name'))
+            ->helperText(fn (): ?string => $this->getUser()->isStudent() ? __('Ändern kann ihn nur die Schulverwaltung.') : null)
             ->disabled(fn (): bool => $this->getUser()->isStudent())
             ->dehydrated(fn (): bool => ! $this->getUser()->isStudent());
     }
@@ -54,32 +73,32 @@ class EditProfile extends BaseEditProfile
     protected function getEmailFormComponent(): Component
     {
         return parent::getEmailFormComponent()
-            ->label('E-Mail-Adresse')
-            ->helperText('Freiwillig. Mit einer E-Mail-Adresse kannst du dein Passwort selbst zurücksetzen.')
+            ->label(__('E-Mail-Adresse'))
+            ->helperText(__('Freiwillig. Mit einer E-Mail-Adresse kannst du dein Passwort selbst zurücksetzen.'))
             ->required(false);
     }
 
     protected function getPasswordFormComponent(): Component
     {
         return parent::getPasswordFormComponent()
-            ->label('Neues Passwort')
-            ->helperText('Mindestens 8 Zeichen. Leer lassen, wenn du dein Passwort behalten möchtest.')
+            ->label(__('Neues Passwort'))
+            ->helperText(__('Mindestens 8 Zeichen. Leer lassen, wenn du dein Passwort behalten möchtest.'))
             ->validationMessages([
-                'min' => 'Dein Passwort braucht mindestens 8 Zeichen.',
-                'same' => 'Die beiden Passwörter müssen gleich sein.',
+                'min' => __('Dein Passwort braucht mindestens 8 Zeichen.'),
+                'same' => __('Die beiden Passwörter müssen gleich sein.'),
             ]);
     }
 
     protected function getPasswordConfirmationFormComponent(): Component
     {
-        return parent::getPasswordConfirmationFormComponent()->label('Neues Passwort wiederholen');
+        return parent::getPasswordConfirmationFormComponent()->label(__('Neues Passwort wiederholen'));
     }
 
     protected function getCurrentPasswordFormComponent(): Component
     {
         return parent::getCurrentPasswordFormComponent()
-            ->label('Aktuelles Passwort')
-            ->belowContent('Zur Sicherheit brauchen wir dein aktuelles Passwort, wenn du Passwort oder E-Mail-Adresse änderst.');
+            ->label(__('Aktuelles Passwort'))
+            ->belowContent(__('Zur Sicherheit brauchen wir dein aktuelles Passwort, wenn du Passwort oder E-Mail-Adresse änderst.'));
     }
 
     /**
@@ -104,10 +123,10 @@ class EditProfile extends BaseEditProfile
     {
         return [
             Action::make('downloadData')
-                ->label('Meine Daten herunterladen')
+                ->label(__('Meine Daten herunterladen'))
                 ->icon(Heroicon::OutlinedArrowDownTray)
                 ->color('gray')
-                ->tooltip('Alle Daten, die zu deinem Konto gespeichert sind, als Datei (JSON)')
+                ->tooltip(__('Alle Daten, die zu deinem Konto gespeichert sind, als Datei (JSON)'))
                 ->action(function (): StreamedResponse {
                     $user = $this->getUser();
                     $json = json_encode(PersonalDataExport::for($user), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
@@ -122,16 +141,16 @@ class EditProfile extends BaseEditProfile
 
     protected function getSavedNotificationTitle(): ?string
     {
-        return 'Gespeichert';
+        return __('Gespeichert');
     }
 
     protected function getSaveFormAction(): Action
     {
-        return parent::getSaveFormAction()->label('Speichern');
+        return parent::getSaveFormAction()->label(__('Speichern'));
     }
 
     protected function getCancelFormAction(): Action
     {
-        return parent::getCancelFormAction()->label('Abbrechen');
+        return parent::getCancelFormAction()->label(__('Abbrechen'));
     }
 }

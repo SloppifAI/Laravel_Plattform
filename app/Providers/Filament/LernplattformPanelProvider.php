@@ -9,13 +9,19 @@ use App\Filament\Pages\Auth\Register;
 use App\Filament\Pages\Auth\RegisterSchool;
 use App\Filament\Pages\Auth\RequestPasswordReset;
 use App\Http\Middleware\EnsureSchoolIsActive;
+use App\Http\Middleware\SetLocale;
+use Filament\Actions\Action;
+use Filament\Actions\View\ActionsIconAlias;
 use Filament\FontProviders\LocalFontProvider;
+use Filament\Forms\View\FormsIconAlias;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\Support\Facades\FilamentIcon;
+use Filament\Support\Icons\Heroicon;
 use Filament\View\PanelsRenderHook;
 use Illuminate\Contracts\View\View;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
@@ -48,6 +54,29 @@ class LernplattformPanelProvider extends PanelProvider
         950 => 'oklch(0.225 0.075 267)',
     ];
 
+    /**
+     * The board wants no eye icons anywhere: Filament's own "view" action and the show/hide toggle of a password
+     * field, which would otherwise carry one, get neutral icons.
+     */
+    public function boot(): void
+    {
+        FilamentIcon::register([
+            ActionsIconAlias::VIEW_ACTION => Heroicon::OutlinedDocumentText,
+            ActionsIconAlias::VIEW_ACTION_GROUPED => Heroicon::OutlinedDocumentText,
+            FormsIconAlias::COMPONENTS_TEXT_INPUT_ACTIONS_SHOW_PASSWORD => Heroicon::OutlinedLockOpen,
+            FormsIconAlias::COMPONENTS_TEXT_INPUT_ACTIONS_HIDE_PASSWORD => Heroicon::OutlinedLockClosed,
+        ]);
+    }
+
+    /**
+     * The language the user menu offers: the first available one that is not the current one.
+     */
+    private function otherLocale(): string
+    {
+        return collect(array_keys(config('lernplattform.locale.available')))
+            ->first(fn (string $locale): bool => $locale !== app()->getLocale());
+    }
+
     public function panel(Panel $panel): Panel
     {
         return $panel
@@ -61,7 +90,7 @@ class LernplattformPanelProvider extends PanelProvider
             ->routes(fn () => Route::get('/schule-registrieren', RegisterSchool::class)->name('auth.register-school'))
             ->passwordReset(RequestPasswordReset::class)
             ->profile(EditProfile::class, isSimple: false)
-            ->brandName('Lernplattform')
+            ->brandName('Tuto')
             ->brandLogo(fn (): View => view('filament.lernplattform.brand'))
             ->brandLogoHeight('2.25rem')
             // Resolved per request so the URL picks up the HTTPS scheme behind the proxy.
@@ -85,6 +114,9 @@ class LernplattformPanelProvider extends PanelProvider
             ])
             ->viteTheme('resources/css/filament/lernplattform/theme.css')
             ->sidebarCollapsibleOnDesktop()
+            // The bell: Notify puts entries into the notifications table; one minute of polling is plenty for homework.
+            ->databaseNotifications()
+            ->databaseNotificationsPolling('60s')
             ->renderHook(
                 PanelsRenderHook::SIMPLE_LAYOUT_START,
                 fn (): View => view('filament.lernplattform.login-intro'),
@@ -94,7 +126,7 @@ class LernplattformPanelProvider extends PanelProvider
             ->renderHook(PanelsRenderHook::FOOTER, fn (): View => view('filament.lernplattform.footer'))
             // Every resource needs a policy, so a missing permission rule fails loudly instead of granting access.
             ->strictAuthorization()
-            ->navigationGroups(['Plattform', 'Unterricht', 'Lernen', 'Verwaltung'])
+            // The sidebar groups are the cases of App\Filament\NavigationGroup (order and translated label come from there).
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
@@ -108,6 +140,14 @@ class LernplattformPanelProvider extends PanelProvider
                 SubstituteBindings::class,
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
+            ])
+            // After the session and the sign-in are known; persistent, so Livewire requests speak the language of the page.
+            ->middleware([SetLocale::class], isPersistent: true)
+            ->userMenuItems([
+                Action::make('switchLocale')
+                    ->label(fn (): string => __('Sprache: :language', ['language' => config('lernplattform.locale.available')[$this->otherLocale()]]))
+                    ->icon(Heroicon::OutlinedLanguage)
+                    ->url(fn (): string => route('locale.switch', $this->otherLocale())),
             ])
             // Persistent, so a Livewire request from a page opened before the school was blocked is covered too.
             ->authMiddleware([

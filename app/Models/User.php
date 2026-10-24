@@ -7,6 +7,7 @@ use App\Role;
 use Database\Factories\UserFactory;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
+use Illuminate\Contracts\Translation\HasLocalePreference;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Builder;
@@ -17,12 +18,33 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'username', 'email', 'password', 'role', 'school_id', 'school_class_id'])]
+#[Fillable(['name', 'username', 'email', 'password', 'role', 'school_id', 'school_class_id', 'locale'])]
 #[Hidden(['password', 'remember_token'])]
-class User extends Authenticatable implements FilamentUser
+class User extends Authenticatable implements FilamentUser, HasLocalePreference
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
+
+    /**
+     * A deleted student's id must not stay behind in the absence lists of the Klassenbuch.
+     */
+    protected static function booted(): void
+    {
+        static::deleted(function (User $user): void {
+            if ($user->isStudent()) {
+                ClassBookEntry::forgetAbsentStudent($user);
+            }
+        });
+    }
+
+    /**
+     * The user's chosen language, or null when none was chosen (or the stored one is no longer offered). Mails and
+     * notifications to the user use it as well (HasLocalePreference).
+     */
+    public function preferredLocale(): ?string
+    {
+        return array_key_exists((string) $this->locale, config('lernplattform.locale.available')) ? $this->locale : null;
+    }
 
     /**
      * Every user may use the platform unless their school was blocked by the operator;
@@ -89,6 +111,17 @@ class User extends Authenticatable implements FilamentUser
     public function ledClasses(): HasMany
     {
         return $this->hasMany(SchoolClass::class, 'teacher_id');
+    }
+
+    /**
+     * Classes the administration assigned a teacher to besides those they lead. Use SchoolClass::taughtBy() for all
+     * classes a teacher teaches.
+     *
+     * @return BelongsToMany<SchoolClass, $this>
+     */
+    public function taughtClasses(): BelongsToMany
+    {
+        return $this->belongsToMany(SchoolClass::class, 'school_class_teacher')->withTimestamps();
     }
 
     /**
