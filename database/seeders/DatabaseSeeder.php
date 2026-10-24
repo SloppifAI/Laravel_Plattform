@@ -3,9 +3,13 @@
 namespace Database\Seeders;
 
 use App\Models\User;
+use App\Role;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
+/**
+ * Runs on every deploy, so every seeder must be idempotent and must not use factories (no dev dependencies in production).
+ */
 class DatabaseSeeder extends Seeder
 {
     use WithoutModelEvents;
@@ -17,7 +21,12 @@ class DatabaseSeeder extends Seeder
     {
         User::updateOrCreate(
             ['username' => 'hackathon'],
-            ['name' => 'Hackathon', 'password' => 'hackathon2026'],
+            ['name' => 'Hackathon', 'password' => DemoSchoolSeeder::PASSWORD, 'role' => Role::Admin, 'school_class_id' => null],
         );
+
+        $this->call([
+            CompetencyFrameworkSeeder::class,
+            DemoSchoolSeeder::class,
+        ]);
     }
 }
