@@ -220,6 +220,176 @@ a.fi-wi-stats-overview-stat {
     @apply rounded-full px-2.5;
 }
 
+/* ---------- Tables stacked below md ---------- */
+
+/*
+ * Every table is stacked on mobile (Table::stackedOnMobile(), set for all tables in AppServiceProvider): below the
+ * breakpoint each row becomes a card of labelled values, so nothing scrolls sideways. Filament switches back to
+ * table cells at sm (640px), a tablet in portrait is too narrow for that, so the cards stay until md (768px).
+ *
+ * Between sm and md the rules below put back the phone values of vendor/filament/tables/resources/css/table.css
+ * (and of cell.css / columns/*.css where they carry an sm: value). Same layer, same selectors, later in the file, so
+ * they win without more specificity. Re-check them against those files after a Filament upgrade.
+ * Not covered, because no table here uses them: summaries (tfoot, summary rows) and individual column search.
+ */
+@layer components {
+    @variant sm {
+        @variant max-md {
+            .fi-ta-table.fi-ta-table-stacked-on-mobile {
+                @apply block;
+
+                & > thead {
+                    @apply block;
+
+                    &:not(:has(.fi-ta-table-stacked-header-row)) {
+                        @apply hidden;
+                    }
+
+                    & > tr:not(.fi-ta-table-stacked-header-row) {
+                        @apply hidden;
+                    }
+                }
+
+                & > tbody {
+                    @apply block whitespace-normal;
+
+                    & > tr {
+                        @apply relative block py-2;
+
+                        &.fi-selected {
+                            &::before {
+                                @apply block;
+                            }
+
+                            & > *:first-child {
+                                @apply inset-shadow-none;
+                            }
+                        }
+
+                        &.fi-ta-group-header-row {
+                            &.fi-ta-group-header-row-with-selection {
+                                @apply grid;
+                            }
+
+                            & > td {
+                                @apply block w-full;
+                            }
+
+                            & > td:empty {
+                                @apply hidden;
+                            }
+
+                            & > .fi-ta-group-selection-cell {
+                                @apply flex! w-auto;
+                            }
+                        }
+                    }
+
+                    & > tr > .fi-ta-selection-cell {
+                        @apply absolute;
+
+                        &,
+                        &:first-of-type,
+                        &:last-of-type {
+                            @apply px-4;
+                        }
+                    }
+
+                    & > tr > .fi-ta-cell:not(.fi-ta-selection-cell) {
+                        @apply block px-4;
+
+                        &:first-child {
+                            @apply ps-4;
+                        }
+
+                        &:last-child {
+                            @apply pe-4;
+                        }
+
+                        &.sm\:fi-visible {
+                            @apply block;
+                        }
+
+                        &.fi-ta-group-selection-cell,
+                        &:has(.fi-ta-reorder-handle) {
+                            &,
+                            &:first-of-type,
+                            &:last-of-type {
+                                @apply px-4;
+                            }
+                        }
+
+                        &:has(.fi-ta-actions) {
+                            &,
+                            &:first-of-type,
+                            &:last-of-type {
+                                @apply px-4 py-2;
+                            }
+
+                            & > .fi-ta-actions {
+                                @apply w-full flex-wrap justify-start gap-x-3 gap-y-2;
+                            }
+                        }
+
+                        & > .fi-ta-cell-label {
+                            @apply block;
+                        }
+                    }
+                }
+            }
+
+            .fi-ta-table-stacked-on-mobile
+                :is(
+                    .fi-ta-checkbox,
+                    .fi-ta-color,
+                    .fi-ta-icon,
+                    .fi-ta-image,
+                    .fi-ta-select,
+                    .fi-ta-text,
+                    .fi-ta-text-input,
+                    .fi-ta-toggle
+                ) {
+                @apply p-0;
+            }
+
+            .fi-ta-table-stacked-on-mobile .fi-ta-row .fi-ta-group-header-cell {
+                &:first-of-type,
+                &:last-of-type {
+                    @apply px-3;
+                }
+            }
+
+            .fi-ta-table-stacked-header-row {
+                @apply block;
+            }
+        }
+    }
+}
+
+/* Below md, whole cards: a tap on a label or a cell's padding follows the record link, record actions get thumb-sized targets. */
+@layer components {
+    @variant max-md {
+        .fi-ta-table-stacked-on-mobile {
+            & > tbody > tr > .fi-ta-cell:has(> .fi-ta-cell-content > a.fi-ta-col) {
+                @apply relative;
+
+                & > .fi-ta-cell-content > a.fi-ta-col::after {
+                    @apply absolute inset-0 content-[''];
+                }
+            }
+
+            /* Above the link areas of the cells that follow it. */
+            & > tbody > tr > .fi-ta-selection-cell {
+                @apply z-1;
+            }
+
+            & .fi-ta-actions .fi-link {
+                @apply min-h-11;
+            }
+        }
+    }
+}
+
 /* ---------- Login ---------- */
 
 .fi-simple-main {
