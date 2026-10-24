@@ -16,7 +16,7 @@
                 <form wire:submit="createPreview" class="space-y-6">
                     {{ $this->form }}
 
-                    <x-filament::button type="submit" :icon="Heroicon::OutlinedEye" wire:target="createPreview">
+                    <x-filament::button type="submit" :icon="Heroicon::OutlinedDocumentText" wire:target="createPreview">
                         Vorschau erstellen
                     </x-filament::button>
                 </form>
@@ -70,7 +70,7 @@ Müller;Anna;5a
             @endif
         @else
             <div class="flex items-start gap-3 rounded-xl bg-info-50 p-4 ring-1 ring-info-600/20 dark:bg-info-400/10 dark:ring-info-400/30" role="status">
-                <x-filament::icon :icon="Heroicon::OutlinedEye" class="size-5 shrink-0 text-info-600 dark:text-info-400" aria-hidden="true" />
+                <x-filament::icon :icon="Heroicon::OutlinedInformationCircle" class="size-5 shrink-0 text-info-600 dark:text-info-400" aria-hidden="true" />
 
                 <div class="space-y-1 text-sm text-info-800 dark:text-info-300">
                     <p class="font-medium">Das ist nur eine Vorschau. Es wurde noch nichts gespeichert.</p>

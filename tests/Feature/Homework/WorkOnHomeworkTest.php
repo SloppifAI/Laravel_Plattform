@@ -5,6 +5,7 @@ namespace Tests\Feature\Homework;
 use App\Ai\LessonAssistant;
 use App\Filament\Pages\ExplainIt;
 use App\Filament\Pages\WorkOnHomework;
+use App\Models\Competency;
 use App\Models\Lesson;
 use App\Models\Question;
 use App\Models\SchoolClass;
@@ -74,15 +75,46 @@ class WorkOnHomeworkTest extends TestCase
         $this->assertNotContains($otherSchoolLesson->id, Lesson::assignedTo($this->student)->pluck('id')->all());
     }
 
-    public function test_open_homework_shows_questions_but_neither_expected_answers_nor_teacher_summary(): void
+    public function test_open_homework_shows_the_teacher_summary_then_the_questions_then_the_own_summary(): void
     {
         $this->get(WorkOnHomework::getUrl(['lesson' => $this->lesson]))
             ->assertOk()
-            ->assertSee('Fasse die Stunde in deinen eigenen Worten zusammen')
-            ->assertSee([$this->comprehension->prompt, $this->reflection->prompt, 'Verständnis', 'Reflexion'])
+            ->assertSee('Lies zuerst die Zusammenfassung deiner Lehrkraft')
+            ->assertSeeInOrder([
+                'Zusammenfassung der Stunde',
+                $this->lesson->summary,
+                $this->comprehension->prompt,
+                $this->reflection->prompt,
+                'In deinen Worten',
+                'Zusammenfassung in deinen Worten',
+            ])
+            ->assertSee(['Verständnis', 'Reflexion'])
             ->assertSee(QuestionType::Reflection->getDescription())
-            ->assertDontSee('GEHEIMER ERWARTUNGSHORIZONT')
-            ->assertDontSee($this->lesson->summary);
+            ->assertDontSee('GEHEIMER ERWARTUNGSHORIZONT');
+    }
+
+    public function test_the_own_summary_keeps_its_minimum_length(): void
+    {
+        $this->assertSame(80, WorkOnHomework::MINIMUM_SUMMARY_LENGTH);
+        $this->assertSame(40, WorkOnHomework::MINIMUM_PRACTICE_SUMMARY_LENGTH);
+
+        $this->get(WorkOnHomework::getUrl(['lesson' => $this->lesson]))
+            ->assertSee('Mindestens 80 Zeichen');
+    }
+
+    public function test_a_practice_task_names_its_competency_above_the_questions(): void
+    {
+        $competency = Competency::factory()->create(['name' => 'Texte zusammenfassen']);
+        $practice = Lesson::factory()->publishedFor([$this->student])->create([
+            'practice_competency_id' => $competency->id,
+            'summary' => 'Eine Zusammenfassung ist kurz und nennt nur das Wichtigste.',
+        ]);
+        Question::factory()->for($practice)->create(['prompt' => 'Was gehört in eine Zusammenfassung?', 'position' => 1]);
+
+        $this->get(WorkOnHomework::getUrl(['lesson' => $practice]))
+            ->assertOk()
+            ->assertSeeInOrder(['Zusammenfassung zu „Texte zusammenfassen“', $practice->summary, 'Was gehört in eine Zusammenfassung?', 'In deinen Worten'])
+            ->assertSee('Mindestens 40 Zeichen');
     }
 
     public function test_the_lesson_can_be_practised_with_erklaer_es_mir(): void
@@ -136,6 +168,42 @@ class WorkOnHomeworkTest extends TestCase
             ->assertHasFormErrors(['summary' => 'min', "answers.{$this->comprehension->id}" => 'required']);
 
         $this->assertDatabaseEmpty('submissions');
+    }
+
+    public function test_text_copied_from_the_visible_teacher_summary_is_refused_before_the_ai_runs(): void
+    {
+        $summary = 'Pflanzen stellen mit Licht, Wasser und Kohlendioxid in den Blättern Zucker her. Dabei entsteht Sauerstoff, der an die Luft abgegeben wird. Den grünen Farbstoff dafür nennt man Chlorophyll.';
+        $this->lesson->update(['summary' => $summary]);
+        $this->mock(LessonAssistant::class, fn (MockInterface $mock) => $mock->shouldNotReceive('evaluateSubmission'));
+
+        Livewire::test(WorkOnHomework::class, ['lesson' => $this->lesson])
+            ->fillForm(['summary' => $summary, 'answers' => [
+                $this->comprehension->id => mb_strtoupper($summary),
+                $this->reflection->id => 'Das Experiment mit der Wasserpflanze, die Blasen gemacht hat.',
+            ]])
+            ->call('submit')
+            ->assertHasFormErrors(['summary', "answers.{$this->comprehension->id}"])
+            ->assertHasNoFormErrors(["answers.{$this->reflection->id}"]);
+
+        $this->assertDatabaseEmpty('submissions');
+    }
+
+    public function test_an_own_text_that_only_shares_a_phrase_with_the_teacher_summary_is_accepted(): void
+    {
+        $this->lesson->update(['summary' => 'Pflanzen stellen mit Licht, Wasser und Kohlendioxid in den Blättern Zucker her. Dabei entsteht Sauerstoff, der an die Luft abgegeben wird.']);
+        $this->mock(LessonAssistant::class, fn (MockInterface $mock) => $mock->expects('evaluateSubmission')->andReturn([
+            'understanding_score' => 80,
+            'feedback' => 'Gut.',
+            'gaps' => [],
+            'answers' => [],
+        ]));
+
+        Livewire::test(WorkOnHomework::class, ['lesson' => $this->lesson])
+            ->fillForm($this->validFormData())
+            ->call('submit')
+            ->assertHasNoFormErrors();
+
+        $this->assertDatabaseCount('submissions', 1);
     }
 
     public function test_a_second_submit_does_not_create_a_duplicate(): void

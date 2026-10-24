@@ -3,10 +3,12 @@
 namespace App\Console\Commands;
 
 use App\Models\Answer;
+use App\Models\ClassBookEntry;
 use App\Models\ExplanationMessage;
 use App\Models\ExplanationSession;
 use App\Models\Lesson;
 use App\Models\Question;
+use App\Models\StudentQuestion;
 use App\Models\Submission;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Attributes\Description;
@@ -21,7 +23,7 @@ use Illuminate\Support\Facades\Storage;
  * Storage limitation (Art. 5 and 17 DSGVO): deletes lessons and "Erklär's mir" conversations older than the
  * configured number of school years. A lesson expires only when everything about it is older than the cut-off
  * (lesson date, last change, due date, newest hand-in), so current work is never lost to a mistyped date.
- * Questions, hand-ins, answers, messages and homework assignments go with them through the foreign keys. Users, classes, schools and the competency framework are never touched.
+ * Questions, students' questions to the teacher, hand-ins, answers, messages and homework assignments go with them through the foreign keys. Klassenbuch entries (they name absent students) outlive their lesson and expire by their own date in the same run. Users, classes, schools and the competency framework are never touched.
  */
 #[Signature('lernplattform:prune-learning-data {--dry-run : Nur zählen, nichts löschen}')]
 #[Description('Löscht Unterrichtsstunden und Erklär\'s-mir-Gespräche, die älter als die Aufbewahrungsfrist sind')]
@@ -31,12 +33,22 @@ class PruneLearningData extends Command
     {
         $keptYears = (int) config('lernplattform.retention.school_years_kept');
         $starts = (string) config('lernplattform.retention.school_year_starts');
+        $oneYearFrom = (string) config('lernplattform.retention.one_year_rule_from');
 
         // A broken setting must never turn into "delete everything".
-        if ($keptYears < 1 || ! preg_match('/^\d{2}-\d{2}$/', $starts) || ! checkdate((int) substr($starts, 0, 2), (int) substr($starts, 3), 2001)) {
-            $this->error('Ungültige Aufbewahrungs-Einstellung: school_years_kept muss mindestens 1 sein, school_year_starts das Format MM-TT haben.');
+        if (
+            $keptYears < 1
+            || ! preg_match('/^\d{2}-\d{2}$/', $starts) || ! checkdate((int) substr($starts, 0, 2), (int) substr($starts, 3), 2001)
+            || ($oneYearFrom !== '' && ! CarbonImmutable::hasFormat($oneYearFrom, 'Y-m-d'))
+        ) {
+            $this->error('Ungültige Aufbewahrungs-Einstellung: school_years_kept muss mindestens 1 sein, school_year_starts das Format MM-TT und one_year_rule_from das Format JJJJ-MM-TT haben.');
 
             return self::FAILURE;
+        }
+
+        // Transition: the accepted agreements promised two school years, so one year only counts from the given date on.
+        if ($keptYears === 1 && $oneYearFrom !== '' && CarbonImmutable::today()->lt(CarbonImmutable::parse($oneYearFrom))) {
+            $keptYears = 2;
         }
 
         $cutoff = self::cutoffDate(CarbonImmutable::today(), $keptYears, $starts);
@@ -51,25 +63,30 @@ class PruneLearningData extends Command
             ->whereDoesntHave('submissions', fn (Builder $query) => $query->where('updated_at', '>=', $cutoff));
         $oldSessions = fn (): Builder => ExplanationSession::query()->where('created_at', '<', $cutoff);
         $oldSubmissions = fn (): Builder => Submission::query()->whereIn('lesson_id', $oldLessons()->select('id'));
+        // A Klassenbuch entry outlives its lesson, so it expires by its own date, and like a lesson only when it was not touched since either.
+        $oldClassBookEntries = fn (): Builder => ClassBookEntry::query()->whereDate('held_on', '<', $cutoff->toDateString())->where('updated_at', '<', $cutoff);
 
         $files = $oldLessons()->whereNotNull('attachments')->pluck('attachments')->flatten()->filter(fn (mixed $path): bool => is_string($path))->unique();
 
         $counts = [
             'Unterrichtsstunden' => $oldLessons()->count(),
             'Fragen' => Question::query()->whereIn('lesson_id', $oldLessons()->select('id'))->count(),
+            'Rückfragen' => StudentQuestion::query()->whereIn('lesson_id', $oldLessons()->select('id'))->count(),
             'Abgaben' => $oldSubmissions()->count(),
             'Antworten' => Answer::query()->whereIn('submission_id', $oldSubmissions()->select('id'))->count(),
             'Erklär\'s-mir-Gespräche' => $oldSessions()->count(),
             'Nachrichten' => ExplanationMessage::query()->whereIn('explanation_session_id', $oldSessions()->select('id'))->count(),
+            'Klassenbuch-Einträge' => $oldClassBookEntries()->count(),
             'Arbeitsblatt-Dateien' => $files->filter(fn (string $path): bool => Storage::disk('local')->exists($path))->count(),
         ];
 
         $this->info(($dryRun ? 'Probelauf, es wird nichts gelöscht. ' : '').'Aufbewahrt wird alles ab dem '.$cutoff->format('d.m.Y').'.');
 
         if (! $dryRun) {
-            DB::transaction(function () use ($oldLessons, $oldSessions): void {
+            DB::transaction(function () use ($oldLessons, $oldSessions, $oldClassBookEntries): void {
                 $oldSessions()->delete();
                 $oldLessons()->delete();
+                $oldClassBookEntries()->delete();
             });
 
             // After the commit, so a failed delete never leaves lessons without their worksheets or the other way round.

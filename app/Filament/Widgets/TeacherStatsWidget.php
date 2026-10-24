@@ -81,7 +81,7 @@ class TeacherStatsWidget extends StatsOverviewWidget
             ->url($lastLesson ? LessonResource::getUrl('edit', ['record' => $lastLesson]) : null);
 
         if ($average === null) {
-            return $stat->description($lastLesson ? "Noch keine Bewertung zu „{$lastLesson->topic}“" : 'Noch keine Hausaufgabe verteilt');
+            return $stat->description($lastLesson ? "Noch keine Bewertung zu „{$lastLesson->topic}“" : 'Noch keine Hausaufgabe freigegeben');
         }
 
         $level = UnderstandingLevel::fromScore((int) round($average));

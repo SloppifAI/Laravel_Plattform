@@ -29,6 +29,59 @@ class PruneLearningDataTest extends TestCase
     private const array LESSON_DATES = ['2024-07-31', '2024-08-01', '2025-07-31', '2025-08-01', '2026-07-31'];
 
     /**
+     * The tests below are about the school years kept, without the transition to the one-year default (it has tests of its own).
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config([
+            'lernplattform.retention.school_years_kept' => 2,
+            'lernplattform.retention.school_year_starts' => '08-01',
+            'lernplattform.retention.one_year_rule_from' => null,
+        ]);
+    }
+
+    public function test_by_default_the_school_year_before_is_deleted_when_the_next_one_begins(): void
+    {
+        $this->assertSame(1, (require base_path('config/lernplattform.php'))['retention']['school_years_kept']);
+
+        config(['lernplattform.retention.school_years_kept' => 1]);
+        $this->travelTo('2026-08-01');
+        $lastYear = Lesson::factory()->create(['held_on' => '2026-07-31', 'created_at' => '2026-07-31', 'updated_at' => '2026-07-31']);
+        $thisYear = Lesson::factory()->create(['held_on' => '2026-08-01']);
+
+        $this->artisan('lernplattform:prune-learning-data')->assertSuccessful();
+
+        $this->assertModelMissing($lastYear);
+        $this->assertModelExists($thisYear);
+    }
+
+    public function test_the_one_year_default_does_not_delete_the_last_school_year_before_its_transition_date(): void
+    {
+        $defaults = (require base_path('config/lernplattform.php'))['retention'];
+        config(['lernplattform.retention.school_years_kept' => $defaults['school_years_kept'], 'lernplattform.retention.one_year_rule_from' => $defaults['one_year_rule_from']]);
+        $this->assertSame(1, $defaults['school_years_kept']);
+
+        // The first night after the switch: the accepted agreements still promise two school years.
+        $this->travelTo('2026-10-24 03:30');
+        $lastYear = Lesson::factory()->create(['held_on' => '2026-06-10', 'due_on' => '2026-06-17', 'created_at' => '2026-06-10', 'updated_at' => '2026-07-01']);
+        $twoYearsAgo = Lesson::factory()->create(['held_on' => '2025-06-10', 'created_at' => '2025-06-10', 'updated_at' => '2025-06-10']);
+
+        $this->artisan('lernplattform:prune-learning-data')->assertSuccessful();
+
+        $this->assertModelExists($lastYear);
+        $this->assertModelMissing($twoYearsAgo);
+
+        // From the transition date on, only the current school year is kept.
+        $this->travelTo($defaults['one_year_rule_from']);
+
+        $this->artisan('lernplattform:prune-learning-data')->assertSuccessful();
+
+        $this->assertModelMissing($lastYear);
+    }
+
+    /**
      * @return array<string, array{string, int, string, string}>
      */
     public static function cutoffs(): array
@@ -101,10 +154,12 @@ class PruneLearningDataTest extends TestCase
             ->expectsTable(['Gegenstand', 'würde gelöscht'], [
                 ['Unterrichtsstunden', 1],
                 ['Fragen', 1],
+                ['Rückfragen', 0],
                 ['Abgaben', 1],
                 ['Antworten', 1],
                 ['Erklär\'s-mir-Gespräche', 1],
                 ['Nachrichten', 2],
+                ['Klassenbuch-Einträge', 0],
                 ['Arbeitsblatt-Dateien', 1],
             ])
             ->assertSuccessful();
@@ -125,10 +180,12 @@ class PruneLearningDataTest extends TestCase
             ->expectsTable(['Gegenstand', 'gelöscht'], [
                 ['Unterrichtsstunden', 1],
                 ['Fragen', 1],
+                ['Rückfragen', 0],
                 ['Abgaben', 1],
                 ['Antworten', 1],
                 ['Erklär\'s-mir-Gespräche', 1],
                 ['Nachrichten', 2],
+                ['Klassenbuch-Einträge', 0],
                 ['Arbeitsblatt-Dateien', 1],
             ])
             ->assertSuccessful();
@@ -159,10 +216,12 @@ class PruneLearningDataTest extends TestCase
             ->expectsTable(['Gegenstand', 'gelöscht'], [
                 ['Unterrichtsstunden', 0],
                 ['Fragen', 0],
+                ['Rückfragen', 0],
                 ['Abgaben', 0],
                 ['Antworten', 0],
                 ['Erklär\'s-mir-Gespräche', 0],
                 ['Nachrichten', 0],
+                ['Klassenbuch-Einträge', 0],
                 ['Arbeitsblatt-Dateien', 0],
             ])
             ->assertSuccessful();
@@ -257,6 +316,9 @@ class PruneLearningDataTest extends TestCase
         $this->artisan('lernplattform:prune-learning-data')->assertFailed();
 
         config(['lernplattform.retention.school_years_kept' => 2, 'lernplattform.retention.school_year_starts' => '13-45']);
+        $this->artisan('lernplattform:prune-learning-data')->assertFailed();
+
+        config(['lernplattform.retention.school_years_kept' => 1, 'lernplattform.retention.school_year_starts' => '08-01', 'lernplattform.retention.one_year_rule_from' => '01.08.2027']);
         $this->artisan('lernplattform:prune-learning-data')->assertFailed();
 
         $this->assertDatabaseCount('lessons', 1);

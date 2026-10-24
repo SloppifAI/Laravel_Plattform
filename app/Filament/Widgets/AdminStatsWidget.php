@@ -60,7 +60,7 @@ class AdminStatsWidget extends StatsOverviewWidget
                 ->url(SchoolClassResource::getUrl()),
             Stat::make('Unterrichtsstunden', $lessons()->count())
                 ->icon(Heroicon::OutlinedPresentationChartBar)
-                ->description($lessons()->published()->count().' davon mit verteilter Hausaufgabe')
+                ->description($lessons()->published()->count().' davon mit freigegebener Hausaufgabe')
                 ->url(LessonResource::getUrl()),
             Stat::make('Abgaben diese Woche', Submission::query()->whereRelation('lesson.schoolClass', 'school_id', $schoolId)->where('created_at', '>=', now()->startOfWeek(CarbonInterface::MONDAY))->count())
                 ->icon(Heroicon::OutlinedInboxArrowDown)

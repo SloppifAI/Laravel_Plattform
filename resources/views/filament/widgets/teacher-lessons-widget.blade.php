@@ -8,6 +8,10 @@
     <x-filament::section heading="Deine letzten Unterrichtsstunden">
         <x-slot name="afterHeader">
             <div class="flex flex-wrap gap-2">
+                <x-filament::button tag="a" :href="$todayUrl" color="gray" :icon="Heroicon::OutlinedSun">
+                    Heute: Hausaufgaben freigeben
+                </x-filament::button>
+
                 <x-filament::button tag="a" :href="$learningProgressUrl" color="gray" :icon="Heroicon::OutlinedChartBar">
                     Lernstand & Förderbedarf
                 </x-filament::button>
@@ -31,8 +35,8 @@
                 @foreach ($lessons as $lesson)
                     @php($heldOn = $lesson->held_on->copy()->locale('de'))
 
-                    {{-- The starter board needs enough evaluated hand-ins and is never offered for a Förderaufgabe (see LessonReview). --}}
-                    @php($hasStarter = ! $lesson->isPracticeTask() && $lesson->evaluated_submissions_count >= $minReviewGroup)
+                    {{-- The starter board needs enough evaluated hand-ins, is never offered for a Förderaufgabe (see LessonReview) and only to those who may read the results. --}}
+                    @php($hasStarter = ! $lesson->isPracticeTask() && $lesson->evaluated_submissions_count >= $minReviewGroup && auth()->user()->can('viewResults', $lesson))
 
                     <li class="-mx-3 flex flex-wrap items-center gap-x-4 rounded-xl px-3 transition hover:bg-gray-50 dark:hover:bg-white/5">
                         <a
@@ -59,13 +63,13 @@
                                             {{ $lesson->submissions_count }} / {{ $lesson->students_count }} abgegeben
                                         </span>
 
-                                        <x-filament::badge color="success" :icon="Heroicon::OutlinedPaperAirplane">
-                                            Verteilt{{ $lesson->due_on ? ', fällig '.$lesson->due_on->copy()->locale('de')->isoFormat('D.M.') : '' }}
+                                        <x-filament::badge color="primary" :icon="Heroicon::OutlinedCheckCircle">
+                                            Freigegeben{{ $lesson->due_on ? ', fällig '.$lesson->due_on->copy()->locale('de')->isoFormat('D.M.') : '' }}
                                         </x-filament::badge>
                                     </span>
                                 @else
-                                    <x-filament::badge color="gray" :icon="Heroicon::OutlinedPencilSquare">
-                                        Entwurf
+                                    <x-filament::badge color="warning" :icon="Heroicon::OutlinedClock">
+                                        Wartet auf Freigabe
                                     </x-filament::badge>
                                 @endif
                             </span>

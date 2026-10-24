@@ -22,7 +22,7 @@
 
                     <p class="mt-3 max-w-xl text-base text-pretty text-gray-700 sm:text-lg dark:text-gray-300">
                         @if ($openCount === 0)
-                            Gerade ist nichts offen. Neue Hausaufgaben erscheinen hier, sobald deine Lehrkraft sie verteilt.
+                            Gerade ist nichts offen. Neue Hausaufgaben erscheinen hier, sobald deine Lehrkraft sie freigibt.
                         @else
                             Du hast
                             <strong class="font-semibold text-gray-950 dark:text-white">{{ $openCount }} {{ $openCount === 1 ? 'offene Hausaufgabe' : 'offene Hausaufgaben' }}</strong>.

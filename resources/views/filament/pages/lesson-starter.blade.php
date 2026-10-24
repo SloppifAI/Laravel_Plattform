@@ -80,7 +80,7 @@
                 @if ($hasSolutions)
                     <x-filament::button
                         color="gray"
-                        :icon="$showSolutions ? 'heroicon-m-eye-slash' : 'heroicon-m-eye'"
+                        :icon="$showSolutions ? 'heroicon-m-chevron-up' : 'heroicon-m-chevron-down'"
                         wire:click="$toggle('showSolutions')"
                     >
                         {{ $showSolutions ? 'Lösungshinweise ausblenden' : 'Lösungshinweise einblenden' }}

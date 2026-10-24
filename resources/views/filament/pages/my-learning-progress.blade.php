@@ -135,7 +135,7 @@
                                                 </span>
 
                                                 <span class="flex flex-wrap gap-2">
-                                                    <x-filament::button tag="a" :href="WorkOnHomework::getUrl(['lesson' => $lesson])" color="gray" size="sm" :icon="Heroicon::OutlinedEye">
+                                                    <x-filament::button tag="a" :href="WorkOnHomework::getUrl(['lesson' => $lesson])" color="gray" size="sm" :icon="Heroicon::OutlinedDocumentText">
                                                         Ergebnis ansehen<span class="sr-only"> zu {{ $lesson->topic }}</span>
                                                     </x-filament::button>
 

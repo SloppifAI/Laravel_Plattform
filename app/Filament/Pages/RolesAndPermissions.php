@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\NavigationGroup;
 use App\Role;
 use BackedEnum;
 use Filament\Pages\Page;
@@ -35,7 +36,7 @@ class RolesAndPermissions extends Page implements HasTable
         'school' => ['label' => 'Nur eigene Schule', 'color' => 'primary', 'icon' => Heroicon::OutlinedBuildingOffice2],
         'admins' => ['label' => 'Nur Administrationskonten', 'color' => 'primary', 'icon' => Heroicon::OutlinedKey],
         'own' => ['label' => 'Nur eigene', 'color' => 'primary', 'icon' => Heroicon::OutlinedUser],
-        'read' => ['label' => 'Nur ansehen', 'color' => 'info', 'icon' => Heroicon::OutlinedEye],
+        'read' => ['label' => 'Nur ansehen', 'color' => 'info', 'icon' => Heroicon::OutlinedDocumentText],
         'none' => ['label' => 'Nein', 'color' => 'gray', 'icon' => Heroicon::OutlinedMinusCircle],
     ];
 
@@ -47,7 +48,7 @@ class RolesAndPermissions extends Page implements HasTable
 
     protected static ?string $slug = 'rollen-und-rechte';
 
-    protected ?string $subheading = 'Wer auf der Lernplattform was darf. Die Rechte hängen allein an der Rolle eines Kontos.';
+    protected ?string $subheading = 'Wer bei Tuto was darf. Die Rechte hängen allein an der Rolle eines Kontos.';
 
     public static function canAccess(): bool
     {
@@ -58,7 +59,7 @@ class RolesAndPermissions extends Page implements HasTable
 
     public static function getNavigationGroup(): string|UnitEnum|null
     {
-        return auth()->user()?->isOperator() ? 'Plattform' : 'Verwaltung';
+        return auth()->user()?->isOperator() ? NavigationGroup::Plattform : NavigationGroup::Verwaltung;
     }
 
     /**
@@ -71,7 +72,7 @@ class RolesAndPermissions extends Page implements HasTable
         return [
             'schools' => [
                 'ability' => 'Schulen verwalten',
-                'detail' => 'Schulen aufnehmen und sperren. Eine Schuladministration bearbeitet nur die Stammdaten der eigenen Schule.',
+                'detail' => 'Schulen anlegen und sperren. Eine Schuladministration bearbeitet nur die Stammdaten der eigenen Schule.',
                 'operator' => 'all', 'admin' => 'school', 'teacher' => 'none', 'student' => 'none',
             ],
             'users' => [
@@ -90,7 +91,7 @@ class RolesAndPermissions extends Page implements HasTable
                 'operator' => 'all', 'admin' => 'read', 'teacher' => 'read', 'student' => 'none',
             ],
             'lessons' => [
-                'ability' => 'Unterrichtsstunden erfassen und Hausaufgaben verteilen',
+                'ability' => 'Unterrichtsstunden erfassen und Hausaufgaben freigeben',
                 'detail' => 'Lehrkräfte bearbeiten nur ihre eigenen Stunden, die Schuladministration alle Stunden der eigenen Schule. Die Plattform-Administration sieht keine Lerndaten.',
                 'operator' => 'none', 'admin' => 'school', 'teacher' => 'own', 'student' => 'none',
             ],

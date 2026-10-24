@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\PracticeTasks;
 
+use App\Ai\Agents\PracticeTaskDrafter;
 use App\Ai\LessonAssistant;
 use App\Filament\Pages\LearningProgress;
 use App\Filament\Resources\Lessons\LessonResource;
@@ -19,10 +20,12 @@ use Filament\Notifications\Notification;
 use Filament\Notifications\NotificationMailbox;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Http;
+use Laravel\Ai\Exceptions\ProviderOverloadedException;
+use Laravel\Ai\Prompts\AgentPrompt;
 use Livewire\Livewire;
 use Mockery\MockInterface;
 use RuntimeException;
+use Tests\Feature\Ai\EnablesSchoolAi;
 use Tests\Feature\StudentProgress\CreatesLearningResults;
 use Tests\TestCase;
 
@@ -32,6 +35,7 @@ use Tests\TestCase;
 class PracticeTaskCreationTest extends TestCase
 {
     use CreatesLearningResults;
+    use EnablesSchoolAi;
     use RefreshDatabase;
 
     private const string NOTES = <<<'NOTES'
@@ -162,7 +166,7 @@ class PracticeTaskCreationTest extends TestCase
             ], arguments: ['competency' => $this->competency->id])
             ->assertHasNoActionErrors()
             ->assertNoRedirect()
-            ->assertNotified('Förderaufgabe verteilt');
+            ->assertNotified('Förderaufgabe freigegeben');
 
         $lesson = Lesson::query()->where('practice_competency_id', $this->competency->id)->sole();
 
@@ -284,11 +288,11 @@ class PracticeTaskCreationTest extends TestCase
         $this->assertStringContainsString('Demo-Modus', $notification['body']);
     }
 
-    public function test_a_failing_claude_request_creates_nothing_and_does_not_blame_the_demo_mode(): void
+    public function test_a_failing_ai_request_creates_nothing_and_does_not_blame_the_demo_mode(): void
     {
-        config(['services.anthropic.enabled' => true, 'services.anthropic.key' => 'test-key']);
-        Http::preventStrayRequests();
-        Http::fake(['api.anthropic.com/*' => Http::response(['error' => 'overloaded'], 529)]);
+        $this->preventRealAiCalls();
+        $this->enableAiFor($this->teacher->school);
+        PracticeTaskDrafter::fake(fn () => throw ProviderOverloadedException::forProvider('gemini'));
 
         Livewire::actingAs($this->teacher)->test(LearningProgress::class)
             ->callAction('createPracticeTask', data: ['students' => [$this->mia->id], 'distribute' => false], arguments: ['competency' => $this->competency->id])
@@ -302,21 +306,18 @@ class PracticeTaskCreationTest extends TestCase
         $this->assertStringNotContainsString('Demo-Modus', $notification['body']);
     }
 
-    public function test_with_claude_enabled_the_draft_is_stored_and_no_student_names_leave_the_platform(): void
+    public function test_with_the_ai_enabled_the_draft_is_stored_and_no_student_names_leave_the_platform(): void
     {
-        config(['services.anthropic.enabled' => true, 'services.anthropic.key' => 'test-key']);
-        Http::preventStrayRequests();
-        Http::fake(['api.anthropic.com/*' => Http::response([
-            'content' => [['type' => 'text', 'text' => json_encode([
-                'summary' => 'Hier übst du, Versuche auszuwerten.',
-                'questions' => [
-                    ['type' => 'comprehension', 'prompt' => 'Was zeigt der Versuch mit der Wasserpest?', 'expected_answer' => 'Sauerstoff entsteht.'],
-                    ['type' => 'application', 'prompt' => 'Plane einen eigenen Versuch.', 'expected_answer' => 'Eine Variable ändern.'],
-                    ['type' => 'comprehension', 'prompt' => 'Warum braucht die Pflanze Licht?', 'expected_answer' => 'Für die Fotosynthese.'],
-                ],
-            ])]],
-            'stop_reason' => 'end_turn',
-        ])]);
+        $this->preventRealAiCalls();
+        $this->enableAiFor($this->teacher->school);
+        PracticeTaskDrafter::fake([[
+            'summary' => 'Hier übst du, Versuche auszuwerten.',
+            'questions' => [
+                ['type' => 'comprehension', 'prompt' => 'Was zeigt der Versuch mit der Wasserpest?', 'expected_answer' => 'Sauerstoff entsteht.'],
+                ['type' => 'application', 'prompt' => 'Plane einen eigenen Versuch.', 'expected_answer' => 'Eine Variable ändern.'],
+                ['type' => 'comprehension', 'prompt' => 'Warum braucht die Pflanze Licht?', 'expected_answer' => 'Für die Fotosynthese.'],
+            ],
+        ]]);
 
         Livewire::actingAs($this->teacher)->test(LearningProgress::class)
             ->callAction('createPracticeTask', data: ['students' => [$this->mia->id, $this->ben->id], 'distribute' => false], arguments: ['competency' => $this->competency->id])
@@ -327,9 +328,9 @@ class PracticeTaskCreationTest extends TestCase
         $this->assertSame(['Was zeigt der Versuch mit der Wasserpest?', 'Plane einen eigenen Versuch.', 'Warum braucht die Pflanze Licht?'], $lesson->questions->pluck('prompt')->all());
         $this->assertSame([$this->competency->id], $lesson->questions->pluck('competency_id')->unique()->values()->all());
 
-        Http::assertSentCount(1);
-        Http::assertSent(function ($request): bool {
-            $body = $request->body();
+        PracticeTaskDrafter::assertPromptedTimes(1);
+        PracticeTaskDrafter::assertPrompted(function (AgentPrompt $prompt): bool {
+            $body = $prompt->prompt;
 
             foreach ([$this->mia, $this->ben, $this->lena] as $student) {
                 $this->assertStringNotContainsString($student->name, $body);
@@ -360,7 +361,7 @@ class PracticeTaskCreationTest extends TestCase
 
         $page = Livewire::actingAs($this->teacher)->test(LearningProgress::class);
 
-        $page->assertSeeInOrder(['Förderaufgabe vom 22.10., 16:40 Uhr', 'Entwurf, noch nicht verteilt', 'Förderaufgabe vom 22.10., 14:05 Uhr', 'Entwurf, noch nicht verteilt', 'Förderaufgabe vom 20.10., 08:30 Uhr', '1 von 2 abgegeben'])
+        $page->assertSeeInOrder(['Förderaufgabe vom 22.10., 16:40 Uhr', 'Wartet auf Freigabe', 'Förderaufgabe vom 22.10., 14:05 Uhr', 'Wartet auf Freigabe', 'Förderaufgabe vom 20.10., 08:30 Uhr', '1 von 2 abgegeben'])
             ->assertSee(LessonResource::getUrl('edit', ['record' => $published]), false)
             ->assertSee(LessonResource::getUrl('edit', ['record' => $ownDraft]), false)
             ->assertDontSee('Förderaufgabe vom 23.10.')
@@ -514,7 +515,7 @@ class PracticeTaskCreationTest extends TestCase
         Livewire::actingAs($this->teacher)->test(LearningProgress::class)
             ->callAction('createPracticeTask', data: ['students' => [$this->mia->id], 'distribute' => true, 'due_on' => today()->addWeek()->toDateString()], arguments: $arguments);
         $distributed = $this->sentNotifications()->sole();
-        $this->assertSame('Förderaufgabe verteilt', $distributed['title']);
+        $this->assertSame('Förderaufgabe freigegeben', $distributed['title']);
         $this->assertStringContainsString('Demo-Modus', $distributed['body']);
         $this->assertStringNotContainsString('bitte prüfe', $distributed['body']);
 
@@ -522,7 +523,8 @@ class PracticeTaskCreationTest extends TestCase
             ->callAction('createPracticeTask', data: ['students' => [$this->ben->id], 'distribute' => false], arguments: $arguments);
         $this->assertStringContainsString('bitte prüfe und passe sie an', $this->sentNotifications()->sole()['body']);
 
-        config(['services.anthropic.enabled' => true]);
+        $this->preventRealAiCalls();
+        $this->enableAiFor($this->teacher->school);
 
         Livewire::actingAs($this->teacher)->test(LearningProgress::class)
             ->mountAction('createPracticeTask', $arguments)

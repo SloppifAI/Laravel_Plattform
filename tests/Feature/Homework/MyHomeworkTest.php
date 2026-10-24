@@ -4,6 +4,7 @@ namespace Tests\Feature\Homework;
 
 use App\Filament\Pages\MyHomework;
 use App\Filament\Pages\WorkOnHomework;
+use App\Models\Competency;
 use App\Models\Lesson;
 use App\Models\SchoolClass;
 use App\Models\Submission;
@@ -48,6 +49,22 @@ class MyHomeworkTest extends TestCase
             ->assertSee(['Offen', 'Überfällig', 'Abgegeben', 'Gut verstanden']);
 
         $this->assertSame('2', MyHomework::getNavigationBadge());
+    }
+
+    public function test_a_practice_task_is_marked_on_a_phone_as_well(): void
+    {
+        $student = User::factory()->student()->create();
+        $ordinary = Lesson::factory()->publishedFor([$student])->create();
+        $practice = Lesson::factory()->publishedFor([$student])->create(['practice_competency_id' => Competency::factory()->create()->id]);
+        $this->actingAs($student);
+
+        $topic = Livewire::test(MyHomework::class)->instance()->getTable()->getColumn('topic');
+
+        // The badge sits under the topic, a column that is never hidden, so the stacked cards of a phone show it.
+        $this->assertStringContainsString('Förderaufgabe', $topic->record($practice)->getDescriptionBelow()->toHtml());
+        $this->assertNull($topic->record($ordinary)->getDescriptionBelow());
+        $this->assertNull($topic->getHiddenFrom());
+        $this->assertNull($topic->getVisibleFrom());
     }
 
     public function test_friendly_empty_state_without_homework(): void

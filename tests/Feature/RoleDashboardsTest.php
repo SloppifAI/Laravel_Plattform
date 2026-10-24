@@ -52,7 +52,7 @@ class RoleDashboardsTest extends TestCase
             ['Schüler:innen' => 3, 'Lehrkräfte' => 2, 'Administration' => 1, 'Klassen' => 1, 'Unterrichtsstunden' => 3, 'Abgaben diese Woche' => 2],
             array_map(fn (array $stat): mixed => $stat[0], $statsA),
         );
-        $this->assertSame('2 davon mit verteilter Hausaufgabe', $statsA['Unterrichtsstunden'][1]);
+        $this->assertSame('2 davon mit freigegebener Hausaufgabe', $statsA['Unterrichtsstunden'][1]);
 
         $this->actingAs($schoolB['admin']);
         $statsB = $this->statsOf(AdminStatsWidget::class);
@@ -61,7 +61,7 @@ class RoleDashboardsTest extends TestCase
             ['Schüler:innen' => 5, 'Lehrkräfte' => 1, 'Administration' => 2, 'Klassen' => 2, 'Unterrichtsstunden' => 4, 'Abgaben diese Woche' => 4],
             array_map(fn (array $stat): mixed => $stat[0], $statsB),
         );
-        $this->assertSame('3 davon mit verteilter Hausaufgabe', $statsB['Unterrichtsstunden'][1]);
+        $this->assertSame('3 davon mit freigegebener Hausaufgabe', $statsB['Unterrichtsstunden'][1]);
     }
 
     public function test_admins_open_their_start_page_and_the_other_school_stays_out_of_it(): void
@@ -152,7 +152,7 @@ class RoleDashboardsTest extends TestCase
 
         $stats = $this->statsOf(TeacherStatsWidget::class);
 
-        $this->assertSame(['–', 'Noch keine Hausaufgabe verteilt'], $stats['Ø Verständnis der letzten Hausaufgabe']);
+        $this->assertSame(['–', 'Noch keine Hausaufgabe freigegeben'], $stats['Ø Verständnis der letzten Hausaufgabe']);
         $this->assertSame(['0 / 0', 'Gerade läuft keine Hausaufgabe · Förderaufgaben: 1 / 1'], $stats['Abgaben offener Hausaufgaben']);
     }
 

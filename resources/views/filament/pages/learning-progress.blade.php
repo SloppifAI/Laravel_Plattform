@@ -126,7 +126,7 @@
                     <h3 class="text-sm font-semibold text-gray-950 dark:text-white">Förderaufgaben auf Knopfdruck</h3>
 
                     <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                        Zu jeder Kompetenz mit Förderbedarf entwirft die KI drei bis vier Übungsfragen aus den betroffenen Stunden. Du prüfst sie, bevor sie verteilt werden, oder verteilst sie direkt.
+                        Zu jeder Kompetenz mit Förderbedarf entwirft die KI drei bis vier Übungsfragen aus den betroffenen Stunden. Du prüfst sie, bevor sie freigegeben werden, oder gibst sie direkt frei.
                     </p>
 
                     <ul class="mt-4 divide-y divide-gray-950/5 dark:divide-white/10">
@@ -162,7 +162,7 @@
                                         @if ($task->isPublished())
                                             {{ $task->submissions_count }} von {{ $task->students_count }} abgegeben
                                         @else
-                                            Entwurf, noch nicht verteilt
+                                            Wartet auf Freigabe
                                         @endif
                                     </p>
                                 @endforeach

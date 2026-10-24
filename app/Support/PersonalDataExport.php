@@ -4,11 +4,14 @@ namespace App\Support;
 
 use App\MessageAuthor;
 use App\Models\Answer;
+use App\Models\ClassBookEntry;
 use App\Models\ExplanationMessage;
 use App\Models\ExplanationSession;
 use App\Models\Lesson;
 use App\Models\Submission;
 use App\Models\User;
+use App\QuestionLevel;
+use Illuminate\Notifications\DatabaseNotification;
 
 /**
  * Everything the platform stores about one person, as plain JSON-serialisable data with German keys
@@ -48,14 +51,42 @@ class PersonalDataExport
             $export['zugewiesene_hausaufgaben'] = self::assignedHomework($user);
             $export['abgaben'] = self::submissions($user, $viewer);
             $export['erklaer_mir_gespraeche'] = self::explanationSessions($user, $viewer);
+            $export['klassenbuch_fehlzeiten'] = self::classBookAbsences($user, $viewer);
         }
 
         if ($user->isTeacher()) {
             $export['klassenleitung'] = $user->ledClasses()->orderBy('name')->pluck('name')->all();
             $export['unterrichtsstunden'] = self::taughtLessons($user, $viewer);
+            $export['klassenbuch_eintraege'] = self::classBookEntries($user, $viewer);
+        }
+
+        // Students and teachers always get the section; an administration only when it holds entries (e.g. as the teacher of a lesson).
+        $notifications = self::notifications($user);
+
+        if ($notifications !== [] || $user->isStudent() || $user->isTeacher()) {
+            $export['benachrichtigungen'] = $notifications;
         }
 
         return $export;
+    }
+
+    /**
+     * The bell entries of the account; they carry only texts about the person's own lessons and homework.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private static function notifications(User $user): array
+    {
+        return $user->notifications()
+            ->oldest()
+            ->get()
+            ->map(fn (DatabaseNotification $notification): array => [
+                'titel' => $notification->data['title'] ?? null,
+                'text' => $notification->data['body'] ?? null,
+                'erhalten_am' => $notification->created_at?->toIso8601String(),
+                'gelesen_am' => $notification->read_at?->toIso8601String(),
+            ])
+            ->all();
     }
 
     /**
@@ -102,7 +133,8 @@ class PersonalDataExport
                 'antworten' => $submission->answers
                     ->sortBy(fn (Answer $answer): array => [$answer->question->position, $answer->id])
                     ->map(fn (Answer $answer): array => [
-                        'frage' => $answer->question->prompt,
+                        'frage' => $answer->askedPrompt(),
+                        'stufe' => QuestionLevel::tryFrom((string) $answer->level)?->getLabel(),
                         'antwort' => $answer->answer,
                         'punkte' => $answer->score,
                         'rueckmeldung' => $answer->feedback,
@@ -175,9 +207,65 @@ class PersonalDataExport
     }
 
     /**
+     * The days the student is marked absent in a Klassenbuch: date, subject, class and status of the entry, without
+     * the other students and the teacher's texts.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private static function classBookAbsences(User $student, User $viewer): array
+    {
+        return ClassBookEntry::query()
+            ->with('schoolClass')
+            ->whereJsonContains('absent_student_ids', $student->getKey())
+            ->orderBy('held_on')
+            ->orderBy('id')
+            ->get()
+            ->filter(fn (ClassBookEntry $entry): bool => self::isVisible($viewer, $student, $entry))
+            ->values()
+            ->map(fn (ClassBookEntry $entry): array => [
+                'datum' => $entry->held_on->toDateString(),
+                'fach' => $entry->subject,
+                'klasse' => $entry->schoolClass->name,
+                'status' => $entry->status()->getLabel(),
+            ])
+            ->all();
+    }
+
+    /**
+     * The Klassenbuch entries the teacher wrote, with their own texts; of the absent students only the number.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private static function classBookEntries(User $teacher, User $viewer): array
+    {
+        return ClassBookEntry::query()
+            ->with('schoolClass')
+            ->where('teacher_id', $teacher->getKey())
+            ->orderBy('held_on')
+            ->orderBy('id')
+            ->get()
+            ->filter(fn (ClassBookEntry $entry): bool => self::isVisible($viewer, $teacher, $entry))
+            ->values()
+            ->map(fn (ClassBookEntry $entry): array => [
+                'klasse' => $entry->schoolClass->name,
+                'datum' => $entry->held_on->toDateString(),
+                'stunde' => $entry->period,
+                'fach' => $entry->subject,
+                'thema' => $entry->topic,
+                'unterrichtsinhalt' => $entry->content,
+                'hausaufgabe' => $entry->homework,
+                'bemerkungen' => $entry->remarks,
+                'anzahl_fehlende_schueler' => count($entry->absent_student_ids ?? []),
+                'status' => $entry->status()->getLabel(),
+                'bestaetigt_am' => $entry->confirmed_at?->toIso8601String(),
+            ])
+            ->all();
+    }
+
+    /**
      * The owner sees everything of their own; anybody else only what their own policies allow.
      */
-    private static function isVisible(User $viewer, User $owner, Lesson|Submission|ExplanationSession $record): bool
+    private static function isVisible(User $viewer, User $owner, Lesson|Submission|ExplanationSession|ClassBookEntry $record): bool
     {
         return $viewer->is($owner) || $viewer->can('view', $record);
     }

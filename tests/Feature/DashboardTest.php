@@ -91,7 +91,7 @@ class DashboardTest extends TestCase
             ->assertSee('Klasse 7b')
             ->assertSee('1 / 2 abgegeben')
             ->assertSee('Zellatmung')
-            ->assertSee('Entwurf')
+            ->assertSee(['Freigegeben, fällig', 'Wartet auf Freigabe'])
             ->assertDontSee('Stunde einer anderen Lehrkraft')
             ->assertDontSee('Als Nächstes fällig')
             ->assertDontSee('Abgaben diese Woche');

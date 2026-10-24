@@ -70,7 +70,7 @@ class EnsureSchoolIsActive extends Authenticate
         }
 
         abort(403, $user->isAdmin()
-            ? 'Deine Schule hat den Auftragsverarbeitungsvertrag noch nicht angenommen. Bis dahin kannst du nur die Seite „Meine Schule“ nutzen.'
-            : 'Deine Schule hat den Auftragsverarbeitungsvertrag noch nicht angenommen. Bis dahin ist die Lernplattform gesperrt. Bitte wende dich an die Schuladministration deiner Schule.');
+            ? __('Deine Schule hat den Auftragsverarbeitungsvertrag noch nicht angenommen. Bis dahin kannst du nur die Seite „Meine Schule“ nutzen.')
+            : __('Deine Schule hat den Auftragsverarbeitungsvertrag noch nicht angenommen. Bis dahin ist Tuto für deine Schule gesperrt. Bitte wende dich an die Schuladministration deiner Schule.'));
     }
 }

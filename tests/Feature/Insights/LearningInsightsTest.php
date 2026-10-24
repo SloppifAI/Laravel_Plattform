@@ -19,7 +19,7 @@ class LearningInsightsTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_teachers_see_classes_they_lead_or_teach_in_and_admins_those_of_their_school(): void
+    public function test_teachers_see_classes_they_lead_or_are_assigned_to_and_admins_those_of_their_school(): void
     {
         $ledClass = SchoolClass::factory()->create();
         $school = $ledClass->school;
@@ -27,9 +27,11 @@ class LearningInsightsTest extends TestCase
         $taughtClass = $this->classIn($school);
         $colleagueClass = $this->classIn($school);
         $otherSchoolClass = SchoolClass::factory()->create();
+        $taughtClass->teachers()->attach($teacher);
         Lesson::factory()->for($taughtClass)->for($teacher, 'teacher')->publishedFor()->create();
-        // A throwaway draft in a colleague's class grants no insight into it.
+        // Neither a draft nor a published lesson in a colleague's class grants insight into it, only the assignment does.
         Lesson::factory()->for($colleagueClass)->for($teacher, 'teacher')->create();
+        Lesson::factory()->for($colleagueClass)->for($teacher, 'teacher')->publishedFor()->create();
 
         $ledStudent = User::factory()->student($ledClass)->create();
         $taughtStudent = User::factory()->student($taughtClass)->create();

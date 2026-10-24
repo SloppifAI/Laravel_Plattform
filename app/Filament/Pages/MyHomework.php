@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\NavigationGroup;
 use App\Models\Lesson;
 use App\Models\User;
 use App\UnderstandingLevel;
@@ -32,7 +33,7 @@ class MyHomework extends Page implements HasTable
 
     protected static ?string $title = 'Meine Hausaufgaben';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Lernen';
+    protected static string|UnitEnum|null $navigationGroup = NavigationGroup::Lernen;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedClipboardDocumentList;
 
@@ -82,6 +83,8 @@ class MyHomework extends Page implements HasTable
                 TextColumn::make('topic')
                     ->label('Thema')
                     ->description(fn (Lesson $record): string => $record->subject, position: 'above')
+                    // The date column below is hidden on a phone, so the stacked cards carry the badge under the topic instead.
+                    ->description(fn (Lesson $record) => $record->isPracticeTask() ? view('filament.resources.lessons.practice-badge', ['class' => 'md:hidden']) : null, position: 'below')
                     ->weight(FontWeight::Medium)
                     ->wrap(),
                 // A Förderaufgabe was not held as a lesson, so it shows its kind instead of a date.

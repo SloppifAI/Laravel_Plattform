@@ -5,12 +5,18 @@ namespace App\Filament\Pages;
 use App\Ai\LessonAssistant;
 use App\Models\Lesson;
 use App\Models\Question;
+use App\Models\StudentQuestion;
 use App\Models\Submission;
 use App\Models\User;
+use App\QuestionLevel;
+use App\Support\AskTeacher;
+use App\Support\Notify;
 use App\UnderstandingLevel;
+use Closure;
 use Filament\Actions\Action;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\ToggleButtons;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
@@ -23,18 +29,22 @@ use Filament\Schemas\Components\Form;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Text;
 use Filament\Schemas\Components\UnorderedList;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Number;
+use Illuminate\Support\Str;
 use Livewire\Attributes\Locked;
 use Throwable;
 
 /**
- * One homework for the logged-in student: write an own summary, answer the questions, hand in once.
- * The AI checks the hand-in; only then the teacher's official summary is revealed, so it can't be copied.
+ * One homework for the logged-in student: read the teacher's summary of the lesson, answer the questions, write an own
+ * summary, hand in once. The AI checks the hand-in; the results page shows the teacher's summary once more.
  */
 class WorkOnHomework extends Page
 {
@@ -45,6 +55,16 @@ class WorkOnHomework extends Page
      */
     public const int MINIMUM_PRACTICE_SUMMARY_LENGTH = 40;
 
+    /**
+     * Texts with fewer words are not checked for copying: a short answer may well repeat a phrase of the summary.
+     */
+    public const int COPY_MINIMUM_WORDS = 12;
+
+    /**
+     * Share of a text's word quadruples found in the teacher's summary from which the text counts as copied.
+     */
+    public const float COPY_SHARE = 0.7;
+
     protected static ?string $slug = 'hausaufgaben/{lesson}';
 
     protected static bool $shouldRegisterNavigation = false;
@@ -53,9 +73,14 @@ class WorkOnHomework extends Page
     public Lesson $lesson;
 
     /**
-     * @var array{summary?: string|null, answers?: array<int, string|null>}|null
+     * @var array{summary?: string|null, answers?: array<int, string|null>, levels?: array<int, string|null>}|null
      */
     public ?array $data = [];
+
+    /**
+     * Shows the teacher's summary and questions in Einfache Sprache. The switch remembers itself in the student's browser.
+     */
+    public bool $simpleLanguage = false;
 
     public static function canAccess(): bool
     {
@@ -65,6 +90,15 @@ class WorkOnHomework extends Page
     public static function getRelativeRouteName(Panel $panel): string
     {
         return 'hausaufgaben.bearbeiten';
+    }
+
+    /**
+     * The lesson is a public property: on every later request (switch, level choice, hand-in) re-check that it is
+     * still delegated to this student, before anything is sent to the assistant or stored.
+     */
+    public function hydrate(): void
+    {
+        Gate::authorize('view', $this->lesson);
     }
 
     public function mount(Lesson $lesson): void
@@ -98,15 +132,39 @@ class WorkOnHomework extends Page
         return [MyHomework::getUrl() => 'Meine Hausaufgaben', $this->lesson->isPracticeTask() ? 'Förderaufgabe' : 'Hausaufgabe'];
     }
 
+    /**
+     * The questions first, the student's own summary last: the teacher's summary above them is the material to work with.
+     */
     public function form(Schema $schema): Schema
     {
         return $schema
             ->statePath('data')
             ->components([
-                Section::make('Deine Zusammenfassung')
+                ...$this->lesson->questions->values()->map(fn (Question $question, int $index): Section => Section::make('Frage '.($index + 1))
+                    ->description($question->type->getDescription())
+                    ->afterHeader([$this->typeBadge($question)])
+                    ->schema([
+                        ToggleButtons::make("levels.{$question->id}")
+                            ->label('Stufe')
+                            ->helperText('Such dir die Fassung aus, die zu dir passt. Du kannst jederzeit wechseln.')
+                            ->options(collect($question->availableLevels())->mapWithKeys(fn (QuestionLevel $level): array => [$level->value => $level->getLabel()])->all())
+                            ->default(QuestionLevel::Standard->value)
+                            ->inline()
+                            ->live()
+                            ->visible($question->hasLevels()),
+                        Textarea::make("answers.{$question->id}")
+                            ->label(fn (Get $get): ?string => $this->promptText($question, $question->levelFor($get("levels.{$question->id}"))))
+                            ->required()
+                            ->maxLength(3000)
+                            ->rows(4)
+                            ->autosize()
+                            ->rules([fn (): Closure => $this->notCopiedFromTheTeacherSummary()])
+                            ->validationMessages(['required' => 'Bitte beantworte diese Frage.']),
+                    ]))->all(),
+                Section::make('In deinen Worten')
                     ->description($this->lesson->isPracticeTask()
-                        ? 'Schreib es so, dass es jemand versteht, der das Thema nicht kennt.'
-                        : 'Was war wichtig in der Stunde? Schreib es so, dass es jemand versteht, der nicht dabei war.')
+                        ? 'Schreib es so, dass es jemand versteht, der das Thema nicht kennt. Nicht abschreiben, sondern in deinen eigenen Worten.'
+                        : 'Was war wichtig in der Stunde? Schreib es so, dass es jemand versteht, der nicht dabei war. Nicht abschreiben, sondern in deinen eigenen Worten.')
                     ->schema([
                         Textarea::make('summary')
                             ->label($this->lesson->isPracticeTask() ? "Was du jetzt über „{$this->competencyName()}“ weißt" : 'Zusammenfassung in deinen Worten')
@@ -116,23 +174,12 @@ class WorkOnHomework extends Page
                             ->maxLength(5000)
                             ->rows(6)
                             ->autosize()
+                            ->rules([fn (): Closure => $this->notCopiedFromTheTeacherSummary()])
                             ->validationMessages([
                                 'required' => 'Bitte schreib deine Zusammenfassung.',
                                 'min' => 'Schreib bitte etwas mehr, mindestens :min Zeichen.',
                             ]),
                     ]),
-                ...$this->lesson->questions->values()->map(fn (Question $question, int $index): Section => Section::make('Frage '.($index + 1))
-                    ->description($question->type->getDescription())
-                    ->afterHeader([$this->typeBadge($question)])
-                    ->schema([
-                        Textarea::make("answers.{$question->id}")
-                            ->label($question->prompt)
-                            ->required()
-                            ->maxLength(3000)
-                            ->rows(4)
-                            ->autosize()
-                            ->validationMessages(['required' => 'Bitte beantworte diese Frage.']),
-                    ]))->all(),
             ]);
     }
 
@@ -141,16 +188,20 @@ class WorkOnHomework extends Page
         $submission = $this->submission();
 
         if ($submission !== null) {
-            return $schema->components($this->resultComponents($submission));
+            return $schema->components([$this->simpleLanguageSwitch(), ...$this->resultComponents($submission)]);
         }
 
         return $schema->components([
+            $this->simpleLanguageSwitch(),
             Callout::make($this->lesson->isPracticeTask()
                 ? "Schreib in ein paar Sätzen auf, was du jetzt über „{$this->competencyName()}“ weißt – die KI prüft danach, ob du es verstanden hast."
                 : 'Fasse die Stunde in deinen eigenen Worten zusammen – die KI prüft danach, ob du alles verstanden hast.')
-                ->description('Beantworte danach die Fragen. Die Zusammenfassung deiner Lehrkraft siehst du nach der Abgabe.')
+                ->description('So gehst du vor: Lies zuerst die Zusammenfassung deiner Lehrkraft, beantworte dann die Fragen und schreib deine eigene Zusammenfassung ganz unten.')
                 ->info()
                 ->icon(Heroicon::OutlinedLightBulb),
+            Section::make($this->lesson->isPracticeTask() ? "Zusammenfassung zu „{$this->competencyName()}“" : 'Zusammenfassung der Stunde')
+                ->icon(Heroicon::OutlinedAcademicCap)
+                ->schema([$this->teacherSummary()]),
             Form::make([EmbeddedSchema::make('form')])
                 ->id('form')
                 ->livewireSubmitHandler('submit')
@@ -168,8 +219,6 @@ class WorkOnHomework extends Page
 
     public function submit(): void
     {
-        // The lesson is a public property: re-check on every request that it is still delegated to this student.
-        Gate::authorize('view', $this->lesson);
         Gate::authorize('create', Submission::class);
 
         $data = $this->form->getState();
@@ -184,6 +233,8 @@ class WorkOnHomework extends Page
                 $submission->answers()->createMany($this->lesson->questions->map(fn (Question $question): array => [
                     'question_id' => $question->getKey(),
                     'answer' => $data['answers'][$question->getKey()],
+                    // Only a question with levels records which one was chosen; a level the question does not have counts as Standard.
+                    'level' => $question->hasLevels() ? $question->levelFor($data['levels'][$question->getKey()] ?? null)->value : null,
                 ]));
 
                 return $submission;
@@ -193,6 +244,13 @@ class WorkOnHomework extends Page
             $this->redirect(static::getUrl(['lesson' => $this->lesson]));
 
             return;
+        }
+
+        // The hand-in is stored: a failing bell (e.g. a deadlock when a whole class hands in) must not turn it into an error.
+        try {
+            Notify::submissionReceived($submission);
+        } catch (Throwable $exception) {
+            report($exception);
         }
 
         $this->evaluateAndNotify($submission);
@@ -205,17 +263,25 @@ class WorkOnHomework extends Page
                 ->label('Jetzt auswerten lassen')
                 ->icon(Heroicon::OutlinedArrowPath)
                 ->visible(fn (): bool => $this->submission()?->isEvaluated() === false)
-                ->action(function (): void {
-                    Gate::authorize('view', $this->lesson);
+                ->action(fn () => $this->evaluateAndNotify($this->submission())),
+            AskTeacher::action(function (): array {
+                Gate::authorize('createForLesson', [StudentQuestion::class, $this->lesson]);
+                // Hidden is not forbidden: the question belongs to the result page, so it is refused before the evaluation.
+                abort_unless($this->canAskTeacher(), 403);
 
-                    $this->evaluateAndNotify($this->submission());
-                }),
+                return [$this->lesson, null];
+            })->visible(fn (): bool => $this->canAskTeacher()),
             Action::make('explain')
                 ->label('Thema Tuto erklären')
                 ->icon(Heroicon::OutlinedChatBubbleLeftRight)
                 ->color('gray')
                 ->url(fn (): string => ExplainIt::getUrl(['lesson' => $this->lesson->getKey()])),
         ];
+    }
+
+    private function canAskTeacher(): bool
+    {
+        return $this->submission()?->isEvaluated() === true;
     }
 
     private function evaluateAndNotify(Submission $submission): void
@@ -299,14 +365,16 @@ class WorkOnHomework extends Page
                 ->schema([$this->plainText('summary', $submission->summary, 'Deine Zusammenfassung')->hiddenLabel()]),
             ...$this->lesson->questions->values()->map(function (Question $question, int $index) use ($answers): Section {
                 $answer = $answers->get($question->getKey());
+                $level = $answer?->level === null ? QuestionLevel::Standard : $question->levelFor($answer->level);
 
                 return Section::make('Frage '.($index + 1))
                     ->afterHeader(array_filter([
                         $this->typeBadge($question),
+                        $level === QuestionLevel::Standard ? null : Text::make("Stufe {$level->getLabel()}")->badge()->color('gray'),
                         $answer?->score === null ? null : $this->scoreBadge($answer->score),
                     ]))
                     ->schema([
-                        Text::make($question->prompt),
+                        Text::make($this->promptText($question, $level)),
                         $this->plainText("answer_{$question->getKey()}", $answer?->answer, 'Deine Antwort'),
                         $this->plainText("answer_feedback_{$question->getKey()}", $answer?->feedback, 'Rückmeldung')
                             ->visible(filled($answer?->feedback)),
@@ -314,15 +382,126 @@ class WorkOnHomework extends Page
             })->all(),
             Section::make($this->lesson->isPracticeTask() ? "So fasst deine Lehrkraft „{$this->competencyName()}“ zusammen" : 'So fasst deine Lehrkraft die Stunde zusammen')
                 ->icon(Heroicon::OutlinedAcademicCap)
-                ->schema([
-                    TextEntry::make('lesson_summary')
-                        ->label('Zusammenfassung deiner Lehrkraft')
-                        ->hiddenLabel()
-                        ->state($this->lesson->summary)
-                        ->markdown()
-                        ->placeholder('Deine Lehrkraft hat noch keine Zusammenfassung hinterlegt.'),
-                ]),
+                ->schema([$this->teacherSummary()]),
         ];
+    }
+
+    /**
+     * The teacher's official summary, shown before the questions and again with the result.
+     */
+    private function teacherSummary(): TextEntry
+    {
+        return TextEntry::make('lesson_summary')
+            ->label('Zusammenfassung deiner Lehrkraft')
+            ->hiddenLabel()
+            ->state(fn (): ?string => $this->simplified($this->lesson, 'summary_simple', $this->lesson->summary))
+            ->markdown()
+            ->placeholder('Deine Lehrkraft hat noch keine Zusammenfassung hinterlegt.');
+    }
+
+    private function simpleLanguageSwitch(): View
+    {
+        return View::make('filament.pages.homework-simple-language')
+            ->viewData(['storageKey' => 'tuto-einfache-sprache-'.$this->student()->getKey(), 'aiActive' => $this->lesson->school?->aiEnabled() ?? false]);
+    }
+
+    /**
+     * The text of a question for the level the student chose, in Einfache Sprache when the switch is on.
+     */
+    private function promptText(Question $question, QuestionLevel $level): ?string
+    {
+        return $this->simplified($question, $level->simpleColumn(), $question->promptFor($level));
+    }
+
+    /**
+     * With the switch on, the "Einfache Sprache" version of a teacher's text: the copy cached in `$column`, which the
+     * assistant writes on first request for every student after. Only the teacher's text is sent, never a student's own.
+     * If the assistant fails, the original stays and the switch goes off, so the next render does not try again.
+     */
+    private function simplified(Model $model, string $column, ?string $source): ?string
+    {
+        if (! $this->simpleLanguage || blank($source)) {
+            return $source;
+        }
+
+        if (filled($model->getAttribute($column))) {
+            return $model->getAttribute($column);
+        }
+
+        try {
+            $simple = app(LessonAssistant::class)->simplify($source, $this->lesson);
+        } catch (Throwable $exception) {
+            report($exception);
+
+            $this->simpleLanguage = false;
+
+            Notification::make()
+                ->warning()
+                ->title('Einfache Sprache ist gerade nicht verfügbar')
+                ->body('Du siehst die Texte deiner Lehrkraft so, wie sie geschrieben sind.')
+                ->send();
+
+            return $source;
+        }
+
+        // Compare-and-set on the source: if the teacher corrected the text while the assistant worked, the correction has
+        // already cleared the copy and the stale one must not be written back. shortcut: compared with the database
+        // collation, so a correction that differs only in case stays unnoticed.
+        $sourceColumn = Str::beforeLast($column, '_simple');
+
+        Model::withoutTimestamps(fn (): int => $model->newQuery()->whereKey($model->getKey())->where($sourceColumn, $source)->update([$column => $simple]));
+        $model->forceFill([$column => $simple])->syncOriginalAttribute($column);
+
+        return $simple;
+    }
+
+    /**
+     * The teacher's summary is on screen while the student writes, so text taken over from it word for word shows no
+     * understanding: a text of at least COPY_MINIMUM_WORDS words is refused when COPY_SHARE of its word quadruples
+     * occur in the summary. Linear in the length of both texts.
+     *
+     * @return Closure(string, mixed, Closure): void
+     */
+    private function notCopiedFromTheTeacherSummary(): Closure
+    {
+        return function (string $attribute, mixed $value, Closure $fail): void {
+            $words = $this->words((string) $value);
+            // The student may have read the simple version of the summary instead of the original.
+            $teacherQuadruples = $this->quadruples($this->words($this->lesson->summary.' '.$this->lesson->summary_simple));
+
+            if (count($words) < self::COPY_MINIMUM_WORDS || $teacherQuadruples === []) {
+                return;
+            }
+
+            $quadruples = $this->quadruples($words);
+
+            if (count(array_intersect_key($quadruples, $teacherQuadruples)) / count($quadruples) >= self::COPY_SHARE) {
+                $fail('Das sieht aus wie aus der Zusammenfassung deiner Lehrkraft abgeschrieben. Schreib es bitte in deinen eigenen Worten.');
+            }
+        };
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function words(string $text): array
+    {
+        return preg_split('/[^\p{L}\p{N}]+/u', mb_strtolower($text), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+    }
+
+    /**
+     * @param  list<string>  $words
+     * @return array<string, true>
+     */
+    private function quadruples(array $words): array
+    {
+        $quadruples = [];
+
+        for ($index = 0; $index + 3 < count($words); $index++) {
+            $quadruples[implode(' ', array_slice($words, $index, 4))] = true;
+        }
+
+        return $quadruples;
     }
 
     private function minimumSummaryLength(): int

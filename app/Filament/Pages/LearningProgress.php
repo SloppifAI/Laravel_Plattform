@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\NavigationGroup;
 use App\Filament\Resources\Lessons\LessonResource;
 use App\Models\Competency;
 use App\Models\Lesson;
@@ -39,7 +40,7 @@ class LearningProgress extends Page
 
     protected static ?string $slug = 'lernstand';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Unterricht';
+    protected static string|UnitEnum|null $navigationGroup = NavigationGroup::Unterricht;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedChartBar;
 
@@ -58,7 +59,7 @@ class LearningProgress extends Page
 
     /**
      * "Förderaufgabe erstellen" for one competency of the selected class (argument `competency`): the AI drafts the
-     * task, which stays a draft for review or, with "Direkt verteilen", goes to the chosen students right away.
+     * task, which stays a draft for review or, with "Direkt freigeben", goes to the chosen students right away.
      */
     public function createPracticeTaskAction(): Action
     {
@@ -68,7 +69,7 @@ class LearningProgress extends Page
             ->size(Size::Small)
             ->authorize(fn (): bool => $this->canCreatePracticeTasks())
             ->modalHeading(fn (array $arguments): string => 'Förderaufgabe: '.$this->practiceTaskContext($arguments['competency'] ?? null)['competency']->name)
-            ->modalDescription(config('services.anthropic.enabled')
+            ->modalDescription($this->isAiActive()
                 ? 'Die KI entwirft aus den Stunden, in denen sich die Lücke gezeigt hat, drei bis vier Übungsfragen von leicht bis schwer. Sie erhält Fach, Kompetenz, Stundennotizen und anonyme Hinweise, keine Namen.'
                 : 'Demo-Modus: Der Entwurf entsteht lokal aus den Stundennotizen, es wird nichts an eine KI gesendet. Drei bis vier Übungsfragen von leicht bis schwer.')
             ->modalSubmitActionLabel('Förderaufgabe erstellen')
@@ -94,8 +95,8 @@ class LearningProgress extends Page
                     ->bulkToggleable()
                     ->columns(2),
                 Toggle::make('distribute')
-                    ->label('Direkt verteilen')
-                    ->helperText('Aus: Du prüfst die Förderaufgabe zuerst als Entwurf und verteilst sie danach selbst. An: Die Schüler:innen sehen sie sofort in ihrem Lernbereich.'.(config('services.anthropic.enabled') ? '' : ' Im Demo-Modus sind die Fragen Beispielentwürfe – besser erst als Entwurf prüfen.'))
+                    ->label('Direkt freigeben')
+                    ->helperText('Aus: Du prüfst die Förderaufgabe zuerst als Entwurf und gibst sie danach selbst frei. An: Die Schüler:innen sehen sie sofort in ihrem Lernbereich.'.($this->isAiActive() ? '' : ' Im Demo-Modus sind die Fragen Beispielentwürfe – besser erst als Entwurf prüfen.'))
                     ->live(),
                 DatePicker::make('due_on')
                     ->label('Abgabe bis')
@@ -121,7 +122,7 @@ class LearningProgress extends Page
                     Notification::make()
                         ->danger()
                         ->title('KI-Entwurf fehlgeschlagen')
-                        ->body('Es wurde nichts angelegt. Bitte versuche es gleich noch einmal.'.(config('services.anthropic.enabled') ? '' : ' Die KI-Anbindung ist nicht aktiv, die Plattform arbeitet im Demo-Modus.'))
+                        ->body('Es wurde nichts angelegt. Bitte versuche es gleich noch einmal.'.($this->isAiActive() ? '' : ' Die KI-Anbindung ist nicht aktiv, die Plattform arbeitet im Demo-Modus.'))
                         ->persistent()
                         ->send();
 
@@ -129,12 +130,12 @@ class LearningProgress extends Page
                     $action->halt();
                 }
 
-                $demoHint = config('services.anthropic.enabled') ? '' : ' Demo-Modus – KI-Anbindung vorbereitet, aber nicht aktiv.';
+                $demoHint = $this->isAiActive() ? '' : ' Demo-Modus – KI-Anbindung vorbereitet, aber nicht aktiv.';
 
                 if ($dueOn !== null) {
                     Notification::make()
                         ->success()
-                        ->title('Förderaufgabe verteilt')
+                        ->title('Förderaufgabe freigegeben')
                         ->body("An {$studentIds->count()} Schüler:innen, Abgabe bis {$dueOn->format('d.m.Y')}.".$demoHint)
                         ->persistent()
                         ->send();
@@ -145,7 +146,7 @@ class LearningProgress extends Page
                 Notification::make()
                     ->success()
                     ->title('Förderaufgabe als Entwurf angelegt')
-                    ->body('Prüfe Zusammenfassung und Fragen und verteile die Förderaufgabe dann an die ausgewählten Schüler:innen.'.$demoHint.($demoHint === '' ? '' : ' Die Fragen sind Beispielentwürfe, bitte prüfe und passe sie an.'))
+                    ->body('Prüfe Zusammenfassung und Fragen und gib die Förderaufgabe dann für die ausgewählten Schüler:innen frei.'.$demoHint.($demoHint === '' ? '' : ' Die Fragen sind Beispielentwürfe, bitte prüfe und passe sie an.'))
                     ->persistent()
                     ->send();
 
@@ -200,6 +201,14 @@ class LearningProgress extends Page
                 ->orderByDesc('held_on')
                 ->get(),
         ];
+    }
+
+    /**
+     * Whether the signed-in user's school has the AI switched on; otherwise the offline demo logic drafts the tasks.
+     */
+    private function isAiActive(): bool
+    {
+        return auth()->user()?->school?->aiEnabled() ?? false;
     }
 
     /**

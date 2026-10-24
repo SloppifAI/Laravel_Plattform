@@ -23,8 +23,8 @@ use Illuminate\Support\Facades\Gate;
 class LearningInsights
 {
     /**
-     * Admins see every class of their school, teachers the classes of their school they lead or hold published
-     * lessons in (a draft lesson, which any teacher can create for any class, grants nothing), everyone else
+     * Admins see every class of their school, teachers the classes they teach (Klassenleitung or assigned by the
+     * administration, see SchoolClass::scopeTaughtBy(); holding a lesson in a class grants nothing), everyone else
      * (students, platform operators) none.
      *
      * @return Builder<SchoolClass>
@@ -37,15 +37,7 @@ class LearningInsights
             return $query->whereRaw('1 = 0');
         }
 
-        $query->where('school_id', $user->school_id);
-
-        if ($user->isAdmin()) {
-            return $query;
-        }
-
-        return $query->where(fn (Builder $query) => $query
-            ->where('teacher_id', $user->getKey())
-            ->orWhereHas('lessons', fn (Builder $query) => $query->where('teacher_id', $user->getKey())->published()));
+        return $user->isAdmin() ? $query->where('school_id', $user->school_id) : $query->taughtBy($user);
     }
 
     /**
