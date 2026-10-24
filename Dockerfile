@@ -1,7 +1,7 @@
 FROM serversideup/php:8.4-fpm-nginx AS app
 
 USER root
-RUN install-php-extensions intl pdo_sqlsrv
+RUN install-php-extensions intl pdo_mysql
 USER www-data
 
 COPY --chown=www-data:www-data . /var/www/html
