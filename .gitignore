@@ -29,5 +29,7 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 
-# Wissensgraph von graphify, wird lokal mit /graphify erzeugt
+# Lokal: Wissensgraph von graphify (/graphify), rtk-Filter, Composer-Lockfile
 /graphify-out/
+/.rtk/
+/composer.lock
