@@ -1089,7 +1089,7 @@ Die Tests laufen mit einer SQLite-Datenbank im Arbeitsspeicher, ohne Zugang zu e
 
 ## 7. App-Anbindung
 
-Eine Smartphone-App, derzeit die „Tuto-App“, kann sich mit dem Konto einer Lehrkraft oder der Schuladministration verbinden. Sie zeigt die eigenen Stunden, legt neue Stunden an und setzt die Zusammenfassung einer Stunde. Die Verbindung baut auf Laravel Sanctum auf. Die App öffnet die Anmeldeseite von Tuto im Browser und bekommt am Ende einen Zugang. Das Passwort sieht sie nie.
+Eine App, derzeit „Tuto Mic“, kann sich mit dem Konto einer Lehrkraft oder der Schuladministration verbinden. Sie zeigt die eigenen Stunden, legt neue Stunden an und setzt die Zusammenfassung einer Stunde. Die Verbindung baut auf Laravel Sanctum auf. Die App öffnet die Anmeldeseite von Tuto im Browser und bekommt am Ende einen Zugang. Das Passwort sieht sie nie.
 
 ### 7.1 Für Lehrkräfte: App verbinden und Zugang entziehen
 
@@ -1097,12 +1097,12 @@ Verbinden können **Lehrkräfte und Schuladministrationen**. Schüler:innen und 
 
 #### App verbinden
 
-**So erreichst du es:** Du startest das Verbinden in der App. Sie öffnet im Browser deines Handys die Tuto-Seite `/app/verbinden`.
+**So erreichst du es:** Du startest das Verbinden in der App. Sie öffnet im Browser die Tuto-Seite `/app/verbinden`.
 
 1. Melde dich auf der Anmeldeseite von Tuto an, wie sonst auch. Bist du schon angemeldet, entfällt das. Dein Passwort gibst du nur hier ein, nie in der App.
-2. Die Seite „Tuto-App mit Tuto verbinden“ zeigt, was die App **darf**: deine Stunden und Klassen sehen (als Schuladministration die Stunden und Klassen deiner Schule), neue Stunden anlegen und die Zusammenfassung einer Stunde setzen. Und was sie **nicht darf**: Daten deiner Schüler:innen sehen, Ergebnisse und Abgaben sehen, dein Passwort erfahren.
-3. Klicke auf **„Erlauben“**. Mit „Abbrechen“ bekommt die App keinen Zugang: Die Seite zeigt dann „Verbindung abgelehnt“, und die App erfährt mit „Zurück zu Tuto-App“ davon.
-4. Die Seite „Tuto-App ist verbunden“ erscheint, und der Browser versucht, die App zu öffnen. Öffnet sie sich nicht von selbst, klicke auf **„Tuto-App öffnen“**. Damit ist sie verbunden, das Browserfenster kannst du schließen.
+2. Die Seite „Tuto Mic mit Tuto verbinden“ zeigt, was die App **darf**: deine Stunden und Klassen sehen (als Schuladministration die Stunden und Klassen deiner Schule), neue Stunden anlegen und die Zusammenfassung einer Stunde setzen. Und was sie **nicht darf**: Daten deiner Schüler:innen sehen, Ergebnisse und Abgaben sehen, dein Passwort erfahren.
+3. Klicke auf **„Erlauben“**. Mit „Abbrechen“ bekommt die App keinen Zugang: Die Seite zeigt dann „Verbindung abgelehnt“, und die App erfährt mit „Zurück zu Tuto Mic“ davon.
+4. Die Seite „Tuto Mic ist verbunden“ erscheint, und der Browser versucht, die App zu öffnen. Öffnet sie sich nicht von selbst, klicke auf **„Tuto Mic öffnen“**. Damit ist sie verbunden, das Browserfenster kannst du schließen.
 
 Zeigt Tuto statt der Zustimmung eine Fehlerseite, war die Anfrage ungültig, oder dein Konto darf keine App verbinden. Starte das Verbinden dann in der App noch einmal.
 
@@ -1151,7 +1151,7 @@ Ein Zugang gilt 180 Tage, danach verbindest du die App noch einmal. Hast du das 
    Ist die Person nicht angemeldet, leitet Tuto zur normalen Anmeldeseite und danach zu genau dieser Adresse zurück. Eine Anfrage mit unbekannter `client_id`, nicht registrierter `redirect_uri`, fehlendem oder falschem PKCE-Parameter oder ohne `state` zeigt eine Fehlerseite und leitet nie weiter. Schüler:innen, die Plattform-Administration, gesperrte Schulen und Schulen ohne angenommenen AVV bekommen eine Erklärung statt der Zustimmung.
 3. **Zurück in die App.** Nach „Erlauben“ geht es zu `redirect_uri` mit dem Einmal-Code: `tutoapp://callback?code=<64 Zeichen>&state=af0ifjsldkj`. Nach „Abbrechen“ lautet die Adresse `tutoapp://callback?error=access_denied&state=af0ifjsldkj`. Wie der Browser dorthin kommt, hängt von `completion_page` ab:
 
-   - **Abschlussseite** (`true`, Standard): Tuto antwortet mit einer Seite „Tuto-App ist verbunden“ bzw. „Verbindung abgelehnt“. Sie versucht beim Laden, die Adresse zu öffnen (`<meta http-equiv="refresh">`), und hat einen Knopf „Tuto-App öffnen“ bzw. „Zurück zu Tuto-App“, der auf die Adresse verlinkt. Browser blockieren den Sprung in ein fremdes Schema ohne Klick teilweise, Chrome und damit vermutlich auch Android Custom Tabs. Deshalb ist der Knopf der verlässliche Weg. `ASWebAuthenticationSession` auf iOS sollte die Navigation zum Schema auch beim automatischen Sprung abfangen. Auf Geräten getestet ist beides noch nicht. Die Seite wird nicht zwischengespeichert (`Cache-Control: no-store`), sendet keinen Referer (`Referrer-Policy: no-referrer`) und lädt nichts von fremden Servern. Den Code zeigt sie nicht als Text, und weil er nur in der Antwort auf das Formular steht, kommt er in keine URL, die ein Server protokolliert.
+   - **Abschlussseite** (`true`, Standard): Tuto antwortet mit einer Seite „Tuto Mic ist verbunden“ bzw. „Verbindung abgelehnt“. Sie versucht beim Laden, die Adresse zu öffnen (`<meta http-equiv="refresh">`), und hat einen Knopf „Tuto Mic öffnen“ bzw. „Zurück zu Tuto Mic“, der auf die Adresse verlinkt. Browser blockieren den Sprung in ein fremdes Schema ohne Klick teilweise, Chrome und damit vermutlich auch Android Custom Tabs. Deshalb ist der Knopf der verlässliche Weg. `ASWebAuthenticationSession` auf iOS sollte die Navigation zum Schema auch beim automatischen Sprung abfangen. Auf Geräten getestet ist beides noch nicht. Die Seite wird nicht zwischengespeichert (`Cache-Control: no-store`), sendet keinen Referer (`Referrer-Policy: no-referrer`) und lädt nichts von fremden Servern. Den Code zeigt sie nicht als Text, und weil er nur in der Antwort auf das Formular steht, kommt er in keine URL, die ein Server protokolliert.
    - **Weiterleitung** (`false`): Tuto leitet den Browser direkt mit 302 zur Adresse weiter, ohne Seite dazwischen. Das passt, wenn der Browser die App sicher selbst öffnet und sich danach schließt.
 
    Die App prüft, dass `state` stimmt. Der Code gilt **5 Minuten** und lässt sich **einmal** einlösen. Hat die `redirect_uri` schon eine Query, hängt Tuto die Parameter mit `&` an.
