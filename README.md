@@ -199,7 +199,6 @@ Alle Demo-Konten haben das Passwort **`hackathon2026`**. Auf der Anmeldeseite w�
 | `schulleitung` | Schuladministration | Petra Krause | Gesamtschule am Lernpark (Fulda) |
 | `lehrer` | Lehrkraft | Frau Sommer | Klassenleitung 7b |
 | `weber` | Lehrkraft | Thomas Weber | Klassenleitung 7a, unterrichtet auch 7b |
-| `lindner` | Lehrkraft | Sabine Lindner | vertritt für einige Tage die Klasse 7b |
 | `schueler` | Schüler:in | Emilian | Klasse 7b |
 | `ben.krueger`, `lena.schulz`, `jonas.becker`, `elif.yilmaz`, `noah.wagner`, `emma.fischer`, `luca.meyer` | Schüler:innen | Ben Krüger, Lena Schulz, Jonas Becker, Elif Yılmaz, Noah Wagner, Emma Fischer, Luca Meyer | Klasse 7b |
 | `paul.richter`, `hannah.koch`, `leon.wolf`, `sophie.neumann` | Schüler:innen | Paul Richter, Hannah Koch, Leon Wolf, Sophie Neumann | Klasse 7a |
