@@ -13,7 +13,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * A teacher of the school teaches a class for a while, e.g. while the Klassenleitung is ill: from `starts_on` to
  * `ends_on` (both days included) the substitute counts as teaching the class (SchoolClass::scopeTaughtBy()). After the
- * last day nothing is granted any more; the row stays as a record, so there is nothing to clean up.
+ * last day nothing is granted any more. The row stays as a record, with its handover note, until PruneLearningData
+ * deletes it once the retention period is over and the substitute holds no lesson in the class any more.
  */
 #[Fillable(['school_class_id', 'substitute_id', 'granted_by', 'starts_on', 'ends_on', 'note'])]
 class ClassSubstitution extends Model
@@ -142,7 +143,7 @@ class ClassSubstitution extends Model
     /**
      * Ends the substitution today: it grants nothing from now on. One that has not started yet is withdrawn instead.
      * One that started stays as a record, even when it ends on its first day (then `ends_on` lies before `starts_on`):
-     * LessonPolicy::viewResults() recognises a substitute who is no longer one by it.
+     * LessonPolicy::viewResults() recognises a substitute who is no longer one by it, until PruneLearningData deletes it.
      */
     public function end(): void
     {

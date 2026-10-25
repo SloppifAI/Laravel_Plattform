@@ -9,7 +9,6 @@ use App\Models\SchoolClass;
 use App\Models\User;
 use App\Support\PersonalDataExport;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
@@ -24,8 +23,6 @@ class ClassBookDataProtectionTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-
-        Storage::fake('local');
 
         config([
             'lernplattform.retention.school_years_kept' => 2,
@@ -80,6 +77,7 @@ class ClassBookDataProtectionTest extends TestCase
                 ['Erklär\'s-mir-Gespräche', 0],
                 ['Nachrichten', 0],
                 ['Klassenbuch-Einträge', 1],
+                ['Vertretungen', 0],
                 ['Arbeitsblatt-Dateien', 0],
             ])
             ->assertSuccessful();

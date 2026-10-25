@@ -10,7 +10,7 @@ return new class extends Migration
      * Run the migrations.
      *
      * A substitution lets a teacher of the school teach a class (lessons, learning data) from `starts_on` to `ends_on`
-     * inclusive, without the administration assigning them for good. The row stays after it expired as a record.
+     * inclusive, without the administration assigning them for good. The row stays after it expired as a record, until PruneLearningData deletes it.
      */
     public function up(): void
     {

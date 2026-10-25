@@ -1071,7 +1071,9 @@
         </li>
         <li>
             <strong>Klassenzuordnung und Vertretungen:</strong> bis die Zuordnung aufgehoben oder die Klasse oder das Konto
-            gelöscht wird. Eine abgelaufene Vertretung gewährt nichts mehr.
+            gelöscht wird. Eine abgelaufene Vertretung gewährt nichts mehr. Sie wird mit ihrem Hinweis täglich automatisch
+            gelöscht, sobald sie länger zurückliegt als die Aufbewahrungsfrist der Unterrichtsstunden
+            (aufbewahrt wird {{ $keptPhrase }}) und die Lehrkraft keine Stunde mehr in der Klasse hat.
         </li>
         <li>
             <strong>Tuto-Mikro:</strong> Ton wird nicht gespeichert. Der Nachweis über eine Sitzung wird

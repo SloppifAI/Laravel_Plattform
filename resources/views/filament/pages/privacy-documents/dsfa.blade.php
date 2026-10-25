@@ -26,7 +26,7 @@
             'data' => 'Klasse, Klassenleitung, zugeordnete Lehrkräfte; je Vertretung die Lehrkraft, der Zeitraum, wer sie eingetragen hat und eine Notiz.',
             'people' => 'Lehrkräfte',
             'access' => 'Schuladministration und Lehrkräfte der Klasse.',
-            'retention' => "Eine Vertretung dauert höchstens {$substitutionMaxDays} Tage und gewährt danach nichts mehr. Der Eintrag bleibt als Nachweis, bis die Klasse oder das Konto gelöscht wird.",
+            'retention' => "Eine Vertretung dauert höchstens {$substitutionMaxDays} Tage und gewährt danach nichts mehr. Der Eintrag wird mit seinem Hinweis automatisch gelöscht, wie die Unterrichtsstunden {$retention}, spätestens mit der Klasse oder dem Konto.",
         ],
         [
             'title' => 'Unterrichtsstunden, Notizen, Arbeitsblätter, Hausaufgaben',

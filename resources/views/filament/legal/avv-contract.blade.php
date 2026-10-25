@@ -702,7 +702,7 @@
                         <th scope="row">Klassenzuordnung und Vertretungen: Klassenleitung, zugeordnete Lehrkräfte, Vertretungen mit Zeitraum, Hinweis und einrichtender Person</th>
                         <td><span class="legal-cell-label">Betroffene</span> Lehrkräfte, Schuladministration</td>
                         <td><span class="legal-cell-label">Zweck</span> Rechte der Lehrkräfte für ihre Klassen, Übergabe einer Klasse an eine Vertretung</td>
-                        <td><span class="legal-cell-label">Speicherdauer</span> bis die Zuordnung aufgehoben oder die Klasse oder das Konto gelöscht wird. Eine abgelaufene Vertretung gewährt nichts mehr und bleibt als Nachweis bis dahin bestehen.</td>
+                        <td><span class="legal-cell-label">Speicherdauer</span> bis die Zuordnung aufgehoben oder die Klasse oder das Konto gelöscht wird. Eine abgelaufene Vertretung gewährt nichts mehr. Sie wird mit ihrem Hinweis gelöscht, sobald sie länger zurückliegt als die Aufbewahrungsfrist (Abschnitt 4) und die Lehrkraft keine Stunde mehr in der Klasse hat.</td>
                     </tr>
                     <tr>
                         <th scope="row">Unterrichtsstunden: Fach, Thema, Datum, Notizen (auch übernommene Notizen aus der Stunde), Zusammenfassung, hochgeladene Arbeitsblätter (Foto, Scan, PDF), Fassungen in Einfacher Sprache</th>
@@ -831,10 +831,10 @@
         <h3>4. Automatische Löschungen</h3>
         <ul>
             <li>
-                Unterrichtsstunden, „Erklär’s mir“-Gespräche und Einträge im Klassenbuch, die älter als die
-                Aufbewahrungsfrist sind, löscht die Plattform täglich. Aufbewahrt werden {{ $keptPhrase }},
-                ein Schuljahr beginnt am {{ $schoolYearStart }}. Fragen, Abgaben, Antworten, Nachrichten, Rückfragen und
-                Arbeitsblatt-Dateien gehen mit. Konten, Klassen und Schulen bleiben bestehen.
+                Unterrichtsstunden, „Erklär’s mir“-Gespräche, Einträge im Klassenbuch und abgelaufene Vertretungen mit
+                ihrem Hinweis, die älter als die Aufbewahrungsfrist sind, löscht die Plattform täglich. Aufbewahrt werden
+                {{ $keptPhrase }}, ein Schuljahr beginnt am {{ $schoolYearStart }}. Fragen, Abgaben, Antworten,
+                Nachrichten, Rückfragen und Arbeitsblatt-Dateien gehen mit. Konten, Klassen und Schulen bleiben bestehen.
                 @if ($oneYearRuleFrom)
                     Übergang: Bis zum {{ $oneYearRuleFrom }} bleiben noch zwei Schuljahre gespeichert, weil die bis dahin
                     angenommenen Fassungen dieses Vertrags das zusagen. Danach wird jedes Schuljahr zu seinem Ende gelöscht.
