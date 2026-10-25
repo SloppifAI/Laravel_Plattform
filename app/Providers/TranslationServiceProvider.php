@@ -2,10 +2,25 @@
 
 namespace App\Providers;
 
+use App\Support\Translator;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Translation\Translator as BaseTranslator;
 
 class TranslationServiceProvider extends ServiceProvider
 {
+    /**
+     * Swaps in the translator that keeps German plurals German (Translator).
+     */
+    public function register(): void
+    {
+        $this->app->extend('translator', function (BaseTranslator $translator): Translator {
+            $keepingLocale = new Translator($translator->getLoader(), $translator->getLocale());
+            $keepingLocale->setFallback($translator->getFallback());
+
+            return $keepingLocale;
+        });
+    }
+
     /**
      * Every directory under lang/areas is a JSON translation path of its own (lang/areas/<area>/en.json), so each area
      * of the UI brings its translations without anybody editing one shared file. lang/en.json still wins over them.
