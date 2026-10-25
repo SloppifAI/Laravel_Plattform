@@ -1,5 +1,7 @@
 <?php
 
+use App\Filament\Pages\Auth\AuthorizeApp;
+use App\Http\Controllers\AppAuthorizationController;
 use App\Http\Controllers\ConsentController;
 use App\Http\Controllers\ConsentLetterController;
 use App\Http\Controllers\LessonRecordingController;
@@ -8,6 +10,9 @@ use App\Http\Controllers\SwitchLocaleController;
 use App\Http\Middleware\SetLocale;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
+use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Http\Middleware\SetUpPanel;
+use Illuminate\Http\Middleware\FrameGuard;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -82,3 +87,16 @@ Route::middleware('throttle:consent')->withoutMiddleware('web')->prefix('/einwil
 Route::post('/einwilligungen/{schoolClass}/briefe', ConsentLetterController::class)
     ->middleware([AuthenticateSession::class, Authenticate::class])
     ->name('consents.letters');
+
+/*
+ * Connecting a native app (OAuth 2.0 authorization code with PKCE, see AppAuthorizationController). Laravel's `auth`
+ * sends guests to the normal login and, through the intended URL, back to this exact request afterwards. The consent
+ * page is a panel page outside the panel's routes (AuthorizeApp), so it sets the panel up itself; it may not be framed
+ * by another site, which could otherwise lure a click on "Erlauben".
+ */
+Route::middleware(['auth', AuthenticateSession::class, SetLocale::class])->group(function (): void {
+    Route::get('/app/verbinden', AuthorizeApp::class)
+        ->middleware([SetUpPanel::class.':lernplattform', DispatchServingFilamentEvent::class, FrameGuard::class])
+        ->name('app.authorize');
+    Route::post('/app/verbinden', [AppAuthorizationController::class, 'store'])->name('app.authorize.store');
+});

@@ -7,10 +7,16 @@ use Filament\Actions\Action;
 use Filament\Auth\Pages\EditProfile as BaseEditProfile;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Infolists\Components\TextEntry;
+use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Component;
+use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Text;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Contracts\Support\Htmlable;
+use Illuminate\Support\Arr;
+use Laravel\Sanctum\PersonalAccessToken;
 use SensitiveParameter;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -51,6 +57,58 @@ class EditProfile extends BaseEditProfile
                 $this->getPasswordConfirmationFormComponent(),
                 $this->getCurrentPasswordFormComponent(),
             ]);
+    }
+
+    public function content(Schema $schema): Schema
+    {
+        return $schema
+            ->components([
+                $this->getFormContentComponent(),
+                ...Arr::wrap($this->getMultiFactorAuthenticationContentComponent()),
+                $this->getConnectedAppsContentComponent(),
+            ]);
+    }
+
+    /**
+     * "Verbundene Apps": the tokens this account gave apps by confirming on /app/verbinden (AppAuthorizationController),
+     * each with a way to revoke it. Only teachers and school administrations can connect an app, so nobody else sees
+     * the section.
+     */
+    protected function getConnectedAppsContentComponent(): Component
+    {
+        return Section::make(__('Verbundene Apps'))
+            ->description(__('Apps, denen du in Tuto den Zugang erlaubt hast. Eine App sieht die Stunden und Klassen, die du in Tuto bearbeiten darfst, legt neue Stunden an und setzt die Zusammenfassung einer Stunde. Daten deiner Schüler:innen sieht sie nicht.'))
+            ->visible(fn (): bool => $this->getUser()->isTeacher() || $this->getUser()->isAdmin())
+            ->schema(fn (): array => $this->getUser()->tokens()->latest()->latest('id')->get()
+                ->map(fn (PersonalAccessToken $token): Component => TextEntry::make('connectedApp'.$token->getKey())
+                    ->label($token->name)
+                    ->state(collect([
+                        __('Verbunden am :date', ['date' => $token->created_at->isoFormat(__('D.M.YYYY'))]),
+                        $token->last_used_at ? __('zuletzt genutzt am :date', ['date' => $token->last_used_at->isoFormat(__('D.M.YYYY'))]) : __('noch nicht genutzt'),
+                        $token->expires_at ? __('gültig bis :date', ['date' => $token->expires_at->isoFormat(__('D.M.YYYY'))]) : null,
+                    ])->filter()->implode(' · '))
+                    ->afterContent($this->revokeTokenAction($token)))
+                ->whenEmpty(fn () => collect([Text::make(__('Noch keine App verbunden.'))]))
+                ->all());
+    }
+
+    /**
+     * One action per token, so the confirmation can name the app; it deletes only this account's token of that id.
+     */
+    protected function revokeTokenAction(PersonalAccessToken $token): Action
+    {
+        return Action::make('revokeToken'.$token->getKey())
+            ->label(__('Zugang entziehen'))
+            ->color('gray')
+            ->requiresConfirmation()
+            ->modalHeading(__('Zugang entziehen?'))
+            ->modalDescription(__('Die App „:name“ kann danach nichts mehr in Tuto ansehen oder ändern, bis du sie neu verbindest.', ['name' => $token->name]))
+            ->modalSubmitActionLabel(__('Zugang entziehen'))
+            ->action(function () use ($token): void {
+                $this->getUser()->tokens()->whereKey($token->getKey())->delete();
+
+                Notification::make()->success()->title(__('Zugang entzogen'))->send();
+            });
     }
 
     /**

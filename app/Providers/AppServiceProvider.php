@@ -67,6 +67,9 @@ class AppServiceProvider extends ServiceProvider
             Limit::perMinute(240)->by('ip:'.$request->ip()),
         ]);
 
+        // An app trading its one-time code for a token (api.token.store). A real app needs one request per connection.
+        RateLimiter::for('app-token', fn (Request $request): Limit => Limit::perMinute(10)->by('ip:'.$request->ip()));
+
         // Read aloud and dictation run in the pupil's browser only; teachers, administration and operators never get the script.
         FilamentView::registerRenderHook(
             PanelsRenderHook::BODY_END,

@@ -12,7 +12,8 @@ use Throwable;
 /**
  * The "Hausaufgabe mit KI erstellen" step shared by the lesson page and "Heute": the assistant (the real AI or the demo,
  * depending on the school) drafts summary and questions from the saved notes. The draft replaces the summary and the
- * AI questions the teacher left unedited; the teacher's own and edited questions stay in front.
+ * AI questions the teacher left unedited; the teacher's own and edited questions stay in front. A summary a connected app
+ * set (`summary_from_app`) stays as well: the assistant still reads it, but only its questions are used.
  */
 final class HomeworkDraft
 {
@@ -25,18 +26,28 @@ final class HomeworkDraft
     }
 
     /**
+     * Whether the draft leaves the summary alone because a connected app set it.
+     */
+    public static function keepsSummary(Lesson $lesson): bool
+    {
+        return $lesson->summary_from_app && filled($lesson->summary);
+    }
+
+    /**
      * The confirmation before a new draft replaces an existing one.
      */
     public static function confirmationText(Lesson $lesson): string
     {
         $kept = $lesson->questions()->where('ai_drafted', false)->count();
 
-        return __('Die Zusammenfassung und die KI-Fragen werden durch einen neuen KI-Entwurf ersetzt.')
+        return (self::keepsSummary($lesson)
+            ? __('Die KI-Fragen werden durch einen neuen KI-Entwurf ersetzt. Die Zusammenfassung aus der App bleibt erhalten.')
+            : __('Die Zusammenfassung und die KI-Fragen werden durch einen neuen KI-Entwurf ersetzt.'))
             .($kept === 0 ? '' : ' '.trans_choice(':count eigene oder bearbeitete Frage bleibt erhalten.|:count eigene oder bearbeitete Fragen bleiben erhalten.', $kept));
     }
 
     /**
-     * Drafts and stores summary and questions for the lesson.
+     * Drafts and stores summary and questions for the lesson; an app's summary stays (keepsSummary()).
      *
      * @throws Throwable when the assistant fails; the lesson is left untouched then
      */
@@ -48,7 +59,9 @@ final class HomeworkDraft
         $allowedCompetencyIds = Competency::forSubject($lesson->subject)->pluck('id');
 
         DB::transaction(function () use ($lesson, $draft, $allowedCompetencyIds): void {
-            $lesson->update(['summary' => $draft['summary']]);
+            if (! self::keepsSummary($lesson)) {
+                $lesson->update(['summary' => $draft['summary']]);
+            }
             // The callers only draft unreleased homework, so there are no answers; the check is the backstop.
             $lesson->questions()->where('ai_drafted', true)->whereDoesntHave('answers')->delete();
 

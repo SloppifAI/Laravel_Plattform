@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\AppAuthorizationCode;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -10,6 +11,12 @@ Artisan::command('inspire', function () {
 
 // Unused password reset tokens would otherwise stay in the database forever.
 Schedule::command('auth:clear-resets')->daily();
+
+// Tokens of connected apps (config sanctum.expiration, 180 days) are deleted a day after they expired.
+Schedule::command('sanctum:prune-expired --hours=24')->daily();
+
+// One-time codes of the app authorisation (/app/verbinden) are spent or expire after five minutes: nothing left to keep.
+Schedule::command('model:prune', ['--model' => [AppAuthorizationCode::class]])->daily();
 
 // Lessons and "Erklär's mir" conversations older than the retention period (config/lernplattform.php) are deleted.
 // Daily and idempotent: a missed run only postpones the deletion, and the cut-off moves once a year.

@@ -150,6 +150,28 @@ return [
         'keep_days' => (int) env('LERNPLATTFORM_NOTIFICATIONS_KEEP_DAYS', 60),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Connected apps
+    |--------------------------------------------------------------------------
+    |
+    | Native apps a teacher or school administration may connect to their account. The app opens /app/verbinden in the
+    | browser (OAuth 2.0 authorization code with PKCE, RFC 7636 and RFC 8252), the person signs in on the normal login
+    | page and confirms, and the app trades the one-time code for a token at POST /api/v1/token. The app never sees the
+    | password. Only the clients listed here may ask, and the redirect_uri of a request must equal one of the client's
+    | `redirect_uris` exactly. LERNPLATTFORM_APP_REDIRECT_URIS is a comma-separated list (default tutoapp://callback).
+    |
+    */
+
+    'apps' => [
+        'clients' => [
+            'tuto-app' => [
+                'name' => 'Tuto-App',
+                'redirect_uris' => array_values(array_filter(array_map('trim', explode(',', (string) env('LERNPLATTFORM_APP_REDIRECT_URIS', 'tutoapp://callback'))))),
+            ],
+        ],
+    ],
+
     'dpa' => [
         'version' => '2026-10',
         'title' => 'Vertrag zur Auftragsverarbeitung (AVV)',

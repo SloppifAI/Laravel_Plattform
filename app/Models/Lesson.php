@@ -32,6 +32,7 @@ class Lesson extends Model
 
     /**
      * The "Einfache Sprache" copy (`summary_simple`) belongs to the summary it was made from: when the summary changes, the copy goes.
+     * An emptied summary is no app summary any more (`summary_from_app`, set only by the API), so a new AI draft fills it again.
      * The worksheet files go with the lesson. A deleted class or teacher account takes its lessons along without a model event; `lernplattform:prune-learning-data` sweeps those files.
      */
     protected static function booted(): void
@@ -48,6 +49,10 @@ class Lesson extends Model
         static::saving(function (Lesson $lesson): void {
             if ($lesson->isDirty('summary') && ! $lesson->isDirty('summary_simple')) {
                 $lesson->setAttribute('summary_simple', null);
+            }
+
+            if (blank($lesson->summary)) {
+                $lesson->setAttribute('summary_from_app', false);
             }
         });
     }
@@ -162,6 +167,7 @@ class Lesson extends Model
             'due_on' => 'date',
             'published_at' => 'datetime',
             'attachments' => 'array',
+            'summary_from_app' => 'boolean',
         ];
     }
 }

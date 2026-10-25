@@ -17,16 +17,19 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 
 #[Fillable(['name', 'username', 'email', 'password', 'role', 'school_id', 'school_class_id', 'locale'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements FilamentUser, HasLocalePreference
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable;
 
     /**
-     * A deleted student's id must not stay behind in the absence lists of the Klassenbuch.
+     * A deleted student's id must not stay behind in the absence lists of the Klassenbuch, and the tokens of a deleted
+     * account's connected apps go with it (personal_access_tokens has no foreign key, it is polymorphic; the one-time
+     * codes of app_authorization_codes go by their foreign key).
      */
     protected static function booted(): void
     {
@@ -34,6 +37,8 @@ class User extends Authenticatable implements FilamentUser, HasLocalePreference
             if ($user->isStudent()) {
                 ClassBookEntry::forgetAbsentStudent($user);
             }
+
+            $user->tokens()->delete();
         });
     }
 

@@ -89,7 +89,9 @@ class LessonForm
                             ->preventFilePathTampering(),
                     ]),
                 Section::make(__('Zusammenfassung'))
-                    ->description(__('Von der KI erstellt. Die Schüler:innen lesen sie vor den Fragen, du kannst sie vor der Freigabe anpassen.'))
+                    ->description(fn (?Lesson $record): string => $record?->summary_from_app
+                        ? __('Von einer App gesetzt. Ein neuer KI-Entwurf behält sie und erstellt nur die Fragen. Die Schüler:innen lesen sie vor den Fragen, du kannst sie vor der Freigabe anpassen.')
+                        : __('Von der KI erstellt. Die Schüler:innen lesen sie vor den Fragen, du kannst sie vor der Freigabe anpassen.'))
                     ->columnSpanFull()
                     ->visible(fn (?Lesson $record): bool => filled($record?->summary))
                     ->schema([
