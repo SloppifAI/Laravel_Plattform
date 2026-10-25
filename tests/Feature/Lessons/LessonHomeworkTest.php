@@ -289,6 +289,24 @@ class LessonHomeworkTest extends TestCase
         Livewire::actingAs($practice->teacher)->test(EditLesson::class, ['record' => $practice->getRouteKey()])->assertActionHidden('draftHomework');
     }
 
+    public function test_the_questions_table_opens_the_pages_ai_draft_until_the_homework_is_released(): void
+    {
+        $lesson = Lesson::factory()->create();
+        $practice = Lesson::factory()->create(['practice_competency_id' => Competency::factory()->create()->id]);
+        $manager = fn (Lesson $lesson) => Livewire::actingAs($lesson->teacher)->test(QuestionsRelationManager::class, ['ownerRecord' => $lesson, 'pageClass' => EditLesson::class]);
+
+        $manager($lesson)
+            ->callAction(TestAction::make('draftHomework')->table())
+            ->assertDispatched(EditLesson::OPEN_HOMEWORK_DRAFT_EVENT);
+        Livewire::actingAs($lesson->teacher)->test(EditLesson::class, ['record' => $lesson->getRouteKey()])
+            ->dispatch(EditLesson::OPEN_HOMEWORK_DRAFT_EVENT)
+            ->assertActionMounted('draftHomework');
+
+        $manager($practice)->assertActionHidden(TestAction::make('draftHomework')->table());
+        $lesson->update(['published_at' => now()]);
+        $manager($lesson)->assertActionHidden(TestAction::make('draftHomework')->table());
+    }
+
     public function test_the_lessons_teacher_gets_the_starter_board_and_tuto_mikro_in_the_header(): void
     {
         $lesson = Lesson::factory()->publishedFor()->create();

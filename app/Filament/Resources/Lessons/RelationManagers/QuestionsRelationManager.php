@@ -128,6 +128,13 @@ class QuestionsRelationManager extends RelationManager
                     ->color(fn (Question $record): string => $record->ai_drafted ? 'gray' : 'primary'),
             ])
             ->headerActions([
+                // The page's button once more, next to the questions it drafts; the page runs it (see EditLesson::openHomeworkDraft()).
+                Action::make('draftHomework')
+                    ->label(__('Hausaufgabe mit KI erstellen'))
+                    ->icon(Heroicon::OutlinedSparkles)
+                    ->authorize(fn (): bool => Gate::allows('update', $this->getLesson()))
+                    ->visible(fn (): bool => $this->pageClass === EditLesson::class && ! $this->isReadOnly() && ! $this->getLesson()->isPracticeTask())
+                    ->action(fn () => $this->dispatch(EditLesson::OPEN_HOMEWORK_DRAFT_EVENT)),
                 CreateAction::make()
                     ->mutateDataUsing(fn (array $data): array => [
                         ...$data,

@@ -25,6 +25,7 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
+use Livewire\Attributes\On;
 use Throwable;
 
 /**
@@ -38,6 +39,17 @@ class EditLesson extends EditRecord
      * Tells the relation managers to re-render after the questions or the release changed.
      */
     public const string HOMEWORK_CHANGED_EVENT = 'lesson-homework-changed';
+
+    /**
+     * Sent by the questions table's own "Hausaufgabe mit KI erstellen" button: this page runs the step, so unsaved notes are saved first.
+     */
+    public const string OPEN_HOMEWORK_DRAFT_EVENT = 'lesson-open-homework-draft';
+
+    #[On(self::OPEN_HOMEWORK_DRAFT_EVENT)]
+    public function openHomeworkDraft(): void
+    {
+        $this->mountAction('draftHomework');
+    }
 
     public function getSubheading(): ?string
     {
