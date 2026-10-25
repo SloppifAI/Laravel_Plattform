@@ -397,6 +397,9 @@ class LessonApiTest extends TestCase
             'lessons:summary' => fn (string $token): array => [
                 $this->withToken($token)->putJson(route('api.lessons.summary.update', $lesson), ['summary' => 'Aus der App.']),
             ],
+            'roster:read' => fn (string $token): array => [
+                $this->withToken($token)->getJson(route('api.roster.index')),
+            ],
         ];
 
         foreach ($requests as $ability => $send) {

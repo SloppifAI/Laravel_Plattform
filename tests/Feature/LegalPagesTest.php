@@ -412,7 +412,8 @@ class LegalPagesTest extends TestCase
             'Schüler:innen und die Plattform-Administration können keine App verbinden.',
             'das Passwort erfährt die App nie',
             'Die App tauscht den Code innerhalb von '.AppAuthorizationCode::LIFETIME_MINUTES.' Minuten gegen einen Zugang',
-            'Nie: Daten von Schüler:innen, die Notizen einer Stunde, Ergebnisse, Abgaben, Gespräche, die E-Mail-Adresse oder das Passwort.',
+            'Nie: andere Daten von Schüler:innen als ihre Namen, die Notizen einer Stunde, Ergebnisse, Abgaben, Gespräche, die E-Mail-Adresse oder das Passwort.',
+            'Die App darf die Namen ausschließlich nutzen, um sie in Texten auf dem Gerät durch Platzhalter zu ersetzen, bevor ein Text das Gerät verlässt (lokale Pseudonymisierung), und darf sie nicht speichern.',
             'Einmal-Code: nur als Hash, der Code selbst wird nirgends gespeichert.',
             'der Hash des Zugangsschlüssels (nie der Schlüssel selbst)',
             'Zum Zugang speichert Tuto keine IP-Adresse, keine Gerätekennung und keine E-Mail-Adresse.',
@@ -451,7 +452,7 @@ class LegalPagesTest extends TestCase
             Schema::getColumnListing('app_authorization_codes'),
             'A new column of a one-time code has to be named in the privacy policy and the register entry first.',
         );
-        $this->assertSame(['lessons:read', 'lessons:create', 'lessons:summary'], TokenController::ABILITIES);
+        $this->assertSame(['lessons:read', 'lessons:create', 'lessons:summary', 'roster:read'], TokenController::ABILITIES);
         $this->assertSame(
             ['id', 'subject', 'topic', 'held_on', 'class', 'summary', 'summary_from_app', 'released'],
             array_keys((new LessonResource(Lesson::factory()->create()))->toArray(request())),
