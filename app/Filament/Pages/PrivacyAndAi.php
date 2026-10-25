@@ -208,7 +208,7 @@ class PrivacyAndAi extends Page
                 'viewers' => [$teacher, $admin, [...$student, 'label' => __('Zugewiesene Schüler:innen')]],
                 'notes' => [
                     __('Schüler:innen sehen eine Hausaufgabe erst, wenn sie freigegeben und ihnen zugewiesen ist.'),
-                    __('Der Erwartungshorizont, also was eine gute Antwort enthält, ist nur für Lehrkraft und Schuladministration sichtbar.'),
+                    __('Der Erwartungshorizont, also was eine gute Antwort enthält, sehen Lehrkraft und Schuladministration. Schüler:innen sehen ihn erst beim Wiederholen, wenn ihre Abgabe geprüft und die Frist vorbei ist.'),
                     __('Ob jemand Einfache Sprache eingeschaltet hat, merkt sich nur der eigene Browser.'),
                 ],
             ],

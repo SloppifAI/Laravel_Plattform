@@ -56,7 +56,7 @@ class ReviewScheduleTest extends TestCase
      */
     private function lessonWithThreeTypes(User $student, ?int $practiceCompetency = null): array
     {
-        $lesson = Lesson::factory()->for($student->schoolClass)->publishedFor([$student])->create(['practice_competency_id' => $practiceCompetency]);
+        $lesson = $this->releasedLesson($student, ['practice_competency_id' => $practiceCompetency]);
 
         return [
             $lesson,
@@ -294,7 +294,7 @@ class ReviewScheduleTest extends TestCase
         ReviewSchedule::enqueueFor($this->evaluatedHandIn($student, $lesson, [$comprehension]));
 
         // Box 1 is due the next day, not before.
-        $this->travelTo('2026-10-20 23:59:00');
+        $this->travelTo('2026-10-20 21:59:00');
         $this->assertSame(0, ReviewSchedule::todaysCount($student));
 
         foreach ([['2026-10-21', 2], ['2026-10-24', 3], ['2026-10-31', 4], ['2026-11-21', 5]] as [$day, $boxAfter]) {
@@ -352,6 +352,73 @@ class ReviewScheduleTest extends TestCase
 
         $this->assertSame([1, 3, 7, 21], ReviewSchedule::intervals());
         $this->assertSame(0, ReviewSchedule::dailyLimit());
+    }
+
+    // ---- The school's day, not the server's -------------------------------------------------------------------------
+
+    public function test_tomorrow_is_tomorrow_in_school_time(): void
+    {
+        // 00:30 on the 21st in Berlin (summer time) is still the 20th on the server's UTC clock.
+        $this->travelTo('2026-10-20 22:30:00');
+        $student = $this->newStudent();
+        [$lesson, $comprehension] = $this->lessonWithThreeTypes($student);
+
+        ReviewSchedule::enqueueFor($this->evaluatedHandIn($student, $lesson, [$comprehension]));
+
+        $this->assertSame('2026-10-22', ReviewItem::query()->sole()->due_on->toDateString());
+
+        // 02:05 on the same German day: not due, although the UTC date is the 21st already.
+        $this->travelTo('2026-10-21 00:05:00');
+        $this->assertSame(0, ReviewSchedule::todaysCount($student));
+
+        // 23:59 on the 21st in Berlin still is not the day after, 00:01 on the 22nd is.
+        $this->travelTo('2026-10-21 21:59:00');
+        $this->assertSame(0, ReviewSchedule::todaysCount($student));
+
+        $this->travelTo('2026-10-21 22:01:00');
+        $this->assertSame(1, ReviewSchedule::todaysCount($student));
+    }
+
+    public function test_a_rating_after_german_midnight_waits_for_the_next_german_day(): void
+    {
+        // 00:20 on the 10th in Berlin (winter time) is 23:20 on the 9th in UTC.
+        $this->travelTo('2026-11-09 23:20:00');
+        $student = $this->newStudent();
+        $item = $this->itemFor($student, item: ['box' => 1]);
+
+        $this->assertTrue(ReviewSchedule::rate($item, ReviewRating::Hard));
+
+        $this->assertSame('2026-11-11', $item->fresh()->due_on->toDateString());
+
+        // 01:10 on the same German day: it never comes back on the day it was rated.
+        $this->travelTo('2026-11-10 00:10:00');
+        $this->assertSame(0, ReviewSchedule::todaysCount($student));
+    }
+
+    public function test_the_daily_limit_counts_the_german_day(): void
+    {
+        $this->travelTo('2026-11-09 23:20:00');
+        $student = $this->newStudent();
+
+        foreach (range(1, 6) as $number) {
+            $this->itemFor($student, ['prompt' => "Frage-{$number}"]);
+        }
+
+        foreach (range(1, ReviewSchedule::dailyLimit()) as $ignored) {
+            $this->assertTrue(ReviewSchedule::rate(ReviewSchedule::todaysQueue($student)->first(), ReviewRating::Knew));
+        }
+
+        $this->assertSame(0, ReviewSchedule::todaysCount($student));
+
+        // 01:10 on the same German day: five were rated today, so the limit still holds.
+        $this->travelTo('2026-11-10 00:10:00');
+        $this->assertSame(5, ReviewSchedule::reviewedToday($student));
+        $this->assertSame(0, ReviewSchedule::todaysCount($student));
+
+        // The next German day starts at 23:00 UTC: the sixth question is there.
+        $this->travelTo('2026-11-10 23:10:00');
+        $this->assertSame(0, ReviewSchedule::reviewedToday($student));
+        $this->assertSame(1, ReviewSchedule::todaysCount($student));
     }
 
     // ---- AC-8: practice only -----------------------------------------------------------------------------------------

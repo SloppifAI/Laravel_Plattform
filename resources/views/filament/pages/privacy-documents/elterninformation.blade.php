@@ -28,6 +28,7 @@
     <li>Name, Benutzername, Klasse, die gewählte Sprache und auf Wunsch eine E-Mail-Adresse. Das Passwort wird nur verschlüsselt (als Hash) gespeichert.</li>
     <li>Was Ihr Kind abgibt: Zusammenfassungen, Antworten auf Hausaufgaben mit der gewählten Stufe (Einstieg, Standard oder Profi), Gespräche mit Tuto in „Erklär’s mir“ und Rückfragen an die Lehrkraft.</li>
     <li>Das Ergebnis der Auswertung: ein Verständniswert von 0 bis 100 mit Rückmeldung. Er ist ein Hinweis, wo Unterstützung nötig sein könnte, und keine Note.</li>
+    <li>Wenn Ihr Kind „Heute wiederholen“ nutzt: je Frage aus früheren Hausaufgaben ein Wiederholungsplan mit der Box (1 bis {{ \App\Support\ReviewSchedule::consolidatedBox() }}), dem Datum der nächsten Wiederholung und drei Zählern, wie oft sich Ihr Kind mit „Sofort gewusst“, „Mit Mühe“ oder „Nicht gewusst“ eingeschätzt hat. Die eigene Antwort beim Wiederholen, einzelne Versuche und Antwortzeiten werden nicht gespeichert. Das dient nur dem Üben, ist keine Note und fließt weder in den Verständniswert noch in einen Bericht ein. Die Lösung sieht Ihr Kind dort erst, wenn seine Abgabe ausgewertet und die Frist der Hausaufgabe vorbei ist.</li>
     <li>Im Klassenbuch: was unterrichtet wurde und ob Ihr Kind gefehlt hat.</li>
     <li>Hinweise in der Glocke, etwa zu einer neuen Hausaufgabe, mit Thema, Fach und Klasse.</li>
     <li>Technische Daten, die beim Anmelden anfallen, etwa die Sitzungskennung und die IP-Adresse.</li>
@@ -38,10 +39,10 @@
 
 <h3>4. Wer sieht die Daten?</h3>
 <ul>
-    <li>Ihr Kind sieht die eigenen Daten, aber nicht das Klassenbuch. Gespräche in „Erklär’s mir“ zu einem frei gewählten Thema sieht nur Ihr Kind.</li>
+    <li>Ihr Kind sieht die eigenen Daten, aber nicht das Klassenbuch. Gespräche in „Erklär’s mir“ zu einem frei gewählten Thema sieht nur Ihr Kind. Dasselbe gilt für den Wiederholungsplan in „Heute wiederholen“: Lehrkräfte sehen ihn nicht.</li>
     <li>Lehrkräfte sehen die Abgaben, Gespräche und Rückfragen zu ihren Stunden. Lernstand, Klassenbuch mit Fehlzeiten und Einwilligungen sehen nur die Lehrkräfte, die die Klasse leiten oder unterrichten.</li>
     <li>Vertritt eine Lehrkraft für eine begrenzte Zeit (höchstens {{ $substitutionMaxDays }} Tage), darf sie in dieser Zeit: {{ $substitutionGrants }}. Danach endet der Zugriff von selbst, auch auf Abgaben, Gespräche und Rückfragen zu den Stunden, die sie in der Klasse gehalten hat.</li>
-    <li>Die Schuladministration der Schule kann die Daten der Schule einsehen, mit zwei Ausnahmen: Notizen und Nachweise des Tuto-Mikro (siehe Abschnitt 7) und Gespräche in „Erklär’s mir“ zu einem frei gewählten Thema.</li>
+    <li>Die Schuladministration der Schule kann die Daten der Schule einsehen, mit drei Ausnahmen: Notizen und Nachweise des Tuto-Mikro (siehe Abschnitt 7), Gespräche in „Erklär’s mir“ zu einem frei gewählten Thema und der Wiederholungsplan in „Heute wiederholen“.</li>
     <li>Andere Schüler:innen und andere Schulen sehen nie etwas. Die Plattform-Administration des Betreibers sieht keine Unterrichts- und Lerndaten.</li>
 </ul>
 <p>Der Betreiber hat technisch Zugriff auf die Server, soweit es für Betrieb, Wartung und Fehlersuche nötig ist. Er wertet Unterrichts- und Lerndaten nicht aus. Für den Serverbetrieb (Hosting) setzt er technische Dienstleister als Unterauftragsverarbeiter ein, die nur nach seiner Weisung arbeiten: {{ $blank }} Sind die KI-Funktionen eingeschaltet, ist der KI-Anbieter (Abschnitt 5) ein weiterer Empfänger.</p>
@@ -68,7 +69,7 @@
 
 <h3>6. Wie lange werden die Daten gespeichert?</h3>
 <ul>
-    <li>Unterrichtsstunden mit Abgaben, Antworten und Rückfragen, Gespräche in „Erklär’s mir“ und Einträge im Klassenbuch löscht Tuto automatisch {{ $retention }}.</li>
+    <li>Unterrichtsstunden mit Abgaben, Antworten, Wiederholungsplänen und Rückfragen, Gespräche in „Erklär’s mir“ und Einträge im Klassenbuch löscht Tuto automatisch {{ $retention }}.</li>
     <li>Hinweise in der Glocke werden {{ $notificationReadDays }} Tage nach dem Lesen gelöscht, spätestens nach {{ $notificationMaxDays }} Tagen.</li>
     <li>Das Konto Ihres Kindes löscht die Schule, wenn es nicht mehr gebraucht wird, zum Beispiel beim Wechsel der Schule. Mit dem Konto werden auch die Einwilligungen gelöscht.</li>
     <li>Eine Sitzung endet nach {{ $sessionMinutes }} Minuten ohne Aktivität.</li>
@@ -106,7 +107,7 @@
 <h3>8. Ihre Rechte und die Rechte Ihres Kindes</h3>
 <p>Sie und Ihr Kind haben nach der DSGVO folgende Rechte. Ihr Kind kann sie je nach Alter und Einsichtsfähigkeit selbst ausüben.</p>
 <ul>
-    <li>Auskunft über die gespeicherten Daten (Art. 15). Jede Person, auch Ihr Kind, kann die eigenen Daten im Profil von Tuto herunterladen: das Konto, die Abgaben, Gespräche und Rückfragen, die Fehlzeiten im Klassenbuch, die Einwilligung zum Tuto-Mikro, die eigene Anwesenheit in Sitzungen und die Hinweise in der Glocke.</li>
+    <li>Auskunft über die gespeicherten Daten (Art. 15). Jede Person, auch Ihr Kind, kann die eigenen Daten im Profil von Tuto herunterladen: das Konto, die Abgaben, Gespräche und Rückfragen, die Wiederholungsfragen, die Fehlzeiten im Klassenbuch, die Einwilligung zum Tuto-Mikro, die eigene Anwesenheit in Sitzungen und die Hinweise in der Glocke.</li>
     <li>Berichtigung unrichtiger Daten (Art. 16).</li>
     <li>Löschung (Art. 17) und Einschränkung der Verarbeitung (Art. 18).</li>
     <li>Datenübertragbarkeit (Art. 20), soweit die Verarbeitung auf Einwilligung beruht.</li>

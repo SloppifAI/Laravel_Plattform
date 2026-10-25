@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\ReviewSchedule;
 use Database\Factories\SubmissionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -17,6 +18,14 @@ class Submission extends Model
 {
     /** @use HasFactory<SubmissionFactory> */
     use HasFactory;
+
+    /**
+     * A returned hand-in (deleted so the student can redo it) takes the student's revision plan of the lesson with it.
+     */
+    protected static function booted(): void
+    {
+        static::deleted(fn (Submission $submission) => ReviewSchedule::forget($submission));
+    }
 
     /**
      * @return BelongsTo<Lesson, $this>

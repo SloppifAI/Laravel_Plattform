@@ -612,7 +612,7 @@ class PrivacyDocumentsTest extends TestCase
 
         $this->get(PrivacyDocuments::getUrl(['document' => 'elterninformation']))->assertOk()
             ->assertDontSee('kann alle Daten der Schule einsehen')
-            ->assertSee('mit zwei Ausnahmen: Notizen und Nachweise des Tuto-Mikro')
+            ->assertSee('mit drei Ausnahmen: Notizen und Nachweise des Tuto-Mikro')
             ->assertSee('zu einem frei gewählten Thema sieht nur Ihr Kind')
             ->assertSee('Ihr Kind sieht die eigenen Daten, aber nicht das Klassenbuch');
 
@@ -670,11 +670,11 @@ class PrivacyDocumentsTest extends TestCase
 
         $this->get(PrivacyDocuments::getUrl(['document' => 'dsfa']))->assertOk()
             ->assertSee('Das Konto mit der gewählten Sprache und die Benachrichtigungen gehören immer dazu')
-            ->assertSee('Bei Schüler:innen außerdem: Hausaufgaben, Abgaben mit Stufe, Gespräche, Rückfragen, Fehlzeiten im Klassenbuch, die Einwilligung zum Tuto-Mikro und die eigene Anwesenheit in Sitzungen')
+            ->assertSee('Bei Schüler:innen außerdem: Hausaufgaben, Abgaben mit Stufe, Gespräche, Rückfragen, Wiederholungsfragen, Fehlzeiten im Klassenbuch, die Einwilligung zum Tuto-Mikro und die eigene Anwesenheit in Sitzungen')
             ->assertSee('Bei Lehrkräften: Klassen, Vertretungen, Unterrichtsstunden, beantwortete Rückfragen, Klassenbuch-Einträge und Tuto-Mikro-Sitzungen');
 
         $this->get(PrivacyDocuments::getUrl(['document' => 'elterninformation']))->assertOk()
-            ->assertSee('das Konto, die Abgaben, Gespräche und Rückfragen, die Fehlzeiten im Klassenbuch, die Einwilligung zum Tuto-Mikro, die eigene Anwesenheit in Sitzungen und die Hinweise in der Glocke');
+            ->assertSee('das Konto, die Abgaben, Gespräche und Rückfragen, die Wiederholungsfragen, die Fehlzeiten im Klassenbuch, die Einwilligung zum Tuto-Mikro, die eigene Anwesenheit in Sitzungen und die Hinweise in der Glocke');
     }
 
     /**

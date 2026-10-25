@@ -81,7 +81,7 @@ class Today extends Page implements HasTable
                 ->modalDescription(function (): string {
                     $lessons = $this->releasableLessons();
 
-                    return __(':waiting: :lessons. Jede geht an die ganze Klasse. Die Schüler:innen finden die Fragen danach in ihrem Lernbereich, den Erwartungshorizont sehen sie nicht.', [
+                    return __(':waiting: :lessons. Jede geht an die ganze Klasse. Die Schüler:innen finden die Fragen danach in ihrem Lernbereich, den Erwartungshorizont sehen sie erst beim Wiederholen, wenn ihre Abgabe geprüft und die Frist vorbei ist.', [
                         'waiting' => trans_choice(':count Hausaufgabe mit Fragen wartet auf Freigabe|:count Hausaufgaben mit Fragen warten auf Freigabe', $lessons->count()),
                         'lessons' => $lessons->map(fn (Lesson $lesson): string => "{$lesson->subject} ({$lesson->schoolClass->name})")->implode(', '),
                     ]);
@@ -216,7 +216,7 @@ class Today extends Page implements HasTable
             ->disabled(fn (Lesson $record): bool => $record->questions_count === 0)
             ->tooltip(fn (Lesson $record): ?string => $record->questions_count === 0 ? __('Lege zuerst Fragen an, zum Beispiel mit der KI.') : null)
             ->modalHeading(__('Hausaufgabe freigeben'))
-            ->modalDescription(fn (Lesson $record): string => __('Für die ganze Klasse :class. Die Schüler:innen finden die Fragen danach in ihrem Lernbereich. Den Erwartungshorizont sehen sie nicht.', ['class' => $record->schoolClass->name]))
+            ->modalDescription(fn (Lesson $record): string => __('Für die ganze Klasse :class. Die Schüler:innen finden die Fragen danach in ihrem Lernbereich. Den Erwartungshorizont sehen sie erst beim Wiederholen, wenn ihre Abgabe geprüft und die Frist vorbei ist.', ['class' => $record->schoolClass->name]))
             ->modalSubmitActionLabel(__('Freigeben'))
             ->schema([$this->dueOnField()])
             ->action(function (array $data, Lesson $record): void {

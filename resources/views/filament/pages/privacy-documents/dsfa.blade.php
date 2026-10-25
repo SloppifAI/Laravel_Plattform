@@ -1,4 +1,6 @@
 @php
+    use App\Support\ReviewSchedule;
+
     $aiStatus = $ai['enabled']
         ? "eingeschaltet: {$aiData} gehen an {$aiProvider}, beim Tuto-Mikro außerdem Ton-Abschnitte zur Spracherkennung"
         : 'ausgeschaltet: keine Daten gehen an einen KI-Anbieter, eine einfache Demo-Logik arbeitet auf der Plattform';
@@ -39,7 +41,7 @@
             'title' => 'Unterrichtsstunden, Notizen, Arbeitsblätter, Hausaufgaben',
             'data' => 'Fach, Thema, Datum, Notizen (auch aus dem Tuto-Mikro übernommener Text), hochgeladene Arbeitsblätter, Zusammenfassung, Fragen in bis zu drei Stufen (Einstieg, Standard, Profi) mit Erwartungshorizont, Fassungen in Einfacher Sprache. Das trägt die Lehrkraft selbst ein oder lässt es von der KI entwerfen.',
             'people' => 'Lehrkräfte; nur zufällig genannte Dritte',
-            'access' => 'Lehrkraft der Stunde und Schuladministration. Schüler:innen sehen freigegebene Hausaufgaben (Zusammenfassung und Fragen), nicht die Notizen, Arbeitsblätter und den Erwartungshorizont.',
+            'access' => 'Lehrkraft der Stunde und Schuladministration. Schüler:innen sehen freigegebene Hausaufgaben (Zusammenfassung und Fragen), nicht die Notizen und Arbeitsblätter. Den Erwartungshorizont sehen sie erst in „Heute wiederholen“, wenn ihre Abgabe ausgewertet und die Frist der Hausaufgabe vorbei ist.',
             'retention' => 'Automatisch '.$retention.'.',
         ],
         [
@@ -48,6 +50,13 @@
             'people' => 'Schüler:innen',
             'access' => 'Die Schüler:in selbst, die Lehrkraft der Stunde (eine Vertretung nur, solange sie dauert) und die Schuladministration. Den Lernstand einer Klasse sehen die Lehrkräfte der Klasse. Nie andere Schüler:innen.',
             'retention' => 'Automatisch '.$retention.'.',
+        ],
+        [
+            'title' => 'Wiederholungsplan („Heute wiederholen“)',
+            'data' => 'Je Schüler:in und Frage aus einer ausgewerteten Hausaufgabe oder Förderaufgabe: Verweis auf die Frage, Box 1 bis '.ReviewSchedule::consolidatedBox().', Datum der nächsten Wiederholung, Zeitpunkt der letzten Wiederholung und drei Zähler der Selbsteinschätzung („Sofort gewusst“, „Mit Mühe“, „Nicht gewusst“). Nicht gespeichert: die eigene Antwort beim Wiederholen, einzelne Versuche, Antwortzeiten und Serien. Der Plan ist fest und kommt ohne KI aus.',
+            'people' => 'Schüler:innen',
+            'access' => 'Nur die Schüler:in selbst. Lehrkräfte, Schuladministration und Plattform-Administration sehen weder den Plan noch die Selbsteinschätzungen. Sie fließen in keinen Punktwert, Verständniswert, Lernstand und Elterngesprächs-Bericht ein. Die Lösung (Erwartungshorizont) zeigt Tuto erst, wenn die Abgabe der Schüler:in ausgewertet und die Frist der Hausaufgabe vorbei ist.',
+            'retention' => 'Automatisch '.$retention.', zusammen mit der Stunde; früher mit dem Konto der Schüler:in oder wenn die Abgabe zur Überarbeitung zurückgegeben wird.',
         ],
         [
             'title' => '„Erklär’s mir“-Gespräche und Rückfragen',
@@ -208,7 +217,7 @@
             'title' => 'Betroffenenrechte nicht erfüllbar',
             'impact' => 'Betroffene können Auskunft, Berichtigung, Löschung oder Widerruf nicht durchsetzen, weil niemand weiß, wo Daten liegen oder wer zuständig ist.',
             'measures' => [
-                'Jede Person kann ihre Daten im Profil herunterladen. Das Konto mit der gewählten Sprache und die Benachrichtigungen gehören immer dazu. Bei Schüler:innen außerdem: Hausaufgaben, Abgaben mit Stufe, Gespräche, Rückfragen, Fehlzeiten im Klassenbuch, die Einwilligung zum Tuto-Mikro und die eigene Anwesenheit in Sitzungen. Bei Lehrkräften: Klassen, Vertretungen, Unterrichtsstunden, beantwortete Rückfragen, Klassenbuch-Einträge und Tuto-Mikro-Sitzungen. Die Schuladministration kann Konten und damit zugehörige Daten löschen.',
+                'Jede Person kann ihre Daten im Profil herunterladen. Das Konto mit der gewählten Sprache und die Benachrichtigungen gehören immer dazu. Bei Schüler:innen außerdem: Hausaufgaben, Abgaben mit Stufe, Gespräche, Rückfragen, Wiederholungsfragen, Fehlzeiten im Klassenbuch, die Einwilligung zum Tuto-Mikro und die eigene Anwesenheit in Sitzungen. Bei Lehrkräften: Klassen, Vertretungen, Unterrichtsstunden, beantwortete Rückfragen, Klassenbuch-Einträge und Tuto-Mikro-Sitzungen. Die Schuladministration kann Konten und damit zugehörige Daten löschen.',
                 "Grenze: Einen einzelnen Nachweis einer Tuto-Mikro-Sitzung kann über die Plattform niemand löschen. Die Schuladministration kann ihn nur mit der Stunde oder dem Konto der Lehrkraft löschen, oder sie beauftragt den Betreiber. Spätestens löscht die Plattform ihn nach {$sessionKeepDays} Tagen. Papier-Originale von Einwilligungen bewahrt die Schule selbst auf; sie sind nicht im Download.",
                 'Eltern widerrufen eine Einwilligung jederzeit über ihren persönlichen Link; die Schule erfasst Widerrufe auf Papier in der Plattform.',
                 'Die Elterninformation benennt Ansprechpartner und Rechte.',

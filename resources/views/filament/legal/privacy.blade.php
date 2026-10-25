@@ -610,7 +610,10 @@
             ohne KI aus: Eine Frage kommt je nach Box nach {{ $reviewDays }} Tagen wieder, bei „Nicht gewusst“ beginnt sie
             wieder bei Box 1, und höchstens {{ $reviewDailyLimit }} Fragen am Tag werden gestellt. Die Einschätzung dient nur
             dem Üben: Sie ändert keinen Punktwert, keinen Verständniswert, keinen Lernstand und keinen
-            Elterngesprächs-Bericht, und außer der Schüler:in sieht sie niemand.
+            Elterngesprächs-Bericht, und außer der Schüler:in sieht sie niemand. Zu einer Frage zeigt die Plattform die
+            Lösung (den Erwartungshorizont der Lehrkraft) erst, wenn die Abgabe der Schüler:in ausgewertet und die Frist
+            der Hausaufgabe vorbei ist; wird eine Abgabe zur Überarbeitung zurückgegeben, werden die Wiederholungsdaten zu
+            dieser Hausaufgabe gelöscht.
         </li>
         <li>
             <strong>Rückfragen:</strong> Schüler:innen können der Lehrkraft einer Stunde eine Frage stellen. Gespeichert

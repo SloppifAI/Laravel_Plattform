@@ -85,8 +85,8 @@ class QuestionsRelationManager extends RelationManager
                     ->rows(3)
                     ->columnSpanFull(),
                 Textarea::make('expected_answer')
-                    ->label(__('Erwartungshorizont (nur für dich sichtbar)'))
-                    ->helperText(__('Daran misst die KI die Antworten der Schüler:innen.'))
+                    ->label(__('Erwartungshorizont'))
+                    ->helperText(__('Daran misst die KI die Antworten der Schüler:innen. Die Schüler:innen sehen ihn erst beim Wiederholen, wenn ihre Abgabe geprüft und die Frist vorbei ist.'))
                     ->rows(4)
                     ->required()
                     ->columnSpanFull(),

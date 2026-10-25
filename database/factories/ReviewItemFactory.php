@@ -6,6 +6,7 @@ use App\Models\Question;
 use App\Models\ReviewItem;
 use App\Models\User;
 use App\QuestionType;
+use App\Support\ReviewSchedule;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Carbon;
 
@@ -15,8 +16,8 @@ use Illuminate\Support\Carbon;
 class ReviewItemFactory extends Factory
 {
     /**
-     * A question in box 1 that is due today. It is only offered to a student its lesson was released to
-     * (ReviewItem::availableTo()), so tests release the lesson with `Lesson::factory()->publishedFor([$student])`.
+     * A question in box 1 that is due today (school day). It is only offered to a student its lesson was released to,
+     * who handed it in and whose deadline is over (ReviewItem::availableTo()); tests build that with CreatesReviewFixtures.
      *
      * @return array<string, mixed>
      */
@@ -26,7 +27,7 @@ class ReviewItemFactory extends Factory
             'student_id' => User::factory()->student(),
             'question_id' => Question::factory()->state(['type' => QuestionType::Comprehension]),
             'box' => 1,
-            'due_on' => today(),
+            'due_on' => ReviewSchedule::schoolToday()->toDateString(),
         ];
     }
 

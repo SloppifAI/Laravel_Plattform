@@ -12,7 +12,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * A homework question with its Erwartungshorizont (`expected_answer`), which students never see. `prompt` is the
+ * A homework question with its Erwartungshorizont (`expected_answer`), which students see only in "Heute wiederholen", once their
+ * hand-in has been evaluated and the deadline has passed (ReviewItem::scopeAvailableTo). `prompt` is the
  * Standard level; `prompt_basis` (Einstieg) and `prompt_plus` (Profi) are optional variants that share the Erwartungshorizont.
  * `ai_drafted` marks a question of the AI draft the teacher has not edited; a new draft replaces only those (HomeworkDraft).
  */

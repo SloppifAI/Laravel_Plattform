@@ -2,11 +2,14 @@
 
 namespace App\Support;
 
+use App\Models\Question;
 use App\Models\ReviewItem;
 use App\Models\Submission;
+use App\Models\TimetableEntry;
 use App\Models\User;
 use App\QuestionType;
 use App\ReviewRating;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -17,6 +20,7 @@ use Illuminate\Support\Facades\DB;
  * rated "Sofort gewusst" moves up one box, "Mit Mühe" stays and waits for the interval of its box again, "Nicht gewusst"
  * goes back to box 1. The days per box come from `lernplattform.review.intervals`; past the last one a question counts as
  * consolidated and is not asked any more. At most `lernplattform.review.daily_limit` questions a day, oldest due first.
+ * A day is the school's day (TimetableEntry::TIMEZONE), not the server's: "tomorrow" and the limit follow the German clock.
  *
  * Practice only: ratings never touch a score, the learning progress or the parents' report. Nothing here is shown to
  * anybody but the student, and no response times or single attempts are kept, only counters.
@@ -53,6 +57,14 @@ final class ReviewSchedule
     }
 
     /**
+     * The start of today in school time. Every date and every "today" of the plan comes from here.
+     */
+    public static function schoolToday(): CarbonInterface
+    {
+        return TimetableEntry::schoolNow()->startOfDay();
+    }
+
+    /**
      * Puts every question the hand-in answered into box 1, due after the first interval. A question the student has
      * already (also from an earlier hand-in or evaluation) keeps its box and due date, so evaluating again creates no
      * duplicates and resets nothing. Questions without a fixed solution (reflection) are left out.
@@ -64,7 +76,7 @@ final class ReviewSchedule
         }
 
         $now = now();
-        $dueOn = $submission->evaluated_at->copy()->addDays(self::intervals()[0])->toDateString();
+        $dueOn = $submission->evaluated_at->copy()->setTimezone(TimetableEntry::TIMEZONE)->addDays(self::intervals()[0])->toDateString();
 
         $rows = $submission->answers()
             ->where('answer', '!=', '')
@@ -89,6 +101,18 @@ final class ReviewSchedule
     }
 
     /**
+     * A returned hand-in is deleted so the student can redo it: their questions of that lesson leave the boxes with it
+     * (the solution must not stay on offer while the homework is open again), and the next evaluation enters them afresh.
+     */
+    public static function forget(Submission $submission): void
+    {
+        ReviewItem::query()
+            ->where('student_id', $submission->student_id)
+            ->whereIn('question_id', Question::query()->where('lesson_id', $submission->lesson_id)->select('id'))
+            ->delete();
+    }
+
+    /**
      * Moves the item between the boxes by the rating and sets when it is due next. Only an item that is due and not
      * consolidated moves, so a double click or a second tab rates a question once.
      *
@@ -102,7 +126,7 @@ final class ReviewSchedule
             ReviewRating::Hard => $item->box,
             ReviewRating::Forgot => 1,
         };
-        $today = today();
+        $today = self::schoolToday();
         $dueOn = $box >= $consolidated ? $today : $today->copy()->addDays(self::intervals()[$box - 1]);
 
         return self::dueQuery()
@@ -145,7 +169,7 @@ final class ReviewSchedule
      */
     public static function reviewedToday(User $student): int
     {
-        return ReviewItem::query()->whereBelongsTo($student, 'student')->where('last_reviewed_at', '>=', today())->count();
+        return ReviewItem::query()->whereBelongsTo($student, 'student')->where('last_reviewed_at', '>=', self::schoolToday()->setTimezone(config('app.timezone')))->count();
     }
 
     private static function remainingToday(User $student): int
@@ -160,6 +184,6 @@ final class ReviewSchedule
     {
         return ReviewItem::query()
             ->where('box', '<', self::consolidatedBox())
-            ->whereDate('due_on', '<=', today()->toDateString());
+            ->whereDate('due_on', '<=', self::schoolToday()->toDateString());
     }
 }

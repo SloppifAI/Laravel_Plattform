@@ -197,7 +197,7 @@ class EditLesson extends EditRecord
                 ->disabled(fn (Lesson $record): bool => $record->questions()->doesntExist())
                 ->tooltip(fn (Lesson $record): ?string => $record->questions()->doesntExist() ? __('Lege zuerst Fragen an, zum Beispiel mit der KI.') : null)
                 ->modalHeading(__('Hausaufgabe freigeben'))
-                ->modalDescription(__('Die Schüler:innen finden die Fragen danach in ihrem Lernbereich. Den Erwartungshorizont sehen sie nicht.'))
+                ->modalDescription(__('Die Schüler:innen finden die Fragen danach in ihrem Lernbereich. Den Erwartungshorizont sehen sie erst beim Wiederholen, wenn ihre Abgabe geprüft und die Frist vorbei ist.'))
                 ->modalSubmitActionLabel(__('Freigeben'))
                 ->schema([
                     DatePicker::make('due_on')

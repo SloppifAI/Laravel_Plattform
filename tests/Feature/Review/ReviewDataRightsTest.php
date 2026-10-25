@@ -161,6 +161,7 @@ class ReviewDataRightsTest extends TestCase
             'Der Plan ist fest und kommt ohne KI aus: Eine Frage kommt je nach Box nach 1, 3, 7 und 21 Tagen wieder',
             'höchstens 5 Fragen am Tag werden gestellt',
             'keinen Elterngesprächs-Bericht, und außer der Schüler:in sieht sie niemand.',
+            'Zu einer Frage zeigt die Plattform die Lösung (den Erwartungshorizont der Lehrkraft) erst, wenn die Abgabe der Schüler:in ausgewertet und die Frist der Hausaufgabe vorbei ist; wird eine Abgabe zur Überarbeitung zurückgegeben, werden die Wiederholungsdaten zu dieser Hausaufgabe gelöscht.',
             '„Heute wiederholen“ (Wiederholungsfragen und Selbsteinschätzung)',
             'Mit dem Konto einer Schüler:in gehen auch ihre Wiederholungsfragen („Heute wiederholen“).',
             'Die Wiederholungsfragen („Heute wiederholen“) hängen an den Fragen der Stunde und verschwinden mit ihr.',
@@ -198,5 +199,52 @@ class ReviewDataRightsTest extends TestCase
         ] as $phrase) {
             $this->assertStringContainsString($phrase, $text);
         }
+    }
+
+    public function test_the_parent_information_and_the_impact_assessment_name_the_revision_data(): void
+    {
+        $this->actingAs(User::factory()->for(School::factory()->create())->admin()->create());
+
+        $parents = $this->privacyDocumentText('elterninformation');
+
+        foreach ([
+            'Wenn Ihr Kind „Heute wiederholen“ nutzt: je Frage aus früheren Hausaufgaben ein Wiederholungsplan mit der Box (1 bis 5)',
+            'drei Zählern, wie oft sich Ihr Kind mit „Sofort gewusst“, „Mit Mühe“ oder „Nicht gewusst“ eingeschätzt hat',
+            'Die eigene Antwort beim Wiederholen, einzelne Versuche und Antwortzeiten werden nicht gespeichert.',
+            'keine Note und fließt weder in den Verständniswert noch in einen Bericht ein',
+            'Die Lösung sieht Ihr Kind dort erst, wenn seine Abgabe ausgewertet und die Frist der Hausaufgabe vorbei ist.',
+            'Dasselbe gilt für den Wiederholungsplan in „Heute wiederholen“: Lehrkräfte sehen ihn nicht.',
+            'mit drei Ausnahmen: Notizen und Nachweise des Tuto-Mikro (siehe Abschnitt 7), Gespräche in „Erklär’s mir“ zu einem frei gewählten Thema und der Wiederholungsplan in „Heute wiederholen“.',
+            'Unterrichtsstunden mit Abgaben, Antworten, Wiederholungsplänen und Rückfragen',
+            'Rückfragen, die Wiederholungsfragen, die Fehlzeiten im Klassenbuch',
+        ] as $phrase) {
+            $this->assertStringContainsString($phrase, $parents);
+        }
+
+        $this->assertStringNotContainsString('mit zwei Ausnahmen', $parents);
+
+        $assessment = $this->privacyDocumentText('dsfa');
+
+        foreach ([
+            'Wiederholungsplan („Heute wiederholen“)',
+            'Je Schüler:in und Frage aus einer ausgewerteten Hausaufgabe oder Förderaufgabe: Verweis auf die Frage, Box 1 bis 5',
+            'Nur die Schüler:in selbst. Lehrkräfte, Schuladministration und Plattform-Administration sehen weder den Plan noch die Selbsteinschätzungen.',
+            'Die Lösung (Erwartungshorizont) zeigt Tuto erst, wenn die Abgabe der Schüler:in ausgewertet und die Frist der Hausaufgabe vorbei ist.',
+            'wenn die Abgabe zur Überarbeitung zurückgegeben wird',
+            'Den Erwartungshorizont sehen sie erst in „Heute wiederholen“, wenn ihre Abgabe ausgewertet und die Frist der Hausaufgabe vorbei ist.',
+            'Bei Schüler:innen außerdem: Hausaufgaben, Abgaben mit Stufe, Gespräche, Rückfragen, Wiederholungsfragen, Fehlzeiten',
+        ] as $phrase) {
+            $this->assertStringContainsString($phrase, $assessment);
+        }
+    }
+
+    /**
+     * The text of one of the school's privacy documents, whitespace collapsed.
+     */
+    private function privacyDocumentText(string $document): string
+    {
+        $html = $this->get(PrivacyDocuments::getUrl(['document' => $document]))->assertOk()->getContent();
+
+        return html_entity_decode(preg_replace('/\s+/', ' ', strip_tags(Str::before(Str::after($html, '<article'), '</article>'))));
     }
 }

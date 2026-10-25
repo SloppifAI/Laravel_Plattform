@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\QuestionType;
+use App\Support\ReviewSchedule;
 use Database\Factories\ReviewItemFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
@@ -37,9 +38,12 @@ class ReviewItem extends Model
     }
 
     /**
-     * The student's own items that they may still revise: the question has a solution to revise, and its lesson is
-     * published, was delegated to this student and belongs to the student's school. A taken-back homework or a lesson
-     * of another school (the student's school changed) is never offered, whatever rows exist.
+     * The student's own items that they may revise now: the question has a solution to revise, its lesson is published,
+     * was delegated to this student and belongs to the student's school, and the student has an evaluated hand-in for it
+     * while its deadline is over. The solution (Erwartungshorizont) comes with the question, so it is never on offer while
+     * the homework is open again for the student (a returned hand-in) or still open for their classmates (an early one).
+     * A taken-back homework or a lesson of another school (the student's school changed) is never offered either,
+     * whatever rows exist.
      *
      * @param  Builder<ReviewItem>  $query
      */
@@ -50,7 +54,9 @@ class ReviewItem extends Model
                 ->whereIn('type', array_column(QuestionType::reviewable(), 'value'))
                 ->whereHas('lesson', fn (Builder $lesson) => $lesson
                     ->assignedTo($student)
-                    ->whereHas('schoolClass', fn (Builder $schoolClass) => $schoolClass->where('school_id', $student->school_id))));
+                    ->whereHas('schoolClass', fn (Builder $schoolClass) => $schoolClass->where('school_id', $student->school_id))
+                    ->whereHas('submissions', fn (Builder $submission) => $submission->whereBelongsTo($student, 'student')->whereNotNull('evaluated_at'))
+                    ->where(fn (Builder $deadline) => $deadline->whereNull('due_on')->orWhereDate('due_on', '<', ReviewSchedule::schoolToday()->toDateString()))));
     }
 
     /**

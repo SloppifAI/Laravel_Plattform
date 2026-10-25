@@ -3,6 +3,8 @@
 namespace Tests\Feature\Review;
 
 use App\Filament\Pages\ReviewToday;
+use App\Filament\Resources\Lessons\Pages\EditLesson;
+use App\Filament\Resources\Lessons\RelationManagers\SubmissionsRelationManager;
 use App\Filament\Widgets\StudentLearningWidget;
 use App\Models\Answer;
 use App\Models\Lesson;
@@ -13,6 +15,8 @@ use App\Models\User;
 use App\QuestionLevel;
 use App\QuestionType;
 use App\Support\ReviewSchedule;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\Testing\TestAction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Livewire;
@@ -118,9 +122,9 @@ class ReviewTodayPageTest extends TestCase
 
     public function test_the_question_is_shown_in_the_level_the_student_answered_it_in(): void
     {
-        $lesson = Lesson::factory()->for($this->student->schoolClass)->publishedFor([$this->student])->create();
+        $lesson = $this->releasedLesson($this->student);
+        $submission = $this->handedIn($this->student, $lesson);
         $item = $this->itemFor($this->student, ['prompt' => 'Standardtext-der-Frage', 'prompt_basis' => 'Einstiegstext-der-Frage', 'prompt_plus' => 'Profitext-der-Frage'], lesson: $lesson);
-        $submission = Submission::factory()->for($lesson)->for($this->student, 'student')->evaluated()->create();
         Answer::factory()->for($submission)->for($item->question)->create(['level' => QuestionLevel::Plus->value]);
 
         $this->assertSame('Profitext-der-Frage', $item->askedPrompt());
@@ -323,7 +327,8 @@ class ReviewTodayPageTest extends TestCase
 
     public function test_a_lesson_of_another_school_in_the_assignments_is_not_offered(): void
     {
-        $foreignLesson = Lesson::factory()->for(SchoolClass::factory()->create())->publishedFor([$this->student])->create();
+        $foreignLesson = Lesson::factory()->for(SchoolClass::factory()->create())->publishedFor([$this->student])->create(['due_on' => '2020-01-01']);
+        $this->handedIn($this->student, $foreignLesson);
         $this->itemFor($this->student, ['prompt' => 'Frage-aus-fremder-Schule'], lesson: $foreignLesson);
 
         $this->assertNotSame($this->student->school_id, $foreignLesson->schoolClass->school_id);
@@ -348,7 +353,8 @@ class ReviewTodayPageTest extends TestCase
 
     public function test_questions_of_homework_that_was_taken_back_or_is_no_longer_assigned_are_not_offered(): void
     {
-        $lesson = Lesson::factory()->for($this->student->schoolClass)->publishedFor([$this->student])->create();
+        $lesson = $this->releasedLesson($this->student);
+        $this->handedIn($this->student, $lesson);
         $item = $this->itemFor($this->student, ['prompt' => 'Frage-der-Stunde'], lesson: $lesson);
 
         $this->assertSame(1, ReviewSchedule::todaysCount($this->student));
@@ -362,6 +368,93 @@ class ReviewTodayPageTest extends TestCase
         $lesson->students()->detach($this->student);
         $this->assertSame(0, ReviewSchedule::todaysCount($this->student), 'no longer assigned');
         $this->assertModelExists($item);
+    }
+
+    // ---- The solution is only on offer once the student's hand-in is evaluated and the deadline is over ---------------
+
+    public function test_nothing_is_offered_without_an_evaluated_hand_in_for_the_lesson(): void
+    {
+        $lesson = $this->releasedLesson($this->student);
+        $item = $this->itemFor($this->student, ['prompt' => 'Frage-ohne-Abgabe', 'expected_answer' => 'EWH-GEHEIM-OSMOSE'], lesson: $lesson);
+
+        $this->assertSame(0, ReviewSchedule::todaysCount($this->student), 'no hand-in');
+
+        $open = Submission::factory()->for($lesson)->for($this->student, 'student')->create();
+        $this->assertSame(0, ReviewSchedule::todaysCount($this->student), 'hand-in not evaluated yet');
+
+        Livewire::actingAs($this->student)->test(ReviewToday::class)
+            ->call('reveal', $item->id)
+            ->assertDontSee('EWH-GEHEIM-OSMOSE')
+            ->assertDontSee('Frage-ohne-Abgabe');
+
+        $open->forceFill(['evaluated_at' => now()])->save();
+        $this->assertSame(1, ReviewSchedule::todaysCount($this->student));
+    }
+
+    public function test_the_solution_waits_for_the_deadline_of_the_homework(): void
+    {
+        $lesson = $this->releasedLesson($this->student, ['due_on' => '2026-10-30']);
+        $this->handedIn($this->student, $lesson);
+        $early = $this->itemFor($this->student, ['prompt' => 'Frage-mit-Frist', 'expected_answer' => 'EWH-GEHEIM-OSMOSE'], lesson: $lesson);
+        $withoutDeadline = $this->releasedLesson($this->student, ['due_on' => null]);
+        $this->handedIn($this->student, $withoutDeadline);
+        $free = $this->itemFor($this->student, ['prompt' => 'Frage-ohne-Frist'], lesson: $withoutDeadline);
+
+        // A hand-in that came in early: the classmates still work on the homework, so its questions stay away.
+        $this->assertSame([$free->id], ReviewSchedule::todaysQueue($this->student)->pluck('id')->all());
+
+        Livewire::actingAs($this->student)->test(ReviewToday::class)
+            ->call('reveal', $early->id)
+            ->assertSee('Frage-ohne-Frist')
+            ->assertDontSee('Frage-mit-Frist')
+            ->assertDontSee('EWH-GEHEIM-OSMOSE');
+
+        // The deadline day itself is still open (23:30 on the 30th in school time), the next day is not.
+        $this->travelTo('2026-10-30 22:30:00');
+        $this->assertSame(1, ReviewSchedule::todaysCount($this->student));
+
+        $this->travelTo('2026-10-30 23:30:00');
+        $this->assertSame(2, ReviewSchedule::todaysCount($this->student));
+        $this->assertEqualsCanonicalizing([$early->id, $free->id], ReviewSchedule::todaysQueue($this->student)->pluck('id')->all());
+    }
+
+    public function test_a_returned_hand_in_takes_the_revision_plan_with_it_and_its_solution_stays_away_while_the_homework_is_open(): void
+    {
+        $teacher = $this->student->schoolClass->teacher;
+        $lesson = $this->releasedLesson($this->student, ['due_on' => '2026-10-19']);
+        $submission = $this->handedIn($this->student, $lesson);
+        $returned = $this->itemFor($this->student, ['prompt' => 'Frage-der-Rueckgabe', 'expected_answer' => 'EWH-GEHEIM-OSMOSE'], lesson: $lesson);
+        $kept = $this->itemFor($this->student, ['prompt' => 'Frage-einer-anderen-Stunde']);
+        $classmate = User::factory()->student($this->student->schoolClass)->create();
+        $this->handedIn($classmate, $lesson);
+        $classmatesItem = $this->itemFor($classmate, [], lesson: $lesson);
+
+        $this->assertSame(2, ReviewSchedule::todaysCount($this->student));
+
+        // The teacher returns the hand-in, the student may redo the homework: its solution must not be on offer.
+        $this->actingAs($teacher);
+        Livewire::test(SubmissionsRelationManager::class, ['ownerRecord' => $lesson, 'pageClass' => EditLesson::class])
+            ->callAction(TestAction::make(DeleteAction::class)->table($submission));
+
+        $this->assertModelMissing($submission);
+        $this->assertModelMissing($returned);
+        $this->assertModelExists($kept);
+        $this->assertModelExists($classmatesItem);
+        $this->assertSame([$kept->id], ReviewSchedule::todaysQueue($this->student)->pluck('id')->all());
+
+        Livewire::actingAs($this->student)->test(ReviewToday::class)
+            ->call('reveal', $returned->id)
+            ->assertSee('Frage-einer-anderen-Stunde')
+            ->assertDontSee('Frage-der-Rueckgabe')
+            ->assertDontSee('EWH-GEHEIM-OSMOSE');
+
+        // The next evaluation enters the question afresh: box 1, due the day after.
+        $redone = Submission::factory()->for($lesson)->for($this->student, 'student')->evaluated()->create();
+        Answer::factory()->for($redone)->for($returned->question)->create(['answer' => 'Neue Antwort']);
+        ReviewSchedule::enqueueFor($redone);
+
+        $again = ReviewItem::query()->whereBelongsTo($returned->question)->whereBelongsTo($this->student, 'student')->sole();
+        $this->assertSame([1, '2026-10-21'], [$again->box, $again->due_on->toDateString()]);
     }
 
     // ---- The card on the start page ---------------------------------------------------------------------------------
