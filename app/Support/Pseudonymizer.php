@@ -107,6 +107,9 @@ final class Pseudonymizer
             return $text;
         }
 
+        // The rich editor stores "O'Brien" as "O&#039;Brien"; decoded, the whole name matches again.
+        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
         // Longest first, so "Anna Müller" wins over "Anna".
         $names = array_keys($this->labels);
         usort($names, fn (string $a, string $b): int => mb_strlen($b) <=> mb_strlen($a));

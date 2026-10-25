@@ -108,6 +108,13 @@ class PseudonymizerTest extends TestCase
         $this->assertSame('Lehrkraft zeigt die Pflanze, Lehrkraft lobt Schüler:in A. Eine Frau aus dem Labor kommt dazu.', $result);
     }
 
+    public function test_a_name_with_an_apostrophe_is_found_in_html_from_the_rich_editor(): void
+    {
+        $result = Pseudonymizer::forPeople(["Sean O'Brien"], null)->apply('<p>Sean O&#039;Brien hat den Versuch erklärt.</p>');
+
+        $this->assertSame('<p>Schüler:in A hat den Versuch erklärt.</p>', $result);
+    }
+
     public function test_initials_and_single_letters_are_not_replaced(): void
     {
         $result = Pseudonymizer::forPeople(['Max M. Meier'], null)->apply('M ist ein Buchstabe, Max Meier meldet sich.');

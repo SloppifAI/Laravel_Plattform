@@ -72,6 +72,16 @@ class Lesson extends Model
     }
 
     /**
+     * The summary as plain text, one line per paragraph, heading or list item, for places that show text only.
+     */
+    public static function summaryToText(?string $summary): string
+    {
+        $lines = preg_replace('/<\/(?:p|h[1-6]|li)>|<br\s*\/?>/i', "\n", (string) static::summaryToHtml($summary));
+
+        return trim((string) preg_replace("/\n{3,}/", "\n\n", html_entity_decode(strip_tags((string) $lines), ENT_QUOTES | ENT_HTML5, 'UTF-8')));
+    }
+
+    /**
      * @return BelongsTo<SchoolClass, $this>
      */
     public function schoolClass(): BelongsTo

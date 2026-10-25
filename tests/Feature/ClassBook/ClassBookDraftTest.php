@@ -45,6 +45,17 @@ class ClassBookDraftTest extends TestCase
         $this->assertFalse($entry->isConfirmed());
     }
 
+    public function test_a_summary_from_the_editor_or_in_markdown_becomes_plain_text(): void
+    {
+        [$schoolClass, , $teacher] = $this->classWithStudents();
+
+        $fromEditor = ClassBookDraft::createFor($this->lessonOf($schoolClass, $teacher, ['summary' => '<h2>Herz</h2><p>Pumpt <strong>Blut</strong> &amp; Sauerstoff.</p><ul><li>vier Kammern</li><li>zwei Vorhöfe</li></ul>']));
+        $fromApp = ClassBookDraft::createFor($this->lessonOf($schoolClass, $teacher, ['summary' => "## Herz\n\nPumpt **Blut**."]));
+
+        $this->assertSame("Herz\nPumpt Blut & Sauerstoff.\nvier Kammern\nzwei Vorhöfe", $fromEditor->content);
+        $this->assertSame("Herz\n\nPumpt Blut.", $fromApp->content);
+    }
+
     public function test_without_a_summary_the_content_is_the_first_three_sentences_of_the_notes(): void
     {
         [$schoolClass, , $teacher] = $this->classWithStudents();

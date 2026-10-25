@@ -53,7 +53,8 @@ class ClassBookDraft
 
     private static function contentFor(Lesson $lesson): string
     {
-        $summary = trim((string) $lesson->summary);
+        // The entry is plain text; the summary is HTML from the editor or Markdown from the AI and apps.
+        $summary = Lesson::summaryToText($lesson->summary);
 
         if ($summary !== '') {
             return $summary;
