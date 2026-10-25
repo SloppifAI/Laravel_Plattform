@@ -24,7 +24,7 @@ class UpdateLessonSummaryRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'summary' => ['required', 'string', 'max:5000'],
+            'summary' => ['required', 'string', 'max:16383'],
         ];
     }
 
