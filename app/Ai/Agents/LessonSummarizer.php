@@ -36,5 +36,4 @@ class LessonSummarizer extends LessonAgent implements HasStructuredOutput
             'suggested_notes' => $schema->string()->required(),
         ];
     }
-
 }
