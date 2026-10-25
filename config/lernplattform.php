@@ -136,6 +136,32 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Timetable
+    |--------------------------------------------------------------------------
+    |
+    | The bell times of the periods a timetable entry can sit in, numbered from 1, as start and end (HH:MM). The school
+    | administration places the entries on Monday to Friday; students and teachers see their week on "Stundenplan".
+    | The number of periods here is the number of rows of the timetable.
+    |
+    */
+
+    'timetable' => [
+        'periods' => [
+            1 => ['08:00', '08:45'],
+            2 => ['08:45', '09:30'],
+            3 => ['09:50', '10:35'],
+            4 => ['10:35', '11:20'],
+            5 => ['11:40', '12:25'],
+            6 => ['12:25', '13:10'],
+            7 => ['14:00', '14:45'],
+            8 => ['14:45', '15:30'],
+            9 => ['15:30', '16:15'],
+            10 => ['16:15', '17:00'],
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Notifications (the bell)
     |--------------------------------------------------------------------------
     |

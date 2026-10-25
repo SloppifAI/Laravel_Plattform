@@ -15,6 +15,7 @@ use App\Models\LessonRecording;
 use App\Models\RecordingConsent;
 use App\Models\StudentQuestion;
 use App\Models\Submission;
+use App\Models\TimetableEntry;
 use App\Models\User;
 use App\QuestionLevel;
 use Filament\Support\Contracts\HasLabel;
@@ -75,6 +76,7 @@ class PersonalDataExport
         if ($user->isTeacher()) {
             $export['klassenleitung'] = $user->ledClasses()->orderBy('name')->pluck('name')->all();
             $export['zugeordnete_klassen'] = $user->taughtClasses()->orderBy('name')->pluck('name')->all();
+            $export['stundenplan'] = self::timetable($user);
             $export['vertretungen'] = self::substitutions($user, $viewer);
             $export['unterrichtsstunden'] = self::taughtLessons($user, $viewer);
             $export['beantwortete_rueckfragen'] = self::answeredQuestions($user, $viewer);
@@ -363,6 +365,28 @@ class PersonalDataExport
                 'fassung_des_einwilligungstextes' => $recording->consent_form_version,
                 'gepruefte_zwecke' => array_values(array_intersect_key(ConsentForm::PURPOSES_SHORT, array_flip($recording->purposes ?? []))),
                 'ton_an_ki_anbieter' => $recording->audio_sent_to_ai,
+            ])
+            ->all();
+    }
+
+    /**
+     * The slots of the weekly timetable the teacher is entered for.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private static function timetable(User $teacher): array
+    {
+        return $teacher->timetableEntries()
+            ->ofSchool($teacher->school_id)
+            ->with('schoolClass')
+            ->inWeekOrder()
+            ->get()
+            ->map(fn (TimetableEntry $entry): array => [
+                'klasse' => $entry->schoolClass->name,
+                'wochentag' => $entry->weekdayName('de'),
+                'stunde' => $entry->period,
+                'fach' => $entry->subject,
+                'raum' => $entry->room,
             ])
             ->all();
     }

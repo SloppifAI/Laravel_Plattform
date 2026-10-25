@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Lessons\Schemas;
 use App\Models\Competency;
 use App\Models\Lesson;
 use App\Models\SchoolClass;
+use App\Models\TimetableEntry;
 use App\Models\User;
 use App\Support\LessonReview;
 use Filament\Forms\Components\DatePicker;
@@ -14,9 +15,11 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 
 class LessonForm
@@ -29,6 +32,32 @@ class LessonForm
                     ->columns(2)
                     ->columnSpanFull()
                     ->schema([
+                        // Only a help for entering: it fills in class and subject from the teacher's timetable and is not saved.
+                        Select::make('timetable_entry_id')
+                            ->label(__('Laut Stundenplan'))
+                            ->options(fn (Get $get): array => static::timetableSlots(auth()->user(), $get('held_on'))
+                                ->mapWithKeys(fn (TimetableEntry $entry): array => [$entry->getKey() => collect([
+                                    TimetableEntry::periodLabel($entry->period),
+                                    $entry->schoolClass->name,
+                                    $entry->subject,
+                                ])->implode(' · ')])
+                                ->all())
+                            ->default(fn (): ?int => static::currentSlot()?->getKey())
+                            ->placeholder(__('Stunde außerhalb des Stundenplans'))
+                            ->helperText(__('Übernimmt Klasse und Fach aus deinem Stundenplan. Du kannst beides danach noch ändern.'))
+                            ->live()
+                            ->afterStateUpdated(function (mixed $state, Get $get, Set $set): void {
+                                // Only an offered slot fills anything in; the state is Livewire input until the form validates it.
+                                $entry = filled($state) ? static::timetableSlots(auth()->user(), $get('held_on'))->find($state) : null;
+
+                                if ($entry !== null) {
+                                    $set('school_class_id', $entry->school_class_id);
+                                    $set('subject', $entry->subject);
+                                }
+                            })
+                            ->dehydrated(false)
+                            ->visible(fn (Get $get, string $operation): bool => $operation === 'create' && static::timetableSlots(auth()->user(), $get('held_on'))->isNotEmpty())
+                            ->columnSpanFull(),
                         Select::make('school_class_id')
                             ->label(__('Klasse'))
                             // Admins: the classes of their school. Teachers: the classes they teach (see LessonPolicy::createFor) plus the
@@ -41,14 +70,18 @@ class LessonForm
                             // Released or used by students, the lesson's students and results belong to its class (LessonPolicy::changeClass). Not saved while disabled.
                             ->disabled(fn (?Lesson $record): bool => $record !== null && auth()->user()->cannot('changeClass', $record))
                             ->helperText(fn (Select $component): ?string => $component->isDisabled() ? __('Die Schüler:innen der Klasse haben diese Stunde schon bekommen, deshalb bleibt sie in ihrer Klasse.') : null)
+                            ->default(fn (): ?int => static::currentSlot()?->school_class_id)
                             ->required(),
                         DatePicker::make('held_on')
                             ->label(__('Gehalten am'))
                             ->default(today())
                             ->live()
+                            // The slots of another weekday are others; the chosen one no longer applies.
+                            ->afterStateUpdated(fn (Set $set) => $set('timetable_entry_id', null))
                             ->required(),
                         TextInput::make('subject')
                             ->label(__('Fach'))
+                            ->default(fn (): ?string => static::currentSlot()?->subject)
                             // Suggesting the framework's subjects keeps the competency mapping working.
                             ->datalist(fn (): array => Competency::query()->whereNotNull('subject')->distinct()->orderBy('subject')->pluck('subject')->all())
                             ->live(onBlur: true)
@@ -100,6 +133,45 @@ class LessonForm
                             ->rows(8),
                     ]),
             ]);
+    }
+
+    /**
+     * The teacher's timetable slots on the weekday of the given date, only in classes they may enter a lesson for
+     * (a timetable entry grants nothing by itself). Administrations have no slots of their own.
+     *
+     * @return Collection<int, TimetableEntry>
+     */
+    private static function timetableSlots(User $user, mixed $heldOn): Collection
+    {
+        $day = rescue(fn (): ?Carbon => filled($heldOn) ? Carbon::parse($heldOn) : null, report: false);
+
+        if ($day === null || ! $user->isTeacher()) {
+            return new Collection;
+        }
+
+        return TimetableEntry::query()
+            ->taughtOn($user, $day)
+            ->whereIn('school_class_id', SchoolClass::query()->taughtBy($user)->select('school_classes.id'))
+            ->with('schoolClass')
+            ->orderBy('period')
+            ->get();
+    }
+
+    /**
+     * The slot a lesson entered now most likely belongs to: the one running, otherwise the last one of today that has
+     * already begun (TimetableEntry::periodAt()). Preselected on a new lesson; null if there is none.
+     */
+    private static function currentSlot(): ?TimetableEntry
+    {
+        $period = TimetableEntry::periodAt(now());
+
+        if ($period === null) {
+            return null;
+        }
+
+        return static::timetableSlots(auth()->user(), today())
+            ->filter(fn (TimetableEntry $entry): bool => $entry->period <= $period)
+            ->last();
     }
 
     /**

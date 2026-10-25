@@ -101,6 +101,16 @@ class RolesAndPermissions extends Page implements HasTable
                 'detail' => __('Klassen anlegen, Klassenleitung festlegen, weitere Lehrkräfte der Klasse zuordnen, Schüler:innen zuordnen, Schülerlisten importieren.'),
                 'operator' => 'none', 'admin' => 'school', 'teacher' => 'none', 'student' => 'none',
             ],
+            'timetable' => [
+                'ability' => __('Stundenpläne pflegen'),
+                'detail' => __('Fach, Lehrkraft und Raum je Klasse, Wochentag und Stunde eintragen. Nur die Schuladministration pflegt die Stundenpläne der eigenen Schule. Eine Klasse hat je Stunde einen Eintrag, und eine Lehrkraft steht nie in zwei Klassen zugleich. Der Eintrag gibt der Lehrkraft keinen Zugriff auf die Klasse. Die Plattform-Administration sieht keine Stundenpläne.'),
+                'operator' => 'none', 'admin' => 'school', 'teacher' => 'none', 'student' => 'none',
+            ],
+            'timetable_view' => [
+                'ability' => __('Stundenplan ansehen'),
+                'detail' => __('Schüler:innen sehen den Plan ihrer Klasse, Lehrkräfte ihre eigenen Stunden in allen Klassen und die Klassenleitung den ganzen Plan ihrer Klasse, alle nur zum Ansehen. Die Schuladministration sieht alle Pläne der eigenen Schule.'),
+                'operator' => 'none', 'admin' => 'school', 'teacher' => 'own', 'student' => 'class',
+            ],
             'competencies' => [
                 'ability' => __('Kompetenzraster pflegen'),
                 'detail' => __('Das Kompetenzraster gilt für alle Schulen. Nur die Plattform-Administration legt Kompetenzen an und bearbeitet sie, Schuladministrationen und Lehrkräfte schlagen sie nach.'),

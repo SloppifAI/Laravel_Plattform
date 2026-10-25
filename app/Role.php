@@ -32,7 +32,7 @@ enum Role: string implements HasColor, HasDescription, HasLabel
     {
         return match ($this) {
             self::Operator => __('Betreut die Plattform: verwaltet die registrierten Schulen und deren Administrationszugänge, pflegt das Kompetenzraster. Sieht keine Unterrichts- und Lerndaten.'),
-            self::Admin => __('Verwaltet Benutzer und Klassen der eigenen Schule und sieht alle Auswertungen dieser Schule.'),
+            self::Admin => __('Verwaltet Benutzer, Klassen und Stundenpläne der eigenen Schule und sieht alle Auswertungen dieser Schule.'),
             self::Teacher => __('Erstellt Unterrichtsstunden, gibt Hausaufgaben frei und sieht die Ergebnisse der eigenen Schüler:innen.'),
             self::Student => __('Bearbeitet zugewiesene Hausaufgaben und übt mit „Erklär’s mir“.'),
         };

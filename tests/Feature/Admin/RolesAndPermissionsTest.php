@@ -16,6 +16,7 @@ use App\Models\RecordingConsent;
 use App\Models\School;
 use App\Models\SchoolClass;
 use App\Models\StudentQuestion;
+use App\Models\TimetableEntry;
 use App\Models\User;
 use App\Role;
 use App\Support\LearningInsights;
@@ -88,6 +89,8 @@ class RolesAndPermissionsTest extends TestCase
                 : $user->can('viewAny', RecordingConsent::class),
             'mikro_settings' => fn (User $user): bool => $user->can('viewAny', ConsentForm::class),
             'ai' => fn (): bool => AiSettings::canAccess(),
+            'timetable' => fn (User $user): bool => $user->can('create', TimetableEntry::class),
+            'timetable_view' => fn (User $user): bool => $user->can('viewAny', TimetableEntry::class) || $user->can('viewOwn', TimetableEntry::class),
         ];
         $matrix = RolesAndPermissions::matrix();
 

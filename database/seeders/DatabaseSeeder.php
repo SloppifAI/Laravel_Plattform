@@ -28,6 +28,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             CompetencyFrameworkSeeder::class,
             DemoSchoolSeeder::class,
+            TimetableSeeder::class,
         ]);
     }
 }
