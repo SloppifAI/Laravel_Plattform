@@ -120,14 +120,14 @@ class SdkLessonAssistant implements LessonAssistant
             return implode("\n", [
                 "Frage-ID {$question->id} ({$this->germanLabel($question->type)}".($level === null ? '' : ", Stufe: {$this->germanLabel($level)}").'): '.$pseudonymizer->apply($question->promptFor($level ?? QuestionLevel::Standard)),
                 'Erwartungshorizont: '.$pseudonymizer->apply((string) $question->expected_answer),
-                'Antwort: '.($answers->get($question->id)?->answer ? $pseudonymizer->apply($answers->get($question->id)->answer) : '(keine Antwort)'),
+                'Antwort: '.(filled($answers->get($question->id)?->answer) ? $pseudonymizer->apply($answers->get($question->id)->answer) : '(keine Antwort)'),
             ]);
         })->implode("\n\n");
 
         $result = $this->askForData(
             new SubmissionEvaluator,
             $this->lessonContext($lesson, $pseudonymizer)
-                ."\n\nEigene Zusammenfassung der Schülerin oder des Schülers:\n".($submission->summary ? $pseudonymizer->apply($submission->summary) : '(keine Zusammenfassung)')
+                ."\n\nEigene Zusammenfassung der Schülerin oder des Schülers:\n".(filled($submission->summary) ? $pseudonymizer->apply($submission->summary) : '(keine Zusammenfassung)')
                 ."\n\nFragen und Antworten:\n".$questions,
             $this->worksheets($lesson),
         );

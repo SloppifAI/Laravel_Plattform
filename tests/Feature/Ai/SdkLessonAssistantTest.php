@@ -367,6 +367,29 @@ class SdkLessonAssistantTest extends TestCase
         });
     }
 
+    public function test_an_answer_of_zero_is_sent_as_an_answer_and_not_as_missing(): void
+    {
+        $lesson = $this->lesson();
+        $answered = Question::factory()->for($lesson)->create();
+        $unanswered = Question::factory()->for($lesson)->create();
+        $submission = Submission::factory()->for($lesson)->for($this->zacharias, 'student')->create(['summary' => '0']);
+        $submission->answers()->create(['question_id' => $answered->id, 'answer' => '0']);
+        SubmissionEvaluator::fake([['understanding_score' => 70, 'feedback' => 'Gut.', 'gaps' => [], 'answers' => []]]);
+
+        $this->assistant()->evaluateSubmission($submission);
+
+        SubmissionEvaluator::assertPrompted(function (AgentPrompt $prompt) use ($answered, $unanswered): bool {
+            $this->assertStringContainsString("Frage-ID {$answered->id} (", $prompt->prompt);
+            $this->assertStringContainsString("Antwort: 0\n\nFrage-ID {$unanswered->id} (", $prompt->prompt);
+            $this->assertStringContainsString("Zusammenfassung der Schülerin oder des Schülers:\n0\n", $prompt->prompt);
+            // Only the question without an answer is reported as unanswered.
+            $this->assertSame(1, substr_count($prompt->prompt, '(keine Antwort)'));
+            $this->assertStringNotContainsString('(keine Zusammenfassung)', $prompt->prompt);
+
+            return true;
+        });
+    }
+
     public function test_a_student_who_left_the_class_is_pseudonymised_as_well(): void
     {
         $lesson = $this->lesson();
