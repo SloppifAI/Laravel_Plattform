@@ -30,7 +30,7 @@ class AppAuthorizationTest extends TestCase
     {
         parent::setUp();
 
-        config(['lernplattform.apps.clients' => ['tuto-app' => ['name' => 'Tuto-App', 'redirect_uris' => ['tutoapp://callback']]]]);
+        config(['lernplattform.apps.clients' => ['tuto-app' => ['name' => 'Tuto-App', 'redirect_uris' => ['tutoapp://callback'], 'completion_page' => true]]]);
     }
 
     /**
@@ -50,13 +50,39 @@ class AppAuthorizationTest extends TestCase
     }
 
     /**
+     * The query the completion page hands back to the app with its one button and on load.
+     *
      * @return array<string, string>
      */
     private function answer(TestResponse $response): array
     {
-        $location = (string) $response->headers->get('Location');
+        $response->assertOk();
+        $this->assertSame(1, preg_match_all('/<a\s[^>]*href="(tutoapp:\/\/callback\?[^"]+)"/', $response->getContent(), $links));
+        $returnUrl = html_entity_decode($links[1][0]);
+        $response->assertSee('<meta http-equiv="refresh" content="0; url='.e($returnUrl).'">', false);
+
+        return $this->queryOf($returnUrl);
+    }
+
+    /**
+     * The query of a plain redirect back to the app.
+     *
+     * @return array<string, string>
+     */
+    private function redirectedAnswer(TestResponse $response): array
+    {
+        $location = (string) $response->assertRedirect()->headers->get('Location');
         $this->assertStringStartsWith('tutoapp://callback?', $location);
-        parse_str((string) parse_url($location, PHP_URL_QUERY), $query);
+
+        return $this->queryOf($location);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function queryOf(string $url): array
+    {
+        parse_str((string) parse_url($url, PHP_URL_QUERY), $query);
 
         return $query;
     }
@@ -87,7 +113,7 @@ class AppAuthorizationTest extends TestCase
             ->assertSee(__('Erlauben'))
             ->assertSee(__('Abbrechen'));
 
-        $answer = $this->answer($this->post(route('app.authorize.store'), [...$this->authorizationRequest(), 'decision' => 'allow'])->assertRedirect());
+        $answer = $this->answer($this->post(route('app.authorize.store'), [...$this->authorizationRequest(), 'decision' => 'allow']));
 
         $this->assertSame('zustand-123', $answer['state']);
         $this->assertSame(64, strlen($answer['code']));
@@ -132,10 +158,51 @@ class AppAuthorizationTest extends TestCase
     {
         $this->actingAs(User::factory()->teacher()->create());
 
-        $answer = $this->answer($this->post(route('app.authorize.store'), [...$this->authorizationRequest(), 'decision' => 'deny'])->assertRedirect());
+        $response = $this->post(route('app.authorize.store'), [...$this->authorizationRequest(), 'decision' => 'deny'])
+            ->assertSeeText(__('Verbindung abgelehnt'))
+            ->assertSeeText(__(':app bekommt keinen Zugang. Du kannst dieses Fenster jetzt schließen.', ['app' => 'Tuto-App']))
+            ->assertSeeText(__('Zurück zu :app', ['app' => 'Tuto-App']));
 
-        $this->assertSame(['error' => 'access_denied', 'state' => 'zustand-123'], $answer);
+        $this->assertSame(['error' => 'access_denied', 'state' => 'zustand-123'], $this->answer($response));
         $this->assertDatabaseCount('app_authorization_codes', 0);
+    }
+
+    public function test_the_completion_page_opens_the_app_and_keeps_the_code_out_of_text_caches_and_referers(): void
+    {
+        $this->actingAs(User::factory()->teacher()->create());
+
+        $response = $this->post(route('app.authorize.store'), [...$this->authorizationRequest(), 'decision' => 'allow'])
+            ->assertOk()
+            ->assertHeaderMissing('Location')
+            ->assertHeader('Referrer-Policy', 'no-referrer')
+            ->assertHeader('X-Frame-Options', 'SAMEORIGIN')
+            ->assertSeeText(__(':app ist verbunden', ['app' => 'Tuto-App']))
+            ->assertSeeText(__('Du kannst dieses Fenster jetzt schließen und zu :app zurückkehren.', ['app' => 'Tuto-App']))
+            ->assertSeeText(__(':app öffnen', ['app' => 'Tuto-App']));
+        $answer = $this->answer($response);
+
+        $this->assertSame('zustand-123', $answer['state']);
+        $this->assertContains('no-store', array_map(trim(...), explode(',', (string) $response->headers->get('Cache-Control'))));
+        $response->assertDontSeeText($answer['code']);
+
+        preg_match_all('/(?:src|href)="((?:https?:)?\/\/[^"]+)"/', $response->getContent(), $resources);
+        $this->assertNotEmpty($resources[1]);
+        foreach ($resources[1] as $resource) {
+            $this->assertStringStartsWith(rtrim(url('/'), '/').'/', $resource);
+        }
+    }
+
+    public function test_a_client_without_the_completion_page_is_sent_straight_back(): void
+    {
+        config(['lernplattform.apps.clients.tuto-app.completion_page' => false]);
+        $this->actingAs(User::factory()->teacher()->create());
+
+        $allowed = $this->redirectedAnswer($this->post(route('app.authorize.store'), [...$this->authorizationRequest(), 'decision' => 'allow']));
+        $denied = $this->redirectedAnswer($this->post(route('app.authorize.store'), [...$this->authorizationRequest(), 'decision' => 'deny']));
+
+        $this->assertSame(['code', 'state'], array_keys($allowed));
+        $this->assertSame('zustand-123', $allowed['state']);
+        $this->assertSame(['error' => 'access_denied', 'state' => 'zustand-123'], $denied);
     }
 
     public function test_a_registered_redirect_uri_with_a_query_keeps_it(): void

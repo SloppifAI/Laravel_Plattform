@@ -160,6 +160,9 @@ return [
     | page and confirms, and the app trades the one-time code for a token at POST /api/v1/token. The app never sees the
     | password. Only the clients listed here may ask, and the redirect_uri of a request must equal one of the client's
     | `redirect_uris` exactly. LERNPLATTFORM_APP_REDIRECT_URIS is a comma-separated list (default tutoapp://callback).
+    | `completion_page` (default true) answers "Erlauben" and "Abbrechen" with a page that opens the redirect URI and
+    | has a button for it, because a desktop browser hands the link to the app but stays on the consent page; false
+    | redirects straight to the redirect URI instead.
     |
     */
 
@@ -168,6 +171,7 @@ return [
             'tuto-app' => [
                 'name' => 'Tuto-App',
                 'redirect_uris' => array_values(array_filter(array_map('trim', explode(',', (string) env('LERNPLATTFORM_APP_REDIRECT_URIS', 'tutoapp://callback'))))),
+                'completion_page' => true,
             ],
         ],
     ],
