@@ -9,6 +9,7 @@ use App\Ai\Agents\LessonAgent;
 use App\Ai\Agents\PracticeTaskDrafter;
 use App\Ai\Agents\QuestionDifferentiator;
 use App\Ai\Agents\SubmissionEvaluator;
+use App\Ai\Agents\SummaryReviser;
 use App\Ai\Agents\TextSimplifier;
 use App\Filament\Pages\ExplainIt;
 use App\MessageAuthor;
@@ -60,15 +61,18 @@ class SdkLessonAssistant implements LessonAssistant
             ->map(fn (string $prompt): string => '- '.$pseudonymizer->apply($prompt))
             ->implode("\n");
 
+        // A summary the lesson has stays (HomeworkDraft::keepsSummary()), so the AI writes none and the questions build on it.
+        $withSummary = blank($lesson->summary);
+
         $result = $this->askForData(
-            new HomeworkDrafter,
+            new HomeworkDrafter($withSummary),
             $this->lessonContext($lesson, $pseudonymizer)."\n\nKompetenzen aus dem Referenzrahmen:\n".$competencyList
                 .($ownQuestions === '' ? '' : "\n\nFragen, die die Lehrkraft schon hat und behält (nicht wiederholen):\n".$ownQuestions),
             $this->worksheets($lesson),
         );
 
         return [
-            'summary' => $this->summary($result),
+            'summary' => $withSummary ? $this->summary($result) : (string) $lesson->summary,
             'questions' => array_map(
                 fn (array $question): array => [...$question, 'competency_id' => $this->knownId($question['competency_id'], $competencies->modelKeys())],
                 $this->questions($result, HomeworkDrafter::QUESTION_COUNT, 'Die KI hat keine Fragen geliefert. Bitte versuche es erneut.'),
@@ -183,6 +187,17 @@ class SdkLessonAssistant implements LessonAssistant
         }
 
         return ['basis' => $basis, 'plus' => $plus];
+    }
+
+    public function reviseSummary(Lesson $lesson): string
+    {
+        $summary = trim($this->ask(new SummaryReviser, $this->lessonContext($lesson, $this->pseudonymizer($lesson->schoolClass)), $this->worksheets($lesson))->text);
+
+        if ($summary === '') {
+            throw new RuntimeException('Die KI hat keine Zusammenfassung geliefert. Bitte versuche es erneut.');
+        }
+
+        return $summary;
     }
 
     public function simplify(string $text, Lesson $lesson): string

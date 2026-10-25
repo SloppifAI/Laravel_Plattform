@@ -478,7 +478,8 @@ class WorkOnHomework extends Page
         return function (string $attribute, mixed $value, Closure $fail): void {
             $words = $this->words((string) $value);
             // The student may have read the simple version of the summary instead of the original.
-            $teacherQuadruples = $this->quadruples($this->words($this->lesson->summary.' '.$this->lesson->summary_simple));
+            // Tags of the rich editor's HTML become word gaps, so neither "p" counts as a word nor do two list items merge.
+            $teacherQuadruples = $this->quadruples($this->words((string) preg_replace('/<[^>]*>/', ' ', $this->lesson->summary.' '.$this->lesson->summary_simple)));
 
             if (count($words) < self::COPY_MINIMUM_WORDS || $teacherQuadruples === []) {
                 return;

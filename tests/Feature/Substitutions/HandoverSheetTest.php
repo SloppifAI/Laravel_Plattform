@@ -113,6 +113,25 @@ class HandoverSheetTest extends TestCase
         $this->get($this->url())->assertSee(['Who you can ask', 'Frau Lindner', 'lindner@gutenberg.example']);
     }
 
+    public function test_a_formatted_summary_keeps_its_format_and_loses_scripts(): void
+    {
+        Lesson::factory()->for($this->schoolClass)->for($this->leader, 'teacher')->create([
+            'summary' => '<p>Licht liefert <strong>Energie</strong>.</p><script>alert(1)</script>',
+            'published_at' => now(),
+            'due_on' => today()->addWeek(),
+        ]);
+        Lesson::factory()->for($this->schoolClass)->for($this->leader, 'teacher')->create([
+            'summary' => "## Aus der App\n\n- Erster Punkt",
+            'published_at' => now(),
+            'due_on' => today()->addWeek(),
+        ]);
+
+        $this->actingAs($this->leader)
+            ->get($this->url())
+            ->assertSee(['<strong>Energie</strong>', 'Aus der App</h2>', '<li>Erster Punkt</li>'], false)
+            ->assertDontSee(['<script>alert(1)</script>', '## Aus der App'], false);
+    }
+
     public function test_it_lists_the_last_five_lessons_with_topic_date_and_released_summary(): void
     {
         foreach (range(1, 6) as $day) {

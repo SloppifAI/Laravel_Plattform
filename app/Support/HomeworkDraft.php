@@ -11,9 +11,10 @@ use Throwable;
 
 /**
  * The "Hausaufgabe mit KI erstellen" step shared by the lesson page and "Heute": the assistant (the real AI or the demo,
- * depending on the school) drafts summary and questions from the saved notes. The draft replaces the summary and the
- * AI questions the teacher left unedited; the teacher's own and edited questions stay in front. A summary a connected app
- * set (`summary_from_app`) stays as well: the assistant still reads it, but only its questions are used.
+ * depending on the school) drafts the questions from the saved notes, and the summary only while the lesson has none. The
+ * draft replaces the AI questions the teacher left unedited; the teacher's own and edited questions stay in front. A
+ * summary the lesson has (written by the teacher, set by a connected app or from an earlier draft) stays as it is, the
+ * questions build on it; "Zusammenfassung neu erstellen" (reviseSummary()) writes a new one on top of it.
  */
 final class HomeworkDraft
 {
@@ -26,11 +27,11 @@ final class HomeworkDraft
     }
 
     /**
-     * Whether the draft leaves the summary alone because a connected app set it.
+     * Whether the draft leaves the summary alone: the one in the database is used instead of writing another.
      */
     public static function keepsSummary(Lesson $lesson): bool
     {
-        return $lesson->summary_from_app && filled($lesson->summary);
+        return filled($lesson->summary);
     }
 
     /**
@@ -40,14 +41,27 @@ final class HomeworkDraft
     {
         $kept = $lesson->questions()->where('ai_drafted', false)->count();
 
-        return (self::keepsSummary($lesson)
-            ? __('Die KI-Fragen werden durch einen neuen KI-Entwurf ersetzt. Die Zusammenfassung aus der App bleibt erhalten.')
-            : __('Die Zusammenfassung und die KI-Fragen werden durch einen neuen KI-Entwurf ersetzt.'))
+        return (match (true) {
+            ! self::keepsSummary($lesson) => __('Die Zusammenfassung und die KI-Fragen werden durch einen neuen KI-Entwurf ersetzt.'),
+            (bool) $lesson->summary_from_app => __('Die KI-Fragen werden durch einen neuen KI-Entwurf ersetzt. Die Zusammenfassung aus der App bleibt erhalten.'),
+            default => __('Die KI-Fragen werden durch einen neuen KI-Entwurf ersetzt. Die Zusammenfassung bleibt erhalten.'),
+        })
             .($kept === 0 ? '' : ' '.trans_choice(':count eigene oder bearbeitete Frage bleibt erhalten.|:count eigene oder bearbeitete Fragen bleiben erhalten.', $kept));
     }
 
     /**
-     * Drafts and stores summary and questions for the lesson; an app's summary stays (keepsSummary()).
+     * Writes the summary anew from the saved notes and worksheets, building on the one the lesson has: what it says stays
+     * unless the notes contradict it. The new text is the teacher's to check, so it no longer counts as the app's.
+     *
+     * @throws Throwable when the assistant fails; the lesson is left untouched then
+     */
+    public static function reviseSummary(Lesson $lesson): void
+    {
+        $lesson->forceFill(['summary' => app(LessonAssistant::class)->reviseSummary($lesson), 'summary_from_app' => false])->save();
+    }
+
+    /**
+     * Drafts and stores the questions for the lesson, and the summary while it has none (keepsSummary()).
      *
      * @throws Throwable when the assistant fails; the lesson is left untouched then
      */

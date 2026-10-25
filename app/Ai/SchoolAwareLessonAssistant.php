@@ -25,6 +25,11 @@ class SchoolAwareLessonAssistant implements LessonAssistant
         return $this->assistantFor($lesson->schoolClass?->school)->draftHomework($lesson);
     }
 
+    public function reviseSummary(Lesson $lesson): string
+    {
+        return $this->assistantFor($lesson->schoolClass?->school)->reviseSummary($lesson);
+    }
+
     /**
      * The school is the one of the source lessons, without any lesson (a Förderaufgabe from competency alone) the one of the signed-in user.
      */

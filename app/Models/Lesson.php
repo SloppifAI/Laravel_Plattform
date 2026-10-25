@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 /**
  * A held lesson. Its notes and worksheets are the source for the AI summary and homework questions;
@@ -32,6 +33,7 @@ class Lesson extends Model
 
     /**
      * The "Einfache Sprache" copy (`summary_simple`) belongs to the summary it was made from: when the summary changes, the copy goes.
+     * A summary without any text (an emptied rich editor leaves `<p></p>`) is no summary.
      * An emptied summary is no app summary any more (`summary_from_app`, set only by the API), so a new AI draft fills it again.
      * The worksheet files go with the lesson. A deleted class or teacher account takes its lessons along without a model event; `lernplattform:prune-learning-data` sweeps those files.
      */
@@ -47,6 +49,10 @@ class Lesson extends Model
         )));
 
         static::saving(function (Lesson $lesson): void {
+            if (filled($lesson->summary) && blank(strip_tags($lesson->summary))) {
+                $lesson->setAttribute('summary', null);
+            }
+
             if ($lesson->isDirty('summary') && ! $lesson->isDirty('summary_simple')) {
                 $lesson->setAttribute('summary_simple', null);
             }
@@ -55,6 +61,14 @@ class Lesson extends Model
                 $lesson->setAttribute('summary_from_app', false);
             }
         });
+    }
+
+    /**
+     * The summary as HTML: written in the rich editor it is HTML already, from the AI or an app it is Markdown.
+     */
+    public static function summaryToHtml(?string $summary): ?string
+    {
+        return blank($summary) || str_starts_with(ltrim($summary), '<') ? $summary : Str::markdown($summary);
     }
 
     /**

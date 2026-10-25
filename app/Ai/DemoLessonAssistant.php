@@ -279,6 +279,22 @@ class DemoLessonAssistant implements LessonAssistant
     }
 
     /**
+     * The demo cannot rewrite a text, so the summary the lesson has stays word for word and gets the sentences of a fresh
+     * draft from the notes that it does not contain yet.
+     */
+    public function reviseSummary(Lesson $lesson): string
+    {
+        $previous = trim((string) $lesson->summary);
+        $known = mb_strtolower(strip_tags($previous));
+        $added = array_filter(
+            $this->sentences($this->draftHomework($lesson)['summary']),
+            fn (string $sentence): bool => ! str_contains($known, mb_strtolower($sentence)),
+        );
+
+        return trim($previous."\n\n".implode(' ', $added));
+    }
+
+    /**
      * Rule-based: everyday words for bookish ones, filler words dropped, and sentences of more than twelve words split
      * at a semicolon or before "aber"/"doch". Line breaks and bullet points stay, so Markdown keeps its shape.
      */

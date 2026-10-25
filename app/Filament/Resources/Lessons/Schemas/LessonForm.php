@@ -2,25 +2,32 @@
 
 namespace App\Filament\Resources\Lessons\Schemas;
 
+use App\Filament\Resources\Lessons\Pages\EditLesson;
 use App\Models\Competency;
 use App\Models\Lesson;
 use App\Models\SchoolClass;
 use App\Models\TimetableEntry;
 use App\Models\User;
+use App\Support\HomeworkDraft;
 use App\Support\LessonReview;
+use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Components\View;
 use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
+use Throwable;
 
 class LessonForm
 {
@@ -121,16 +128,66 @@ class LessonForm
                             // The local disk holds every teacher's worksheets, so only this lesson's paths may be submitted.
                             ->preventFilePathTampering(),
                     ]),
+                // From the first save on: a summary in the database is what the students read and what a new AI draft keeps.
                 Section::make(__('Zusammenfassung'))
-                    ->description(fn (?Lesson $record): string => $record?->summary_from_app
-                        ? __('Von einer App gesetzt. Ein neuer KI-Entwurf behält sie und erstellt nur die Fragen. Die Schüler:innen lesen sie vor den Fragen, du kannst sie vor der Freigabe anpassen.')
-                        : __('Von der KI erstellt. Die Schüler:innen lesen sie vor den Fragen, du kannst sie vor der Freigabe anpassen.'))
+                    ->key('summary-section')
+                    ->description(fn (?Lesson $record): string => match (true) {
+                        blank($record?->summary) => __('Noch leer. „Hausaufgabe mit KI erstellen“ schreibt sie aus deinen Notizen, oder du schreibst sie selbst. Die Schüler:innen lesen sie vor den Fragen.'),
+                        (bool) $record->summary_from_app => __('Von einer App gesetzt. Ein neuer KI-Entwurf behält sie und erstellt nur die Fragen. Die Schüler:innen lesen sie vor den Fragen, du kannst sie vor der Freigabe anpassen.'),
+                        default => __('Die Schüler:innen lesen sie vor den Fragen, du kannst sie vor der Freigabe anpassen. Ein neuer KI-Entwurf behält sie und erstellt nur die Fragen.'),
+                    })
                     ->columnSpanFull()
-                    ->visible(fn (?Lesson $record): bool => filled($record?->summary))
+                    ->visible(fn (?Lesson $record): bool => $record !== null)
+                    ->afterHeader([
+                        Action::make('reviseSummary')
+                            ->label(__('Zusammenfassung neu erstellen'))
+                            ->icon(Heroicon::OutlinedSparkles)
+                            ->color('gray')
+                            ->authorize('update')
+                            // Like the draft: not once students may be reading it, and a Förderaufgabe has no notes to build on.
+                            ->visible(fn (?Lesson $record): bool => filled($record?->summary) && ! $record->isPublished() && ! $record->isPracticeTask())
+                            ->requiresConfirmation()
+                            ->modalHeading(__('Zusammenfassung neu erstellen?'))
+                            ->modalDescription(__('Die KI schreibt die Zusammenfassung aus deinen Notizen und Arbeitsblättern neu und baut dabei auf der bisherigen auf: Was darin steht, bleibt, und wird ergänzt oder berichtigt.'))
+                            ->modalSubmitActionLabel(__('Neu erstellen'))
+                            ->action(function (Lesson $record, EditLesson $livewire): void {
+                                // The AI works from the saved notes and the saved summary, so unsaved edits must not get lost.
+                                $livewire->save(shouldRedirect: false, shouldSendSavedNotification: false);
+
+                                try {
+                                    HomeworkDraft::reviseSummary($record->refresh());
+                                } catch (Throwable $exception) {
+                                    report($exception);
+
+                                    Notification::make()
+                                        ->danger()
+                                        ->title(__('KI-Entwurf fehlgeschlagen'))
+                                        ->body(__('Deine Stunde ist gespeichert. Bitte versuche es gleich noch einmal.'))
+                                        ->send();
+
+                                    return;
+                                }
+
+                                $livewire->refreshFormData(['summary']);
+
+                                Notification::make()
+                                    ->success()
+                                    ->title(__('Zusammenfassung neu erstellt'))
+                                    ->body(__('Prüfe sie, bevor du die Hausaufgabe freigibst.'))
+                                    ->send();
+                            }),
+                    ])
                     ->schema([
-                        Textarea::make('summary')
+                        // No file attachments: the summary is text for the class, worksheets belong to "Inhalt der Stunde".
+                        RichEditor::make('summary')
                             ->hiddenLabel()
-                            ->rows(8),
+                            ->toolbarButtons([
+                                ['bold', 'italic', 'underline'],
+                                ['h2', 'h3'],
+                                ['bulletList', 'orderedList'],
+                                ['undo', 'redo'],
+                            ])
+                            ->fileAttachments(false),
                     ]),
             ]);
     }

@@ -69,6 +69,20 @@ class DemoLessonAssistantTest extends TestCase
         $this->assertEquals($draft, app(DemoLessonAssistant::class)->draftHomework($lesson));
     }
 
+    public function test_the_demo_keeps_the_summary_word_for_word_and_adds_what_the_notes_say(): void
+    {
+        $lesson = $this->photosynthesisLesson();
+        $lesson->update(['summary' => 'Meine eigene Zusammenfassung: Licht ist wichtig.']);
+        $demo = app(DemoLessonAssistant::class);
+
+        $revised = $demo->reviseSummary($lesson);
+
+        $this->assertStringStartsWith('Meine eigene Zusammenfassung: Licht ist wichtig.', $revised);
+        $this->assertStringContainsString('Fotosynthese', $revised);
+        // Nothing new in the notes, nothing added a second time.
+        $this->assertSame($revised, $demo->reviseSummary($lesson->fill(['summary' => $revised])));
+    }
+
     public function test_questions_stay_unmapped_without_competencies(): void
     {
         $draft = app(DemoLessonAssistant::class)->draftHomework($this->photosynthesisLesson());

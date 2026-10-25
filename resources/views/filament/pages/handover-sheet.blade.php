@@ -119,7 +119,8 @@
                                 <h4 class="font-semibold break-words text-gray-950 dark:text-white">{{ $lesson->topic }}</h4>
 
                                 @if ($lesson->isPublished() && filled($lesson->summary))
-                                    <p class="mt-1 text-base break-words whitespace-pre-line text-gray-800 dark:text-gray-200">{{ $lesson->summary }}</p>
+                                    {{-- HTML from the rich editor or Markdown from the AI and apps; sanitised like Filament's own Markdown entries. --}}
+                                    <div class="fi-prose mt-1 text-base break-words text-gray-800 dark:text-gray-200">{!! str(\App\Models\Lesson::summaryToHtml($lesson->summary))->sanitizeHtml() !!}</div>
                                 @else
                                     <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ __('Die Zusammenfassung ist noch nicht freigegeben.') }}</p>
                                 @endif

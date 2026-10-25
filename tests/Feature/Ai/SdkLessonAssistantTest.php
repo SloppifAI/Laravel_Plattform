@@ -7,6 +7,7 @@ use App\Ai\Agents\FollowUpAsker;
 use App\Ai\Agents\HomeworkDrafter;
 use App\Ai\Agents\PracticeTaskDrafter;
 use App\Ai\Agents\SubmissionEvaluator;
+use App\Ai\Agents\SummaryReviser;
 use App\Ai\LessonAssistant;
 use App\Ai\SdkLessonAssistant;
 use App\MessageAuthor;
@@ -21,6 +22,7 @@ use App\QuestionType;
 use App\Support\PracticeTasks;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\JsonSchema\JsonSchemaTypeFactory;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Ai\Exceptions\AiException;
 use Laravel\Ai\Exceptions\InsufficientCreditsException;
@@ -89,6 +91,58 @@ class SdkLessonAssistantTest extends TestCase
                 ['type' => 'reflection', 'prompt' => 'Was hat dich am Versuch vom 21.10.2026 überrascht?', 'expected_answer' => 'Individuell.', 'competency_id' => $competencyId],
             ],
         ];
+    }
+
+    public function test_a_summary_the_lesson_has_is_not_written_again_and_the_questions_build_on_it(): void
+    {
+        $lesson = $this->lesson(['summary' => 'Berta Lehnhardt fasst die Fotosynthese zusammen.']);
+        HomeworkDrafter::fake([Arr::except($this->homeworkAnswer(), 'summary')]);
+
+        $draft = $this->assistant()->draftHomework($lesson);
+
+        $this->assertSame('Berta Lehnhardt fasst die Fotosynthese zusammen.', $draft['summary']);
+        $this->assertCount(5, $draft['questions']);
+        HomeworkDrafter::assertPrompted(function (AgentPrompt $prompt): bool {
+            $this->assertArrayNotHasKey('summary', $prompt->agent->schema(new JsonSchemaTypeFactory));
+            $this->assertStringContainsString('Lehrkraft fasst die Fotosynthese zusammen.', $prompt->prompt);
+            $this->assertStringNotContainsString('Lehnhardt', $prompt->prompt);
+
+            return true;
+        });
+    }
+
+    public function test_a_new_summary_builds_on_the_old_one_and_the_notes_without_names(): void
+    {
+        Storage::fake('local');
+        Storage::disk('local')->put('worksheets/blatt.pdf', '%PDF-1.4');
+        $lesson = $this->lesson([
+            'summary' => '<p>Zacharias Quellenberg hat gezeigt, dass Pflanzen Licht brauchen.</p>',
+            'notes' => 'Versuch mit der Wasserpest, Amelie zählt Bläschen.',
+            'attachments' => ['worksheets/blatt.pdf'],
+        ]);
+        SummaryReviser::fake(["## Fotosynthese\n\nPflanzen brauchen Licht."]);
+
+        $this->assertSame("## Fotosynthese\n\nPflanzen brauchen Licht.", $this->assistant()->reviseSummary($lesson));
+
+        SummaryReviser::assertPrompted(function (AgentPrompt $prompt): bool {
+            $this->assertStringContainsString('dass Pflanzen Licht brauchen', $prompt->prompt);
+            $this->assertStringContainsString('Versuch mit der Wasserpest', $prompt->prompt);
+            foreach (['Zacharias', 'Quellenberg', 'Amelie'] as $forbidden) {
+                $this->assertStringNotContainsString($forbidden, $prompt->prompt);
+            }
+            $this->assertSame([StoredDocument::class], $prompt->attachments->map(fn (object $file): string => $file::class)->all());
+
+            return true;
+        });
+    }
+
+    public function test_an_empty_new_summary_is_an_error(): void
+    {
+        SummaryReviser::fake(['   ']);
+
+        $this->expectException(RuntimeException::class);
+
+        $this->assistant()->reviseSummary($this->lesson(['summary' => 'Alt.']));
     }
 
     public function test_the_homework_draft_has_five_questions_and_maps_them_to_known_competencies(): void

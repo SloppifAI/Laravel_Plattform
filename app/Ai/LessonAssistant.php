@@ -31,6 +31,13 @@ interface LessonAssistant
     public function draftHomework(Lesson $lesson): array;
 
     /**
+     * A new summary of the lesson for the class from the teacher's notes and worksheets that builds on the summary the
+     * lesson has (Markdown or HTML): what it says stays unless the notes contradict it, it is completed and corrected.
+     * Returns Markdown.
+     */
+    public function reviseSummary(Lesson $lesson): string;
+
+    /**
      * Draft a Förderaufgabe: three or four practice questions on one competency, from easier to harder with one
      * application question, for students who showed gaps in the given lessons. `$gaps` are the anonymous hints the AI
      * named when it evaluated their homework. Every question is mapped to `$competency`; the summary says what is practised.

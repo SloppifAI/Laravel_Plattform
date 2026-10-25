@@ -59,15 +59,18 @@ class AppSummaryTest extends TestCase
         $this->assertTrue($this->lesson->questions()->exists());
     }
 
-    public function test_an_ai_draft_replaces_a_summary_that_did_not_come_from_an_app(): void
+    public function test_an_ai_draft_keeps_any_summary_in_the_database_too(): void
     {
         $this->lesson->update(['summary' => 'Von der Lehrkraft.']);
         $this->lesson->forceFill(['summary_from_app' => false])->save();
+        Question::factory()->for($this->lesson)->aiDrafted()->create();
         $this->mockDraft();
 
+        $this->assertSame(__('Die KI-Fragen werden durch einen neuen KI-Entwurf ersetzt. Die Zusammenfassung bleibt erhalten.'), HomeworkDraft::confirmationText($this->lesson));
         HomeworkDraft::create($this->lesson);
 
-        $this->assertSame('Von der KI.', $this->lesson->refresh()->summary);
+        $this->assertSame('Von der Lehrkraft.', $this->lesson->refresh()->summary);
+        $this->assertSame(['KI-Frage'], $this->lesson->questions()->pluck('prompt')->all());
     }
 
     public function test_emptying_the_summary_ends_the_apps_claim(): void

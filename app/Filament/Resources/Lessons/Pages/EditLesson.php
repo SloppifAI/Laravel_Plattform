@@ -67,6 +67,17 @@ class EditLesson extends EditRecord
     }
 
     /**
+     * The rich editor reads HTML; a summary from the AI or an app is Markdown. Also runs for refreshFormData() after a draft.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    protected function mutateFormDataBeforeFill(array $data): array
+    {
+        return [...$data, 'summary' => Lesson::summaryToHtml($data['summary'] ?? null)];
+    }
+
+    /**
      * Moving the lesson to another class needs the same right as creating one there. A lesson that stays in its class
      * is not checked, so drafts of a class the teacher no longer teaches stay editable. The class select only offers
      * the allowed classes; this is the backstop for a forged form state. A lesson the students have used stays in its
