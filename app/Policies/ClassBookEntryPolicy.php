@@ -49,11 +49,14 @@ class ClassBookEntryPolicy
     }
 
     /**
-     * Whether a draft may be made from the lesson: by the lesson's teacher, or by the administration of the school.
+     * Whether a draft may be made from the lesson: by the lesson's teacher, or by the administration of the school. Never
+     * from a practice task, which is not held in class.
      */
     public function createFromLesson(User $user, Lesson $lesson): bool
     {
-        return $this->accessClass($user, $lesson->schoolClass) && ($user->isAdmin() || $lesson->teacher()->is($user));
+        return ! $lesson->isPracticeTask()
+            && $this->accessClass($user, $lesson->schoolClass)
+            && ($user->isAdmin() || $lesson->teacher()->is($user));
     }
 
     /**

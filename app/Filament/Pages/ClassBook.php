@@ -415,7 +415,7 @@ class ClassBook extends Page implements HasTable
 
     /**
      * The lessons of the selected class the user may make a draft from: a teacher's own, all of them for the
-     * administration.
+     * administration. A practice task is no lesson held with the class, so it never belongs in the register.
      *
      * @return Builder<Lesson>
      */
@@ -425,6 +425,7 @@ class ClassBook extends Page implements HasTable
 
         return Lesson::query()
             ->where('school_class_id', $this->schoolClass()?->getKey() ?? 0)
+            ->whereNull('practice_competency_id')
             ->when(! $user->isAdmin(), fn (Builder $lessons): Builder => $lessons->where('teacher_id', $user->getKey()));
     }
 

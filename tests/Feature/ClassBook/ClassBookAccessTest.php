@@ -4,6 +4,7 @@ namespace Tests\Feature\ClassBook;
 
 use App\Models\ClassBookEntry;
 use App\Models\ClassSubstitution;
+use App\Models\Competency;
 use App\Models\Lesson;
 use App\Models\School;
 use App\Models\SchoolClass;
@@ -148,6 +149,13 @@ class ClassBookAccessTest extends TestCase
 
         $this->assertOnly([$this->leader, $this->admin], 'createFromLesson', [ClassBookEntry::class, $ofLeader]);
         $this->assertOnly([$this->assigned, $this->admin], 'createFromLesson', [ClassBookEntry::class, $ofAssigned]);
+    }
+
+    public function test_a_practice_task_gives_nobody_a_draft(): void
+    {
+        $practice = $this->lessonOf($this->schoolClass, $this->leader, ['practice_competency_id' => Competency::factory()->create()->getKey()]);
+
+        $this->assertOnly([], 'createFromLesson', [ClassBookEntry::class, $practice]);
     }
 
     public function test_a_draft_is_edited_and_confirmed_by_its_teacher_or_the_administration(): void

@@ -5,6 +5,7 @@ namespace Tests\Feature\ClassBook;
 use App\Filament\Pages\ClassBook;
 use App\Models\ClassBookEntry;
 use App\Models\ClassSubstitution;
+use App\Models\Competency;
 use App\Models\Lesson;
 use App\Models\School;
 use App\Models\SchoolClass;
@@ -206,6 +207,20 @@ class ClassBookPageTest extends TestCase
             ->assertHasFormErrors(['lesson_id']);
 
         $this->assertSame(1, ClassBookEntry::query()->count());
+    }
+
+    public function test_a_practice_task_is_not_offered_and_gives_no_draft(): void
+    {
+        $practice = $this->lessonOf($this->schoolClass, $this->teacher, ['practice_competency_id' => Competency::factory()->create()->getKey()]);
+
+        $this->page()
+            ->callAction('createDraft', ['lesson_id' => $practice->getKey()])
+            ->assertHasFormErrors(['lesson_id']);
+        $this->page($this->admin(), $this->schoolClass)
+            ->callAction('createDraft', ['lesson_id' => $practice->getKey()])
+            ->assertHasFormErrors(['lesson_id']);
+
+        $this->assertSame(0, ClassBookEntry::query()->count());
     }
 
     public function test_the_administration_makes_a_draft_from_any_lesson_of_the_class_for_that_lessons_teacher(): void
