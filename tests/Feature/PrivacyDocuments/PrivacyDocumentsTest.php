@@ -65,6 +65,16 @@ class PrivacyDocumentsTest extends TestCase
         ];
     }
 
+    /**
+     * Every template by its key only, for tests that need nothing else: PHPUnit warns about unused provider arguments.
+     *
+     * @return array<string, array{string}>
+     */
+    public static function documentKeys(): array
+    {
+        return array_map(fn (array $document): array => [$document[0]], self::documents());
+    }
+
     private function schoolAdmin(?School $school = null): User
     {
         return User::factory()->for($school ?? School::factory()->create(['name' => 'Goethe-Gymnasium', 'school_number' => '111111', 'city' => 'Kassel', 'contact_email' => 'sekretariat@goethe.example.test']))->admin()->create();
@@ -97,7 +107,7 @@ class PrivacyDocumentsTest extends TestCase
         }
     }
 
-    #[DataProvider('documents')]
+    #[DataProvider('documentKeys')]
     public function test_every_template_says_it_is_only_a_template_and_can_be_printed(string $key): void
     {
         $this->actingAs($this->schoolAdmin());
@@ -114,7 +124,7 @@ class PrivacyDocumentsTest extends TestCase
      * The product is Tuto, the provider Google Gemini (config/lernplattform.php), and the former recording mode with
      * stored audio is gone: no template may still speak of Anthropic, of an "Aufnahme-Modul" or of audio files.
      */
-    #[DataProvider('documents')]
+    #[DataProvider('documentKeys')]
     public function test_every_template_names_tuto_and_google_and_nothing_of_the_former_setup(string $key): void
     {
         $this->assertSame('gemini', config('lernplattform.ai.provider'));
@@ -251,7 +261,7 @@ class PrivacyDocumentsTest extends TestCase
             ->assertDontSee('Du darfst');
     }
 
-    #[DataProvider('documents')]
+    #[DataProvider('documentKeys')]
     public function test_nothing_in_a_template_loads_from_an_external_host(string $key): void
     {
         $this->actingAs($this->schoolAdmin());
