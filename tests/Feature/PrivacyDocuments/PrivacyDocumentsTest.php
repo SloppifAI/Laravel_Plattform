@@ -11,6 +11,9 @@ use App\Filament\Pages\PrivacyDocuments;
 use App\Filament\Pages\RecordingSettings;
 use App\Filament\Pages\RecordLesson;
 use App\Filament\Resources\ExplanationSessions\Pages\ListExplanationSessions;
+use App\Http\Controllers\Api\V1\TokenController;
+use App\Http\Resources\Api\V1\LessonResource;
+use App\Models\AppAuthorizationCode;
 use App\Models\ClassBookEntry;
 use App\Models\ClassSubstitution;
 use App\Models\ConsentForm;
@@ -24,6 +27,8 @@ use App\Role;
 use App\Support\PersonalDataExport;
 use App\Support\RecordingConsentGate;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -54,7 +59,7 @@ class PrivacyDocumentsTest extends TestCase
         return [
             'Checkliste' => ['checkliste', 'Checkliste für die Einführung', ['Teil A: Einsatz von Tuto', 'Teil B: Zusätzlich vor den KI-Funktionen', 'Teil C: Zusätzlich vor dem Tuto-Mikro', 'Auftragsverarbeitungsvertrag abgeschlossen', 'Auftragsverarbeitung mit dem KI-Anbieter geklärt', 'Regeln für die Vertretung festgelegt', 'Personalrat beteiligt', 'Datenschutz-Folgenabschätzung durchgeführt', 'Gesperrte Fächer festgelegt', 'Einwilligungen aller Personen im Raum', 'Löschfristen festgelegt', 'Ansprechpartner']],
             'Folgenabschätzung' => ['dsfa', 'Datenschutz-Folgenabschätzung (Art. 35 DSGVO)', ['Systematische Beschreibung der Verarbeitung', 'Was an die KI geht', 'Ablauf mit dem Tuto-Mikro', 'Notwendigkeit und Verhältnismäßigkeit', 'Verhaltensanpassung durch Überwachungsdruck', 'Missbrauch und Weitergabe von Ton oder Notizen', 'Wiedererkennung trotz Pseudonymisierung', 'Fehler und Verzerrungen der KI', 'Übermittlung an den KI-Anbieter', 'Zu weiter Zugriff innerhalb der Schule', 'Klassenbuch', 'Benachrichtigungen', 'Maßnahmen der Plattform', 'Was die Plattform nicht leistet', 'Trennung der Schulen', 'Stellungnahme der oder des Datenschutzbeauftragten', 'Konsultation der Aufsichtsbehörde']],
-            'Verzeichnis' => ['verzeichnis', 'Eintrag für das Verzeichnis von Verarbeitungstätigkeiten (Art. 30 DSGVO)', ['A: Nutzung von Tuto im Unterricht', 'B: KI-Funktionen (optional)', 'C: Tuto-Mikro im Unterricht (optional)', 'Zwecke', 'Betroffene Personen', 'Datenkategorien', 'Empfänger', 'Übermittlung in Drittländer', 'Löschfristen', 'Technische und organisatorische Maßnahmen']],
+            'Verzeichnis' => ['verzeichnis', 'Eintrag für das Verzeichnis von Verarbeitungstätigkeiten (Art. 30 DSGVO)', ['A: Nutzung von Tuto im Unterricht', 'B: KI-Funktionen (optional)', 'C: Tuto-Mikro im Unterricht (optional)', 'D: Verbundene Apps (optional)', 'Zwecke', 'Betroffene Personen', 'Datenkategorien', 'Empfänger', 'Übermittlung in Drittländer', 'Löschfristen', 'Technische und organisatorische Maßnahmen']],
             'Elterninformation' => ['elterninformation', 'Elterninformation zu Tuto (Art. 13 DSGVO)', ['Wer ist verantwortlich?', 'Welche Daten werden verarbeitet?', 'Künstliche Intelligenz', 'Tuto-Mikro: Ton im Unterricht', 'Freiwillig und nur mit Einwilligung', 'Was mit dem Ton geschieht', 'Ihre Rechte und die Rechte Ihres Kindes', 'Widerruf einer erteilten Einwilligung', 'Beschwerde bei einer Aufsichtsbehörde']],
             'Einwilligung' => ['einwilligung', 'Einwilligung zum Tuto-Mikro im Unterricht (Muster)', [ConsentForm::PURPOSES['audio'], ConsentForm::PURPOSES['transcript'], ConsentForm::PURPOSES['ai_analysis'], 'Die Einwilligung ist freiwillig', 'jederzeit ohne Angabe von Gründen widerrufen', 'Variante für Lehrkräfte und weitere anwesende Personen']],
         ];
@@ -429,6 +434,60 @@ class PrivacyDocumentsTest extends TestCase
 
         $this->get(PrivacyDocuments::getUrl(['document' => 'elterninformation']))->assertOk()->assertSee('Tuto speichert keinen Ton');
         $this->get(PrivacyDocuments::getUrl(['document' => 'einwilligung']))->assertOk()->assertSee('Der Ton wird nicht gespeichert.');
+    }
+
+    /**
+     * Entry D of the register names what the app connection stores, what an app reads and for how long: the columns,
+     * the abilities, the fields of an answer, the limit and the periods are the ones of the code.
+     */
+    public function test_the_register_entry_for_connected_apps_follows_the_code(): void
+    {
+        $this->assertEqualsCanonicalizing(
+            ['id', 'tokenable_type', 'tokenable_id', 'name', 'token', 'abilities', 'last_used_at', 'expires_at', 'created_at', 'updated_at'],
+            Schema::getColumnListing('personal_access_tokens'),
+            'A new column of an app access has to be named in the register entry and the privacy policy first.',
+        );
+        $this->assertEqualsCanonicalizing(
+            ['id', 'code', 'user_id', 'client_id', 'redirect_uri', 'code_challenge', 'expires_at', 'used_at', 'created_at', 'updated_at'],
+            Schema::getColumnListing('app_authorization_codes'),
+            'A new column of a one-time code has to be named in the register entry and the privacy policy first.',
+        );
+        $this->assertSame(['lessons:read', 'lessons:create', 'lessons:summary'], TokenController::ABILITIES);
+        $this->assertSame(
+            ['id', 'subject', 'topic', 'held_on', 'class', 'summary', 'summary_from_app', 'released'],
+            array_keys((new LessonResource(Lesson::factory()->create()))->toArray(request())),
+            'What an app reads of a lesson has to be named in the register entry first.',
+        );
+        $limit = RateLimiter::limiter('app-token')(Request::create('/api/v1/token'));
+        $this->assertSame([10, 60], [$limit->maxAttempts, $limit->decaySeconds]);
+
+        config(['sanctum.expiration' => 60 * 24 * 77]);
+        $this->actingAs($this->schoolAdmin());
+
+        $this->get(PrivacyDocuments::getUrl(['document' => 'verzeichnis']))->assertOk()
+            ->assertSee('Eintrag D: Verbundene Apps (optional)')
+            ->assertSee('Einmal-Code: '.AppAuthorizationCode::LIFETIME_MINUTES.' Minuten gültig und nur einmal einlösbar')
+            ->assertSee('Zugang: 77 Tage ab der Verbindung')
+            ->assertSee('Mit dem Konto und mit jedem neuen Passwort des Kontos werden Zugänge und offene Codes gelöscht.')
+            ->assertSee('Hash des Zugangsschlüssels (nie der Schlüssel selbst)')
+            ->assertSee('Keine IP-Adresse, keine Gerätekennung, keine E-Mail-Adresse zum Zugang.')
+            ->assertSee('Nie abrufbar: Daten von Schüler:innen, Notizen, Ergebnisse, Abgaben, Gespräche, E-Mail-Adresse, Passwort.')
+            ->assertSee('Die Zugänge sieht nur die Person selbst (Profil, Datenexport)');
+
+        config(['sanctum.expiration' => null]);
+
+        $this->get(PrivacyDocuments::getUrl(['document' => 'verzeichnis']))->assertOk()
+            ->assertSee('Zugang: ohne feste Frist;')
+            ->assertDontSee('77 Tage');
+
+        $teacher = User::factory()->teacher()->create();
+        $teacher->createToken('Tablet', TokenController::ABILITIES);
+        AppAuthorizationCode::issue($teacher, 'tuto-app', 'tutoapp://callback', str_repeat('a', 43));
+
+        $teacher->update(['password' => 'ein-ganz-neues-passwort']);
+
+        $this->assertSame(0, $teacher->tokens()->count());
+        $this->assertSame(0, AppAuthorizationCode::query()->whereBelongsTo($teacher)->count());
     }
 
     /**

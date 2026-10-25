@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\DataRights;
 
+use App\Http\Controllers\Api\V1\TokenController;
 use App\MessageAuthor;
 use App\Models\Answer;
 use App\Models\ClassBookEntry;
@@ -443,6 +444,65 @@ class PersonalDataExportTest extends TestCase
         $this->assertCount(1, PersonalDataExport::for($student)['benachrichtigungen']);
         $this->assertCount(1, PersonalDataExport::for($student, $student)['benachrichtigungen']);
         $this->assertArrayNotHasKey('benachrichtigungen', PersonalDataExport::for($student, $admin));
+    }
+
+    public function test_the_export_lists_the_app_accesses_but_never_the_token_or_its_hash(): void
+    {
+        $teacher = User::factory()->teacher()->create();
+        $other = User::factory()->teacher()->for($teacher->school)->create();
+        $other->createToken('Tablet einer Kollegin', TokenController::ABILITIES);
+
+        $this->travelTo('2026-10-24 10:00:00');
+        $used = $teacher->createToken('iPhone von Frau Schulze', TokenController::ABILITIES, now()->addDays(180));
+        $unused = $teacher->createToken('Altes Tablet', ['lessons:read']);
+        $this->travelTo('2026-10-25 08:30:00');
+        $used->accessToken->forceFill(['last_used_at' => now()])->save();
+
+        $export = PersonalDataExport::for($teacher);
+
+        $this->assertSame([
+            [
+                'name' => 'iPhone von Frau Schulze',
+                'verbunden_am' => now()->subDay()->setTime(10, 0)->toIso8601String(),
+                'zuletzt_genutzt_am' => now()->toIso8601String(),
+                'gueltig_bis' => now()->subDay()->setTime(10, 0)->addDays(180)->toIso8601String(),
+                'berechtigungen' => ['lessons:read', 'lessons:create', 'lessons:summary'],
+            ],
+            [
+                'name' => 'Altes Tablet',
+                'verbunden_am' => now()->subDay()->setTime(10, 0)->toIso8601String(),
+                'zuletzt_genutzt_am' => null,
+                'gueltig_bis' => null,
+                'berechtigungen' => ['lessons:read'],
+            ],
+        ], $export['verbundene_apps']);
+
+        $json = json_encode($export, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+
+        foreach ([$used, $unused] as $created) {
+            $this->assertStringNotContainsString($created->plainTextToken, $json);
+            $this->assertStringNotContainsString($created->accessToken->token, $json, 'Not even the hash of the token.');
+        }
+        $this->assertStringNotContainsString('Tablet einer Kollegin', $json);
+        $this->assertStringContainsString('Zugangsschlüssel verbundener Apps', $export['hinweis']);
+    }
+
+    public function test_the_app_accesses_are_part_of_the_own_export_only_and_only_when_there_are_any(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $teacher = User::factory()->teacher()->for($admin->school)->create();
+        $colleague = User::factory()->teacher()->for($admin->school)->create();
+
+        $this->assertArrayNotHasKey('verbundene_apps', PersonalDataExport::for($teacher));
+        $this->assertArrayNotHasKey('verbundene_apps', PersonalDataExport::for($admin));
+
+        $teacher->createToken('Tablet', TokenController::ABILITIES);
+        $admin->createToken('Handy der Schulleitung', TokenController::ABILITIES);
+
+        $this->assertSame(['Tablet'], array_column(PersonalDataExport::for($teacher)['verbundene_apps'], 'name'));
+        $this->assertSame(['Handy der Schulleitung'], array_column(PersonalDataExport::for($admin)['verbundene_apps'], 'name'));
+        $this->assertArrayNotHasKey('verbundene_apps', PersonalDataExport::for($teacher, $admin), 'Nobody but its owner reads the list.');
+        $this->assertArrayNotHasKey('verbundene_apps', PersonalDataExport::for($teacher, $colleague));
     }
 
     public function test_the_enum_labels_stay_german_when_the_person_reads_the_interface_in_english(): void

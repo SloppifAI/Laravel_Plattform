@@ -2,9 +2,18 @@
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\Api\V1\TokenController;
+use App\Http\Resources\Api\V1\LessonResource;
+use App\Http\Resources\Api\V1\SchoolClassResource;
+use App\Models\AppAuthorizationCode;
+use App\Models\Lesson;
+use App\Models\SchoolClass;
 use App\Models\User;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Schema;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -248,8 +257,8 @@ class LegalPagesTest extends TestCase
         preg_match_all('/<li><a href="#([a-z-]+)">(.+?)<\/a><\/li>/u', $html, $contents, PREG_SET_ORDER);
         preg_match_all('/<h2 id="([a-z-]+)">(\d+)\. (.+?)<\/h2>/u', $html, $headings, PREG_SET_ORDER);
 
-        $this->assertCount(15, $contents);
-        $this->assertCount(15, $headings);
+        $this->assertCount(16, $contents);
+        $this->assertCount(16, $headings);
 
         foreach ($contents as $index => [, $id, $title]) {
             $this->assertSame($id, $headings[$index][1]);
@@ -385,6 +394,82 @@ class LegalPagesTest extends TestCase
         ] as $phrase) {
             $this->assertStringContainsString($phrase, $text);
         }
+    }
+
+    /**
+     * The section on connected apps states who may connect one, what an app reads and changes and what is stored; the
+     * periods are the ones of the code (the one-time code's lifetime and sanctum.expiration).
+     */
+    public function test_the_privacy_policy_covers_connected_apps(): void
+    {
+        config(['sanctum.expiration' => 60 * 24 * 77]);
+
+        $text = $this->text(route('legal.privacy'));
+
+        foreach ([
+            'Verbundene Apps',
+            'Lehrkräfte und Schuladministrationen können eine Smartphone-App, derzeit die Tuto-App, mit ihrem Konto verbinden.',
+            'Schüler:innen und die Plattform-Administration können keine App verbinden.',
+            'das Passwort erfährt die App nie',
+            'Die App tauscht den Code innerhalb von '.AppAuthorizationCode::LIFETIME_MINUTES.' Minuten gegen einen Zugang',
+            'Nie: Daten von Schüler:innen, die Notizen einer Stunde, Ergebnisse, Abgaben, Gespräche, die E-Mail-Adresse oder das Passwort.',
+            'Einmal-Code: nur als Hash, der Code selbst wird nirgends gespeichert.',
+            'der Hash des Zugangsschlüssels (nie der Schlüssel selbst)',
+            'Zum Zugang speichert Tuto keine IP-Adresse, keine Gerätekennung und keine E-Mail-Adresse.',
+            'Sonst sieht sie niemand, auch nicht die Schuladministration oder die Plattform-Administration.',
+            'Der Einmal-Code gilt '.AppAuthorizationCode::LIFETIME_MINUTES.' Minuten und lässt sich nur einmal einlösen.',
+            'Ein Zugang gilt 77 Tage ab der Verbindung, auch wenn er genutzt wird.',
+            'mit jedem neuen Passwort des Kontos',
+            'Ein Zugang gilt 77 Tage, endet früher, wenn die Person ihn entzieht oder das Passwort ändert, und geht mit dem Konto',
+            'Das Verbinden einer App ist freiwillig, die Nutzung von Tuto hängt nicht davon ab.',
+            'Bitte tragen Sie in Zusammenfassungen, die Sie oder eine App setzen, keine personenbezogenen Daten von Schüler:innen ein',
+        ] as $phrase) {
+            $this->assertStringContainsString($phrase, $text);
+        }
+
+        config(['sanctum.expiration' => null]);
+
+        $text = $this->text(route('legal.privacy'));
+
+        $this->assertStringContainsString('Ein Zugang gilt, bis die Person ihn entzieht.', $text);
+        $this->assertStringNotContainsString('77 Tage', $text);
+    }
+
+    /**
+     * What the section says an app sees, stores and may do is what the code does: the columns of the two tables, the
+     * abilities, the fields of an answer, the limit on the code exchange and the end of the accesses with a new password.
+     */
+    public function test_the_statements_on_connected_apps_follow_the_code(): void
+    {
+        $this->assertEqualsCanonicalizing(
+            ['id', 'tokenable_type', 'tokenable_id', 'name', 'token', 'abilities', 'last_used_at', 'expires_at', 'created_at', 'updated_at'],
+            Schema::getColumnListing('personal_access_tokens'),
+            'A new column of an app access has to be named in the privacy policy and the register entry first.',
+        );
+        $this->assertEqualsCanonicalizing(
+            ['id', 'code', 'user_id', 'client_id', 'redirect_uri', 'code_challenge', 'expires_at', 'used_at', 'created_at', 'updated_at'],
+            Schema::getColumnListing('app_authorization_codes'),
+            'A new column of a one-time code has to be named in the privacy policy and the register entry first.',
+        );
+        $this->assertSame(['lessons:read', 'lessons:create', 'lessons:summary'], TokenController::ABILITIES);
+        $this->assertSame(
+            ['id', 'subject', 'topic', 'held_on', 'class', 'summary', 'summary_from_app', 'released'],
+            array_keys((new LessonResource(Lesson::factory()->create()))->toArray(request())),
+            'What an app reads of a lesson has to be named in the privacy policy first.',
+        );
+        $this->assertSame(['id', 'name'], array_keys((new SchoolClassResource(SchoolClass::factory()->create()))->toArray(request())));
+
+        $limit = RateLimiter::limiter('app-token')(Request::create('/api/v1/token'));
+        $this->assertSame([10, 60], [$limit->maxAttempts, $limit->decaySeconds], 'The policy says 10 requests per minute.');
+
+        $teacher = User::factory()->teacher()->create();
+        $teacher->createToken('Tablet', TokenController::ABILITIES);
+        AppAuthorizationCode::issue($teacher, 'tuto-app', 'tutoapp://callback', str_repeat('a', 43));
+
+        $teacher->update(['password' => 'ein-ganz-neues-passwort']);
+
+        $this->assertSame(0, $teacher->tokens()->count());
+        $this->assertSame(0, AppAuthorizationCode::query()->whereBelongsTo($teacher)->count());
     }
 
     public function test_the_legal_pages_link_to_each_other_and_to_the_login(): void

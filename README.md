@@ -34,6 +34,9 @@ Diese Anleitung erklärt jede Funktion Schritt für Schritt: Du siehst, wo du kl
    - [4.6 Eltern](#46-eltern)
 5. [Datenschutz](#5-datenschutz)
 6. [Betrieb](#6-betrieb)
+7. [App-Anbindung](#7-app-anbindung)
+   - [7.1 Für Lehrkräfte: App verbinden und Zugang entziehen](#71-für-lehrkräfte-app-verbinden-und-zugang-entziehen)
+   - [7.2 Für App-Entwickler:innen](#72-für-app-entwicklerinnen)
 
 ---
 
@@ -149,6 +152,8 @@ GEMINI_API_KEY=
 | `LERNPLATTFORM_MIKRO_MAX_SEGMENT_KB` | `2048` | Größte erlaubte Größe eines Ton-Abschnitts. |
 | `LERNPLATTFORM_SUBSTITUTION_MAX_DAYS` | `90` | Wie viele Tage dieselbe Lehrkraft eine Klasse insgesamt vertreten darf. |
 | `LERNPLATTFORM_NOTIFICATIONS_KEEP_READ_DAYS`, `LERNPLATTFORM_NOTIFICATIONS_KEEP_DAYS` | `14`, `60` | Wie lange gelesene und alle Meldungen der Glocke bleiben. |
+| `LERNPLATTFORM_APP_REDIRECT_URIS` | `tutoapp://callback` | Adressen, zu denen Tuto nach dem Verbinden einer App zurückleitet (kommagetrennt, genau so, wie die App sie angibt). Siehe [App-Anbindung](#72-für-app-entwicklerinnen). |
+| `SANCTUM_EXPIRATION` | `259200` | Wie lange der Zugang einer verbundenen App gilt, in Minuten (259200 sind 180 Tage). `0` schaltet das Ablaufen ab, das ist nicht zu empfehlen. |
 
 ### KI einschalten: zwei Schalter
 
@@ -174,7 +179,7 @@ Dann verlässt kein Text deinen Server. Was ein lokales Modell kann, hängt vom 
 
 ### Zeitplaner und Queue
 
-Tuto räumt täglich auf (Lerndaten zum Schuljahresende, Nachweise des Tuto-Mikro, alte Meldungen, abgelaufene Passwort-Links). Dafür muss der Laravel-Zeitplaner laufen:
+Tuto räumt täglich auf (Lerndaten zum Schuljahresende, Nachweise des Tuto-Mikro, alte Meldungen, abgelaufene Passwort-Links, abgelaufene Zugänge verbundener Apps). Dafür muss der Laravel-Zeitplaner laufen:
 
 ```cron
 * * * * * cd /pfad/zu/tuto && php artisan schedule:run >> /dev/null 2>&1
@@ -271,7 +276,7 @@ Passwort vergessen? Klicke neben dem Passwortfeld auf „Passwort vergessen?“,
 
 **So erreichst du es:** Benutzermenü oben rechts → Profil (`/profile`)
 
-1. Hier änderst du E-Mail-Adresse, Sprache und Passwort. Für ein neues Passwort oder eine neue E-Mail-Adresse brauchst du dein aktuelles Passwort.
+1. Hier änderst du E-Mail-Adresse, Sprache und Passwort. Für ein neues Passwort oder eine neue E-Mail-Adresse brauchst du dein aktuelles Passwort. Lehrkräfte und die Schuladministration sehen hier außerdem, welche Apps mit ihrem Konto verbunden sind, und können den Zugang entziehen ([so geht’s](#zugang-entziehen)).
 2. Benutzername und Rolle ändert nur die Schulverwaltung. Schüler:innen können auch ihren Namen nicht ändern, damit niemand sich als Mitschüler:in ausgeben kann.
 3. Mit **Meine Daten herunterladen** (oben rechts) bekommst du alles, was zu deinem Konto gespeichert ist, als Datei (JSON).
 
@@ -1019,7 +1024,9 @@ Die wichtigsten Regeln im Überblick. Die ausführlichen Texte stehen in der Anw
 
 **Aufbewahrung.** Stunden mit Fragen, Abgaben und Antworten, Erklär’s-mir-Gespräche und Klassenbuch-Einträge werden zum Ende des Schuljahres gelöscht (`LERNPLATTFORM_SCHOOL_YEARS_KEPT=1`, Schuljahresbeginn `08-01`). Bis zum 1.8.2027 bleiben noch zwei Schuljahre gespeichert, weil bisherige Verträge das versprechen. Der Nachweis je Tuto-Mikro-Sitzung bleibt 365 Tage, gelesene Meldungen 14 Tage, alle Meldungen höchstens 60 Tage. Eine Vertretung endet von selbst und dauert höchstens 90 Tage. Alle Fristen stehen in `config/lernplattform.php`.
 
-**Datenauskunft.** Jede Person lädt ihre Daten selbst herunter (Profil → „Meine Daten herunterladen“). Die Schuladministration kann das für Konten ihrer Schule tun (Benutzer → Konto → „Datenauskunft“).
+**Datenauskunft.** Jede Person lädt ihre Daten selbst herunter (Profil → „Meine Daten herunterladen“). Die Schuladministration kann das für Konten ihrer Schule tun (Benutzer → Konto → „Datenauskunft“). Die Datei der Person selbst enthält auch die Zugänge verbundener Apps (Name, Verbindung, letzte Nutzung, Ablauf, Berechtigungen), nie den Zugangsschlüssel.
+
+**Verbundene Apps.** Lehrkräfte und Schuladministrationen können eine App mit ihrem Konto verbinden ([Abschnitt 7](#7-app-anbindung)). Die App sieht und ändert nur Stunden und Klassen der Person und nie Daten von Schüler:innen. Tuto speichert den Einmal-Code (5 Minuten gültig) und den Zugangsschlüssel (180 Tage gültig) nur als Hash, dazu Name, Berechtigungen, Verbindung, letzte Nutzung und Ablauf des Zugangs, keine IP-Adresse. Beides wird mit dem Konto gelöscht, ein Zugang auch sofort, wenn die Person ihn im Profil entzieht oder ihr Passwort ändert.
 
 **Wer sieht was.** Alles, was zu einer Schule gehört, sehen nur Personen dieser Schule. Die Plattform-Administration sieht keine Lerndaten. Lehrkräfte sehen die Ergebnisse, Rückmeldungen der KI und Lernstände zu ihren eigenen Stunden und den Klassen, die sie unterrichten, bis hin zum Bericht für das Elterngespräch. Die Schuladministration sieht alle Stunden und Ergebnisse ihrer Schule. Schüler:innen sehen nur ihre eigenen Daten. Mit dem Ende einer Vertretung endet auch der Zugriff der Vertretung.
 
@@ -1050,6 +1057,8 @@ Ohne Zeitplaner werden Daten nicht gelöscht. Er muss jede Minute `php artisan s
 | 03:30 | `lernplattform:prune-learning-data` | löscht Stunden, Abgaben, Gespräche und Klassenbuch-Einträge nach der Aufbewahrungsfrist |
 | 03:45 | `lernplattform:prune-recordings` | löscht Tuto-Mikro-Nachweise nach 365 Tagen und liegen gebliebene Ton-Dateien |
 | 04:00 | `lernplattform:prune-notifications` | löscht alte Meldungen und die gelöschter Konten |
+| täglich | `sanctum:prune-expired --hours=24` | löscht Zugänge verbundener Apps, die seit mehr als einem Tag abgelaufen sind |
+| täglich | `model:prune` (nur `AppAuthorizationCode`) | löscht benutzte und abgelaufene Einmal-Codes vom Verbinden einer App |
 
 Die beiden Aufräum-Befehle für Lerndaten und Tuto-Mikro kennen `--dry-run`: Sie zählen nur und löschen nichts. Probiere das vor dem ersten echten Lauf aus. Eine fehlerhafte Einstellung der Fristen führt nie zum Löschen von allem, sondern zu einer Fehlermeldung.
 
@@ -1075,6 +1084,243 @@ vendor/bin/pint --dirty --format agent               # Formatierung der geänder
 ```
 
 Die Tests laufen mit einer SQLite-Datenbank im Arbeitsspeicher, ohne Zugang zu einer KI: `phpunit.xml` setzt `AI_ENABLED=false` und `LERNPLATTFORM_DPA_FINAL=false`, und die KI wird in Tests nur durch Attrappen des SDK ersetzt. **Es wird in Tests nie eine echte KI aufgerufen**, dafür brauchst du keinen Schlüssel.
+
+---
+
+## 7. App-Anbindung
+
+Eine Smartphone-App, derzeit die „Tuto-App“, kann sich mit dem Konto einer Lehrkraft oder der Schuladministration verbinden. Sie zeigt die eigenen Stunden, legt neue Stunden an und setzt die Zusammenfassung einer Stunde. Die Verbindung baut auf Laravel Sanctum auf. Die App öffnet die Anmeldeseite von Tuto im Browser und bekommt am Ende einen Zugang. Das Passwort sieht sie nie.
+
+### 7.1 Für Lehrkräfte: App verbinden und Zugang entziehen
+
+Verbinden können **Lehrkräfte und Schuladministrationen**. Schüler:innen und die Plattform-Administration können keine App verbinden, auch niemand, dessen Schule gesperrt ist oder den AVV noch nicht angenommen hat.
+
+#### App verbinden
+
+**So erreichst du es:** Du startest das Verbinden in der App. Sie öffnet im Browser deines Handys die Tuto-Seite `/app/verbinden`.
+
+1. Melde dich auf der Anmeldeseite von Tuto an, wie sonst auch. Bist du schon angemeldet, entfällt das. Dein Passwort gibst du nur hier ein, nie in der App.
+2. Die Seite „Tuto-App mit Tuto verbinden“ zeigt, was die App **darf**: deine Stunden und Klassen sehen (als Schuladministration die Stunden und Klassen deiner Schule), neue Stunden anlegen und die Zusammenfassung einer Stunde setzen. Und was sie **nicht darf**: Daten deiner Schüler:innen sehen, Ergebnisse und Abgaben sehen, dein Passwort erfahren.
+3. Klicke auf **„Erlauben“**. Mit „Abbrechen“ passiert nichts, die App bekommt keinen Zugang.
+4. Der Browser wechselt zurück in die App. Damit ist sie verbunden.
+
+Zeigt Tuto statt der Zustimmung eine Fehlerseite, war die Anfrage ungültig, oder dein Konto darf keine App verbinden. Starte das Verbinden dann in der App noch einmal.
+
+Gut zu wissen:
+
+- Die Zusammenfassung, die die App setzt, lesen deine Schüler:innen vor den Fragen. Schreibe keine Namen oder persönlichen Angaben zu einzelnen Schüler:innen hinein.
+- Ein neuer KI-Entwurf lässt eine Zusammenfassung aus der App stehen und erstellt nur die Fragen. Die KI liest die Zusammenfassung dabei weiter, sofern deine Schule die KI eingeschaltet hat. Du kannst sie vor der Freigabe auf der Stundenseite anpassen.
+- Stunden, die die App anlegt, gehören dir. Notizen kann die App mitgeben. Fehlen sie, trägst du sie in Tuto nach: Beim Speichern der Stunde in Tuto sind Notizen Pflicht.
+
+#### Zugang entziehen
+
+**So erreichst du es:** Benutzermenü oben rechts → Profil (`/profile`) → Abschnitt „Verbundene Apps“
+
+1. Die Liste zeigt jede verbundene App mit dem Namen, den die App für das Gerät angegeben hat (zum Beispiel „iPhone von Frau Schulze“), dem Tag der Verbindung, wann sie zuletzt genutzt wurde und bis wann der Zugang gilt.
+2. Klicke bei der App auf **„Zugang entziehen“** und bestätige. Die App kann danach nichts mehr in Tuto ansehen oder ändern, bis du sie neu verbindest.
+
+Ein Zugang gilt 180 Tage, danach verbindest du die App noch einmal. Hast du das Handy verloren, entziehe den Zugang sofort. Er hört auch auf zu gelten, solange deine Schule gesperrt ist oder den AVV neu annehmen muss, und wenn dein Konto nicht mehr Lehrkraft oder Schuladministration ist. Bekommt dein Konto ein neues Passwort (von dir, über den Link zum Zurücksetzen oder von der Schuladministration), enden alle verbundenen Apps, und du verbindest sie mit dem neuen Passwort neu. Mit dem Konto wird ein Zugang gelöscht.
+
+### 7.2 Für App-Entwickler:innen
+
+#### Überblick und Einrichtung
+
+- Die Schnittstelle liegt unter `https://<deine-tuto-adresse>/api/v1`. Alle Antworten sind JSON, sende immer `Accept: application/json`.
+- Es gibt **keine Anmeldung mit Passwort**. Eine App bekommt ihren Zugang nur über den Ablauf unten: OAuth 2.0 mit Einmal-Code („Authorization Code“) und PKCE (RFC 7636, nur die Methode `S256`), wie für native Apps vorgesehen (RFC 8252). Die Zugänge sind Sanctum-Tokens (`Authorization: Bearer …`).
+- Registrierte Apps stehen in `config/lernplattform.php` unter `apps.clients`. Der Schlüssel ist die `client_id` (`tuto-app`), `name` steht auf der Zustimmungsseite. Die `redirect_uris` kommen aus `LERNPLATTFORM_APP_REDIRECT_URIS` (kommagetrennt, Standard `tutoapp://callback`). Die `redirect_uri` einer Anfrage muss genau einer davon entsprechen, es gibt keine Platzhalter. Für eine weitere App legst du einen weiteren Eintrag unter `clients` an.
+- `SANCTUM_EXPIRATION` bestimmt in Minuten, wie lange ein Zugang gilt (Standard 259200, also 180 Tage).
+- Die Datenbank braucht die Tabellen `personal_access_tokens` und `app_authorization_codes` (`php artisan migrate`), und der [Zeitplaner](#zeitplaner-pflicht) räumt abgelaufene Zugänge und Codes auf.
+
+#### Ablauf: App verbinden
+
+1. **Vorbereiten.** Die App erzeugt einen zufälligen `code_verifier` (43 bis 128 Zeichen aus `A-Z a-z 0-9 - . _ ~`), bildet daraus die `code_challenge` als `BASE64URL(SHA-256(code_verifier))` ohne `=` am Ende (immer 43 Zeichen) und erzeugt einen zufälligen `state`.
+2. **Browser öffnen.** Die App öffnet im System-Browser (nicht in einer eingebetteten Ansicht) `GET /app/verbinden` mit diesen Parametern:
+
+   | Parameter | Inhalt |
+   | --- | --- |
+   | `client_id` | Die registrierte App, zum Beispiel `tuto-app`. |
+   | `redirect_uri` | Eine der registrierten Rückkehr-Adressen, zum Beispiel `tutoapp://callback`. |
+   | `code_challenge` | Die 43 Zeichen aus Schritt 1. |
+   | `code_challenge_method` | Immer `S256`. |
+   | `state` | Ein zufälliger Wert der App (höchstens 500 Zeichen). Tuto gibt ihn unverändert zurück. |
+
+   ```text
+   https://tuto.example.org/app/verbinden?client_id=tuto-app&redirect_uri=tutoapp%3A%2F%2Fcallback&code_challenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM&code_challenge_method=S256&state=af0ifjsldkj
+   ```
+
+   Ist die Person nicht angemeldet, leitet Tuto zur normalen Anmeldeseite und danach zu genau dieser Adresse zurück. Eine Anfrage mit unbekannter `client_id`, nicht registrierter `redirect_uri`, fehlendem oder falschem PKCE-Parameter oder ohne `state` zeigt eine Fehlerseite und leitet nie weiter. Schüler:innen, die Plattform-Administration, gesperrte Schulen und Schulen ohne angenommenen AVV bekommen eine Erklärung statt der Zustimmung.
+3. **Zurück in die App.** Nach „Erlauben“ leitet Tuto den Browser zu `redirect_uri` weiter, mit dem Einmal-Code: `tutoapp://callback?code=<64 Zeichen>&state=af0ifjsldkj`. Nach „Abbrechen“ lautet die Adresse `tutoapp://callback?error=access_denied&state=af0ifjsldkj`. Die App prüft, dass `state` stimmt. Der Code gilt **5 Minuten** und lässt sich **einmal** einlösen. Hat die `redirect_uri` schon eine Query, hängt Tuto die Parameter mit `&` an.
+4. **Code gegen den Zugang tauschen.** `POST /api/v1/token`, JSON oder Formular, höchstens 10 Anfragen pro Minute und IP-Adresse (danach 429). Auch ein Versuch mit falschem `code_verifier` oder falscher `redirect_uri` verbraucht den Code: Bei einem Fehler beginnt die App von vorn.
+
+   | Feld | Inhalt |
+   | --- | --- |
+   | `grant_type` | Immer `authorization_code`. |
+   | `code` | Der Einmal-Code aus Schritt 3. |
+   | `client_id` | Wie in Schritt 2. |
+   | `redirect_uri` | Genau wie in Schritt 2. |
+   | `code_verifier` | Der `code_verifier` aus Schritt 1. |
+   | `device_name` | Name des Geräts, höchstens 100 Zeichen. Er steht im Profil unter „Verbundene Apps“, zum Beispiel „iPhone von Frau Schulze“. |
+
+   ```bash
+   curl -X POST https://tuto.example.org/api/v1/token \
+     -H "Accept: application/json" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "grant_type": "authorization_code",
+       "code": "<Einmal-Code aus Schritt 3>",
+       "client_id": "tuto-app",
+       "redirect_uri": "tutoapp://callback",
+       "code_verifier": "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk",
+       "device_name": "iPhone von Frau Schulze"
+     }'
+   ```
+
+   Die Antwort (201) enthält den Zugang genau dieses eine Mal, Tuto speichert nur einen Hash davon:
+
+   ```json
+   {
+     "token": "7|Qk3w…",
+     "token_type": "Bearer",
+     "abilities": ["lessons:read", "lessons:create", "lessons:summary"],
+     "expires_at": "2027-04-23T10:15:00+00:00",
+     "user": { "name": "Frau Schulze", "role": "teacher" }
+   }
+   ```
+
+   Das Feld heißt `token` (nicht `access_token`), es gibt kein `expires_in` und keinen Refresh-Token. Der Name und die Rolle der Person kommen mit, ihre E-Mail-Adresse nicht. Läuft der Zugang ab oder antwortet die Schnittstelle mit 401, verbindet die App die Person neu.
+
+Den Zugang schickt die App bei jeder weiteren Anfrage mit:
+
+```bash
+curl https://tuto.example.org/api/v1/classes \
+  -H "Accept: application/json" \
+  -H "Authorization: Bearer 7|Qk3w…"
+```
+
+#### Berechtigungen und Lebensdauer
+
+Jeder Zugang trägt immer alle drei Berechtigungen (Abilities). Jede Route prüft ihre eigene.
+
+| Berechtigung | Erlaubt |
+| --- | --- |
+| `lessons:read` | `GET /classes`, `GET /lessons`, `GET /lessons/{id}` |
+| `lessons:create` | `POST /lessons` |
+| `lessons:summary` | `PUT /lessons/{id}/summary` |
+
+Ein Zugang gilt 180 Tage ab dem Verbinden, auch wenn er täglich genutzt wird. Die Person entzieht ihn im Profil, die App mit `DELETE /api/v1/token`. Ein neues Passwort des Kontos löscht alle seine Zugänge und offenen Einmal-Codes. Außerdem prüft Tuto bei **jeder** Anfrage, ob das Konto noch Lehrkraft oder Schuladministration ist und die Schule weder gesperrt ist noch den AVV neu annehmen muss. Sonst antwortet es mit 403, ohne den Zugang zu löschen.
+
+#### Schnittstellen
+
+Alle Pfade stehen unter `/api/v1`. Antworten mit Daten haben die Form `{"data": …}`.
+
+| Methode und Pfad | Berechtigung | Was sie tut |
+| --- | --- | --- |
+| `POST /token` | keine, siehe oben | tauscht den Einmal-Code gegen einen Zugang |
+| `DELETE /token` | gültiger Zugang | entzieht den Zugang, mit dem die Anfrage kam (204) |
+| `GET /classes` | `lessons:read` | Klassen, in denen die Person Stunden anlegen darf |
+| `GET /lessons` | `lessons:read` | Stunden der Person, seitenweise |
+| `GET /lessons/{id}` | `lessons:read` | eine Stunde |
+| `POST /lessons` | `lessons:create` | legt eine Stunde an (201) |
+| `PUT /lessons/{id}/summary` | `lessons:summary` | setzt die Zusammenfassung einer Stunde |
+
+**Wer was sieht.** Lehrkräfte sehen die Klassen, die sie leiten, denen sie zugeordnet sind oder die sie gerade vertreten, und ihre eigenen Stunden. Eine Schuladministration sieht alle Klassen und alle Stunden ihrer Schule. Förderaufgaben sieht die App nie: Sie stehen nicht in der Liste, `GET /lessons/{id}` antwortet mit 404, und ihre Zusammenfassung lässt sich nicht setzen. Daten von Schüler:innen kommen in keiner Antwort vor.
+
+**Eine Stunde** sieht so aus:
+
+| Feld | Inhalt |
+| --- | --- |
+| `id` | Nummer der Stunde |
+| `subject`, `topic` | Fach und Thema |
+| `held_on` | Datum der Stunde, `JJJJ-MM-TT` |
+| `class` | `{"id": 1, "name": "7b"}` |
+| `summary` | Zusammenfassung oder `null` |
+| `summary_from_app` | `true`, wenn eine App die Zusammenfassung gesetzt hat |
+| `released` | `true`, wenn die Hausaufgabe zur Stunde freigegeben ist |
+
+##### Klassen
+
+```bash
+curl https://tuto.example.org/api/v1/classes \
+  -H "Accept: application/json" -H "Authorization: Bearer 7|Qk3w…"
+```
+
+```json
+{ "data": [ { "id": 1, "name": "7b" } ] }
+```
+
+##### Stunden auflisten
+
+`GET /lessons` liefert die neuesten Stunden zuerst, 15 je Seite. Optional filterst du mit `held_on` (`JJJJ-MM-TT`) und `class_id` und blätterst mit `page`.
+
+```bash
+curl "https://tuto.example.org/api/v1/lessons?held_on=2026-10-23&class_id=1&page=1" \
+  -H "Accept: application/json" -H "Authorization: Bearer 7|Qk3w…"
+```
+
+```json
+{
+  "data": [
+    {
+      "id": 12,
+      "subject": "Mathe",
+      "topic": "Brüche erweitern",
+      "held_on": "2026-10-23",
+      "class": { "id": 1, "name": "7b" },
+      "summary": null,
+      "summary_from_app": false,
+      "released": false
+    }
+  ],
+  "links": { "first": "…?page=1", "last": "…?page=1", "prev": null, "next": null },
+  "meta": { "current_page": 1, "from": 1, "last_page": 1, "per_page": 15, "to": 1, "total": 1, "path": "…", "links": [] }
+}
+```
+
+`GET /lessons/{id}` liefert eine Stunde im selben Format (`{"data": {…}}`). Gehört sie der Person nicht, antwortet Tuto mit 403.
+
+##### Stunde anlegen
+
+`POST /lessons` legt eine Stunde in einer Klasse an, in der die Person Stunden anlegen darf (`GET /classes`). Die Person ist die Lehrkraft der Stunde. Antwort: 201 mit der Stunde.
+
+| Feld | Inhalt |
+| --- | --- |
+| `school_class_id` | Pflicht, Nummer der Klasse |
+| `subject`, `topic` | Pflicht, je höchstens 255 Zeichen |
+| `held_on` | optional, `JJJJ-MM-TT`, Standard ist heute |
+| `notes` | optional, höchstens 10000 Zeichen, Standard ist leer |
+
+```bash
+curl -X POST https://tuto.example.org/api/v1/lessons \
+  -H "Accept: application/json" -H "Content-Type: application/json" \
+  -H "Authorization: Bearer 7|Qk3w…" \
+  -d '{"school_class_id": 1, "subject": "Mathe", "topic": "Brüche erweitern", "held_on": "2026-10-23"}'
+```
+
+##### Zusammenfassung setzen
+
+`PUT /lessons/{id}/summary` setzt die Zusammenfassung einer Stunde, die die Person bearbeiten darf, und merkt sich, dass sie aus einer App stammt (`summary_from_app: true`). Eine frühere Fassung in Einfacher Sprache wird dabei verworfen. Das Feld `summary` ist Pflicht und hat höchstens 5000 Zeichen. Für eine Förderaufgabe antwortet Tuto mit 422. Antwort: 200 mit der Stunde.
+
+```bash
+curl -X PUT https://tuto.example.org/api/v1/lessons/12/summary \
+  -H "Accept: application/json" -H "Content-Type: application/json" \
+  -H "Authorization: Bearer 7|Qk3w…" \
+  -d '{"summary": "Heute haben wir Brüche erweitert und gekürzt."}'
+```
+
+**Wichtig:** Eine Zusammenfassung darf **keine personenbezogenen Daten von Schüler:innen** enthalten (keine Namen, keine Leistungen). Schüler:innen lesen sie vor den Fragen der Hausaufgabe, und ein KI-Entwurf liest sie als Hintergrund, sofern die Schule die KI eingeschaltet hat. Ein neuer KI-Entwurf ersetzt sie nicht.
+
+#### Fehler
+
+| Status | Wann |
+| --- | --- |
+| 400 | Nur beim Token-Tausch: `{"error": "…", "message": "…", "error_description": "…"}`. `invalid_request`: Angaben fehlen oder sind fehlerhaft. `invalid_client`: unbekannte `client_id`. `invalid_grant`: Code unbekannt, abgelaufen oder schon benutzt, falscher `code_verifier`, andere `client_id` oder `redirect_uri` als beim Verbinden, oder das Konto darf keine App mehr verbinden. `message` und `error_description` haben denselben Text in der Standardsprache der Plattform. |
+| 401 | Der Zugang fehlt, ist ungültig, entzogen oder abgelaufen. Die App verbindet die Person neu. |
+| 403 | Dem Zugang fehlt die Berechtigung für die Route, das Konto darf keine App mehr nutzen (Rolle, gesperrte Schule, AVV), oder die Stunde oder Klasse gehört der Person nicht. |
+| 404 | Die Stunde oder Klasse gibt es nicht. |
+| 422 | Eine Eingabe ist ungültig: `{"message": "…", "errors": {"topic": ["…"]}}`. Gilt auch für die Zusammenfassung einer Förderaufgabe. |
+| 429 | Zu viele Anfragen beim Token-Tausch. Warte eine Minute. |
+
+Die Schnittstelle ist in `routes/api.php` und `app/Http/Controllers/Api/V1` umgesetzt, die Tests stehen in `tests/Feature/Api`.
 
 <!--
 SCREENSHOTS für den späteren Lauf (Ablage in docs/screenshots/, WebP, empfohlen 1440 px breit, helles Design; die Dateinamen stehen so in den Verweisen oben).

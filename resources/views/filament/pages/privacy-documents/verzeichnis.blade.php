@@ -1,4 +1,10 @@
 @php
+    use App\Models\AppAuthorizationCode;
+
+    $appCodeMinutes = AppAuthorizationCode::LIFETIME_MINUTES;
+    $appAccessDays = config('sanctum.expiration') ? (int) ceil((int) config('sanctum.expiration') / 1440) : null;
+    $appAccessPhrase = $appAccessDays ? "{$appAccessDays} Tage ab der Verbindung" : 'ohne feste Frist';
+
     $thirdCountries = match (true) {
         $aiProviderIsLocal => "Nein. Der KI-Anbieter ist ein vom Betreiber selbst betriebenes Sprachmodell ({$aiProvider}); Lage der Server laut Auftragsverarbeitungsvertrag.",
         $ai['enabled'] => "Möglich. Die KI-Funktionen sind eingeschaltet, Anbieter ist {$aiProvider}. Der Anbieter kann Daten auch außerhalb der EU verarbeiten, insbesondere in den USA. Garantien nach Art. 44 ff. DSGVO (Angemessenheitsbeschluss oder Standardvertragsklauseln) und der Vertrag nach Art. 28 DSGVO sind zu dokumentieren, hier eintragen: ______",
@@ -50,12 +56,26 @@
                 'Datenschutz-Folgenabschätzung' => 'Ja, vor dem ersten Einsatz (Vorlage „Folgenabschätzung“). Personalrat beteiligen, soweit nach Landesrecht vorgesehen.',
             ],
         ],
+        [
+            'title' => 'D: Verbundene Apps (optional)',
+            'rows' => [
+                'Zwecke' => 'Lehrkräfte und Schuladministrationen können eine Smartphone-App (derzeit die Tuto-App) mit ihrem Konto verbinden, um ihre Stunden und Klassen zu sehen, neue Stunden anzulegen und die Zusammenfassung einer Stunde zu setzen (Vor- und Nachbereitung des Unterrichts). Die Verbindung ist freiwillig. Keine Kontrolle von Lehrkräften: Wann ein Zugang zuletzt genutzt wurde, sieht nur die Person selbst.',
+                'Betroffene Personen' => 'Lehrkräfte und Mitglieder der Schuladministration, die eine App verbinden. Schüler:innen sind nicht betroffen: Ihre Daten gehen nie an eine App; Namen oder andere Angaben zu ihnen können nur dann in eine Zusammenfassung gelangen, wenn die Lehrkraft sie selbst hineinschreibt.',
+                'Datenkategorien' => "Je Zugang: Konto, Name des Zugangs (so, wie die App das Gerät nennt, zum Beispiel „iPhone von Frau Schulze“), Hash des Zugangsschlüssels (nie der Schlüssel selbst), Berechtigungen (Stunden und Klassen ansehen, Stunden anlegen, Zusammenfassung setzen), Zeitpunkt der Verbindung, der letzten Nutzung und des Ablaufs. Je Einmal-Code: Hash des Codes (nie der Code selbst), Konto, App, Rückkehradresse, Prüfwert der App (PKCE), Ablaufzeitpunkt, Zeitpunkt der Einlösung. Keine IP-Adresse, keine Gerätekennung, keine E-Mail-Adresse zum Zugang. Über die App abrufbar: Stunden der Person ohne Förderaufgaben (Fach, Thema, Datum, Klasse, Zusammenfassung, Freigabestand), Klassen der Person (Nummer, Name), beim Verbinden Name und Rolle. Über die App änderbar: neue Stunden (Klasse, Fach, Thema, Datum, Notizen) und die Zusammenfassung einer Stunde; sie werden wie Eingaben der Lehrkraft gespeichert (Eintrag A). Nie abrufbar: Daten von Schüler:innen, Notizen, Ergebnisse, Abgaben, Gespräche, E-Mail-Adresse, Passwort.",
+                'Empfänger' => 'Die verbundene App auf dem Gerät der Person, nur mit den oben genannten Daten der Person selbst (Schuladministration: der eigenen Schule). Die Zugänge sieht nur die Person selbst (Profil, Datenexport), nicht die Schuladministration und nicht die Plattform-Administration. Stunden und Zusammenfassungen: wie Eintrag A. Betreiber als Auftragsverarbeiter (technisch nur Betrieb). Betreiber der App, falls nicht der Betreiber der Plattform, hier eintragen: ______',
+                'Übermittlung in Drittländer' => 'Nein, soweit die Unterauftragsverarbeiter des Betreibers in der EU verarbeiten (Eintrag A). Die Plattform sendet die Daten nur an die App auf dem Gerät der Person. Sendet die App selbst Daten an Dritte, ist das beim Betreiber der App zu klären, hier eintragen: ______',
+                'Löschfristen' => "Einmal-Code: {$appCodeMinutes} Minuten gültig und nur einmal einlösbar; benutzte und abgelaufene Codes werden täglich automatisch gelöscht. Zugang: {$appAccessPhrase}; abgelaufene Zugänge werden täglich automatisch gelöscht, sobald sie seit mehr als einem Tag abgelaufen sind. Sofort: wenn die Person den Zugang im Profil entzieht. Mit dem Konto und mit jedem neuen Passwort des Kontos werden Zugänge und offene Codes gelöscht. Von einer App angelegte Stunden und gesetzte Zusammenfassungen: wie Eintrag A.",
+                'Technische und organisatorische Maßnahmen' => $measures.' Zusätzlich: Anmeldung nur auf der Anmeldeseite der Plattform, die App erfährt das Passwort nie; Einmal-Code mit Prüfwert (PKCE nach RFC 7636), nur als Hash gespeichert, '.$appCodeMinutes.' Minuten gültig und nur einmal einlösbar; Zugangsschlüssel nur als Hash gespeichert; nur drei Berechtigungen (Stunden und Klassen ansehen, Stunden anlegen, Zusammenfassung setzen), befristet und von der Person jederzeit entziehbar; Prüfung von Rolle, Sperre der Schule und Auftragsverarbeitungsvertrag bei jeder Anfrage; Begrenzung der Anfragen zum Austausch des Codes je IP-Adresse; keine Daten von Schüler:innen in den Antworten. Organisatorisch: Die Schule regelt, ob und auf welchen Geräten Lehrkräfte eine App verbinden dürfen, und weist darauf hin, dass Zusammenfassungen keine Daten von Schüler:innen enthalten sollen, weil Schüler:innen sie lesen.',
+                'Rechtsgrundlage' => 'Art. 6 Abs. 1 lit. e DSGVO in Verbindung mit dem Schulgesetz und den Datenschutzvorschriften des Landes (wie Eintrag A). Das Verbinden ist freiwillig, die Nutzung von Tuto hängt nicht davon ab. Die Schule ergänzt die genaue Norm.',
+                'Datenschutz-Folgenabschätzung' => 'Schwellwertprüfung nötig, mit der Vorlage „Folgenabschätzung“.',
+            ],
+        ],
     ];
 @endphp
 
 @include('filament.pages.privacy-documents.partials.head', [
     'title' => 'Eintrag für das Verzeichnis von Verarbeitungstätigkeiten (Art. 30 DSGVO)',
-    'lead' => 'Vorlage für drei Einträge im Verzeichnis der Schule: Tuto insgesamt, die optionalen KI-Funktionen und das optionale Tuto-Mikro, die jeweils eigene Empfänger, Rechtsgrundlagen und Fristen haben.',
+    'lead' => 'Vorlage für vier Einträge im Verzeichnis der Schule: Tuto insgesamt, die optionalen KI-Funktionen, das optionale Tuto-Mikro und die optional verbundenen Apps, die jeweils eigene Empfänger, Rechtsgrundlagen und Fristen haben.',
 ])
 
 <h3>Angaben zum Verantwortlichen (Art. 30 Abs. 1 lit. a)</h3>

@@ -20,18 +20,20 @@ use App\QuestionLevel;
 use Filament\Support\Contracts\HasLabel;
 use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Support\Facades\App;
+use Laravel\Sanctum\PersonalAccessToken;
 
 /**
  * Everything the platform stores about one person, as plain JSON-serialisable data with German keys
  * (Auskunft nach Art. 15, Datenübertragbarkeit nach Art. 20 DSGVO).
  *
- * Deliberately left out: password hash, remember token, the hash of a consent link, the teachers' Erwartungshorizonte
+ * Deliberately left out: password hash, remember token, the hash of a consent link, the tokens of connected apps and their
+ * hashes (only the list of the accesses is part of the owner's file), the teachers' Erwartungshorizonte
  * and anything that belongs to other people (classmates' hand-ins, students' content and names in a teacher's export,
  * the substitute's name in the export of whoever set the substitution up).
  * The caller decides who may ask for whom (e.g. UserPolicy::view plus the school check). Pass the asking person as
  * `$viewer` whenever it is not the owner: then only what that person may see anyway is included, so a school
- * administration never receives a student's private "Erklär's mir" conversations, a teacher's Tuto-Mikro sessions or
- * the bell (which nobody but its owner reads). The platform operator, who may only ask for administration accounts,
+ * administration never receives a student's private "Erklär's mir" conversations, a teacher's Tuto-Mikro sessions, the
+ * bell or the list of connected apps (which nobody but its owner reads). The platform operator, who may only ask for administration accounts,
  * gets the account and the contract acceptances and nothing from inside a school (classes, lessons, notifications).
  */
 class PersonalDataExport
@@ -46,7 +48,7 @@ class PersonalDataExport
 
         $export = [
             'hinweis' => 'Die zu diesem Konto gespeicherten personenbezogenen Daten (Auskunft nach Art. 15 und Art. 20 DSGVO). '
-                .'Nicht enthalten sind das Passwort, Anmelde-Token und Daten anderer Personen.',
+                .'Nicht enthalten sind das Passwort, die Zugangsschlüssel verbundener Apps und Daten anderer Personen.',
             'erstellt_am' => now()->toIso8601String(),
             'konto' => [
                 'name' => $user->name,
@@ -96,6 +98,7 @@ class PersonalDataExport
             'erfasste_einwilligungserklaerungen' => $seesSchool ? RecordingConsent::query()->where('recorded_by', $user->getKey())->count() : 0,
             'schuleinstellungen' => $seesSchool ? self::schoolSettings($user) : [],
             'benachrichtigungen' => $isOwner ? self::notifications($user) : [],
+            'verbundene_apps' => $isOwner ? self::connectedApps($user) : [],
         ]);
 
         // Students and teachers always get the bell section in their own file.
@@ -104,6 +107,28 @@ class PersonalDataExport
         }
 
         return [...$export, ...$optional];
+    }
+
+    /**
+     * The accesses the person gave apps (profile: "Verbundene Apps"): what the platform stores in personal_access_tokens,
+     * never the token and not its hash. Expired accesses that the daily clean-up has not removed yet are listed too.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private static function connectedApps(User $user): array
+    {
+        return $user->tokens()
+            ->oldest()
+            ->oldest('id')
+            ->get()
+            ->map(fn (PersonalAccessToken $token): array => [
+                'name' => $token->name,
+                'verbunden_am' => $token->created_at?->toIso8601String(),
+                'zuletzt_genutzt_am' => $token->last_used_at?->toIso8601String(),
+                'gueltig_bis' => $token->expires_at?->toIso8601String(),
+                'berechtigungen' => $token->abilities ?? [],
+            ])
+            ->all();
     }
 
     /**

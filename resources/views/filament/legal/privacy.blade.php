@@ -2,6 +2,7 @@
 
 @php
     use App\Filament\Pages\AiSettings;
+    use App\Models\AppAuthorizationCode;
     use App\Models\ClassSubstitution;
     use App\Models\School;
     use App\Models\User;
@@ -23,6 +24,7 @@
         'lerndaten' => 'Unterrichts- und Lerndaten',
         'ki' => 'Einsatz von KI',
         'tuto-mikro' => 'Tuto-Mikro',
+        'apps' => 'Verbundene Apps',
         'schriftarten' => 'Schriftarten und externe Inhalte',
         'kontakt' => 'Kontakt per E-Mail',
         'speicherdauer' => 'Speicherdauer',
@@ -50,6 +52,9 @@
     $notificationReadDays = (int) config('lernplattform.notifications.keep_read_days');
     $notificationDays = (int) config('lernplattform.notifications.keep_days');
     $substitutionMaxDays = (int) config('lernplattform.substitutions.max_days');
+    // Connected apps: the one-time code's lifetime and the access's lifetime (sanctum.expiration is in minutes, null for none).
+    $appCodeMinutes = AppAuthorizationCode::LIFETIME_MINUTES;
+    $appAccessDays = config('sanctum.expiration') ? (int) ceil((int) config('sanctum.expiration') / 1440) : null;
 
     // The platform switch; every school still decides for itself (School::aiEnabled()).
     $aiEnabled = (bool) config('lernplattform.ai.enabled');
@@ -164,6 +169,11 @@
             Schüler:innen können sich mit dem Klassencode ihrer Lehrkraft selbst registrieren. Konten für Lehrkräfte und
             weitere Personen legt die Schuladministration der Schule an (siehe Abschnitt {{ $no('benutzerkonten') }}).
         </li>
+        <li>
+            Lehrkräfte und Schuladministrationen können eine Smartphone-App mit ihrem Konto verbinden. Die App sieht nur
+            Stunden und Klassen der Person, nie Daten von Schüler:innen, und die Person kann den Zugang jederzeit
+            entziehen (siehe Abschnitt {{ $no('apps') }}).
+        </li>
     </ul>
 
     <aside class="legal-note" aria-labelledby="kurz-fuer-schueler">
@@ -199,6 +209,11 @@
             <li>
                 Beim Tuto-Mikro ist nur das Mikrofon deiner Lehrkraft an. Der Ton wird nicht gespeichert. Es läuft nur,
                 wenn deine Eltern eingewilligt haben, und ein Balken zeigt, ob es an ist.
+            </li>
+            <li>
+                Deine Lehrkraft kann eine Smartphone-App mit ihrem Konto verbinden. Die App sieht nur Stunden und Klassen
+                deiner Lehrkraft, nie Daten von dir. Die Zusammenfassung, die du vor den Fragen liest, kann von so einer
+                App stammen.
             </li>
             <li>
                 Der Verständniswert von 0 bis 100 ist keine Note. Er zeigt nur, wo du vielleicht noch Hilfe brauchen
@@ -415,6 +430,10 @@
             Hinweis und der Person, die sie eingerichtet hat
         </li>
         <li>die gewählte Sprache der Oberfläche (Deutsch oder Englisch), solange jemand eine gewählt hat</li>
+        <li>
+            bei Lehrkräften und Schuladministrationen, die eine App verbunden haben, die Zugänge dieser Apps (siehe
+            Abschnitt {{ $no('apps') }})
+        </li>
         <li>
             bei der Schuladministration, wer das Tuto-Mikro und die KI-Funktionen der Schule wann eingeschaltet hat
         </li>
@@ -994,6 +1013,107 @@
         Abs. 1 DSGVO).
     </p>
 
+    <h2 id="apps">{{ $heading('apps') }}</h2>
+    <p>
+        Lehrkräfte und Schuladministrationen können eine Smartphone-App, derzeit die Tuto-App, mit ihrem Konto verbinden.
+        Die App zeigt ihnen ihre Stunden und Klassen, legt neue Stunden an und setzt die Zusammenfassung einer Stunde. Das
+        geschieht nur, wenn die Person die App selbst verbindet. Wer keine App verbindet, ist davon nicht betroffen.
+    </p>
+    <h3>Wer eine App verbinden kann</h3>
+    <p>
+        Nur Lehrkräfte und Schuladministrationen einer Schule, die nicht gesperrt ist und den
+        <a href="{{ route('legal.dpa') }}">Vertrag zur Auftragsverarbeitung</a> angenommen hat. Schüler:innen und die
+        Plattform-Administration können keine App verbinden. Der Server prüft das auf der Seite zum Verbinden, beim
+        Ausstellen des Zugangs und bei jeder Anfrage der App. Wird die Schule gesperrt oder verliert das Konto seine
+        Rolle, bekommt die App danach keine Daten mehr.
+    </p>
+    <h3>So wird eine App verbunden</h3>
+    <p>
+        Die App öffnet im Browser die Seite „App verbinden“ der Plattform. Dort meldet sich die Person mit Benutzername
+        und Passwort an, wie sonst auch, das Passwort erfährt die App nie. Die Seite zeigt, was die App darf und was
+        nicht. Mit „Erlauben“ erzeugt die Plattform einen Einmal-Code und schickt den Browser mit dem Code zurück in die
+        App. Die App tauscht den Code innerhalb von {{ $appCodeMinutes }} Minuten gegen einen Zugang, und nur mit einem
+        Prüfwert, den allein die App kennt (PKCE nach RFC 7636). Mit „Abbrechen“ bekommt die App nichts.
+    </p>
+    <h3>Was die App sieht und ändern kann</h3>
+    <ul>
+        <li>
+            <strong>Sehen:</strong> die Stunden, die die Person selbst bearbeiten darf, bei Lehrkräften ihre eigenen, bei
+            der Schuladministration alle der Schule, jeweils ohne Förderaufgaben. Das sind Fach, Thema, Datum, die Klasse
+            (Nummer und Name), die Zusammenfassung, ob sie aus einer App stammt und ob die Hausaufgabe freigegeben ist.
+            Dazu die Klassen, in denen die Person Stunden anlegen darf (Nummer und Name), und beim Verbinden der Name und
+            die Rolle der Person.
+        </li>
+        <li>
+            <strong>Ändern:</strong> in diesen Klassen neue Stunden anlegen (Klasse, Fach, Thema, Datum und auf Wunsch
+            Notizen, die Person ist dann die Lehrkraft der Stunde) und die Zusammenfassung einer Stunde setzen.
+        </li>
+        <li>
+            <strong>Nie:</strong> Daten von Schüler:innen, die Notizen einer Stunde, Ergebnisse, Abgaben, Gespräche, die
+            E-Mail-Adresse oder das Passwort.
+        </li>
+    </ul>
+    <p>
+        Eine Stunde, die die App anlegt, und eine Zusammenfassung, die sie setzt, speichert Tuto wie Eingaben der
+        Lehrkraft (Abschnitt {{ $no('lerndaten') }}). Eine Zusammenfassung aus der App bleibt bei einem neuen KI-Entwurf
+        erhalten. Ist die KI der Schule eingeschaltet, liest die KI sie dabei mit, mit ersetzten Namen wie in
+        Abschnitt {{ $no('ki') }} beschrieben. Schüler:innen lesen die Zusammenfassung vor den Fragen der Hausaufgabe.
+    </p>
+    <div class="legal-note">
+        <p class="legal-note-title">Hinweis für Lehrkräfte</p>
+        <p>
+            Bitte tragen Sie in Zusammenfassungen, die Sie oder eine App setzen, keine personenbezogenen Daten von
+            Schüler:innen ein, denn Schüler:innen lesen sie. Verbinden Sie eine App nur auf einem Gerät, das Sie selbst
+            nutzen und mit einer Sperre sichern, und entziehen Sie den Zugang, wenn Sie das Gerät abgeben oder verlieren.
+            Ob Sie dafür ein privates Gerät nutzen dürfen, regelt Ihre Schule.
+        </p>
+    </div>
+    <h3>Was gespeichert wird</h3>
+    <ul>
+        <li>
+            <strong>Einmal-Code:</strong> nur als Hash, der Code selbst wird nirgends gespeichert. Dazu das Konto, die
+            App, die Adresse, zu der der Browser zurückkehrt, der Prüfwert der App, der Ablaufzeitpunkt und wann der Code
+            eingelöst wurde.
+        </li>
+        <li>
+            <strong>Zugang:</strong> das Konto, der Name, den die App für das Gerät angibt (zum Beispiel „iPhone von Frau
+            Schulze“), der Hash des Zugangsschlüssels (nie der Schlüssel selbst), die Berechtigungen (Stunden und Klassen
+            ansehen, Stunden anlegen, Zusammenfassung setzen) sowie der Zeitpunkt der Verbindung, der letzten Nutzung und
+            des Ablaufs. Zum Zugang speichert Tuto keine IP-Adresse, keine Gerätekennung und keine E-Mail-Adresse.
+        </li>
+    </ul>
+    <p>
+        Die Person sieht ihre Zugänge in ihrem Profil unter „Verbundene Apps“ und entzieht jeden dort sofort mit „Zugang
+        entziehen“. Sie stehen auch in der Datei, die sie mit „Meine Daten herunterladen“ bekommt, ohne den Schlüssel.
+        Sonst sieht sie niemand, auch nicht die Schuladministration oder die Plattform-Administration. Der
+        Zugangsschlüssel liegt auf dem Gerät, auf dem die App läuft. Wer das Gerät verliert, entzieht den Zugang im
+        Profil.
+    </p>
+    <p>
+        Anfragen der App erscheinen wie jeder Aufruf im Zugriffsprotokoll des Webservers (Abschnitt {{ $no('hosting') }}).
+        Den Austausch des Codes begrenzt der Server auf 10 Anfragen je Minute und IP-Adresse und zählt sie dafür kurz mit.
+    </p>
+    <h3>Wie lange</h3>
+    <p>
+        Der Einmal-Code gilt {{ $appCodeMinutes }} Minuten und lässt sich nur einmal einlösen. Die Plattform löscht benutzte
+        und abgelaufene Codes täglich automatisch.
+        @if ($appAccessDays)
+            Ein Zugang gilt {{ $appAccessDays }} Tage ab der Verbindung, auch wenn er genutzt wird. Danach funktioniert er
+            nicht mehr und wird täglich automatisch gelöscht, sobald er seit mehr als einem Tag abgelaufen ist.
+        @else
+            Ein Zugang gilt, bis die Person ihn entzieht.
+        @endif
+        Wird er im Profil entzogen, ist er sofort gelöscht. Zugänge und offene Codes gehen außerdem mit dem Konto und mit
+        jedem neuen Passwort des Kontos, die Person verbindet ihre Apps dann neu. Stunden und Zusammenfassungen, die eine
+        App angelegt oder gesetzt hat, folgen den Fristen der Unterrichtsstunden (Abschnitt {{ $no('speicherdauer') }}).
+    </p>
+    <h3>Rechtsgrundlage</h3>
+    <p>
+        Im Schulbetrieb Art. 6 Abs. 1 lit. e DSGVO in Verbindung mit dem jeweiligen Landesschulgesetz, im Demo- und
+        Pilotbetrieb Art. 6 Abs. 1 lit. f DSGVO, wie in Abschnitt {{ $no('benutzerkonten') }} beschrieben. Das Verbinden
+        einer App ist freiwillig, die Nutzung von Tuto hängt nicht davon ab.
+    </p>
+
     <h2 id="schriftarten">{{ $heading('schriftarten') }}</h2>
     <p>
         Die Plattform verwendet die Schriftart Lexend. Sie wird von unserem eigenen Server ausgeliefert. Es besteht keine
@@ -1081,6 +1201,11 @@
             <strong>Tuto-Mikro:</strong> Ton wird nicht gespeichert. Der Nachweis über eine Sitzung wird
             {{ $mikroSessionDays }} Tage nach ihrem Beginn automatisch gelöscht. Einwilligungsnachweise der
             Erziehungsberechtigten bleiben bis zur Löschung des Schülerkontos gespeichert.
+        </li>
+        <li>
+            <strong>Verbundene Apps:</strong> Der Einmal-Code gilt {{ $appCodeMinutes }} Minuten. Ein Zugang gilt
+            {{ $appAccessDays ? $appAccessDays.' Tage' : 'ohne feste Frist' }}, endet früher, wenn die Person ihn
+            entzieht oder das Passwort ändert, und geht mit dem Konto, siehe Abschnitt {{ $no('apps') }}.
         </li>
         <li>
             <strong>Daten der Schule bei der Registrierung:</strong> solange die Schule die Plattform nutzt, der Nachweis

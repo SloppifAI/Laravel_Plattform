@@ -3,6 +3,7 @@
 namespace Tests\Feature\DataRights;
 
 use App\Filament\Pages\Auth\EditProfile;
+use App\Http\Controllers\Api\V1\TokenController;
 use App\Models\ExplanationSession;
 use App\Models\Lesson;
 use App\Models\Submission;
@@ -75,6 +76,24 @@ class ProfileDataDownloadTest extends TestCase
             $this->assertStringNotContainsString($foreign, $content);
         }
         $this->assertStringNotContainsString($student->password, $content);
+    }
+
+    public function test_the_download_lists_the_connected_apps_without_the_token(): void
+    {
+        $teacher = User::factory()->teacher()->create(['username' => 'frau.schulze']);
+        $token = $teacher->createToken('iPhone von Frau Schulze', TokenController::ABILITIES);
+        User::factory()->teacher()->for($teacher->school)->create()->createToken('Tablet einer Kollegin', TokenController::ABILITIES);
+
+        $page = Livewire::actingAs($teacher)->test(EditProfile::class)->callAction('downloadData');
+
+        $content = base64_decode($page->effects['download']['content']);
+        $data = json_decode($content, true, flags: JSON_THROW_ON_ERROR);
+
+        $this->assertSame(['iPhone von Frau Schulze'], array_column($data['verbundene_apps'], 'name'));
+        $this->assertSame(TokenController::ABILITIES, $data['verbundene_apps'][0]['berechtigungen']);
+        $this->assertStringNotContainsString($token->plainTextToken, $content);
+        $this->assertStringNotContainsString($token->accessToken->token, $content);
+        $this->assertStringNotContainsString('Tablet einer Kollegin', $content);
     }
 
     public function test_unusual_usernames_cannot_break_out_of_the_file_name(): void
