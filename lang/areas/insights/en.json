@@ -23,6 +23,7 @@
     "Abgabequote :rate %: :submitted von :counted Hausaufgaben abgegeben, davon :onTime pünktlich.": "Submission rate :rate%: :submitted of :counted homework submitted, :onTime of them on time.",
     "Abgabeverhalten": "Submission behaviour",
     "Abgegeben": "Submitted",
+    "Abgeschlossen": "Finished",
     "Alle": "All",
     "Alle Punktwerte (0–100) sind KI-gestützte Einschätzungen des Verständnisses auf Grundlage der abgegebenen Hausaufgaben und „Erklär’s mir“-Sitzungen. Sie sind keine Noten und ersetzen nicht die pädagogische Beurteilung der Lehrkraft.": "All scores (0–100) are AI-supported estimates of understanding, based on the homework handed in and “Explain it to me” sessions. They are not grades and do not replace the teacher’s professional assessment.",
     "Alle zugewiesenen Hausaufgaben mit Abgabestatus und Rückmeldung der KI.": "All assigned homework with submission status and AI feedback.",

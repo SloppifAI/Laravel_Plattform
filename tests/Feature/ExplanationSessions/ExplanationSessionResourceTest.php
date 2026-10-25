@@ -157,7 +157,7 @@ class ExplanationSessionResourceTest extends TestCase
 
         Livewire::actingAs($teacher)
             ->test(ViewExplanationSession::class, ['record' => $session->getRouteKey()])
-            ->assertSeeInOrder(['Mia Beispiel', '7b', 'Zellkern erklärt', 'Biologie: Die Zelle', 'Ended', '82 % · Well understood', 'Sehr anschaulich erklärt.']);
+            ->assertSeeInOrder(['Mia Beispiel', '7b', 'Zellkern erklärt', 'Biologie: Die Zelle', 'Finished', '82 % · Well understood', 'Sehr anschaulich erklärt.']);
     }
 
     public function test_view_page_of_a_running_session_says_that_there_is_no_result_yet(): void
@@ -217,7 +217,7 @@ class ExplanationSessionResourceTest extends TestCase
 
         Livewire::actingAs($teacher)
             ->test(ListExplanationSessions::class)
-            ->assertTableColumnFormattedStateSet('status', 'Ended', $finished)
+            ->assertTableColumnFormattedStateSet('status', 'Finished', $finished)
             ->assertTableColumnFormattedStateSet('understanding_score', '40 % · Needs support', $finished)
             ->assertTableColumnFormattedStateSet('status', 'Running', $running)
             ->assertTableColumnStateSet('understanding_score', null, $running);
@@ -260,6 +260,22 @@ class ExplanationSessionResourceTest extends TestCase
             ->filterTable('finished_at', false)
             ->assertCanSeeTableRecords([$runningA])
             ->assertCanNotSeeTableRecords([$finishedA, $finishedB]);
+    }
+
+    public function test_a_finished_session_is_called_finished_in_table_filter_and_detail_page(): void
+    {
+        $teacher = User::factory()->teacher()->create();
+        $session = ExplanationSession::factory()->for(Lesson::factory()->for($teacher, 'teacher'))->finished(60)->create();
+
+        $list = Livewire::actingAs($teacher)->test(ListExplanationSessions::class);
+
+        $this->assertSame('Finished', $list->instance()->getTable()->getFilter('finished_at')->getTrueLabel());
+        $list->assertSee('Finished')->assertDontSee('Ended');
+
+        Livewire::actingAs($teacher)
+            ->test(ViewExplanationSession::class, ['record' => $session->getRouteKey()])
+            ->assertSee('Finished')
+            ->assertDontSee('Ended');
     }
 
     public function test_lesson_filter_does_not_offer_lessons_of_other_teachers(): void

@@ -125,7 +125,7 @@ class ExplanationSessionResource extends Resource
         return $component
             ->state(fn (ExplanationSession $record): string => $record->isFinished() ? 'finished' : 'running')
             ->badge()
-            ->formatStateUsing(fn (string $state): string => $state === 'finished' ? __('Beendet') : __('Läuft'))
+            ->formatStateUsing(fn (string $state): string => $state === 'finished' ? __('Abgeschlossen') : __('Läuft'))
             ->color(fn (string $state): string => $state === 'finished' ? 'gray' : 'info')
             ->icon(fn (string $state): Heroicon => $state === 'finished' ? Heroicon::OutlinedFlag : Heroicon::OutlinedClock);
     }

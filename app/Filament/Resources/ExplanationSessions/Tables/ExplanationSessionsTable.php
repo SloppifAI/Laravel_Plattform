@@ -60,7 +60,7 @@ class ExplanationSessionsTable
                     ->label(__('Status'))
                     ->nullable()
                     ->placeholder(__('Alle'))
-                    ->trueLabel(__('Beendet'))
+                    ->trueLabel(__('Abgeschlossen'))
                     ->falseLabel(__('Läuft')),
             ])
             ->recordActions([
