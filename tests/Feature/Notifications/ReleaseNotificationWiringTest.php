@@ -162,20 +162,58 @@ class ReleaseNotificationWiringTest extends TestCase
         $this->assertSame(1, $this->bellEntries());
     }
 
-    public function test_withdrawing_notifies_nobody_and_a_new_release_is_told_again(): void
+    public function test_withdrawing_takes_the_entries_of_that_lesson_out_of_the_bells_and_a_new_release_is_told_again(): void
     {
         $student = User::factory()->student($this->schoolClass)->create();
         $lesson = $this->draft();
+        $other = $this->draft(['topic' => 'Zellen']);
         LessonRelease::release($lesson, $this->teacher);
+        LessonRelease::release($other, $this->teacher);
+        // Read or not, the entry's link leads nowhere after the withdrawal.
+        $student->notifications()->where('data->viewData->lesson_id', $lesson->id)->update(['read_at' => now()]);
 
         Livewire::actingAs($this->teacher)->test(EditLesson::class, ['record' => $lesson->getRouteKey()])->callAction('withdraw');
 
         $this->assertFalse($lesson->refresh()->isPublished());
+        $this->assertSame('New homework: “Zellen”', $student->notifications()->sole()->data['title']);
         $this->assertSame(1, $this->bellEntries());
 
         LessonRelease::release($lesson, $this->teacher);
 
         $this->assertSame(2, $student->notifications()->count());
+        $this->assertSame(1, $student->notifications()->where('data->viewData->lesson_id', $lesson->id)->count());
+    }
+
+    public function test_withdrawing_a_practice_task_takes_its_entries_out_of_the_bells_too(): void
+    {
+        [$chosen, $other] = User::factory()->student($this->schoolClass)->count(2)->create();
+        $task = $this->draft(['practice_competency_id' => Competency::factory()->create()->id]);
+        $task->students()->sync([$chosen->id]);
+        LessonRelease::release($task, $this->teacher, null, [$chosen->id]);
+        $this->assertSame(1, $chosen->notifications()->count());
+
+        LessonRelease::withdraw($task->refresh());
+
+        $this->assertSame(0, $this->bellEntries());
+        $this->assertSame([$chosen->id], $task->students()->pluck('users.id')->all());
+        $this->assertSame(0, $other->notifications()->count());
+    }
+
+    public function test_adding_students_later_tells_only_the_new_ones(): void
+    {
+        $early = User::factory()->student($this->schoolClass)->create();
+        $lesson = $this->draft(['topic' => 'Fotosynthese']);
+        LessonRelease::release($lesson, $this->teacher);
+        $late = User::factory()->student($this->schoolClass)->create();
+
+        $this->assertSame(1, LessonRelease::addStudents($lesson->refresh(), $this->teacher, [$late->id]));
+
+        $this->assertSame('New homework: “Fotosynthese”', $late->notifications()->sole()->data['title']);
+        $this->assertSame(1, $early->notifications()->count());
+
+        LessonRelease::withdraw($lesson->refresh());
+
+        $this->assertSame(0, $this->bellEntries());
     }
 
     public function test_two_releases_running_at_once_notify_the_students_only_once(): void

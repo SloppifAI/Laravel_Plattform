@@ -216,6 +216,39 @@ class EditLesson extends EditRecord
                         ]))
                         ->send();
                 }),
+            // Pupils who joined the class after the release (class code, moved in by the administration) never got the homework;
+            // the teacher picks them here, as some may have been left out on purpose. Only offered while there is someone to add.
+            Action::make('addStudents')
+                ->label(__('Weitere Schüler:innen hinzufügen'))
+                ->icon(Heroicon::OutlinedUserPlus)
+                ->color('gray')
+                ->authorize('publish')
+                ->visible(fn (Lesson $record): bool => $record->isPublished() && ! $record->isPracticeTask() && LessonRelease::studentsWithoutHomework($record)->exists())
+                ->modalHeading(__('Weitere Schüler:innen hinzufügen'))
+                ->modalDescription(__('Diese Schüler:innen haben die Hausaufgabe noch nicht bekommen, zum Beispiel weil sie erst nach der Freigabe in die Klasse gekommen sind. Sie bekommen sie mit der bisherigen Abgabefrist.'))
+                ->modalSubmitActionLabel(__('Hinzufügen'))
+                ->schema([
+                    CheckboxList::make('students')
+                        ->label(__('Schüler:innen'))
+                        ->options(fn (Lesson $record): array => LessonRelease::studentsWithoutHomework($record)->orderBy('name')->pluck('name', 'id')->all())
+                        ->required()
+                        ->bulkToggleable()
+                        ->columns(2),
+                ])
+                ->action(function (array $data, Lesson $record): void {
+                    $reached = LessonRelease::addStudents($record, auth()->user(), $data['students']);
+
+                    $this->dispatch(self::HOMEWORK_CHANGED_EVENT);
+
+                    Notification::make()
+                        ->success()
+                        ->title(__('Schüler:innen hinzugefügt'))
+                        ->body(__('Für :students, Abgabe bis :date.', [
+                            'students' => trans_choice(':count Schüler:in|:count Schüler:innen', $reached),
+                            'date' => $record->due_on?->format('d.m.Y'),
+                        ]))
+                        ->send();
+                }),
             Action::make('withdraw')
                 ->label(__('Freigabe zurücknehmen'))
                 ->icon(Heroicon::OutlinedArrowUturnLeft)

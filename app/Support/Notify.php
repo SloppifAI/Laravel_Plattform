@@ -62,10 +62,26 @@ final class Notify
                 $lesson->due_on ? __('Abgabe bis :date.', ['date' => $lesson->due_on->format('d.m.Y')]) : null,
                 $url,
                 Heroicon::OutlinedBookOpen,
-            ));
+            )->viewData(['kind' => 'homework', 'lesson_id' => $lesson->getKey()]));
         }
 
         return $recipients->count();
+    }
+
+    /**
+     * The release of a lesson was taken back: its "new homework" entries leave the bells of the given students, read or
+     * not, as the link in them leads nowhere now. Entries sent before they carried the lesson's id stay until they expire.
+     *
+     * @param  list<int|string>  $studentIds
+     */
+    public static function homeworkWithdrawn(Lesson $lesson, array $studentIds): int
+    {
+        return DatabaseNotification::query()
+            ->where('notifiable_type', (new User)->getMorphClass())
+            ->whereIn('notifiable_id', $studentIds)
+            ->where('data->viewData->kind', 'homework')
+            ->where('data->viewData->lesson_id', $lesson->getKey())
+            ->delete();
     }
 
     /**
