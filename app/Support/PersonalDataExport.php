@@ -13,6 +13,7 @@ use App\Models\ExplanationSession;
 use App\Models\Lesson;
 use App\Models\LessonRecording;
 use App\Models\RecordingConsent;
+use App\Models\ReviewItem;
 use App\Models\StudentQuestion;
 use App\Models\Submission;
 use App\Models\TimetableEntry;
@@ -33,8 +34,8 @@ use Laravel\Sanctum\PersonalAccessToken;
  * the substitute's name in the export of whoever set the substitution up).
  * The caller decides who may ask for whom (e.g. UserPolicy::view plus the school check). Pass the asking person as
  * `$viewer` whenever it is not the owner: then only what that person may see anyway is included, so a school
- * administration never receives a student's private "Erklär's mir" conversations, a teacher's Tuto-Mikro sessions, the
- * bell or the list of connected apps (which nobody but its owner reads). The platform operator, who may only ask for administration accounts,
+ * administration never receives a student's private "Erklär's mir" conversations or revision data ("Heute wiederholen"),
+ * a teacher's Tuto-Mikro sessions, the bell or the list of connected apps (which nobody but its owner reads). The platform operator, who may only ask for administration accounts,
  * gets the account and the contract acceptances and nothing from inside a school (classes, lessons, notifications).
  */
 class PersonalDataExport
@@ -71,6 +72,11 @@ class PersonalDataExport
             $export['klassenbuch_fehlzeiten'] = self::classBookAbsences($user, $viewer);
             $export['einwilligung_tuto_mikro'] = self::recordingConsent($user, $viewer);
             $export['tuto_mikro_anwesenheit'] = self::mikroAttendance($user, $viewer);
+
+            // Private to the student: nobody else's export (not a teacher's, not the administration's) lists the revision data.
+            if ($isOwner) {
+                $export['wiederholungsfragen'] = self::reviewItems($user);
+            }
         }
 
         if ($user->isTeacher()) {
@@ -109,6 +115,33 @@ class PersonalDataExport
         }
 
         return [...$export, ...$optional];
+    }
+
+    /**
+     * The questions the student revises in "Heute wiederholen": the question, its box, when it is due next and how often
+     * the student rated it as known, hard or forgotten. Never the solution, which is the teacher's Erwartungshorizont.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private static function reviewItems(User $student): array
+    {
+        return ReviewItem::query()
+            ->with('question.lesson')
+            ->whereBelongsTo($student, 'student')
+            ->orderBy('id')
+            ->get()
+            ->map(fn (ReviewItem $item): array => [
+                'fach' => $item->question->lesson->subject,
+                'thema' => $item->question->lesson->topic,
+                'frage' => $item->question->prompt,
+                'box' => $item->box,
+                'faellig_am' => $item->due_on->toDateString(),
+                'zuletzt_wiederholt_am' => $item->last_reviewed_at?->toIso8601String(),
+                'anzahl_sofort_gewusst' => $item->knew_count,
+                'anzahl_mit_muehe' => $item->hard_count,
+                'anzahl_nicht_gewusst' => $item->forgot_count,
+            ])
+            ->all();
     }
 
     /**

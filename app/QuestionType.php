@@ -11,6 +11,16 @@ enum QuestionType: string implements HasDescription, HasLabel
     case Application = 'application';
     case Reflection = 'reflection';
 
+    /**
+     * The types that have a fixed solution a student can revise ("Heute wiederholen"); a reflection has none.
+     *
+     * @return list<self>
+     */
+    public static function reviewable(): array
+    {
+        return [self::Comprehension, self::Application];
+    }
+
     public function getLabel(): string
     {
         return match ($this) {

@@ -208,7 +208,7 @@ class LegalPagesTest extends TestCase
         $rows = array_filter(explode('</tr>', $body[1]), fn (string $row): bool => str_contains($row, '<th scope="row">'));
 
         $this->assertSame(['Daten', 'Schüler:in', 'Lehrkraft', 'Schuladministration (nur die eigene Schule)', 'Plattform-Administration'], $headers[1]);
-        $this->assertCount(12, $rows);
+        $this->assertCount(13, $rows);
 
         foreach ($rows as $row) {
             $this->assertSame(4, substr_count($row, '<td>'), $row);

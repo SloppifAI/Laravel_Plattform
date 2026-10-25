@@ -16,6 +16,7 @@ use App\QuestionType;
 use App\Role;
 use App\Support\ClassBookDraft;
 use App\Support\Notify;
+use App\Support\ReviewSchedule;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
@@ -243,6 +244,9 @@ class DemoSchoolSeeder extends Seeder
             foreach ($submission['answers'] as $index => [$answer, $score, $feedback]) {
                 $model->answers()->create(['question_id' => $questionIds[$index], 'answer' => $answer, 'score' => $score, 'feedback' => $feedback]);
             }
+
+            // Like an evaluation in the app: the answered questions are up for "Heute wiederholen".
+            ReviewSchedule::enqueueFor($model);
         }
 
         return $lesson;

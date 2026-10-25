@@ -6,10 +6,12 @@
     use App\Models\ClassSubstitution;
     use App\Models\School;
     use App\Models\User;
+    use App\Support\ReviewSchedule;
     use Carbon\CarbonImmutable;
     use Filament\AvatarProviders\UiAvatarsProvider;
     use Filament\Facades\Filament;
     use Filament\Models\Contracts\HasAvatar;
+    use Illuminate\Support\Arr;
 
     /*
      * One list drives the table of contents and the numbered headings, so they cannot drift apart; references to other
@@ -52,6 +54,9 @@
     $notificationReadDays = (int) config('lernplattform.notifications.keep_read_days');
     $notificationDays = (int) config('lernplattform.notifications.keep_days');
     $substitutionMaxDays = (int) config('lernplattform.substitutions.max_days');
+    // "Heute wiederholen": the days between revisions per box and the most questions a day (ReviewSchedule).
+    $reviewDays = Arr::join(ReviewSchedule::intervals(), ', ', ' und ');
+    $reviewDailyLimit = ReviewSchedule::dailyLimit();
     // Connected apps: the one-time code's lifetime and the access's lifetime (sanctum.expiration is in minutes, null for none).
     $appCodeMinutes = AppAuthorizationCode::LIFETIME_MINUTES;
     $appAccessDays = config('sanctum.expiration') ? (int) ceil((int) config('sanctum.expiration') / 1440) : null;
@@ -592,6 +597,19 @@
             Rückfragen. Gespeichert werden das Thema, der gesamte Gesprächsverlauf, der Verständniswert und das Feedback.
         </li>
         <li>
+            <strong>„Heute wiederholen“ (Schüler:innen):</strong> Wird eine Hausaufgabe oder Förderaufgabe ausgewertet,
+            merkt sich die Plattform jede beantwortete Verständnis- und Anwendungsfrage (Reflexionsfragen nicht) zum
+            Wiederholen. Gespeichert werden je Frage nur ein Verweis auf die Frage, die Box der Wiederholung (1 bis
+            {{ ReviewSchedule::consolidatedBox() }}), das Datum der nächsten Wiederholung, der Zeitpunkt der letzten
+            Wiederholung und drei Zähler, wie oft sich die Schüler:in mit „Sofort gewusst“, „Mit Mühe“ oder „Nicht
+            gewusst“ eingeschätzt hat. Nicht gespeichert werden die Antwort, die beim Wiederholen aus dem Kopf gegeben
+            wird (das Feld bleibt im Browser), einzelne Versuche, Antwortzeiten und Serien. Der Plan ist fest und kommt
+            ohne KI aus: Eine Frage kommt je nach Box nach {{ $reviewDays }} Tagen wieder, bei „Nicht gewusst“ beginnt sie
+            wieder bei Box 1, und höchstens {{ $reviewDailyLimit }} Fragen am Tag werden gestellt. Die Einschätzung dient nur
+            dem Üben: Sie ändert keinen Punktwert, keinen Verständniswert, keinen Lernstand und keinen
+            Elterngesprächs-Bericht, und außer der Schüler:in sieht sie niemand.
+        </li>
+        <li>
             <strong>Rückfragen:</strong> Schüler:innen können der Lehrkraft einer Stunde eine Frage stellen. Gespeichert
             werden die Frage, die Antwort, wer geantwortet hat, und wann gefragt, geantwortet und gelesen wurde.
         </li>
@@ -663,6 +681,13 @@
                     <td><span class="legal-cell-label">Schüler:in</span> nur die eigenen</td>
                     <td><span class="legal-cell-label">Lehrkraft</span> nur Gespräche, die zu einer eigenen Stunde gehören, nach dem Ende einer Vertretung nicht mehr die zu Stunden aus der Vertretung</td>
                     <td><span class="legal-cell-label">Schuladministration (nur die eigene Schule)</span> Gespräche, die zu einer Stunde gehören, nicht die zu frei gewählten Themen</td>
+                    <td><span class="legal-cell-label">Plattform-Administration</span> keine Einsicht</td>
+                </tr>
+                <tr>
+                    <th scope="row">„Heute wiederholen“ (Wiederholungsfragen und Selbsteinschätzung)</th>
+                    <td><span class="legal-cell-label">Schüler:in</span> nur die eigenen</td>
+                    <td><span class="legal-cell-label">Lehrkraft</span> keine Einsicht</td>
+                    <td><span class="legal-cell-label">Schuladministration (nur die eigene Schule)</span> keine Einsicht</td>
                     <td><span class="legal-cell-label">Plattform-Administration</span> keine Einsicht</td>
                 </tr>
                 <tr>
@@ -1191,6 +1216,7 @@
             Die Schuladministration kann Konten ihrer Schule löschen, dabei verschwinden auch die zugehörigen Abgaben,
             Gespräche und Rückfragen der Schüler:innen. Mit dem Konto einer Lehrkraft gehen ihre Unterrichtsstunden
             samt den Abgaben und Rückfragen dazu, Einträge im Klassenbuch bleiben. Die gewählte Sprache geht mit dem Konto.
+            Mit dem Konto einer Schüler:in gehen auch ihre Wiederholungsfragen („Heute wiederholen“).
         </li>
         <li>
             <strong>Unterrichts- und Lerndaten:</strong> Unterrichtsstunden mit ihren Fragen, Abgaben, Antworten und
@@ -1202,7 +1228,8 @@
             @endif
             Lehrkräfte können Abgaben schon vorher löschen, etwa damit eine Hausaufgabe neu bearbeitet werden kann.
             Einzelne „Erklär’s mir“-Gespräche löschen wir auf Anfrage. Hochgeladene Arbeitsblätter entfernen wir auf
-            Wunsch auch vom Server.
+            Wunsch auch vom Server. Die Wiederholungsfragen („Heute wiederholen“) hängen an den Fragen der Stunde und
+            verschwinden mit ihr.
         </li>
         <li>
             <strong>Benachrichtigungen:</strong> {{ $notificationReadDays }} Tage nachdem sie gelesen wurden, ungelesene

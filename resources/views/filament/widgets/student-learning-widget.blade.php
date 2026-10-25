@@ -79,6 +79,31 @@
             </div>
         </section>
 
+        {{-- Revising in intervals: only when something is due today. --}}
+        @if ($reviewCount > 0)
+            <section class="lp-card p-6 lg:col-span-3" aria-labelledby="lp-review-today">
+                <div class="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+                    <div class="flex min-w-64 flex-1 items-start gap-4">
+                        <x-filament::icon :icon="Heroicon::OutlinedRectangleStack" class="size-7 shrink-0 text-primary-600 dark:text-primary-400" />
+
+                        <div>
+                            <h3 id="lp-review-today" class="text-base font-semibold text-gray-950 dark:text-white">
+                                {{ trans_choice('Heute wiederholen: :count Frage|Heute wiederholen: :count Fragen', $reviewCount) }}
+                            </h3>
+
+                            <p class="mt-1 text-sm text-pretty text-gray-600 dark:text-gray-400">
+                                {{ __('Ein paar Fragen aus früheren Hausaufgaben. Wer sie kurz vor dem Vergessen noch einmal beantwortet, behält sie länger.') }}
+                            </p>
+                        </div>
+                    </div>
+
+                    <x-filament::button tag="a" :href="$reviewUrl" :icon="Heroicon::ArrowRight" icon-position="after" size="sm">
+                        {{ __('Jetzt wiederholen') }}
+                    </x-filament::button>
+                </div>
+            </section>
+        @endif
+
         {{-- What's due next. --}}
         <section class="lp-card p-6 lg:col-span-2" aria-labelledby="lp-next-homework">
             <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">

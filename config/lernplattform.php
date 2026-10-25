@@ -178,6 +178,30 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Revising in intervals ("Heute wiederholen")
+    |--------------------------------------------------------------------------
+    |
+    | When a hand-in is evaluated, every answered comprehension and application question goes into box 1 of the student's
+    | Leitner boxes, due the next day (App\Support\ReviewSchedule). `intervals` are the days until the next revision,
+    | one entry per box: with 1, 3, 7 and 21 a question rated "Sofort gewusst" moves up a box and comes back after the
+    | interval of the new box, "Mit Mühe" stays in its box and waits for its interval again, "Nicht gewusst" goes back to
+    | box 1. A question that moves past the last interval counts as consolidated and is not asked any more (box 5 with the
+    | default four intervals). LERNPLATTFORM_REVIEW_INTERVALS is a comma-separated list of days, each at least 1.
+    |
+    | `daily_limit` is the most questions a student gets per day, the oldest due ones first. The self-ratings are private
+    | to the student and only move the question between boxes: they never count as a score, never reach the learning
+    | progress, the parents' report or a teacher, and no response times are kept. The rows go with their question, so with
+    | the lesson (`lernplattform:prune-learning-data`), and with the student's account.
+    |
+    */
+
+    'review' => [
+        'intervals' => array_map('intval', explode(',', (string) env('LERNPLATTFORM_REVIEW_INTERVALS', '1,3,7,21'))),
+        'daily_limit' => (int) env('LERNPLATTFORM_REVIEW_DAILY_LIMIT', 5),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Connected apps
     |--------------------------------------------------------------------------
     |

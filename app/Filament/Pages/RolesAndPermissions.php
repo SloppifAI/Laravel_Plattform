@@ -159,6 +159,11 @@ class RolesAndPermissions extends Page implements HasTable
                 'detail' => __('Ein Thema der KI erklären, die gezielt nachfragt.'),
                 'operator' => 'none', 'admin' => 'none', 'teacher' => 'none', 'student' => 'all',
             ],
+            'review' => [
+                'ability' => __('Fragen aus früheren Hausaufgaben wiederholen („Heute wiederholen“)'),
+                'detail' => __('Aus ausgewerteten Hausaufgaben und Förderaufgaben kommen täglich wenige Fragen in wachsenden Abständen wieder. Schüler:innen antworten erst aus dem Kopf, decken die Lösung auf und schätzen sich selbst ein. Das ist nur zum Üben: Die Einschätzung zählt nicht als Punkte und fließt weder in den Lernstand noch in den Elterngesprächs-Bericht ein. Lehrkräfte, Schuladministration und Plattform-Administration sehen sie nicht.'),
+                'operator' => 'none', 'admin' => 'none', 'teacher' => 'none', 'student' => 'own',
+            ],
             'levels' => [
                 'ability' => __('Stufen und Einfache Sprache bei Hausaufgaben'),
                 'detail' => __('Lehrkräfte schreiben zu den Fragen ihrer Stunden optional eine Stufe „Einstieg“ und „Profi“ oder lassen sie von der KI entwerfen. Schüler:innen wählen bei jeder Frage ihre Stufe, der Erwartungshorizont bleibt für alle gleich. „Einfache Sprache“ schreibt Zusammenfassung und Fragen in kurzen Sätzen um; ob sie an ist, merkt sich nur der eigene Browser.'),

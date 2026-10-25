@@ -6,11 +6,13 @@ use App\Filament\Pages\ExplainIt;
 use App\Filament\Pages\MyHomework;
 use App\Filament\Pages\MyLearningProgress;
 use App\Filament\Pages\MyRecordingConsent;
+use App\Filament\Pages\ReviewToday;
 use App\Filament\Pages\WorkOnHomework;
 use App\Models\Lesson;
 use App\Models\Submission;
 use App\Models\User;
 use App\Support\LearningInsights;
+use App\Support\ReviewSchedule;
 use Carbon\CarbonInterface;
 use Filament\Support\Icons\Heroicon;
 use Filament\Widgets\Widget;
@@ -87,6 +89,8 @@ class StudentLearningWidget extends Widget
             'latestFeedback' => $latestFeedback,
             'latestFeedbackLevel' => $latestFeedback ? LearningInsights::studentLevel((int) $latestFeedback->understanding_score) : null,
             'homeworkUrl' => MyHomework::getUrl(),
+            'reviewCount' => ReviewSchedule::todaysCount($student),
+            'reviewUrl' => ReviewToday::getUrl(),
             'explainItUrl' => ExplainIt::getUrl(),
             // Only where the school asks students for their own agreement to Tuto-Mikro; elsewhere the page is a 403.
             'consentUrl' => MyRecordingConsent::canAccess() ? MyRecordingConsent::getUrl() : null,

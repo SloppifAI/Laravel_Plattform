@@ -11,6 +11,7 @@ use App\Models\User;
 use App\QuestionLevel;
 use App\Support\AskTeacher;
 use App\Support\Notify;
+use App\Support\ReviewSchedule;
 use App\UnderstandingLevel;
 use Closure;
 use Filament\Actions\Action;
@@ -328,6 +329,9 @@ class WorkOnHomework extends Page
                     }
                 }
             });
+
+            // The evaluation stands: revising the questions later ("Heute wiederholen") must never turn it into a failure.
+            rescue(fn () => ReviewSchedule::enqueueFor($submission));
         } catch (Throwable $exception) {
             report($exception);
 
