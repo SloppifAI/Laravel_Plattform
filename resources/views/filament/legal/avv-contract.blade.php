@@ -705,6 +705,12 @@
                         <td><span class="legal-cell-label">Speicherdauer</span> bis die Zuordnung aufgehoben oder die Klasse oder das Konto gelöscht wird. Eine abgelaufene Vertretung gewährt nichts mehr. Sie wird mit ihrem Hinweis gelöscht, sobald sie länger zurückliegt als die Aufbewahrungsfrist (Abschnitt 4) und die Lehrkraft keine Stunde mehr in der Klasse hat.</td>
                     </tr>
                     <tr>
+                        <th scope="row">Stundenplan: Fach, Raum und eingetragene Lehrkraft je Klasse, Wochentag und Stunde</th>
+                        <td><span class="legal-cell-label">Betroffene</span> Lehrkräfte</td>
+                        <td><span class="legal-cell-label">Zweck</span> Anzeige des Wochenplans für Schüler:innen der Klasse, die Lehrkraft selbst, die Klassenleitung und die Schuladministration, Vorauswahl von Klasse und Fach beim Erfassen einer Stunde</td>
+                        <td><span class="legal-cell-label">Speicherdauer</span> bis die Schuladministration den Eintrag ändert oder löscht oder die Klasse gelöscht wird. Mit dem Konto der Lehrkraft oder dem Ende ihrer Rolle als Lehrkraft entfällt ihr Name im Eintrag.</td>
+                    </tr>
+                    <tr>
                         <th scope="row">Unterrichtsstunden: Fach, Thema, Datum, Notizen (auch übernommene Notizen aus der Stunde), Zusammenfassung, hochgeladene Arbeitsblätter (Foto, Scan, PDF), Fassungen in Einfacher Sprache</th>
                         <td><span class="legal-cell-label">Betroffene</span> Lehrkräfte, Schüler:innen nur, soweit jemand sie in Texte schreibt</td>
                         <td><span class="legal-cell-label">Zweck</span> Nachbereitung des Unterrichts, Entwurf von Hausaufgaben</td>

@@ -34,7 +34,7 @@ class DemoSeederTest extends TestCase
 {
     use RefreshDatabase;
 
-    private const array TABLES = ['schools', 'users', 'school_classes', 'competencies', 'lessons', 'questions', 'lesson_user', 'submissions', 'answers', 'explanation_sessions', 'explanation_messages', 'class_book_entries', 'class_substitutions', 'student_questions', 'notifications'];
+    private const array TABLES = ['schools', 'users', 'school_classes', 'competencies', 'lessons', 'questions', 'lesson_user', 'submissions', 'answers', 'explanation_sessions', 'explanation_messages', 'class_book_entries', 'class_substitutions', 'student_questions', 'notifications', 'timetable_entries'];
 
     protected function setUp(): void
     {
@@ -62,6 +62,7 @@ class DemoSeederTest extends TestCase
         $this->assertSame(1, $countsAfterFirstRun['class_substitutions']);
         $this->assertSame(2, $countsAfterFirstRun['student_questions']);
         $this->assertSame(4, $countsAfterFirstRun['notifications']);
+        $this->assertSame(69, $countsAfterFirstRun['timetable_entries']);
     }
 
     public function test_the_demo_schools_always_have_the_current_dpa_accepted_once(): void

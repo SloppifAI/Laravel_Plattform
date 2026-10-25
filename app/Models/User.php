@@ -44,6 +44,11 @@ class User extends Authenticatable implements FilamentUser, HasLocalePreference
         });
 
         static::updated(function (User $user): void {
+            // Only a teacher stands in the timetable: who is no longer one leaves their slots open for the administration.
+            if ($user->wasChanged('role') && ! $user->isTeacher()) {
+                $user->timetableEntries()->update(['teacher_id' => null]);
+            }
+
             if ($user->wasChanged('password')) {
                 $user->tokens()->delete();
                 AppAuthorizationCode::query()->whereBelongsTo($user)->delete();
@@ -146,6 +151,16 @@ class User extends Authenticatable implements FilamentUser, HasLocalePreference
     public function taughtLessons(): HasMany
     {
         return $this->hasMany(Lesson::class, 'teacher_id');
+    }
+
+    /**
+     * The slots of the weekly timetable a teacher is entered for, in any class (see TimetableEntry).
+     *
+     * @return HasMany<TimetableEntry, $this>
+     */
+    public function timetableEntries(): HasMany
+    {
+        return $this->hasMany(TimetableEntry::class, 'teacher_id');
     }
 
     /**

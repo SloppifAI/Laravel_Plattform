@@ -91,6 +91,16 @@ class SchoolClass extends Model
     }
 
     /**
+     * The weekly timetable of the class (see TimetableEntry).
+     *
+     * @return HasMany<TimetableEntry, $this>
+     */
+    public function timetableEntries(): HasMany
+    {
+        return $this->hasMany(TimetableEntry::class);
+    }
+
+    /**
      * The classes a teacher teaches: the ones they lead, the ones they are assigned to and the ones they substitute in
      * today, always within their school. This decides which classes a teacher may create lessons in and whose learning
      * data they see; an expired or not yet started substitution grants nothing.

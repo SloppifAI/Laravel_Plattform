@@ -29,6 +29,13 @@
             'retention' => "Eine Vertretung dauert höchstens {$substitutionMaxDays} Tage und gewährt danach nichts mehr. Der Eintrag wird mit seinem Hinweis automatisch gelöscht, wie die Unterrichtsstunden {$retention}, spätestens mit der Klasse oder dem Konto.",
         ],
         [
+            'title' => 'Stundenplan',
+            'data' => 'Je Klasse, Wochentag und Stunde das Fach, der Raum und die eingetragene Lehrkraft.',
+            'people' => 'Lehrkräfte',
+            'access' => 'Die Schuladministration pflegt ihn. Schüler:innen sehen den Plan ihrer Klasse, Lehrkräfte ihre eigenen Stunden, die Klassenleitung den ganzen Plan ihrer Klasse. Der Eintrag gibt keinen Zugriff auf die Klasse.',
+            'retention' => 'Bis die Schuladministration den Eintrag ändert oder löscht, spätestens mit der Klasse. Mit dem Konto der Lehrkraft oder dem Ende ihrer Rolle als Lehrkraft entfällt ihr Name im Eintrag.',
+        ],
+        [
             'title' => 'Unterrichtsstunden, Notizen, Arbeitsblätter, Hausaufgaben',
             'data' => 'Fach, Thema, Datum, Notizen (auch aus dem Tuto-Mikro übernommener Text), hochgeladene Arbeitsblätter, Zusammenfassung, Fragen in bis zu drei Stufen (Einstieg, Standard, Profi) mit Erwartungshorizont, Fassungen in Einfacher Sprache. Das trägt die Lehrkraft selbst ein oder lässt es von der KI entwerfen.',
             'people' => 'Lehrkräfte; nur zufällig genannte Dritte',

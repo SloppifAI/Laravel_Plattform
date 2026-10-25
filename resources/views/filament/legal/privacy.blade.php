@@ -429,6 +429,11 @@
             bei Lehrkräften die Klassen, die sie leiten oder denen sie zugeordnet sind, und Vertretungen mit Zeitraum,
             Hinweis und der Person, die sie eingerichtet hat
         </li>
+        <li>
+            der Stundenplan der Klassen: Fach, Raum und die eingetragene Lehrkraft je Wochentag und Stunde. Schüler:innen
+            sehen den Plan ihrer Klasse mit den Namen der Lehrkräfte, Lehrkräfte ihre eigenen Stunden, die Klassenleitung
+            den ganzen Plan ihrer Klasse und die Schuladministration alle Pläne der Schule
+        </li>
         <li>die gewählte Sprache der Oberfläche (Deutsch oder Englisch), solange jemand eine gewählt hat</li>
         <li>
             bei Lehrkräften und Schuladministrationen, die eine App verbunden haben, die Zugänge dieser Apps (siehe
@@ -1196,6 +1201,11 @@
             gelöscht wird. Eine abgelaufene Vertretung gewährt nichts mehr. Sie wird mit ihrem Hinweis täglich automatisch
             gelöscht, sobald sie länger zurückliegt als die Aufbewahrungsfrist der Unterrichtsstunden
             (aufbewahrt wird {{ $keptPhrase }}) und die Lehrkraft keine Stunde mehr in der Klasse hat.
+        </li>
+        <li>
+            <strong>Stundenplan:</strong> bis die Schuladministration den Eintrag ändert oder löscht oder die Klasse
+            gelöscht wird. Wird das Konto einer Lehrkraft gelöscht oder ist sie keine Lehrkraft mehr, bleibt der Eintrag
+            ohne ihren Namen stehen.
         </li>
         <li>
             <strong>Tuto-Mikro:</strong> Ton wird nicht gespeichert. Der Nachweis über eine Sitzung wird
