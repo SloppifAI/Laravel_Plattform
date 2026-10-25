@@ -1022,8 +1022,8 @@
     <h2 id="apps">{{ $heading('apps') }}</h2>
     <p>
         Lehrkräfte und Schuladministrationen können eine App, derzeit Tuto Mic, mit ihrem Konto verbinden.
-        Die App zeigt ihnen ihre Stunden und Klassen, legt neue Stunden an und setzt die Zusammenfassung einer Stunde.
-        Damit sie Namen in Texten auf dem Gerät durch Platzhalter ersetzen kann, bekommt sie die Namen der Schüler:innen
+        Die App zeigt ihnen ihre Stunden, Klassen und ihren Stundenplan, legt neue Stunden an und setzt die
+        Zusammenfassung einer Stunde. Damit sie Namen in Texten auf dem Gerät durch Platzhalter ersetzen kann, bekommt sie die Namen der Schüler:innen
         dieser Klassen. Das geschieht nur, wenn die Person die App selbst verbindet. Wer keine App verbindet, ist davon
         nicht betroffen, Schüler:innen nur mit ihrem Namen, wenn eine ihrer Lehrkräfte oder die Schuladministration
         eine App verbindet.
@@ -1051,7 +1051,8 @@
             der Schuladministration alle der Schule, jeweils ohne Förderaufgaben. Das sind Fach, Thema, Datum, die Klasse
             (Nummer und Name), die Zusammenfassung, ob sie aus einer App stammt und ob die Hausaufgabe freigegeben ist.
             Dazu die Klassen, in denen die Person Stunden anlegen darf (Nummer und Name), die Fächer, die an der Schule
-            in Stunden vorkommen, und beim Verbinden der Name und die Rolle der Person.
+            in Stunden vorkommen, die eigenen Einträge der Person im Stundenplan für einen Tag (Uhrzeit, Klasse, Fach,
+            Raum, zugehörige Stunde) und beim Verbinden der Name und die Rolle der Person.
         </li>
         <li>
             <strong>Namen von Schüler:innen:</strong> die Anzeigenamen der Schüler:innen in den Klassen, die die Person

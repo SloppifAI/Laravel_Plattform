@@ -77,7 +77,7 @@ class EditProfile extends BaseEditProfile
     protected function getConnectedAppsContentComponent(): Component
     {
         return Section::make(__('Verbundene Apps'))
-            ->description(__('Apps, denen du in Tuto den Zugang erlaubt hast. Eine App sieht die Stunden und Klassen, die du in Tuto bearbeiten darfst, legt neue Stunden an und setzt die Zusammenfassung einer Stunde. Von Schüler:innen sieht sie nur die Namen, damit sie sie auf deinem Gerät pseudonymisieren kann.'))
+            ->description(__('Apps, denen du in Tuto den Zugang erlaubt hast. Eine App sieht die Stunden und Klassen, die du in Tuto bearbeiten darfst, und deinen Stundenplan, legt neue Stunden an und setzt die Zusammenfassung einer Stunde. Von Schüler:innen sieht sie nur die Namen, damit sie sie auf deinem Gerät pseudonymisieren kann.'))
             ->visible(fn (): bool => $this->getUser()->isTeacher() || $this->getUser()->isAdmin())
             ->schema(fn (): array => $this->getUser()->tokens()->latest()->latest('id')->get()
                 ->map(fn (PersonalAccessToken $token): Component => TextEntry::make('connectedApp'.$token->getKey())
