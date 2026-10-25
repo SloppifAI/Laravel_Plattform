@@ -1026,7 +1026,7 @@ Die wichtigsten Regeln im Überblick. Die ausführlichen Texte stehen in der Anw
 
 **Datenauskunft.** Jede Person lädt ihre Daten selbst herunter (Profil → „Meine Daten herunterladen“). Die Schuladministration kann das für Konten ihrer Schule tun (Benutzer → Konto → „Datenauskunft“). Die Datei der Person selbst enthält auch die Zugänge verbundener Apps (Name, Verbindung, letzte Nutzung, Ablauf, Berechtigungen), nie den Zugangsschlüssel.
 
-**Verbundene Apps.** Lehrkräfte und Schuladministrationen können eine App mit ihrem Konto verbinden ([Abschnitt 7](#7-app-anbindung)). Die App sieht und ändert nur Stunden und Klassen der Person. Dazu sieht sie, welche Fächer an der Schule in Stunden vorkommen, als Auswahl beim Anlegen einer Stunde. Von Schüler:innen bekommt sie nur die Anzeigenamen in den Klassen der Person, um Namen auf dem Gerät durch Platzhalter zu ersetzen (lokale Pseudonymisierung), und darf sie nicht speichern. Andere Daten von Schüler:innen sieht sie nie. Tuto speichert den Einmal-Code (5 Minuten gültig) und den Zugangsschlüssel (180 Tage gültig) nur als Hash, dazu Name, Berechtigungen, Verbindung, letzte Nutzung und Ablauf des Zugangs, keine IP-Adresse. Beides wird mit dem Konto gelöscht, ein Zugang auch sofort, wenn die Person ihn im Profil entzieht oder ihr Passwort ändert.
+**Verbundene Apps.** Lehrkräfte und Schuladministrationen können eine App mit ihrem Konto verbinden ([Abschnitt 7](#7-app-anbindung)). Die App sieht und ändert nur Stunden und Klassen der Person und sieht ihren Stundenplan. Dazu sieht sie, welche Fächer an der Schule in Stunden vorkommen, als Auswahl beim Anlegen einer Stunde. Von Schüler:innen bekommt sie nur die Anzeigenamen in den Klassen der Person, um Namen auf dem Gerät durch Platzhalter zu ersetzen (lokale Pseudonymisierung), und darf sie nicht speichern. Andere Daten von Schüler:innen sieht sie nie. Tuto speichert den Einmal-Code (5 Minuten gültig) und den Zugangsschlüssel (180 Tage gültig) nur als Hash, dazu Name, Berechtigungen, Verbindung, letzte Nutzung und Ablauf des Zugangs, keine IP-Adresse. Beides wird mit dem Konto gelöscht, ein Zugang auch sofort, wenn die Person ihn im Profil entzieht oder ihr Passwort ändert.
 
 **Wer sieht was.** Alles, was zu einer Schule gehört, sehen nur Personen dieser Schule. Die Plattform-Administration sieht keine Lerndaten. Lehrkräfte sehen die Ergebnisse, Rückmeldungen der KI und Lernstände zu ihren eigenen Stunden und den Klassen, die sie unterrichten, bis hin zum Bericht für das Elterngespräch. Die Schuladministration sieht alle Stunden und Ergebnisse ihrer Schule. Schüler:innen sehen nur ihre eigenen Daten. Mit dem Ende einer Vertretung endet auch der Zugriff der Vertretung.
 
@@ -1100,7 +1100,7 @@ Verbinden können **Lehrkräfte und Schuladministrationen**. Schüler:innen und 
 **So erreichst du es:** Du startest das Verbinden in der App. Sie öffnet im Browser die Tuto-Seite `/app/verbinden`.
 
 1. Melde dich auf der Anmeldeseite von Tuto an, wie sonst auch. Bist du schon angemeldet, entfällt das. Dein Passwort gibst du nur hier ein, nie in der App.
-2. Die Seite „Tuto Mic mit Tuto verbinden“ zeigt, was die App **darf**: deine Stunden und Klassen sehen (als Schuladministration die Stunden und Klassen deiner Schule), die Fächer deiner Schule sehen, die Namen deiner Schüler:innen für die lokale Pseudonymisierung sehen (als Schuladministration die der Schüler:innen deiner Schule), neue Stunden anlegen und die Zusammenfassung einer Stunde setzen. Und was sie **nicht darf**: weitere Daten deiner Schüler:innen sehen, Ergebnisse und Abgaben sehen, dein Passwort erfahren.
+2. Die Seite „Tuto Mic mit Tuto verbinden“ zeigt, was die App **darf**: deine Stunden und Klassen sehen (als Schuladministration die Stunden und Klassen deiner Schule), die Fächer deiner Schule sehen, deinen Stundenplan sehen, die Namen deiner Schüler:innen für die lokale Pseudonymisierung sehen (als Schuladministration die der Schüler:innen deiner Schule), neue Stunden anlegen und die Zusammenfassung einer Stunde setzen. Und was sie **nicht darf**: weitere Daten deiner Schüler:innen sehen, Ergebnisse und Abgaben sehen, dein Passwort erfahren.
 3. Klicke auf **„Erlauben“**. Mit „Abbrechen“ bekommt die App keinen Zugang: Die Seite zeigt dann „Verbindung abgelehnt“, und die App erfährt mit „Zurück zu Tuto Mic“ davon.
 4. Die Seite „Tuto Mic ist verbunden“ erscheint, und der Browser versucht, die App zu öffnen. Öffnet sie sich nicht von selbst, klicke auf **„Tuto Mic öffnen“**. Damit ist sie verbunden, das Browserfenster kannst du schließen.
 
@@ -1208,7 +1208,7 @@ Jeder neue Zugang trägt immer alle vier Berechtigungen (Abilities). Jede Route 
 
 | Berechtigung | Erlaubt |
 | --- | --- |
-| `lessons:read` | `GET /classes`, `GET /subjects`, `GET /lessons`, `GET /lessons/{id}` |
+| `lessons:read` | `GET /classes`, `GET /subjects`, `GET /timetable`, `GET /lessons`, `GET /lessons/{id}` |
 | `lessons:create` | `POST /lessons` |
 | `lessons:summary` | `PUT /lessons/{id}/summary` |
 | `roster:read` | `GET /roster` |
@@ -1227,6 +1227,7 @@ Alle Pfade stehen unter `/api/v1`. Antworten mit Daten haben die Form `{"data": 
 | `DELETE /token` | gültiger Zugang | entzieht den Zugang, mit dem die Anfrage kam (204) |
 | `GET /classes` | `lessons:read` | Klassen, in denen die Person Stunden anlegen darf |
 | `GET /subjects` | `lessons:read` | Fächer, die an der Schule der Person in Stunden vorkommen |
+| `GET /timetable` | `lessons:read` | eigene Einträge im Stundenplan an einem Datum |
 | `GET /lessons` | `lessons:read` | Stunden der Person, seitenweise |
 | `GET /lessons/{id}` | `lessons:read` | eine Stunde |
 | `POST /lessons` | `lessons:create` | legt eine Stunde an (201) |
@@ -1270,6 +1271,34 @@ curl https://tuto.example.org/api/v1/subjects \
 ```json
 { "data": ["Biologie", "Mathe"] }
 ```
+
+##### Stundenplan eines Tages
+
+`GET /timetable?date=JJJJ-MM-TT` liefert die eigenen Einträge der Person im Stundenplan am Wochentag dieses Datums, sortiert nach Beginn. Das gilt für Lehrkräfte und Schuladministrationen gleich: Es sind die Einträge, in denen die Person als Lehrkraft steht. `date` ist Pflicht. Fehlt es oder ist es kein gültiges Datum im Format `JJJJ-MM-TT`, antwortet Tuto mit 422. An Tagen ohne Unterricht (Wochenende) oder ohne Stundenplan ist `data` leer.
+
+| Feld | Inhalt |
+| --- | --- |
+| `starts_at`, `ends_at` | Beginn und Ende der Stunde als `HH:MM`, so wie im Stundenraster der Plattform eingetragen (`lernplattform.timetable.periods`): die Uhrzeit der Schule, ohne Zeitzone. Einträge zu einer Stunde, die im Raster fehlt, sind nicht enthalten |
+| `class` | `{"id": 3, "name": "7b"}` |
+| `subject` | Fach laut Stundenplan |
+| `room` | Raum oder `null` |
+| `lesson_id` | die Tuto-Stunde derselben Klasse mit genau diesem Fach und Datum, die die Person bearbeiten darf, oder `null`. Gibt es mehrere, die zuerst angelegte |
+
+```bash
+curl "https://tuto.example.org/api/v1/timetable?date=2026-10-26" \
+  -H "Accept: application/json" -H "Authorization: Bearer 7|Qk3w…"
+```
+
+```json
+{
+  "data": [
+    { "starts_at": "08:00", "ends_at": "08:45", "class": { "id": 3, "name": "7b" }, "subject": "Mathematik", "room": "B12", "lesson_id": 12 },
+    { "starts_at": "09:50", "ends_at": "10:35", "class": { "id": 4, "name": "8a" }, "subject": "Physik", "room": null, "lesson_id": null }
+  ]
+}
+```
+
+Vertretungen, Ausfälle und Raumänderungen sind noch nicht enthalten, die Antwort zeigt den regulären Wochenplan. Das Fach muss für `lesson_id` genau übereinstimmen: Heißt es im Stundenplan „Mathematik“ und in der Stunde „Mathe“, bleibt `lesson_id` leer. Daten von Schüler:innen enthält die Antwort nicht.
 
 ##### Stunden auflisten
 

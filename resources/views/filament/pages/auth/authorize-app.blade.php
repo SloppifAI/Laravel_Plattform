@@ -28,6 +28,7 @@
                     @foreach ([
                         $isAdmin ? __('die Stunden und Klassen deiner Schule sehen') : __('deine Stunden und Klassen sehen'),
                         __('die Fächer deiner Schule sehen'),
+                        __('deinen Stundenplan sehen'),
                         $isAdmin ? __('die Namen der Schüler:innen deiner Schule für die lokale Pseudonymisierung sehen') : __('die Namen deiner Schüler:innen für die lokale Pseudonymisierung sehen'),
                         __('neue Stunden anlegen'),
                         __('die Zusammenfassung einer Stunde setzen'),
