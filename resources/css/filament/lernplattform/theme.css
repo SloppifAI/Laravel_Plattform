@@ -385,6 +385,11 @@ a.fi-wi-stats-overview-stat {
 
             & .fi-ta-actions .fi-link {
                 @apply min-h-11;
+
+                /* Filament pins the label to the baseline, which in the taller link puts it above the centred icon. */
+                & > .fi-link-label {
+                    @apply self-center;
+                }
             }
         }
     }
