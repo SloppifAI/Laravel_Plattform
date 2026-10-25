@@ -55,7 +55,7 @@ class SubstitutionRetentionTest extends TestCase
             'substitute_id' => $this->substitute->id,
             'starts_on' => CarbonImmutable::parse($endsOn)->subDays(9)->toDateString(),
             'ends_on' => $endsOn,
-            'note' => 'Frau Sommer ist krank',
+            'note' => 'Frau Schulze ist krank',
             'created_at' => $touchedOn ?? $endsOn,
             'updated_at' => $touchedOn ?? $endsOn,
             ...$attributes,

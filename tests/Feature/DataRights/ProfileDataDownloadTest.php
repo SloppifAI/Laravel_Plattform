@@ -81,7 +81,7 @@ class ProfileDataDownloadTest extends TestCase
     public function test_the_download_lists_the_connected_apps_without_the_token(): void
     {
         $teacher = User::factory()->teacher()->create(['username' => 'frau.schulze']);
-        $token = $teacher->createToken('iPhone von Frau Sommer', TokenController::ABILITIES);
+        $token = $teacher->createToken('iPhone von Frau Schulze', TokenController::ABILITIES);
         User::factory()->teacher()->for($teacher->school)->create()->createToken('Tablet einer Kollegin', TokenController::ABILITIES);
 
         $page = Livewire::actingAs($teacher)->test(EditProfile::class)->callAction('downloadData');
@@ -89,7 +89,7 @@ class ProfileDataDownloadTest extends TestCase
         $content = base64_decode($page->effects['download']['content']);
         $data = json_decode($content, true, flags: JSON_THROW_ON_ERROR);
 
-        $this->assertSame(['iPhone von Frau Sommer'], array_column($data['verbundene_apps'], 'name'));
+        $this->assertSame(['iPhone von Frau Schulze'], array_column($data['verbundene_apps'], 'name'));
         $this->assertSame(TokenController::ABILITIES, $data['verbundene_apps'][0]['berechtigungen']);
         $this->assertStringNotContainsString($token->plainTextToken, $content);
         $this->assertStringNotContainsString($token->accessToken->token, $content);

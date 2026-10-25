@@ -15,8 +15,8 @@ class DashboardLabelsTest extends TestCase
 
     public function test_each_role_sees_a_start_page_named_for_it(): void
     {
-        $this->actingAs(User::factory()->teacher()->create(['name' => 'Frau Sommer']))
-            ->get('/')->assertOk()->assertSee('My teaching')->assertSee('Hello Frau Sommer!')->assertDontSee('My learning area');
+        $this->actingAs(User::factory()->teacher()->create(['name' => 'Frau Schulze']))
+            ->get('/')->assertOk()->assertSee('My teaching')->assertSee('Hello Frau Schulze!')->assertDontSee('My learning area');
 
         $this->actingAs(User::factory()->admin()->create())
             ->get('/')->assertOk()->assertSee('School overview')->assertDontSee('My learning area');
@@ -33,7 +33,7 @@ class DashboardLabelsTest extends TestCase
         config(['lernplattform.locale.default' => 'de']);
         app()->setLocale('de');
 
-        $this->actingAs(User::factory()->teacher()->create(['name' => 'Frau Sommer']))
-            ->get('/')->assertOk()->assertSee('Mein Unterricht')->assertSee('Hallo Frau Sommer!');
+        $this->actingAs(User::factory()->teacher()->create(['name' => 'Frau Schulze']))
+            ->get('/')->assertOk()->assertSee('Mein Unterricht')->assertSee('Hallo Frau Schulze!');
     }
 }

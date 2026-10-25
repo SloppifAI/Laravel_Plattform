@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * The weekly timetables of the demo classes made by DemoSchoolSeeder (it runs after it): 7a and 7b of the
- * "Gesamtschule am Lernpark" and 8c of the "Gymnasium Musterstadt". Frau Sommer teaches 7b Mathematik, Biologie and
+ * "Gesamtschule am Lernpark" and 8c of the "Gymnasium Musterstadt". Frau Schulze teaches 7b Mathematik, Biologie and
  * Geschichte (the subjects of her demo lessons), Thomas Weber leads 7a and teaches 7b Deutsch and Englisch, without
  * ever being in two classes at once; Julia Berger teaches 8c Mathematik and Physik. Slots whose teacher the school has
  * not decided yet stay without one, as the administration can leave them.

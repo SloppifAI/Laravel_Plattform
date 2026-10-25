@@ -23,7 +23,7 @@ class MyTimetableTest extends TestCase
     public function test_a_student_sees_the_timetable_of_the_own_class(): void
     {
         $schoolClass = SchoolClass::factory()->create();
-        $teacher = User::factory()->teacher()->for($schoolClass->school)->create(['name' => 'Frau Sommer']);
+        $teacher = User::factory()->teacher()->for($schoolClass->school)->create(['name' => 'Frau Schulze']);
         TimetableEntry::factory()->at(1, 2)->create(['school_class_id' => $schoolClass->id, 'teacher_id' => $teacher->id, 'subject' => 'Mathematik', 'room' => 'R 104']);
         TimetableEntry::factory()->at(1, 2)->create(['subject' => 'Fremdes Fach']);
         $student = User::factory()->student($schoolClass)->create();
@@ -31,7 +31,7 @@ class MyTimetableTest extends TestCase
         $this->actingAs($student)
             ->get(MyTimetable::getUrl())
             ->assertOk()
-            ->assertSee(['Timetable', 'Monday', 'Lesson 2', '08:45–09:30', 'Mathematik', 'Frau Sommer', 'R 104'])
+            ->assertSee(['Timetable', 'Monday', 'Lesson 2', '08:45–09:30', 'Mathematik', 'Frau Schulze', 'R 104'])
             ->assertDontSee('Fremdes Fach');
 
         $this->assertSame(NavigationGroup::Lernen, MyTimetable::getNavigationGroup());

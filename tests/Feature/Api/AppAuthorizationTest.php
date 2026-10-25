@@ -89,7 +89,7 @@ class AppAuthorizationTest extends TestCase
 
     public function test_the_whole_flow_from_the_login_to_a_working_token(): void
     {
-        $teacher = User::factory()->teacher()->create(['name' => 'Frau Sommer']);
+        $teacher = User::factory()->teacher()->create(['name' => 'Frau Schulze']);
         // The intended URL comes back with its parameters sorted, as Laravel's fullUrl() has them.
         $request = $this->authorizationRequest();
         ksort($request);
@@ -106,7 +106,7 @@ class AppAuthorizationTest extends TestCase
             ->assertOk()
             ->assertHeader('X-Frame-Options', 'SAMEORIGIN')
             ->assertSee(__(':app mit Tuto verbinden', ['app' => 'Tuto-App']))
-            ->assertSee(__('Angemeldet als :name', ['name' => 'Frau Sommer']))
+            ->assertSee(__('Angemeldet als :name', ['name' => 'Frau Schulze']))
             ->assertSee(__('deine Stunden und Klassen sehen'))
             ->assertSee(__('die Fächer deiner Schule sehen'))
             ->assertSee(__('die Namen deiner Schüler:innen für die lokale Pseudonymisierung sehen'))
@@ -128,19 +128,19 @@ class AppAuthorizationTest extends TestCase
             'client_id' => 'tuto-app',
             'redirect_uri' => 'tutoapp://callback',
             'code_verifier' => self::VERIFIER,
-            'device_name' => 'iPhone von Frau Sommer',
+            'device_name' => 'iPhone von Frau Schulze',
         ])
             ->assertCreated()
             ->assertHeader('Cache-Control', 'no-store, private')
             ->assertExactJsonStructure(['token', 'token_type', 'abilities', 'expires_at', 'user' => ['name', 'role']])
             ->assertJsonPath('token_type', 'Bearer')
             ->assertJsonPath('abilities', TokenController::ABILITIES)
-            ->assertJsonPath('user', ['name' => 'Frau Sommer', 'role' => 'teacher'])
+            ->assertJsonPath('user', ['name' => 'Frau Schulze', 'role' => 'teacher'])
             ->json('token');
 
         $accessToken = PersonalAccessToken::findToken($token);
         $this->assertTrue($accessToken->tokenable->is($teacher));
-        $this->assertSame('iPhone von Frau Sommer', $accessToken->name);
+        $this->assertSame('iPhone von Frau Schulze', $accessToken->name);
         $this->assertTrue($accessToken->expires_at->isSameDay(now()->addDays(180)));
 
         $this->app['auth']->forgetGuards();
