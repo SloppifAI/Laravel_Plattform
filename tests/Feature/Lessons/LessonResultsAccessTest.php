@@ -17,6 +17,7 @@ use App\Models\Competency;
 use App\Models\Lesson;
 use App\Models\Question;
 use App\Models\SchoolClass;
+use App\Models\StudentQuestion;
 use App\Models\Submission;
 use App\Models\User;
 use Filament\Actions\Testing\TestAction;
@@ -97,11 +98,77 @@ class LessonResultsAccessTest extends TestCase
         $this->assertContains(QuestionsRelationManager::class, $managers);
         $this->assertNotContains(SubmissionsRelationManager::class, $managers);
 
-        // The lesson stays theirs: only the class's results are gone.
+        // The lesson stays theirs: only the class's results are gone, and with them the right to delete the lesson.
         Livewire::actingAs($this->substitute)->test(EditLesson::class, ['record' => $this->lesson->getRouteKey()])
             ->assertOk()
             ->assertActionHidden('starter')
-            ->assertActionVisible('delete');
+            ->assertActionHidden('delete');
+    }
+
+    public function test_an_expired_substitute_cannot_delete_a_lesson_that_holds_hand_ins(): void
+    {
+        $this->substitution(ended: true);
+
+        $this->assertFalse($this->substitute->can('delete', $this->lesson));
+
+        Livewire::actingAs($this->substitute)->test(EditLesson::class, ['record' => $this->lesson->getRouteKey()])
+            ->assertActionHidden('delete');
+
+        Livewire::actingAs($this->substitute)->test(ListLessons::class)
+            ->callTableBulkAction('delete', [$this->lesson]);
+
+        $this->assertModelExists($this->lesson);
+        $this->assertModelExists($this->submission);
+    }
+
+    public function test_an_expired_substitute_cannot_delete_a_lesson_that_holds_student_questions(): void
+    {
+        $this->submission->delete();
+        StudentQuestion::factory()->create(['lesson_id' => $this->lesson->id, 'student_id' => $this->submission->student_id]);
+        $this->substitution(ended: true);
+
+        $this->assertFalse($this->substitute->can('delete', $this->lesson));
+
+        Livewire::actingAs($this->substitute)->test(ListLessons::class)
+            ->callTableBulkAction('delete', [$this->lesson]);
+
+        $this->assertModelExists($this->lesson);
+        $this->assertSame(1, StudentQuestion::query()->count());
+    }
+
+    public function test_an_expired_substitute_deletes_a_lesson_without_student_data(): void
+    {
+        $this->submission->delete();
+        $this->substitution(ended: true);
+
+        $this->assertTrue($this->substitute->can('delete', $this->lesson));
+
+        Livewire::actingAs($this->substitute)->test(EditLesson::class, ['record' => $this->lesson->getRouteKey()])
+            ->assertActionVisible('delete')
+            ->callAction('delete')
+            ->assertNotified();
+
+        $this->assertModelMissing($this->lesson);
+    }
+
+    public function test_the_lessons_teacher_a_substitute_in_the_period_and_the_administration_delete_a_lesson_with_hand_ins(): void
+    {
+        $admin = User::factory()->admin()->for($this->schoolClass->school)->create();
+        $this->substitution(ended: false);
+
+        $this->assertTrue($this->substitute->can('delete', $this->lesson));
+        $this->assertTrue($admin->can('delete', $this->lesson));
+
+        $this->lesson->update(['teacher_id' => $this->leader->id]);
+        $this->assertTrue($this->leader->can('delete', $this->lesson));
+        $this->assertFalse($this->substitute->can('delete', $this->lesson));
+
+        Livewire::actingAs($this->leader)->test(ListLessons::class)
+            ->callTableBulkAction('delete', [$this->lesson])
+            ->assertNotified();
+
+        $this->assertModelMissing($this->lesson);
+        $this->assertModelMissing($this->submission);
     }
 
     public function test_an_expired_substitute_cannot_open_the_starter_board_either(): void

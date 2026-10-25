@@ -4,6 +4,7 @@ namespace App\Policies;
 
 use App\Models\Lesson;
 use App\Models\SchoolClass;
+use App\Models\StudentQuestion;
 use App\Models\User;
 
 /**
@@ -85,14 +86,25 @@ class LessonPolicy
             || $lesson->schoolClass->isTaughtBy($user);
     }
 
+    /**
+     * Deleting a lesson takes the students' hand-ins and questions with it, so whoever may no longer read them (a
+     * substitute whose substitution is over, see viewResults()) can delete only a lesson that holds none, like
+     * SubmissionPolicy::delete().
+     */
     public function delete(User $user, Lesson $lesson): bool
     {
-        return $this->manages($user, $lesson);
+        return $this->manages($user, $lesson)
+            && ($this->viewResults($user, $lesson) || ! $this->holdsStudentData($lesson));
     }
 
     public function deleteAny(User $user): bool
     {
         return $user->isAdmin() || $user->isTeacher();
+    }
+
+    private function holdsStudentData(Lesson $lesson): bool
+    {
+        return $lesson->submissions()->exists() || StudentQuestion::query()->whereBelongsTo($lesson)->exists();
     }
 
     private function manages(User $user, Lesson $lesson): bool

@@ -88,7 +88,9 @@ class LessonsTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    // Checks each lesson, so one that holds hand-ins its teacher may no longer read is skipped.
+                    DeleteBulkAction::make()
+                        ->authorizeIndividualRecords('delete'),
                 ]),
             ]);
     }
