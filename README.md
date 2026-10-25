@@ -47,11 +47,12 @@ Eine Lehrkraft hält eine Stunde und trägt ein, was dran war: Notizen, ein Tafe
 - **Hausaufgabe, die eine Allerwelts-KI nicht lösen kann.** Der Entwurf besteht aus einer Zusammenfassung der Stunde und fünf Fragen: zwei zum Verständnis, zwei zur Anwendung und eine Reflexionsfrage zu einem konkreten Moment der Stunde (mit Datum). Wer nicht dabei war, kann sie nicht beantworten, auch keine KI, die den Unterricht nicht erlebt hat.
 - **In eigenen Worten.** Die Schüler:innen lesen zuerst die Zusammenfassung ihrer Lehrkraft, beantworten dann die Fragen und schreiben zum Schluss selbst auf, was in der Stunde wichtig war. Wörtlich Abgeschriebenes wird abgelehnt.
 - **Stufen und Einfache Sprache.** Jede Frage kann es in den Stufen „Einstieg“, „Standard“ und „Profi“ geben. Wer es braucht, schaltet die Texte der Lehrkraft auf „Einfache Sprache“.
-- **Tuto prüft, ob es verstanden wurde.** Die KI bewertet jede Abgabe (Wert von 0 bis 100, Rückmeldung, Lücken). Der Wert ist eine Einschätzung und keine Note.
+- **Tuto prüft, ob es verstanden wurde.** Die KI bewertet jede Abgabe (Wert von 0 bis 100, Rückmeldung, Lücken). Der Wert ist eine Einschätzung und keine Note. Bei Antworten, die noch nicht ganz stimmen, bekommen die Schüler:innen einen Tipp zur Art des Fehlers, und die Lehrkraft sieht die Fehlerarten je Kompetenz.
 - **Erklär’s mir.** Lernen durch Lehren: Die Schüler:innen erklären einem neugierigen KI-Lernpartner ein Thema, der gezielt nachfragt, und bekommen danach eine Auswertung.
+- **Heute wiederholen.** Fragen aus früheren Hausaufgaben kommen in wachsenden Abständen wieder (nach 1, 3, 7 und 21 Tagen), höchstens fünf am Tag. Die Schüler:innen antworten aus dem Kopf, schauen die Lösung an und schätzen sich selbst ein. Das bleibt privat und zählt nicht als Punkte.
 - **Kompetenzraster.** Alle Fragen lassen sich Kompetenzen eines gemeinsamen Referenzrahmens zuordnen (Sekundarstufe I). Die Lehrkraft sieht je Klasse und je Schüler:in, wo es noch hakt, und verteilt mit einem Klick eine Förderaufgabe.
 - **Tuto-Mikro.** Die Lehrkraft schaltet in der Stunde ihr Mikrofon ein („Mikro an“) und bekommt danach Notizen aus der Stunde, eine Zusammenfassung, Kernbegriffe, einen Tafelbild-Vorschlag und die Fragen aus der Klasse. Die Klasse sieht am Beamer, ob das Mikro an oder aus ist. Es geht nur mit Einwilligung aller Anwesenden, und der Ton wird nicht gespeichert.
-- **Rund um den Schulalltag.** Klassenbuch mit Entwurf aus der Stunde, Vertretung mit Übergabe-Mappe, Rückfragen der Schüler:innen an die Lehrkraft, Einstieg für die nächste Stunde, Bericht für das Elterngespräch und eine Glocke, die über Neues informiert.
+- **Rund um den Schulalltag.** Stundenplan (die Schuladministration trägt ihn ein, „Stunde erfassen“ übernimmt daraus Klasse und Fach), Klassenbuch mit Entwurf aus der Stunde, Vertretung mit Übergabe-Mappe, Rückfragen der Schüler:innen an die Lehrkraft, Einstieg für die nächste Stunde, Bericht für das Elterngespräch und eine Glocke, die über Neues informiert.
 - **Datenschutz von Anfang an.** Namen werden ersetzt, bevor ein Text zur KI geht. Jede Schule entscheidet selbst, ob die KI überhaupt benutzt wird. Der Ton wird nicht gespeichert. Lerndaten werden zum Ende des Schuljahres gelöscht. Mehr dazu in [Abschnitt 5](#5-datenschutz).
 
 <p align="center">
@@ -151,6 +152,8 @@ GEMINI_API_KEY=
 | `LERNPLATTFORM_MIKRO_SESSION_KEEP_DAYS` | `365` | Wie lange der Nachweis je Tuto-Mikro-Sitzung (Zeit, Dauer, Anwesenheit) bleibt. |
 | `LERNPLATTFORM_MIKRO_MAX_SEGMENT_KB` | `2048` | Größte erlaubte Größe eines Ton-Abschnitts. |
 | `LERNPLATTFORM_SUBSTITUTION_MAX_DAYS` | `90` | Wie viele Tage dieselbe Lehrkraft eine Klasse insgesamt vertreten darf. |
+| `LERNPLATTFORM_REVIEW_INTERVALS`, `LERNPLATTFORM_REVIEW_DAILY_LIMIT` | `1,3,7,21`, `5` | „Heute wiederholen“: Tage bis zur nächsten Wiederholung je Leitner-Fach (kommagetrennt, das erste ist auch die Wartezeit bis zur ersten Frage) und wie viele Fragen am Tag höchstens dran sind. |
+| `LERNPLATTFORM_MISTAKES_THRESHOLD`, `LERNPLATTFORM_MISTAKES_MIN_CONFIDENCE` | `80`, `0.6` | Fehlerart: Antworten unter dieser Punktzahl (0 bis 100) bekommen eine Fehlerart. Eine Einordnung, bei der sich die KI weniger sicher ist (0 bis 1), wird nicht gespeichert. |
 | `LERNPLATTFORM_NOTIFICATIONS_KEEP_READ_DAYS`, `LERNPLATTFORM_NOTIFICATIONS_KEEP_DAYS` | `14`, `60` | Wie lange gelesene und alle Meldungen der Glocke bleiben. |
 | `LERNPLATTFORM_APP_REDIRECT_URIS` | `tutoapp://callback` | Adressen, zu denen Tuto nach dem Verbinden einer App zurückleitet (kommagetrennt, genau so, wie die App sie angibt). Siehe [App-Anbindung](#72-für-app-entwicklerinnen). |
 | `SANCTUM_EXPIRATION` | `259200` | Wie lange der Zugang einer verbundenen App gilt, in Minuten (259200 sind 180 Tage). `0` schaltet das Ablaufen ab, das ist nicht zu empfehlen. |
@@ -228,6 +231,7 @@ Wer eine Klasse „unterrichtet“, ist Klassenleitung, wurde der Klasse zugeord
 | Schulen ansehen, Stammdaten pflegen, sperren | ja | nur Stammdaten der eigenen Schule | – | – |
 | Benutzer verwalten | nur Administrationskonten | alle Konten der eigenen Schule | – | – |
 | Klassen verwalten, Schülerliste importieren | – | eigene Schule | – | – |
+| Stundenplan | – | eintragen und ändern, eigene Schule | ansehen: eigene Stunden, als Klassenleitung der ganze Plan der Klasse | ansehen: Plan der eigenen Klasse |
 | Kompetenzraster | pflegen | nachschlagen | nachschlagen | – |
 | Stunden erfassen, Hausaufgaben freigeben | – | alle Stunden der eigenen Schule | eigene Stunden, in Klassen, die sie unterrichtet | – |
 | Heute: Hausaufgaben prüfen und freigeben | – | – | eigene | – |
@@ -236,6 +240,7 @@ Wer eine Klasse „unterrichtet“, ist Klassenleitung, wurde der Klasse zugeord
 | Vertretung einrichten | – | jede Klasse der Schule | Klassenleitung, für die eigene Klasse | – |
 | Rückfragen | – | eigene Schule | eigene Stunden | eigene |
 | Hausaufgaben bearbeiten, Erklär’s mir | – | – | – | ja |
+| Heute wiederholen | – | – | – | ja, nur die Schüler:in selbst sieht es |
 | Tuto-Mikro in der Stunde einschalten | – | nein | ja, in Klassen, die sie unterrichtet | – |
 | Tuto-Mikro und KI für die Schule freischalten | – | ja | – | – |
 | Einwilligungen der Eltern erfassen | – | alle Klassen der Schule | Klassen, die sie unterrichtet | eigene Zustimmung, wo die Schule sie verlangt |
@@ -495,6 +500,21 @@ Wer schon da ist, wird aktualisiert statt doppelt angelegt. Konten von Lehrkräf
 
 **c) Von Hand:** Verwaltung → Benutzer, Rolle „Schüler:in“ mit Klasse, oder Verwaltung → Klassen → Klasse öffnen → Reiter „Schüler:innen“ → „Schüler:innen hinzufügen“. Mit „Aus Klasse entfernen“ löst du die Zuordnung.
 
+#### Stundenplan eintragen
+
+**So erreichst du es:** Seitenleiste → Verwaltung → Stundenpläne (`/stundenplaene`)
+
+Der Stundenplan sagt, welche Klasse wann welches Fach hat, bei wem und in welchem Raum. Nur du pflegst ihn. Die Schüler:innen und Lehrkräfte sehen daraus ihre Woche ([so geht’s](#stundenplan-ansehen)), und „Stunde erfassen“ schlägt daraus die passende Stunde vor ([so geht’s](#stunde-erfassen)). Die Plattform-Administration sieht keine Stundenpläne.
+
+1. Klicke oben rechts auf **„Stunde eintragen“**.
+2. Wähle die **Klasse** deiner Schule, den **Wochentag** (Montag bis Freitag) und die **Stunde**. Die Stunden heißen zum Beispiel „1. Stunde · 08:00–08:45“ und gehen bis „10. Stunde · 16:15–17:00“. Die Klingelzeiten gelten für die ganze Installation und stehen in `config/lernplattform.php` (`timetable.periods`).
+3. Trage das **Fach** ein. Tuto schlägt Fächer vor, die der Stundenplan deiner Schule schon benutzt, damit ein Fach überall gleich geschrieben wird.
+4. Wähle die **Lehrkraft** (sie kann auf „Noch offen“ bleiben) und schreibe, wenn du willst, den **Raum**. Speichern.
+
+Die Tabelle zeigt die Einträge je Klasse (einklappbar) in der Reihenfolge der Woche. Mit den Filtern Klasse, Lehrkraft und Wochentag findest du schnell, was du suchst. „Bearbeiten“ ändert einen Eintrag, „Löschen“ nimmt die Stunde aus dem Plan der Klasse und der Lehrkraft.
+
+Tuto prüft beim Speichern: Eine Klasse hat in einer Stunde nur ein Fach („Die Klasse hat in dieser Stunde schon ein Fach. Bearbeite den vorhandenen Eintrag.“), und eine Lehrkraft kann in einer Stunde nicht zwei Klassen unterrichten. Wer im Stundenplan steht, bekommt dadurch noch keinen Zugriff auf die Klasse: Dafür ordnest du die Lehrkraft der Klasse zu ([so geht’s](#klassenleitung-und-weitere-lehrkräfte-zuordnen)). Eine Lehrkraft, die die Klasse nicht unterrichtet, sieht die Stunde in ihrem Plan, aber „Stunde erfassen“ bietet sie ihr nicht an. In der Demo haben 7a, 7b und 8c einen Stundenplan.
+
 #### Vertretung eintragen (Schuladministration)
 
 **So erreichst du es:** Verwaltung → Klassen → Klasse öffnen → Reiter „Vertretungen“
@@ -579,7 +599,7 @@ Der Alltag in vier Schritten: **Stunde erfassen → Hausaufgabe mit KI erstellen
 Die Seite zeigt deine Stunden von heute und den letzten beiden Schultagen (Montag bis Freitag). Förderaufgaben stehen hier nicht.
 
 1. Die Tabelle zeigt je Stunde Thema, Fach und Klasse, den Status („Wartet auf Freigabe“ oder „Freigegeben“), die Hausaufgabe („Noch kein Entwurf“ oder „5 Fragen“) und wie viele schon abgegeben haben.
-2. Klicke in der Zeile auf „Hausaufgabe mit KI erstellen“. Danach siehst du „5 Fragen“. (Gibt es schon einen Entwurf, fragt Tuto vorher, ob er ersetzt werden soll.)
+2. Klicke in der Zeile auf „Hausaufgabe mit KI erstellen“. Danach siehst du „5 Fragen“. (Gibt es schon KI-Fragen, fragt Tuto vorher, ob sie ersetzt werden sollen. Eine vorhandene Zusammenfassung bleibt. Hat die Stunde weder Notizen noch Zusammenfassung noch Arbeitsblätter, ist der Knopf gesperrt.)
 3. Klicke auf die Zeile, um Zusammenfassung und Fragen zu prüfen und anzupassen ([so geht’s](#hausaufgabe-mit-ki-erstellen-prüfen-und-freigeben)).
 4. Klicke in der Zeile auf „Freigeben“, wähle „Abgabe bis“ (Vorgabe: in sieben Tagen) und bestätige mit „Freigeben“. Die Hausaufgabe geht an die ganze Klasse.
 5. Haben mehrere Stunden Fragen und warten auf die Freigabe, gibt „Alle bereiten freigeben“ oben rechts alle auf einmal frei.
@@ -591,15 +611,26 @@ Die Schüler:innen bekommen eine Meldung in der Glocke.
   <sub>Heute: Hausaufgaben prüfen und freigeben</sub>
 </p>
 
+#### Stundenplan ansehen
+
+**So erreichst du es:** Seitenleiste → Unterricht → Stundenplan (`/stundenplan`)
+
+Die Schuladministration trägt den Stundenplan ein ([so geht’s](#stundenplan-eintragen)). Du siehst darin deine Woche: die Stunden, für die du eingetragen bist, in allen Klassen. Ändern kannst du ihn nicht.
+
+1. Das Raster zeigt oben Montag bis Freitag und links die Stunden mit ihrer Uhrzeit. In jedem Feld stehen Fach, Klasse und Raum. Der heutige Tag ist mit „Heute“ markiert. Auf dem Handy steht statt des Rasters eine Karte je Tag.
+2. Bist du Klassenleitung, wählst du oben bei **„Ansicht“** zwischen „Meine Stunden“ und „Klasse … (ganzer Plan)“. Der ganze Plan zeigt alle Stunden der Klasse mit den Lehrkräften.
+3. Steht dort „Noch kein Stundenplan“ oder stimmt etwas nicht, sag es der Schuladministration.
+
 #### Stunde erfassen
 
 **So erreichst du es:** Seitenleiste → Unterricht → Unterrichtsstunden (`/lessons`) → oben rechts „Stunde erfassen“, oder auf der Startseite „Neue Unterrichtsstunde“
 
-1. Wähle die **Klasse** (du siehst nur Klassen, die du unterrichtest), „Gehalten am“, **Fach** und **Thema**. Für das Fach schlägt Tuto Fächer des Kompetenzrasters vor, damit die Zuordnung zu Kompetenzen klappt.
-2. Schreibe unter „Inhalt der Stunde“ deine **Notizen**: Stichpunkte, Tafelbild, Ablauf. Daraus entsteht der Entwurf. Je konkreter ein Moment der Stunde beschrieben ist (ein Versuch, eine Diskussion, ein Beispiel), desto besser wird die Reflexionsfrage. Bitte keine personenbezogenen Daten eintragen.
-3. Lade bei Bedarf **Arbeitsblätter** als Foto oder Scan hoch (JPG, PNG, WebP, HEIC oder PDF, bis 10 MB je Datei). Auf Arbeitsblättern sollten keine Namen stehen.
-4. Hast du in dieser Klasse und diesem Fach schon eine Stunde ausgewertet, zeigt Tuto oben, was die Klasse beim letzten Mal noch nicht sicher verstanden hat, mit dem Link „Einstieg der letzten Stunde öffnen“.
-5. Klicke auf „Erstellen“.
+1. Steht deine Stunde im [Stundenplan](#stundenplan-ansehen), ist ganz oben **„Laut Stundenplan“** schon gewählt: die Stunde, die gerade läuft, oder in der Pause die letzte, die heute begonnen hat. Das richtet sich nach der Uhr der Schule (Europe/Berlin), und vor der ersten Stunde des Tages bleibt das Feld leer. **Klasse** und **Fach** sind dann schon ausgefüllt. Im Feld wählst du eine andere Stunde deines Tages („3. Stunde · 09:50–10:35 · 7b · Mathematik“) oder „Stunde außerhalb des Stundenplans“. Änderst du „Gehalten am“, springt die Auswahl zurück und bietet die Stunden des neuen Wochentags an (Klasse und Fach bleiben stehen). Das Feld ist nur eine Eingabehilfe und wird nicht gespeichert. Es erscheint nur, wenn für dich Stunden in Klassen eingetragen sind, die du unterrichtest.
+2. Prüfe oder wähle die **Klasse** (du siehst nur Klassen, die du unterrichtest), „Gehalten am“, **Fach** und **Thema**. Klasse und Fach kannst du auch nach der Vorauswahl ändern. Für das Fach schlägt Tuto Fächer des Kompetenzrasters vor, damit die Zuordnung zu Kompetenzen klappt.
+3. Schreibe unter „Inhalt der Stunde“ deine **Notizen**: Stichpunkte, Tafelbild, Ablauf. Daraus entsteht der Entwurf. Je konkreter ein Moment der Stunde beschrieben ist (ein Versuch, eine Diskussion, ein Beispiel), desto besser wird die Reflexionsfrage. Notizen sind kein Pflichtfeld: Du kannst die Stunde auch ohne speichern und später eine Zusammenfassung schreiben oder Arbeitsblätter hochladen. Bitte keine personenbezogenen Daten eintragen.
+4. Lade bei Bedarf **Arbeitsblätter** als Foto oder Scan hoch (JPG, PNG, WebP, HEIC oder PDF, bis 10 MB je Datei). Auf Arbeitsblättern sollten keine Namen stehen.
+5. Hast du in dieser Klasse und diesem Fach schon eine Stunde ausgewertet, zeigt Tuto oben, was die Klasse beim letzten Mal noch nicht sicher verstanden hat, mit dem Link „Einstieg der letzten Stunde öffnen“.
+6. Klicke auf „Erstellen“. Die Stunde öffnet sich, und ab jetzt steht auf ihr der Abschnitt „Zusammenfassung“ ([so geht’s](#hausaufgabe-mit-ki-erstellen-prüfen-und-freigeben)).
 
 Die Liste der Stunden zeigt Datum, Klasse, Fach, Thema, Status, wie viele abgegeben haben und das durchschnittliche Verständnis. Mit den Filtern grenzt du nach Klasse, Status und Art (normale Stunde oder Förderaufgabe) ein.
 
@@ -649,8 +680,8 @@ Ganz unten unter „Tuto-Mikro in dieser Stunde“ siehst du den Nachweis je Sit
 
 **So erreichst du es:** Unterricht → Unterrichtsstunden → Stunde öffnen (oder auf **Heute** in der Zeile klicken)
 
-1. Klicke oben rechts auf **„Hausaufgabe mit KI erstellen“**. (Derselbe Knopf steht auch über der Fragen-Tabelle im Reiter „Hausaufgabe“ und tut dasselbe.) Tuto liest deine Notizen (und Arbeitsblätter) und erstellt eine **Zusammenfassung** der Stunde und fünf **Fragen**: zwei Verständnis-, zwei Anwendungs- und eine Reflexionsfrage. Zu jeder Frage gehört ein **Erwartungshorizont**, den die Schüler:innen erst beim Wiederholen sehen, wenn ihre Abgabe geprüft und die Frist vorbei ist. Zeigt Tuto die Meldung „Demo-Modus“, läuft die KI nicht und die Fragen sind Beispielentwürfe: Entweder ist der Plattformschalter aus oder deine Schule hat die KI noch nicht freigeschaltet (siehe [die zwei Schalter](#ki-einschalten-zwei-schalter)).
-2. **Prüfe die Zusammenfassung.** Sie steht unter „Zusammenfassung“ und lässt sich direkt ändern. Die Schüler:innen lesen sie vor den Fragen. Speichere deine Änderungen.
+1. Klicke oben rechts auf **„Hausaufgabe mit KI erstellen“**. (Derselbe Knopf steht auch über der Fragen-Tabelle im Reiter „Hausaufgabe“ und tut dasselbe.) Der Knopf ist gesperrt, solange die gespeicherte Stunde keine Notizen, keine Zusammenfassung und keine Arbeitsblätter hat. Ein Hinweis am Knopf sagt dann, was fehlt: „Trage zuerst Notizen ein, schreibe eine Zusammenfassung oder lade Arbeitsblätter hoch und speichere die Stunde.“ Tuto liest deine Notizen (und Arbeitsblätter) und erstellt fünf **Fragen**: zwei Verständnis-, zwei Anwendungs- und eine Reflexionsfrage. Steht in der Stunde schon eine **Zusammenfassung**, bleibt sie, wie sie ist: Tuto erstellt nur die Fragen und baut dabei auf ihr auf. Nur wenn die Zusammenfassung noch leer ist, schreibt Tuto auch sie. Gibt es schon KI-Fragen, fragt Tuto vorher, ob sie durch einen neuen Entwurf ersetzt werden sollen. Eigene und von dir bearbeitete Fragen bleiben dabei erhalten. Zu jeder Frage gehört ein **Erwartungshorizont**, den die Schüler:innen erst beim Wiederholen sehen, wenn ihre Abgabe geprüft und die Frist vorbei ist. Zeigt Tuto die Meldung „Demo-Modus“, läuft die KI nicht und die Fragen sind Beispielentwürfe: Entweder ist der Plattformschalter aus oder deine Schule hat die KI noch nicht freigeschaltet (siehe [die zwei Schalter](#ki-einschalten-zwei-schalter)).
+2. **Prüfe die Zusammenfassung.** Der Abschnitt **„Zusammenfassung“** steht auf jeder gespeicherten Stunde, auch solange er noch leer ist. Du schreibst und änderst sie direkt in einem Editor mit Fett, Kursiv, Unterstrichen, zwei Überschriftenebenen, Aufzählungen und nummerierten Listen. Die Schüler:innen lesen sie vor den Fragen. Speichere deine Änderungen. Soll die KI sie noch einmal schreiben, klicke in der Kopfzeile des Abschnitts auf **„Zusammenfassung neu erstellen“** und bestätige mit „Neu erstellen“. Die KI schreibt sie dann aus deinen Notizen und Arbeitsblättern neu und baut dabei auf der bisherigen auf: Was darin steht, bleibt und wird ergänzt oder berichtigt. Tuto speichert vorher deine ungespeicherten Änderungen. Der Knopf erscheint erst, wenn es eine Zusammenfassung gibt, und fehlt nach der Freigabe und bei Förderaufgaben. Prüfe das Ergebnis, bevor du freigibst.
 3. **Prüfe die Fragen** im Reiter **„Hausaufgabe“**. Du kannst jede Frage mit „Bearbeiten“ ändern (Art, Kompetenz, Frage, Erwartungshorizont), mit „Löschen“ entfernen, per Ziehen umordnen und über „Erstellen“ eigene Fragen ergänzen. Die Kompetenz ordnet die Frage dem Kompetenzraster zu, daraus wird später der Lernstand.
 4. **Stufen (optional):** Mit „Stufen mit KI erstellen“ (über der Tabelle für alle Fragen, in der Zeile für eine Frage) ergänzt die KI zu jeder Frage die Stufen „Einstieg“ und „Profi“. Solange die Stunde noch keine Fragen hat, ist der Knopf über der Tabelle gesperrt und ein Hinweis sagt „Lege zuerst Fragen an, zum Beispiel mit der KI.“ Selbst geschriebene Stufen bleiben erhalten. Du kannst die Stufen auch im Formular der Frage selbst schreiben („Stufe Einstieg (optional)“, „Stufe Profi (optional)“). Der Erwartungshorizont bleibt für alle Stufen gleich.
 5. Klicke oben rechts auf **„Freigeben“** (der Knopf ist erst aktiv, wenn es Fragen gibt). Wähle „Abgabe bis“ und bei „Für wen?“ entweder „Ganze Klasse …“ oder „Ausgewählte Schüler:innen“ (dann wählst du die Namen). Bestätige mit „Freigeben“. Die Schüler:innen finden die Fragen danach in ihrem Lernbereich und bekommen eine Meldung. Den Erwartungshorizont sehen sie erst beim Wiederholen, wenn ihre Abgabe geprüft und die Frist vorbei ist.
@@ -668,6 +699,14 @@ Nach der Freigabe sind die Fragen gesperrt, weil die Schüler:innen schon antwor
 </p>
 
 **Abgaben ansehen:** Im Reiter **„Abgaben“** derselben Seite siehst du, wer abgegeben hat, mit Zeitpunkt und Verständnis (zum Beispiel „Gut verstanden“, „Teilweise verstanden“, „Förderbedarf“). Über „Ansehen“ liest du Zusammenfassung, Antworten, die KI-Rückmeldung und die Lücken. Die Werte sind eine Einschätzung der KI und keine Note. Mit **„Zur Überarbeitung zurückgeben“** löschst du eine Abgabe samt KI-Prüfung, die Schüler:in kann dann neu abgeben. Über der Tabelle steht, wer noch nicht abgegeben hat.
+
+**Fehlerart ansehen und korrigieren:** Bei jeder Antwort unter 80 Punkten ordnet Tuto bei der Auswertung ein, welche Art von Fehler sie zeigt: „Grundidee noch unklar“, „Weg/Schritt falsch“, „Unvollständig“, „Am Thema vorbei“ oder „Kein Versuch“. Mit eingeschalteter KI kommt die Einordnung von der KI, in derselben Anfrage wie die Bewertung. Ist sie sich nicht sicher, bleibt die Antwort ohne Fehlerart. Ohne KI ordnet die Demo-Logik nach festen Regeln ein.
+
+1. Öffne mit „Ansehen“ eine Abgabe. Unter der Rückmeldung zu einer Antwort steht die **„Fehlerart“** mit dem Hinweis **„KI-Hinweis, kann falsch sein“**. Nimm sie als Anstoß und nicht als Urteil.
+2. Siehst du es anders, klicke in der Zeile der Abgabe auf **„Fehlerart korrigieren“**. Wähle bei jeder Antwort die passende Fehlerart oder „Keine Fehlerart“ und speichere („Fehlerart gespeichert“).
+3. Deine Einordnung trägt danach den Hinweis „Von einer Lehrkraft eingeordnet“ und hat Vorrang: Eine neue Auswertung überschreibt sie nicht.
+
+Die Fehlerart beschreibt die Antwort, nicht die Schüler:in. Sie ist nur ein Hinweis: Sie ändert keine Punkte, keinen Verständniswert und keinen Förderbedarf und steht nicht im Bericht für das Elterngespräch. Die Schüler:in sieht dazu einen ermutigenden Tipp ([so sieht er aus](#hausaufgabe-bearbeiten)). Wie sich die Fehlerarten in der Klasse verteilen, zeigt [Lernstand und Förderbedarf](#lernstand-und-förderbedarf).
 
 #### Einwilligungen der Eltern einsammeln
 
@@ -748,7 +787,8 @@ Die Fragen lesen nur du und die Schuladministration, die Mitschüler:innen nicht
 1. Wähle oben die **Klasse**.
 2. Die **Kompetenzmatrix** zeigt je Schüler:in und Kompetenz den Durchschnitt aller von der KI bewerteten Antworten (0 bis 100). Ein Strich heißt: noch keine bewertete Antwort. Unter 50 Punkten gilt „Förderbedarf“, ab 75 „Gut verstanden“.
 3. Der Bereich **„Förderbedarf“** listet die Schüler:innen mit mindestens einer Kompetenz unter 50 Punkten, mit den Stunden, in denen sich die Lücke gezeigt hat.
-4. **„Klassendurchschnitt je Stunde“** zeigt, wie die Klasse bei jeder Hausaufgabe im Schnitt abgeschnitten hat.
+4. **„Fehlerarten je Kompetenz“** (erscheint, sobald es Fehlerarten gibt) zeigt je Kompetenz, welche Arten von Fehlern in den Antworten der Klasse vorkommen, am häufigsten zuerst, zum Beispiel „3× Unvollständig, 1× Am Thema vorbei“. So siehst du, ob der Klasse eher die Grundidee fehlt oder ob die Antworten nur unvollständig sind. Das ist ein „KI-Hinweis, kann falsch sein“: Er ändert keine Punkte und steht nicht im Bericht für das Elterngespräch. Korrigieren kannst du die Einordnung in den Abgaben einer Stunde ([so geht’s](#hausaufgabe-mit-ki-erstellen-prüfen-und-freigeben)).
+5. **„Klassendurchschnitt je Stunde“** zeigt, wie die Klasse bei jeder Hausaufgabe im Schnitt abgeschnitten hat.
 
 Der Wert ist eine Einschätzung der KI. Er zeigt, wo jemand Unterstützung braucht, ersetzt aber keine Beurteilung. Die Kennzahlen auf der Startseite („Abgaben offener Hausaufgaben“, „Ø Verständnis der letzten Hausaufgabe“, „Schüler:innen mit Förderbedarf“) kommen aus denselben Daten.
 
@@ -764,7 +804,7 @@ Der Wert ist eine Einschätzung der KI. Er zeigt, wo jemand Unterstützung brauc
 1. Klicke bei der Kompetenz auf „Förderaufgabe erstellen“ (gibt es schon eine, heißt der Knopf „Weitere Förderaufgabe erstellen“).
 2. Vorausgewählt sind alle Schüler:innen, die in dieser Kompetenz unter der Förderschwelle liegen und noch keine offene Förderaufgabe dazu haben. Passe die Auswahl an.
 3. Entscheide mit dem Schalter **„Direkt freigeben“**: Aus (Vorgabe) heißt, du prüfst die Förderaufgabe zuerst als Entwurf und gibst sie danach selbst frei. An heißt, die ausgewählten Schüler:innen sehen sie sofort. Dann wählst du „Abgabe bis“.
-4. Klicke auf „Förderaufgabe erstellen“. Die KI entwirft aus den Stunden, in denen sich die Lücke gezeigt hat, drei bis vier Übungsfragen von leicht bis schwer. Sie bekommt Fach, Kompetenz, Stundennotizen und anonyme Hinweise, keine Namen.
+4. Klicke auf „Förderaufgabe erstellen“. Die KI entwirft aus den Stunden, in denen sich die Lücke gezeigt hat, drei bis vier Übungsfragen von leicht bis schwer. Sie bekommt Fach, Kompetenz, Stundennotizen und anonyme Hinweise, keine Namen. Außerdem bekommt sie die häufigste Fehlerart der Schüler:innen mit Förderbedarf in dieser Kompetenz und baut die Aufgaben darauf auf: bei „Unvollständig“ mit einem Gerüst wie Satzanfängen oder Stichpunkten, bei „Weg/Schritt falsch“ mit einem durchgerechneten Beispiel in Teilschritten, bei „Grundidee noch unklar“ mit einer kurzen Erklärung und leichten Einstiegsaufgaben.
 5. Ein Entwurf öffnet sich als Stunde mit dem Abzeichen „Förderaufgabe“. Prüfe sie und gib sie mit **„Freigeben“** an die vorausgewählten Schüler:innen frei (bei „Für wen?“ ist „Ausgewählte Schüler:innen“ voreingestellt).
 
 Schüler:innen bearbeiten eine Förderaufgabe wie eine Hausaufgabe, mit kürzerer eigener Zusammenfassung (mindestens 40 Zeichen). Eine Förderaufgabe hat kein Tuto-Mikro, keinen Einstieg und keinen Klassenbuch-Eintrag.
@@ -848,7 +888,13 @@ Wurde dein Konto von der Schule angelegt (Import), bekommst du Benutzername und 
 
 #### Mein Lernbereich
 
-Die Startseite begrüßt dich mit „Hallo …!“ und zeigt, was offen ist, wie gut du die Themen bisher verstanden hast („Dein Verständnis“), „Als Nächstes fällig“ und die Karte „Erklär’s mir“ mit dem Knopf „Thema Tuto erklären“. Neue Hausaufgaben meldet außerdem die Glocke.
+Die Startseite begrüßt dich mit „Hallo …!“ und zeigt, was offen ist, wie gut du die Themen bisher verstanden hast („Dein Verständnis“), „Als Nächstes fällig“ und die Karte „Erklär’s mir“ mit dem Knopf „Thema Tuto erklären“. Sind Fragen zum Wiederholen dran, steht unter der Begrüßung außerdem eine Karte „Heute wiederholen: 3 Fragen“ mit dem Knopf „Jetzt wiederholen“ ([so geht’s](#heute-wiederholen)). Neue Hausaufgaben meldet außerdem die Glocke.
+
+#### Mein Stundenplan
+
+**So erreichst du es:** Seitenleiste → Lernen → Stundenplan (`/stundenplan`)
+
+Du siehst die Woche deiner Klasse: Montag bis Freitag, links die Stunden mit Uhrzeit, in jedem Feld Fach, Lehrkraft und Raum. Der heutige Tag ist mit „Heute“ markiert. Auf dem Handy steht statt des Rasters eine Karte je Tag. Die Schuladministration trägt den Stundenplan ein, du kannst ihn nur ansehen. Steht dort „Noch kein Stundenplan“, ist für deine Klasse noch nichts eingetragen. Die Lehrkräfte sehen ihre Stunden an derselben Stelle ([so sieht es für sie aus](#stundenplan-ansehen)).
 
 #### Hausaufgabe bearbeiten
 
@@ -863,6 +909,8 @@ Die Liste zeigt Thema, Fach, Stunde vom, Status („Offen“, „Überfällig“
 5. Die KI prüft deine Abgabe. Klappt das gerade nicht, sind deine Antworten trotzdem sicher gespeichert, und oben rechts steht „Jetzt auswerten lassen“.
 
 **Deine Auswertung:** Nach der Prüfung siehst du oben eine Rückmeldung mit einem Wert („Gut verstanden“, „Teilweise verstanden“ oder „Förderbedarf“, mit „… von 100“), den Abschnitt „Darauf solltest du noch einmal schauen“, deine Zusammenfassung, jede Frage mit deiner Antwort, dem Wert und der Rückmeldung und zum Schluss, wie deine Lehrkraft die Stunde zusammenfasst. Der Wert ist keine Note. Er zeigt dir und deiner Lehrkraft, was du schon gut kannst und was du noch üben solltest.
+
+**Dein Tipp bei einer Antwort:** Stimmte eine Antwort noch nicht ganz (unter 80 Punkten), steht unter der Rückmeldung ein **„Tipp für dich“**. Er sagt dir, was du als Nächstes tun kannst, zum Beispiel „Guter Anfang! Es fehlt noch ein Teil der Antwort.“, „Geh deinen Weg noch einmal Schritt für Schritt durch.“ oder „Lies die Frage noch einmal genau.“ Der Tipp spricht über die Antwort und nicht über dich, und er ändert keine Punkte. Er taucht auch nicht im Bericht für das Elterngespräch auf. Ist sich Tuto bei der Einordnung nicht sicher, gibt es keinen Tipp. Korrigiert deine Lehrkraft die Einordnung, ändert sich auch der Tipp.
 
 <p align="center">
   <img src="docs/screenshots/meine-hausaufgaben.webp" alt="Meine Hausaufgaben" width="680"><br>
@@ -896,6 +944,34 @@ An Überschriften von Abschnitten und an Texten steht ein Knopf **„Vorlesen“
 #### Förderaufgabe bearbeiten
 
 Gibt dir deine Lehrkraft eine Förderaufgabe, erscheint sie unter Meine Hausaufgaben mit dem Zeichen „Förderaufgabe“ statt eines Stundendatums und als Meldung in der Glocke. Unter **Mein Lernstand** steht sie bei der passenden Kompetenz („Förderaufgabe bearbeiten zu …“). Du bearbeitest sie wie eine Hausaufgabe; deine eigene Zusammenfassung („Was du jetzt über … weißt“) braucht mindestens 40 Zeichen.
+
+#### Heute wiederholen
+
+**So erreichst du es:** Seitenleiste → Lernen → Heute wiederholen (`/heute-wiederholen`), oder auf der Startseite die Karte „Heute wiederholen“ mit „Jetzt wiederholen“. Eine Zahl am Menüpunkt zeigt, wie viele Fragen heute dran sind.
+
+Wer eine Frage kurz vor dem Vergessen noch einmal beantwortet, behält sie länger. Darum kommen Fragen aus deinen früheren Hausaufgaben nach und nach wieder, in wachsenden Abständen. Das ist nur zum Üben.
+
+1. Tuto zeigt dir eine Frage („Frage 2 von 5“) mit Fach und Thema der Stunde, in der Stufe, in der du sie damals beantwortet hast.
+2. Denk nach und schreibe unter „Deine Antwort (nur für dich)“, was du noch weißt. Das Feld ist nur zum Nachdenken: Was du hineinschreibst, wird nicht gespeichert und nirgends hingeschickt.
+3. Klicke auf **„Lösung zeigen“**. Du siehst „So lautet die Lösung“ (den Erwartungshorizont deiner Lehrkraft) und darunter deine eigene Antwort.
+4. Sag dir selbst, wie es gelaufen ist: **„Sofort gewusst“**, **„Mit Mühe“** oder **„Nicht gewusst“**. Danach kommt die nächste Frage.
+5. Bist du für heute durch, steht dort „Für heute geschafft“, mit einem Knopf zurück zur Startseite. Morgen geht es weiter, sobald wieder etwas dran ist.
+
+**Wann kommt eine Frage?** Eine Frage erscheint erst, wenn alles Folgende stimmt:
+
+- Es ist eine Verständnis- oder Anwendungsfrage. Reflexionsfragen haben keine feste Lösung und kommen nicht wieder.
+- Die Hausaufgabe (oder Förderaufgabe) ist für dich freigegeben, und **deine Abgabe ist ausgewertet**.
+- **Die Abgabefrist ist vorbei**, also frühestens am Tag nach „Abgabe bis“ (ohne Frist gilt das ab der Auswertung). Erst dann steht die Lösung, der Erwartungshorizont, zur Verfügung: Vorher ist die Hausaufgabe für dich oder deine Mitschüler:innen noch offen, und die Lösung ist nirgends zu sehen. Gibt dir die Lehrkraft eine Abgabe zur Überarbeitung zurück, verschwinden die Fragen dieser Stunde wieder, und nach der neuen Auswertung fangen sie von vorn an.
+- Die Frage ist an der Reihe, siehe unten.
+
+**Wie oft kommt eine Frage wieder?** Tuto sortiert jede Frage in ein Fach von 1 bis 4 (Leitner-Fächer). Nach der Auswertung deiner Abgabe liegt sie in Fach 1 und ist einen Tag später dran.
+
+- **„Sofort gewusst“:** Die Frage rückt ein Fach weiter. **„Mit Mühe“:** Sie bleibt im Fach und kommt nach dessen Abstand wieder. **„Nicht gewusst“:** Sie geht zurück in Fach 1.
+- Die Abstände: Fach 1 = 1 Tag, Fach 2 = 3 Tage, Fach 3 = 7 Tage, Fach 4 = 21 Tage. Weißt du eine Frage aus Fach 4 sofort, gilt sie als gefestigt, und Tuto fragt sie nicht mehr.
+- Am Tag kommen **höchstens 5 Fragen**, die am längsten fälligen zuerst. Was du schon wiederholt hast, zählt mit. Ein Tag ist ein Tag nach der Uhr der Schule (Europe/Berlin).
+- Die Abstände und das Tageslimit stellt der Betrieb ein ([`.env`](#einstellungen-in-der-env)).
+
+**Das bleibt unter uns.** Deine Einschätzung bestimmt nur, wann eine Frage wiederkommt. Sie zählt nicht als Punkte und fließt weder in „Dein Verständnis“ noch in „Mein Lernstand“ oder den Bericht für das Elterngespräch ein. Deine Lehrkraft, die Eltern und die Schuladministration sehen sie nicht. Gespeichert werden nur das Fach, der nächste Termin und Zähler je Frage (wie oft „Sofort gewusst“, „Mit Mühe“, „Nicht gewusst“), keine Antwortzeiten und nie, was du ins Feld geschrieben hast. Du findest sie in „Meine Daten herunterladen“. Heute wiederholen kommt ohne KI aus: Dabei geht nichts an einen KI-Anbieter.
 
 #### Erklär’s mir
 
@@ -946,6 +1022,8 @@ Das sind Hinweise aus deinen Hausaufgaben, keine Noten. Du siehst nur deine eige
 
 1. Oben stehen „Dein Verständnis im Durchschnitt“, die „Entwicklung“ („Es geht aufwärts“, „Ziemlich gleich geblieben“, „Zuletzt etwas niedriger“) und wie viele Hausaufgaben bisher bewertet sind.
 2. Darunter stehen die Kompetenzen: was schon gut klappt, was fast sitzt und wo sich Üben lohnt. Bei Kompetenzen mit Nachholbedarf findest du die Förderaufgabe deiner Lehrkraft, falls sie eine gegeben hat, „Ergebnis ansehen“ zu den Hausaufgaben, bei denen es noch gehakt hat, und „Thema Tuto erklären“ als Weg zu Erklär’s mir.
+
+Hinweise zu einzelnen Antworten, die noch nicht ganz stimmten, findest du bei „Ergebnis ansehen“ als „Tipp für dich“ ([so sieht er aus](#hausaufgabe-bearbeiten)). Die Fragen aus [Heute wiederholen](#heute-wiederholen) und deine Einschätzung dort zählen hier nicht mit.
 
 <p align="center">
   <img src="docs/screenshots/mein-lernstand.webp" alt="Mein Lernstand" width="680"><br>
@@ -1028,7 +1106,7 @@ Die wichtigsten Regeln im Überblick. Die ausführlichen Texte stehen in der Anw
 
 **Verbundene Apps.** Lehrkräfte und Schuladministrationen können eine App mit ihrem Konto verbinden ([Abschnitt 7](#7-app-anbindung)). Die App sieht und ändert nur Stunden und Klassen der Person. Dazu sieht sie, welche Fächer an der Schule in Stunden vorkommen, als Auswahl beim Anlegen einer Stunde. Von Schüler:innen bekommt sie nur die Anzeigenamen in den Klassen der Person, um Namen auf dem Gerät durch Platzhalter zu ersetzen (lokale Pseudonymisierung), und darf sie nicht speichern. Andere Daten von Schüler:innen sieht sie nie. Tuto speichert den Einmal-Code (5 Minuten gültig) und den Zugangsschlüssel (180 Tage gültig) nur als Hash, dazu Name, Berechtigungen, Verbindung, letzte Nutzung und Ablauf des Zugangs, keine IP-Adresse. Beides wird mit dem Konto gelöscht, ein Zugang auch sofort, wenn die Person ihn im Profil entzieht oder ihr Passwort ändert.
 
-**Wer sieht was.** Alles, was zu einer Schule gehört, sehen nur Personen dieser Schule. Die Plattform-Administration sieht keine Lerndaten. Lehrkräfte sehen die Ergebnisse, Rückmeldungen der KI und Lernstände zu ihren eigenen Stunden und den Klassen, die sie unterrichten, bis hin zum Bericht für das Elterngespräch. Die Schuladministration sieht alle Stunden und Ergebnisse ihrer Schule. Schüler:innen sehen nur ihre eigenen Daten. Mit dem Ende einer Vertretung endet auch der Zugriff der Vertretung.
+**Wer sieht was.** Alles, was zu einer Schule gehört, sehen nur Personen dieser Schule. Die Plattform-Administration sieht keine Lerndaten. Lehrkräfte sehen die Ergebnisse, Rückmeldungen der KI und Lernstände zu ihren eigenen Stunden und den Klassen, die sie unterrichten, bis hin zum Bericht für das Elterngespräch. Die Schuladministration sieht alle Stunden und Ergebnisse ihrer Schule. Schüler:innen sehen nur ihre eigenen Daten. Die Einschätzungen aus „Heute wiederholen“ sieht nur die Schüler:in selbst. Die Fehlerart einer Antwort sehen die Lehrkräfte, die auch den Lernstand der Schüler:in sehen, und die Schuladministration. Die Schüler:in bekommt nur einen Tipp dazu. Mit dem Ende einer Vertretung endet auch der Zugriff der Vertretung.
 
 **Auftragsverarbeitung (AVV).** Jede Schule nimmt den Vertrag im Namen der Schule an (bei der Registrierung oder unter Meine Schule). Gespeichert werden Version, Zeitpunkt, Vertragstext und die annehmende Person. Ohne angenommenen Vertrag kann eine Schule nur „Meine Schule“ nutzen. Ein neuer oder geänderter Vertragstext wird von jeder Schule neu angenommen. Das gilt auch, wenn sich Werte ändern, die der Vertragstext aus den Einstellungen der Plattform übernimmt, zum Beispiel eine Frist oder der KI-Anbieter. Bis zur Annahme gilt die zuletzt angenommene Fassung weiter.
 
@@ -1109,8 +1187,8 @@ Zeigt Tuto statt der Zustimmung eine Fehlerseite, war die Anfrage ungültig, ode
 Gut zu wissen:
 
 - Die Zusammenfassung, die die App setzt, lesen deine Schüler:innen vor den Fragen. Schreibe keine Namen oder persönlichen Angaben zu einzelnen Schüler:innen hinein.
-- Ein neuer KI-Entwurf lässt eine Zusammenfassung aus der App stehen und erstellt nur die Fragen. Die KI liest die Zusammenfassung dabei weiter, sofern deine Schule die KI eingeschaltet hat. Du kannst sie vor der Freigabe auf der Stundenseite anpassen.
-- Stunden, die die App anlegt, gehören dir. Notizen kann die App mitgeben. Fehlen sie, trägst du sie in Tuto nach: Beim Speichern der Stunde in Tuto sind Notizen Pflicht.
+- Ein neuer KI-Entwurf lässt eine Zusammenfassung aus der App stehen und erstellt nur die Fragen. Die KI liest die Zusammenfassung dabei weiter, sofern deine Schule die KI eingeschaltet hat. Du kannst sie vor der Freigabe auf der Stundenseite anpassen oder dort mit „Zusammenfassung neu erstellen“ von der KI auf Grundlage der bisherigen neu schreiben lassen.
+- Stunden, die die App anlegt, gehören dir. Notizen kann die App mitgeben. Fehlen sie, kannst du sie in Tuto nachtragen, nötig sind sie nicht. Nur „Hausaufgabe mit KI erstellen“ bleibt gesperrt, solange es weder Notizen noch eine Zusammenfassung noch Arbeitsblätter gibt.
 
 #### Zugang entziehen
 
