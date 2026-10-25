@@ -27,6 +27,7 @@
                 <ul class="mt-2 grid gap-2 text-sm text-gray-700 dark:text-gray-300">
                     @foreach ([
                         $isAdmin ? __('die Stunden und Klassen deiner Schule sehen') : __('deine Stunden und Klassen sehen'),
+                        __('die Fächer deiner Schule sehen'),
                         __('neue Stunden anlegen'),
                         __('die Zusammenfassung einer Stunde setzen'),
                     ] as $permission)
