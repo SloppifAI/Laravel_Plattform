@@ -390,6 +390,7 @@ class LessonApiTest extends TestCase
                 $this->withToken($token)->getJson(route('api.lessons.index')),
                 $this->withToken($token)->getJson(route('api.lessons.show', $lesson)),
                 $this->withToken($token)->getJson(route('api.subjects.index')),
+                $this->withToken($token)->getJson(route('api.timetable.index', ['date' => '2026-10-26'])),
             ],
             'lessons:create' => fn (string $token): array => [
                 $this->withToken($token)->postJson(route('api.lessons.store'), ['school_class_id' => $taught->id, 'subject' => 'Biologie', 'topic' => 'Thema']),
