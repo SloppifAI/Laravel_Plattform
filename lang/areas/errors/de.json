@@ -1,5 +1,6 @@
 {
     "Forbidden": "Kein Zugriff",
+    "Invalid signature.": "Dieser Link ist ungültig. Fordere auf der Anmeldeseite unter „Passwort vergessen?“ einen neuen Link an.",
     "Not Found": "Seite nicht gefunden",
     "Page Expired": "Sitzung abgelaufen, bitte lade die Seite neu",
     "Payment Required": "Zahlung erforderlich",

@@ -28,6 +28,24 @@ class ErrorPagesTest extends TestCase
             ->assertSee('Back to the home page');
     }
 
+    public function test_an_altered_password_reset_link_says_what_to_do_instead_of_invalid_signature(): void
+    {
+        $url = route('filament.lernplattform.auth.password-reset.reset', ['email' => 'a@b.de', 'token' => 'abc']);
+
+        $this->get($url)
+            ->assertForbidden()
+            ->assertSee('This link is not valid. Request a new one on the sign-in page under “Forgot your password?”.')
+            ->assertDontSee('Invalid signature.');
+
+        config(['lernplattform.locale.default' => 'de']);
+        app()->setLocale('de');
+
+        $this->get($url)
+            ->assertForbidden()
+            ->assertSee('Dieser Link ist ungültig. Fordere auf der Anmeldeseite unter „Passwort vergessen?“ einen neuen Link an.')
+            ->assertDontSee('Invalid signature.');
+    }
+
     public function test_the_error_page_speaks_german_in_the_german_interface(): void
     {
         config(['lernplattform.locale.default' => 'de']);
