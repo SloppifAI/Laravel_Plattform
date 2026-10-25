@@ -5,6 +5,19 @@ Vom Unterricht zur Hausaufgabe zum Verstehen.
 
 Tuto ist eine Lernplattform für Schulen (Laravel 13, Filament 5, PHP 8.4). Mehrere Schulen laufen auf einer Installation und sehen nichts voneinander. Die Oberfläche ist auf Deutsch, die Anrede ist „du“. Eine englische Oberfläche lässt sich pro Konto einschalten.
 
+## Live-Demo
+
+**[hackathon.sebastian-bleuel.de](https://hackathon.sebastian-bleuel.de/)** – zum Ausprobieren mit vorausgefüllten Demodaten für jede Rolle: Stunden in jedem Zustand, Hausaufgaben mit Abgaben und Auswertung, Lernstände, Klassenbuch, Vertretung, Rückfragen und Einwilligungen. Auf der Anmeldeseite füllt ein Klick unter „Demo-Zugänge“ die Anmeldedaten aus. Das Passwort ist für alle Zugänge `hackathon2026`.
+
+| Rolle | Benutzername | Was du dort siehst |
+| --- | --- | --- |
+| Plattform-Administration | `hackathon` | alle registrierten Schulen, Administrationszugänge, Kompetenzraster |
+| Schuladministration | `schulleitung` | Gesamtschule am Lernpark: Benutzer, Klassen, Einwilligungen, AVV, KI-Freischaltung |
+| Lehrkraft | `lehrer` (Frau Schulze) | Klasse 7b: Heute, Unterrichtsstunden, Hausaufgaben, Klassenbuch, Lernstand, Rückfragen |
+| Schüler | `schueler` (Emilian) | Hausaufgaben, „Erklär’s mir“, Mein Lernstand, Rückfragen |
+
+Alle Demo-Zugänge und was die zweite Demo-Schule zeigt, stehen im [Schnellstart](#2-schnellstart).
+
 Diese Anleitung erklärt jede Funktion Schritt für Schritt: Du siehst, wo du klickst und was du danach findest.
 
 **Inhalt**
