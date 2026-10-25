@@ -1332,6 +1332,8 @@ curl -X PUT https://tuto.example.org/api/v1/lessons/12/summary \
 
 **Wichtig:** Eine Zusammenfassung darf **keine personenbezogenen Daten von Schüler:innen** enthalten (keine Namen, keine Leistungen). Schüler:innen lesen sie vor den Fragen der Hausaufgabe, und ein KI-Entwurf liest sie als Hintergrund, sofern die Schule die KI eingeschaltet hat. Ein neuer KI-Entwurf ersetzt sie nicht.
 
+**Format:** Die App schickt Markdown oder einfachen Text. Was `GET /lessons` zurückgibt, kann auch HTML sein: Die Lehrkraft bearbeitet die Zusammenfassung im Web mit einem Editor, der HTML speichert, und „Zusammenfassung neu erstellen“ liefert wieder Markdown.
+
 ##### Namen der Schüler:innen
 
 `GET /roster` liefert die Namen der Schüler:innen in den Klassen, die die Person leitet, denen sie zugeordnet ist oder die sie heute vertritt. Eine Schuladministration bekommt alle Klassen ihrer Schule. Die Klassen sind nach Name sortiert, die Namen darin ebenfalls. Eine Klasse ohne Schüler:innen erscheint mit leerer Liste.
