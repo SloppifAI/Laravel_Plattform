@@ -23,6 +23,11 @@ class TimetableEntry extends Model
     use HasFactory;
 
     /**
+     * The clock the bell times and weekdays of the timetable are read in. The application runs on UTC, the schools do not.
+     */
+    public const TIMEZONE = 'Europe/Berlin';
+
+    /**
      * The school days of the timetable, in the language of the user. The data export passes 'de': it stays German.
      *
      * @return array<int, string> names by ISO weekday number
@@ -61,12 +66,20 @@ class TimetableEntry extends Model
     }
 
     /**
+     * Now on the school's clock: its weekday and time of day are what the timetable talks about.
+     */
+    public static function schoolNow(): CarbonInterface
+    {
+        return now(static::TIMEZONE);
+    }
+
+    /**
      * The period running at the given moment, or the last one of the day that has already begun (a lesson is usually
-     * entered after it ended); null before the first period.
+     * entered after it ended); null before the first period. The bell times are school time, whatever zone the moment is in.
      */
     public static function periodAt(CarbonInterface $moment): ?int
     {
-        $time = $moment->format('H:i');
+        $time = $moment->copy()->setTimezone(static::TIMEZONE)->format('H:i');
 
         return collect(static::periods())
             ->filter(fn (array $times): bool => $times[0] <= $time)

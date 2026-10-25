@@ -9,6 +9,7 @@ use App\Models\TimetableEntry;
 use App\Models\User;
 use App\Support\PersonalDataExport;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -97,6 +98,21 @@ class MyTimetableTest extends TestCase
         $this->assertFalse(User::factory()->student($foreignClass)->create()->can('viewClass', [TimetableEntry::class, $foreignClass]));
         $this->assertFalse(User::factory()->admin()->for($foreignClass->school)->create()->can('viewClass', [TimetableEntry::class, $foreignClass]));
         $this->assertTrue($foreignLeader->can('viewClass', [TimetableEntry::class, $foreignClass]));
+    }
+
+    public function test_today_is_the_weekday_at_the_school_not_in_utc(): void
+    {
+        // Monday 00:30 in Berlin is still Sunday 23:30 in UTC.
+        $this->travelTo(Carbon::parse('2026-10-26 00:30', 'Europe/Berlin'));
+        $this->assertSame('Sunday', now()->utc()->englishDayOfWeek);
+
+        $schoolClass = SchoolClass::factory()->create();
+        TimetableEntry::factory()->at(1, 2)->create(['school_class_id' => $schoolClass->id]);
+
+        $this->actingAs(User::factory()->student($schoolClass)->create());
+
+        Livewire::test(MyTimetable::class)
+            ->assertViewHas('today', 1);
     }
 
     public function test_the_page_shows_no_management_actions(): void

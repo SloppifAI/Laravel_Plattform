@@ -163,13 +163,14 @@ class LessonForm
      */
     private static function currentSlot(): ?TimetableEntry
     {
-        $period = TimetableEntry::periodAt(now());
+        $now = TimetableEntry::schoolNow();
+        $period = TimetableEntry::periodAt($now);
 
         if ($period === null) {
             return null;
         }
 
-        return static::timetableSlots(auth()->user(), today())
+        return static::timetableSlots(auth()->user(), $now)
             ->filter(fn (TimetableEntry $entry): bool => $entry->period <= $period)
             ->last();
     }

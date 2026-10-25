@@ -9,6 +9,7 @@ use App\Models\SchoolClass;
 use App\Models\TimetableEntry;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -34,8 +35,8 @@ class LessonTimetablePrefillTest extends TestCase
     {
         parent::setUp();
 
-        // A Monday; period 3 runs from 09:50 to 10:35 (config lernplattform.timetable.periods).
-        $this->travelTo('2026-10-26 10:00');
+        // A Monday; period 3 runs from 09:50 to 10:35 (config lernplattform.timetable.periods), in school time.
+        $this->travelToSchoolTime('2026-10-26 10:00');
 
         $this->teacher = User::factory()->teacher()->create();
         $this->ownClass = SchoolClass::factory()->create(['school_id' => $this->teacher->school_id, 'teacher_id' => $this->teacher->id, 'name' => '7b']);
@@ -58,9 +59,34 @@ class LessonTimetablePrefillTest extends TestCase
             ]);
     }
 
+    public function test_the_bell_times_are_school_time_not_utc(): void
+    {
+        // 10:00 in Berlin is 09:00 in UTC, where it would still be period 2 (Deutsch in 7a).
+        $this->assertSame('2026-10-26 09:00', now()->utc()->format('Y-m-d H:i'));
+
+        Livewire::test(CreateLesson::class)
+            ->assertFormSet(['timetable_entry_id' => $this->thirdPeriod->id, 'school_class_id' => $this->ownClass->id]);
+
+        // In summer time the offset is two hours: 10:00 in Berlin is 08:00 in UTC, before the first bell there.
+        $this->travelToSchoolTime('2026-10-19 10:00');
+        $this->assertSame('2026-10-19 08:00', now()->utc()->format('Y-m-d H:i'));
+
+        Livewire::test(CreateLesson::class)
+            ->assertFormSet(['timetable_entry_id' => $this->thirdPeriod->id, 'subject' => 'Mathematik']);
+    }
+
+    public function test_just_after_midnight_at_the_school_the_slots_of_the_day_before_are_not_offered(): void
+    {
+        // Tuesday 00:30 in Berlin is still Monday 23:30 in UTC, where the last period of Monday would be preselected.
+        $this->travelToSchoolTime('2026-10-27 00:30');
+
+        Livewire::test(CreateLesson::class)
+            ->assertFormSet(['timetable_entry_id' => null, 'school_class_id' => null, 'subject' => null]);
+    }
+
     public function test_after_the_lesson_the_last_slot_that_began_stays_preselected(): void
     {
-        $this->travelTo('2026-10-26 13:30');
+        $this->travelToSchoolTime('2026-10-26 13:30');
 
         Livewire::test(CreateLesson::class)
             ->assertFormSet(['timetable_entry_id' => $this->thirdPeriod->id, 'subject' => 'Mathematik']);
@@ -68,7 +94,7 @@ class LessonTimetablePrefillTest extends TestCase
 
     public function test_before_the_first_period_nothing_is_preselected(): void
     {
-        $this->travelTo('2026-10-26 07:30');
+        $this->travelToSchoolTime('2026-10-26 07:30');
 
         Livewire::test(CreateLesson::class)
             ->assertFormSet(['timetable_entry_id' => null, 'school_class_id' => null, 'subject' => null]);
@@ -123,7 +149,7 @@ class LessonTimetablePrefillTest extends TestCase
 
     public function test_without_slots_on_the_day_the_field_is_hidden(): void
     {
-        $this->travelTo('2026-10-28 10:00');
+        $this->travelToSchoolTime('2026-10-28 10:00');
 
         Livewire::test(CreateLesson::class)
             ->assertFormFieldHidden('timetable_entry_id');
@@ -144,5 +170,13 @@ class LessonTimetablePrefillTest extends TestCase
         Livewire::test(CreateLesson::class)
             ->assertFormFieldHidden('timetable_entry_id')
             ->assertFormSet(['school_class_id' => null]);
+    }
+
+    /**
+     * Travels to a wall-clock time at the school (Europe/Berlin), which is not the application's UTC.
+     */
+    private function travelToSchoolTime(string $time): void
+    {
+        $this->travelTo(Carbon::parse($time, 'Europe/Berlin'));
     }
 }

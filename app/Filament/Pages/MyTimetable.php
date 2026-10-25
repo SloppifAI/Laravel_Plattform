@@ -129,7 +129,7 @@ class MyTimetable extends Page
             'periods' => $this->periodsToShow($entries),
             'entriesBySlot' => $entries->keyBy(fn (TimetableEntry $entry): string => "{$entry->weekday}-{$entry->period}"),
             'entriesByDay' => $entries->groupBy('weekday'),
-            'today' => today()->dayOfWeekIso,
+            'today' => TimetableEntry::schoolNow()->dayOfWeekIso,
         ];
     }
 
