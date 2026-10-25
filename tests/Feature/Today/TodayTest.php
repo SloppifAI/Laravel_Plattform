@@ -43,7 +43,7 @@ class TodayTest extends TestCase
 
     public function test_only_teachers_open_the_page(): void
     {
-        $this->actingAs($this->teacher)->get(Today::getUrl())->assertOk()->assertSee('No lesson in the last school days', false);
+        $this->actingAs($this->teacher)->get(Today::getUrl())->assertOk()->assertSee('No class assigned', false);
 
         foreach ([User::factory()->student(), User::factory()->admin(), User::factory()->operator()] as $user) {
             $this->actingAs($user->create())->get(Today::getUrl())->assertForbidden();
@@ -122,10 +122,12 @@ class TodayTest extends TestCase
 
     public function test_it_shows_an_empty_state_without_lessons(): void
     {
+        SchoolClass::factory()->for($this->teacher, 'teacher')->create();
         $this->actingAs($this->teacher);
 
         Livewire::test(Today::class)
             ->assertSee('No lesson in the last school days')
+            ->assertSee('Add lesson')
             ->assertDontSee('Release in 30 seconds')
             ->assertActionHidden('releaseAll');
     }

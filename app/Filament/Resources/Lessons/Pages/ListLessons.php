@@ -8,6 +8,7 @@ use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Table;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Collection;
 
@@ -31,8 +32,19 @@ class ListLessons extends ListRecords
                 ->modalSubmitAction(false)
                 ->modalCancelActionLabel(__('Schließen')),
             CreateAction::make()
-                ->label(__('Stunde erfassen')),
+                ->label(__('Stunde erfassen'))
+                ->hidden(fn (): bool => LessonResource::teacherHasNoClass()),
         ];
+    }
+
+    /**
+     * Only the empty state of a teacher without a class differs; null keeps Filament's own texts.
+     */
+    public function table(Table $table): Table
+    {
+        return $table
+            ->emptyStateHeading(fn (): ?string => LessonResource::teacherHasNoClass() ? __('Keine Klasse zugeordnet') : null)
+            ->emptyStateDescription(fn (): ?string => LessonResource::teacherHasNoClass() ? LessonResource::noClassHint() : null);
     }
 
     /**

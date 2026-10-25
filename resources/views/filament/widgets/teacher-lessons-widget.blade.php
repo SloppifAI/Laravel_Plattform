@@ -16,9 +16,11 @@
                     {{ __('Lernstand & Förderbedarf') }}
                 </x-filament::button>
 
-                <x-filament::button tag="a" :href="$createLessonUrl" :icon="Heroicon::Plus">
-                    {{ __('Neue Unterrichtsstunde') }}
-                </x-filament::button>
+                @if ($createLessonUrl)
+                    <x-filament::button tag="a" :href="$createLessonUrl" :icon="Heroicon::Plus">
+                        {{ __('Neue Unterrichtsstunde') }}
+                    </x-filament::button>
+                @endif
             </div>
         </x-slot>
 
@@ -27,7 +29,7 @@
                 <x-filament::icon :icon="Heroicon::OutlinedPencilSquare" class="size-8 shrink-0 text-primary-600 dark:text-primary-400" />
 
                 <p class="text-sm text-gray-700 dark:text-gray-300">
-                    {{ __('Noch keine Unterrichtsstunde festgehalten. Trag deine erste Stunde ein: Die KI fasst sie zusammen und schlägt passende Hausaufgaben vor.') }}
+                    {{ $noClassHint ?? __('Noch keine Unterrichtsstunde festgehalten. Trag deine erste Stunde ein: Die KI fasst sie zusammen und schlägt passende Hausaufgaben vor.') }}
                 </p>
             </div>
         @else

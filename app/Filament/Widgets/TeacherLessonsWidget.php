@@ -49,7 +49,8 @@ class TeacherLessonsWidget extends Widget
                 ->limit(5)
                 ->get(),
             'minReviewGroup' => LessonReview::MIN_GROUP,
-            'createLessonUrl' => LessonResource::getUrl('create'),
+            'createLessonUrl' => LessonResource::teacherHasNoClass() ? null : LessonResource::getUrl('create'),
+            'noClassHint' => LessonResource::teacherHasNoClass() ? LessonResource::noClassHint() : null,
             'todayUrl' => Today::getUrl(),
             'learningProgressUrl' => LearningProgress::getUrl(),
         ];

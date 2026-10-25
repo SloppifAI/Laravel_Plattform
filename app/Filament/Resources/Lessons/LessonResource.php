@@ -11,6 +11,7 @@ use App\Filament\Resources\Lessons\RelationManagers\SubmissionsRelationManager;
 use App\Filament\Resources\Lessons\Schemas\LessonForm;
 use App\Filament\Resources\Lessons\Tables\LessonsTable;
 use App\Models\Lesson;
+use App\Models\SchoolClass;
 use App\Models\User;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -50,6 +51,23 @@ class LessonResource extends Resource
     public static function table(Table $table): Table
     {
         return LessonsTable::configure($table);
+    }
+
+    /**
+     * Whether the signed-in user is a teacher who teaches no class (yet): there is nowhere to hold a lesson, so nothing
+     * should invite them to add one before the school administration has assigned them to a class.
+     */
+    public static function teacherHasNoClass(): bool
+    {
+        /** @var User $user */
+        $user = auth()->user();
+
+        return $user->isTeacher() && ! SchoolClass::query()->taughtBy($user)->exists();
+    }
+
+    public static function noClassHint(): string
+    {
+        return __('Du leitest keine Klasse und bist keiner Klasse als Lehrkraft zugeordnet. Die Schuladministration kann dich einer Klasse zuordnen.');
     }
 
     /**

@@ -12,6 +12,11 @@ class CreateLesson extends CreateRecord
 {
     protected static string $resource = LessonResource::class;
 
+    public function getSubheading(): ?string
+    {
+        return LessonResource::teacherHasNoClass() ? LessonResource::noClassHint() : null;
+    }
+
     /**
      * The lesson belongs to whoever enters it, admins included. The class select only offers the allowed classes; the
      * policy check is the backstop for a forged form state.

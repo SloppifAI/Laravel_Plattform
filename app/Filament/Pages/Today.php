@@ -117,6 +117,8 @@ class Today extends Page implements HasTable
 
     public function table(Table $table): Table
     {
+        $hasNoClass = LessonResource::teacherHasNoClass();
+
         return $table
             ->query(fn (): Builder => $this->lessonsQuery()->with('schoolClass.school')->withCount(['questions', 'students', 'submissions']))
             ->defaultSort('held_on', 'desc')
@@ -154,9 +156,9 @@ class Today extends Page implements HasTable
                 $this->releaseAction(),
             ])
             ->emptyStateIcon(Heroicon::OutlinedSun)
-            ->emptyStateHeading(__('Keine Stunde in den letzten Schultagen'))
-            ->emptyStateDescription(__('Erfasse deine Stunde, die KI macht einen Entwurf für die Hausaufgabe, und du gibst ihn in 30 Sekunden frei.'))
-            ->emptyStateActions([
+            ->emptyStateHeading($hasNoClass ? __('Keine Klasse zugeordnet') : __('Keine Stunde in den letzten Schultagen'))
+            ->emptyStateDescription($hasNoClass ? LessonResource::noClassHint() : __('Erfasse deine Stunde, die KI macht einen Entwurf für die Hausaufgabe, und du gibst ihn in 30 Sekunden frei.'))
+            ->emptyStateActions($hasNoClass ? [] : [
                 Action::make('create')
                     ->label(__('Stunde erfassen'))
                     ->icon(Heroicon::Plus)
