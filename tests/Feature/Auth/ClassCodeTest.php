@@ -66,29 +66,29 @@ class ClassCodeTest extends TestCase
     public function test_teachers_see_only_the_codes_of_the_classes_they_lead_with_the_registration_url(): void
     {
         $teacher = User::factory()->teacher()->create();
-        SchoolClass::factory()->for($teacher, 'teacher')->create(['name' => '7b', 'join_code' => 'ABCDEF']);
-        SchoolClass::factory()->create(['name' => '8c', 'join_code' => 'GHJKMN']);
+        SchoolClass::factory()->for($teacher, 'teacher')->create(['name' => 'Klasse 7b', 'join_code' => 'ABCDEF']);
+        SchoolClass::factory()->create(['name' => 'Klasse 8c', 'join_code' => 'GHJKMN']);
         $this->actingAs($teacher);
 
         Livewire::test(ListLessons::class)
             ->mountAction('classCodes')
-            ->assertMountedActionModalSee(['ABCDEF', '7b', route('filament.lernplattform.auth.register')])
-            ->assertMountedActionModalDontSee(['GHJKMN', '8c']);
+            ->assertMountedActionModalSee(['ABCDEF', 'Klasse 7b', route('filament.lernplattform.auth.register')])
+            ->assertMountedActionModalDontSee(['GHJKMN', 'Klasse 8c']);
     }
 
     public function test_teachers_do_not_see_the_codes_of_colleagues_or_of_other_schools(): void
     {
         $teacher = User::factory()->teacher()->create();
         $colleague = User::factory()->teacher()->for($teacher->school)->create();
-        SchoolClass::factory()->for($teacher, 'teacher')->create(['name' => '7b', 'join_code' => 'ABCDEF']);
-        SchoolClass::factory()->for($colleague, 'teacher')->create(['name' => '8c', 'join_code' => 'GHJKMN']);
-        SchoolClass::factory()->create(['name' => '9d', 'join_code' => 'PQRSTU']);
+        SchoolClass::factory()->for($teacher, 'teacher')->create(['name' => 'Klasse 7b', 'join_code' => 'ABCDEF']);
+        SchoolClass::factory()->for($colleague, 'teacher')->create(['name' => 'Klasse 8c', 'join_code' => 'GHJKMN']);
+        SchoolClass::factory()->create(['name' => 'Klasse 9d', 'join_code' => 'PQRSTU']);
         $this->actingAs($teacher);
 
         Livewire::test(ListLessons::class)
             ->mountAction('classCodes')
-            ->assertMountedActionModalSee(['ABCDEF', '7b'])
-            ->assertMountedActionModalDontSee(['GHJKMN', '8c', 'PQRSTU', '9d']);
+            ->assertMountedActionModalSee(['ABCDEF', 'Klasse 7b'])
+            ->assertMountedActionModalDontSee(['GHJKMN', 'Klasse 8c', 'PQRSTU', 'Klasse 9d']);
     }
 
     public function test_operators_have_no_access_to_class_codes(): void
@@ -114,15 +114,15 @@ class ClassCodeTest extends TestCase
     public function test_admins_see_the_codes_of_the_classes_of_their_school_only(): void
     {
         [$ownSchool, $otherSchool] = School::factory()->count(2)->create();
-        SchoolClass::factory()->for($ownSchool)->create(['name' => '7a', 'join_code' => 'ABCDEF']);
-        SchoolClass::factory()->for($ownSchool)->create(['name' => '7b', 'join_code' => 'GHJKMN']);
-        SchoolClass::factory()->for($otherSchool)->create(['name' => '8c', 'join_code' => 'PQRSTU']);
+        SchoolClass::factory()->for($ownSchool)->create(['name' => 'Klasse 7a', 'join_code' => 'ABCDEF']);
+        SchoolClass::factory()->for($ownSchool)->create(['name' => 'Klasse 7b', 'join_code' => 'GHJKMN']);
+        SchoolClass::factory()->for($otherSchool)->create(['name' => 'Klasse 8c', 'join_code' => 'PQRSTU']);
         $this->actingAs(User::factory()->admin()->create(['school_id' => $ownSchool->id]));
 
         Livewire::test(ListLessons::class)
             ->mountAction('classCodes')
             ->assertMountedActionModalSee(['ABCDEF', 'GHJKMN'])
-            ->assertMountedActionModalDontSee(['PQRSTU', '8c']);
+            ->assertMountedActionModalDontSee(['PQRSTU', 'Klasse 8c']);
     }
 
     public function test_admins_see_and_open_only_the_classes_of_their_school_in_the_administration(): void

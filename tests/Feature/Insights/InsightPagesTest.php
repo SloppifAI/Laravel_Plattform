@@ -30,7 +30,7 @@ class InsightPagesTest extends TestCase
     {
         parent::setUp();
 
-        $this->schoolClass = SchoolClass::factory()->create(['name' => '7b']);
+        $this->schoolClass = SchoolClass::factory()->create(['name' => 'Klasse 7b']);
         $this->teacher = $this->schoolClass->teacher;
         $this->student = User::factory()->student($this->schoolClass)->create(['name' => 'Mia Hoffmann']);
 
@@ -51,13 +51,13 @@ class InsightPagesTest extends TestCase
 
     public function test_teachers_see_the_matrix_and_support_needs_of_their_class_only(): void
     {
-        $foreignClass = SchoolClass::factory()->create(['name' => '9c']);
+        $foreignClass = SchoolClass::factory()->create(['name' => 'Klasse 9c']);
 
         Livewire::actingAs($this->teacher)
             ->test(LearningProgress::class)
             ->assertOk()
             ->assertSet('schoolClassId', $this->schoolClass->id)
-            ->assertDontSee('9c')
+            ->assertDontSee('Klasse 9c')
             ->assertSee(['Mia Hoffmann', 'Erkenntnisgewinnung', 'Probleme mathematisch lösen', 'shown in:', 'Fotosynthese on'])
             ->assertSee(ParentReport::getUrl(['student' => $this->student]))
             ->set('schoolClassId', $foreignClass->id)
@@ -90,7 +90,7 @@ class InsightPagesTest extends TestCase
     public function test_an_admin_of_another_school_is_forbidden_and_only_sees_the_classes_of_their_own_school(): void
     {
         $foreignAdmin = User::factory()->admin()->create();
-        $ownClass = SchoolClass::factory()->for(User::factory()->teacher()->for($foreignAdmin->school)->create(), 'teacher')->create(['name' => '5a']);
+        $ownClass = SchoolClass::factory()->for(User::factory()->teacher()->for($foreignAdmin->school)->create(), 'teacher')->create(['name' => 'Klasse 5a']);
 
         $this->actingAs($foreignAdmin)->get(ParentReport::getUrl(['student' => $this->student]))->assertForbidden();
         $this->actingAs($foreignAdmin)->get(LearningProgress::getUrl(['klasse' => $this->schoolClass->id]))->assertForbidden();
@@ -99,8 +99,8 @@ class InsightPagesTest extends TestCase
             ->test(LearningProgress::class)
             ->assertOk()
             ->assertSet('schoolClassId', $ownClass->id)
-            ->assertSee('5a')
-            ->assertDontSee('7b')
+            ->assertSee('Klasse 5a')
+            ->assertDontSee('Klasse 7b')
             ->assertDontSee('Mia Hoffmann')
             ->set('schoolClassId', $this->schoolClass->id)
             ->assertForbidden();
