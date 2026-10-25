@@ -67,6 +67,12 @@ class PrivacyAndAi extends Page
                 'notSent' => __('Texte der Schüler:innen.'),
                 'result' => __('Eine Zusammenfassung und fünf Fragen als Entwurf. Die Lehrkraft prüft ihn, bevor sie ihn freigibt.'),
             ],
+            'LessonAssistant::reviseSummary' => [
+                'title' => __('Zusammenfassung neu erstellen'),
+                'sent' => __('Fach, Thema, Datum, die bisherige Zusammenfassung und die Notizen der Lehrkraft (auch übernommene Notizen aus der Stunde) und angehängte Arbeitsblätter (Fotos, PDF).'),
+                'notSent' => __('Fragen, Erwartungshorizont und Texte der Schüler:innen.'),
+                'result' => __('Eine neue Zusammenfassung, die auf der bisherigen aufbaut: Was darin steht, bleibt und wird ergänzt oder berichtigt. Die Lehrkraft prüft sie, bevor sie die Hausaufgabe freigibt.'),
+            ],
             'LessonAssistant::draftPracticeTask' => [
                 'title' => __('Förderaufgabe entwerfen'),
                 'sent' => __('Fach, Kompetenz, anonyme Hinweise auf Lücken, dazu Thema, Datum und Notizen der Stunden, in denen sich die Lücke gezeigt hat.'),

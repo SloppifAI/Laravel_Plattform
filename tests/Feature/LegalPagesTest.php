@@ -392,6 +392,9 @@ class LegalPagesTest extends TestCase
             'Lehrkräfte können sie korrigieren, dann gilt ihre Einordnung',
             'Fehlerart einer Antwort (Hinweis)',
             'in derselben Anfrage die Fehlerart als Hinweis',
+            // The student's own data download (PersonalDataExport) carries the classification, so the policy must say so.
+            'zu den eigenen Antworten einen passenden Tipp; die Einordnung selbst nur in der eigenen Datenauskunft („Meine Daten herunterladen“)',
+            'die Einordnung selbst steht nur in der Datei, die sie mit „Meine Daten herunterladen“ bekommen.',
         ] as $phrase) {
             $this->assertStringContainsString($phrase, $text);
         }

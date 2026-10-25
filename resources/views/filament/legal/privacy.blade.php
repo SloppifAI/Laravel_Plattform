@@ -681,7 +681,7 @@
                 </tr>
                 <tr>
                     <th scope="row">Fehlerart einer Antwort (Hinweis)</th>
-                    <td><span class="legal-cell-label">Schüler:in</span> zu den eigenen Antworten einen passenden Tipp, nicht die Einordnung selbst</td>
+                    <td><span class="legal-cell-label">Schüler:in</span> zu den eigenen Antworten einen passenden Tipp; die Einordnung selbst nur in der eigenen Datenauskunft („Meine Daten herunterladen“)</td>
                     <td><span class="legal-cell-label">Lehrkraft</span> nur für Schüler:innen der Klassen, deren Lernstand sie sieht (Klassenleitung, zugeordnet oder gerade in Vertretung), mit der Möglichkeit, sie zu korrigieren</td>
                     <td><span class="legal-cell-label">Schuladministration (nur die eigene Schule)</span> alle</td>
                     <td><span class="legal-cell-label">Plattform-Administration</span> keine Einsicht</td>
@@ -807,8 +807,8 @@
         nicht im Bericht für das Elterngespräch. Sie sehen die Lehrkräfte, die den Lernstand der Schüler:in sehen, als
         Verteilung je Kompetenz und neben der einzelnen Antwort, und die Schuladministration der eigenen Schule.
         Lehrkräfte können sie korrigieren, dann gilt ihre Einordnung und wird bei einer neuen Auswertung nicht
-        überschrieben. Schüler:innen sehen dazu einen ermutigenden Tipp. Die Fehlerart gehört zur Antwort und wird mit
-        ihr gelöscht.
+        überschrieben. Schüler:innen sehen dazu einen ermutigenden Tipp; die Einordnung selbst steht nur in der Datei,
+        die sie mit „Meine Daten herunterladen“ bekommen. Die Fehlerart gehört zur Antwort und wird mit ihr gelöscht.
     </p>
     <h3>Rechtsgrundlage</h3>
     <p>

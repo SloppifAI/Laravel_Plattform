@@ -374,9 +374,20 @@ class MistakeDiagnosisTest extends TestCase
 
     public function test_the_record_of_processing_names_the_mistake_type(): void
     {
+        $threshold = (int) config('lernplattform.mistakes.threshold');
+
         $this->actingAs(User::factory()->for($this->schoolClass->school)->admin()->create())
             ->get(PrivacyDocuments::getUrl(['document' => 'verzeichnis']))
             ->assertOk()
+            // Entry A (every school): the demo logic stores the mistake type too, so a school that leaves the optional AI entry out still records it.
+            ->assertSeeInOrder([
+                'Eintrag A: Nutzung von Tuto im Unterricht',
+                "bei Antworten unter {$threshold} Punkten mit der Fehlerart als Hinweis für Tipps, für die Lehrkraft und für die Auswahl von Förderaufgaben",
+                "bei Antworten unter {$threshold} Punkten die Fehlerart als Hinweis mit ihrer Quelle (Demo-Logik, KI oder Lehrkraft)",
+                'Die Fehlerart einer Antwort sehen Lehrkräfte nur, soweit sie den Lernstand der Klasse einsehen dürfen, und die Schuladministration (eigene Schule)',
+                'die Einordnung selbst steht nur in ihrem Datenexport',
+                'Eintrag B: KI-Funktionen (optional)',
+            ])
             ->assertSee('Einschätzung von Abgaben mit der Fehlerart einer Antwort als Hinweis')
             ->assertSee('Einschätzungen samt Fehlerart einer Antwort mit ihrer Quelle')
             ->assertSee('Die Fehlerart ordnet nur die Antwort ein, nie die Person');
