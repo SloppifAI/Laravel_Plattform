@@ -27,6 +27,22 @@ final class HomeworkDraft
     }
 
     /**
+     * Whether the AI has anything to draft from: notes, a summary or a worksheet. The topic alone would only make it guess.
+     */
+    public static function hasMaterial(Lesson $lesson): bool
+    {
+        return filled(trim((string) $lesson->notes)) || filled($lesson->summary) || filled($lesson->attachments);
+    }
+
+    /**
+     * Why "Hausaufgabe mit KI erstellen" is locked while hasMaterial() is false.
+     */
+    public static function missingMaterialHint(): string
+    {
+        return __('Trage zuerst Notizen ein, schreibe eine Zusammenfassung oder lade Arbeitsblätter hoch und speichere die Stunde.');
+    }
+
+    /**
      * Whether the draft leaves the summary alone: the one in the database is used instead of writing another.
      */
     public static function keepsSummary(Lesson $lesson): bool

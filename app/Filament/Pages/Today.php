@@ -174,6 +174,8 @@ class Today extends Page implements HasTable
             ->color('gray')
             ->authorize('update')
             ->hidden(fn (Lesson $record): bool => $record->isPublished())
+            ->disabled(fn (Lesson $record): bool => ! HomeworkDraft::hasMaterial($record))
+            ->tooltip(fn (Lesson $record): ?string => HomeworkDraft::hasMaterial($record) ? null : HomeworkDraft::missingMaterialHint())
             ->requiresConfirmation(fn (Lesson $record): bool => $record->questions_count > 0)
             ->modalHeading(__('Hausaufgabe neu erstellen?'))
             ->modalDescription(fn (Lesson $record): string => HomeworkDraft::confirmationText($record))

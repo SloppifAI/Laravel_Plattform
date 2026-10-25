@@ -9,6 +9,7 @@ use App\Models\Lesson;
 use App\Models\Question;
 use App\QuestionLevel;
 use App\QuestionType;
+use App\Support\HomeworkDraft;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
@@ -134,6 +135,8 @@ class QuestionsRelationManager extends RelationManager
                     ->icon(Heroicon::OutlinedSparkles)
                     ->authorize(fn (): bool => Gate::allows('update', $this->getLesson()))
                     ->visible(fn (): bool => $this->pageClass === EditLesson::class && ! $this->isReadOnly() && ! $this->getLesson()->isPracticeTask())
+                    ->disabled(fn (): bool => ! HomeworkDraft::hasMaterial($this->getLesson()))
+                    ->tooltip(fn (): ?string => HomeworkDraft::hasMaterial($this->getLesson()) ? null : HomeworkDraft::missingMaterialHint())
                     ->action(fn () => $this->dispatch(EditLesson::OPEN_HOMEWORK_DRAFT_EVENT)),
                 CreateAction::make()
                     ->mutateDataUsing(fn (array $data): array => [

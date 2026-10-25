@@ -142,6 +142,9 @@ class EditLesson extends EditRecord
                 ->authorize('update')
                 // Once released, students may already be working on the questions; a Förderaufgabe is drafted from its competency, not from lesson notes.
                 ->hidden(fn (Lesson $record): bool => $record->isPublished() || $record->isPracticeTask())
+                // Locked by the saved lesson; the action checks again after saving, as the form may have been emptied meanwhile.
+                ->disabled(fn (Lesson $record): bool => ! HomeworkDraft::hasMaterial($record))
+                ->tooltip(fn (Lesson $record): ?string => HomeworkDraft::hasMaterial($record) ? null : HomeworkDraft::missingMaterialHint())
                 ->requiresConfirmation(fn (Lesson $record): bool => $record->questions()->exists())
                 ->modalHeading(__('Hausaufgabe neu erstellen?'))
                 ->modalDescription(fn (Lesson $record): string => HomeworkDraft::confirmationText($record))
@@ -149,6 +152,16 @@ class EditLesson extends EditRecord
                 ->action(function (Lesson $record): void {
                     // The AI works from the saved notes, so unsaved edits must not get lost.
                     $this->save(shouldRedirect: false, shouldSendSavedNotification: false);
+
+                    if (! HomeworkDraft::hasMaterial($record)) {
+                        Notification::make()
+                            ->warning()
+                            ->title(__('Keine Grundlage für die KI'))
+                            ->body(HomeworkDraft::missingMaterialHint())
+                            ->send();
+
+                        return;
+                    }
 
                     try {
                         HomeworkDraft::create($record);

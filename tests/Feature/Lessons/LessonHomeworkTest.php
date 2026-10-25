@@ -5,6 +5,7 @@ namespace Tests\Feature\Lessons;
 use App\Ai\LessonAssistant;
 use App\Filament\Pages\LessonStarter;
 use App\Filament\Pages\RecordLesson;
+use App\Filament\Pages\Today;
 use App\Filament\Resources\Lessons\Pages\EditLesson;
 use App\Filament\Resources\Lessons\RelationManagers\QuestionsRelationManager;
 use App\Filament\Resources\Lessons\RelationManagers\SubmissionsRelationManager;
@@ -298,6 +299,8 @@ class LessonHomeworkTest extends TestCase
         $manager($lesson)
             ->callAction(TestAction::make('draftHomework')->table())
             ->assertDispatched(EditLesson::OPEN_HOMEWORK_DRAFT_EVENT);
+        // With a question to replace the page asks first, so the opened dialog shows.
+        Question::factory()->for($lesson)->aiDrafted()->create();
         Livewire::actingAs($lesson->teacher)->test(EditLesson::class, ['record' => $lesson->getRouteKey()])
             ->dispatch(EditLesson::OPEN_HOMEWORK_DRAFT_EVENT)
             ->assertActionMounted('draftHomework');
@@ -305,6 +308,36 @@ class LessonHomeworkTest extends TestCase
         $manager($practice)->assertActionHidden(TestAction::make('draftHomework')->table());
         $lesson->update(['published_at' => now()]);
         $manager($lesson)->assertActionHidden(TestAction::make('draftHomework')->table());
+    }
+
+    public function test_the_ai_draft_is_locked_with_a_hint_while_there_is_nothing_to_draft_from(): void
+    {
+        // Held today, so "Heute" lists it.
+        $lesson = Lesson::factory()->create(['notes' => '', 'summary' => null, 'attachments' => null, 'held_on' => today()]);
+        $this->actingAs($lesson->teacher);
+
+        Livewire::test(EditLesson::class, ['record' => $lesson->getRouteKey()])->assertActionDisabled('draftHomework');
+        Livewire::test(QuestionsRelationManager::class, ['ownerRecord' => $lesson, 'pageClass' => EditLesson::class])
+            ->assertActionDisabled(TestAction::make('draftHomework')->table());
+        Livewire::test(Today::class)->assertActionDisabled(TestAction::make('draftHomework')->table($lesson));
+
+        foreach ([['notes' => 'Tafelbild'], ['summary' => 'Kurz.'], ['attachments' => ['worksheets/blatt.pdf']]] as $material) {
+            $withMaterial = Lesson::factory()->for($lesson->teacher, 'teacher')->create(['notes' => '', 'summary' => null, 'attachments' => null, ...$material]);
+            Livewire::test(EditLesson::class, ['record' => $withMaterial->getRouteKey()])->assertActionEnabled('draftHomework');
+        }
+    }
+
+    public function test_notes_emptied_before_the_draft_stop_it_after_saving(): void
+    {
+        $lesson = Lesson::factory()->create(['notes' => 'Gespeicherte Notizen', 'summary' => null, 'attachments' => null]);
+        $this->mock(LessonAssistant::class, fn (MockInterface $mock) => $mock->shouldReceive('draftHomework')->never());
+
+        Livewire::actingAs($lesson->teacher)->test(EditLesson::class, ['record' => $lesson->getRouteKey()])
+            ->fillForm(['notes' => ''])
+            ->callAction('draftHomework')
+            ->assertNotified(__('Keine Grundlage für die KI'));
+
+        $this->assertSame('', $lesson->refresh()->notes);
     }
 
     public function test_the_lessons_teacher_gets_the_starter_board_and_tuto_mikro_in_the_header(): void
