@@ -1,0 +1,11 @@
+{
+    "All rights reserved.": "Alle Rechte vorbehalten.",
+    "Hello!": "Hallo!",
+    "If you did not request a password reset, no further action is required.": "Wenn du das nicht angefragt hast, musst du nichts tun.",
+    "If you're having trouble clicking the \":actionText\" button, copy and paste the URL below\ninto your web browser:": "Wenn du nicht auf „:actionText“ klicken kannst, kopiere die Adresse und füge sie in deinen Browser ein:",
+    "Regards,": "Viele Grüße",
+    "Reset Password": "Passwort zurücksetzen",
+    "Reset your password": "Passwort zurücksetzen",
+    "This password reset link will expire in :count minutes.": "Dieser Link ist :count Minuten lang gültig.",
+    "You are receiving this email because we received a password reset request for your account.": "Du bekommst diese E-Mail, weil für dein Konto ein neues Passwort angefordert wurde."
+}
