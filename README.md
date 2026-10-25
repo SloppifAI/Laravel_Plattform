@@ -1298,7 +1298,7 @@ curl -X POST https://tuto.example.org/api/v1/lessons \
 
 ##### Zusammenfassung setzen
 
-`PUT /lessons/{id}/summary` setzt die Zusammenfassung einer Stunde, die die Person bearbeiten darf, und merkt sich, dass sie aus einer App stammt (`summary_from_app: true`). Eine frühere Fassung in Einfacher Sprache wird dabei verworfen. Das Feld `summary` ist Pflicht und hat höchstens 5000 Zeichen. Für eine Förderaufgabe antwortet Tuto mit 422. Antwort: 200 mit der Stunde.
+`PUT /lessons/{id}/summary` setzt die Zusammenfassung einer Stunde, die die Person bearbeiten darf, und merkt sich, dass sie aus einer App stammt (`summary_from_app: true`). Eine frühere Fassung in Einfacher Sprache wird dabei verworfen. Das Feld `summary` ist Pflicht und hat höchstens 16383 Zeichen. Für eine Förderaufgabe antwortet Tuto mit 422. Antwort: 200 mit der Stunde.
 
 ```bash
 curl -X PUT https://tuto.example.org/api/v1/lessons/12/summary \

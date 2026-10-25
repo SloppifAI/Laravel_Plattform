@@ -164,7 +164,7 @@ class LessonApiTest extends TestCase
     {
         $lesson = $this->lesson(attributes: ['summary' => 'Bleibt.']);
 
-        foreach ([[], ['summary' => '   '], ['summary' => ['Liste']], ['summary' => str_repeat('a', 5001)]] as $body) {
+        foreach ([[], ['summary' => '   '], ['summary' => ['Liste']], ['summary' => str_repeat('a', 16384)]] as $body) {
             $this->withToken($this->token())->putJson(route('api.lessons.summary.update', $lesson), $body)->assertJsonValidationErrors('summary');
         }
 
