@@ -170,7 +170,7 @@
             weitere Personen legt die Schuladministration der Schule an (siehe Abschnitt {{ $no('benutzerkonten') }}).
         </li>
         <li>
-            Lehrkräfte und Schuladministrationen können eine Smartphone-App mit ihrem Konto verbinden. Die App sieht nur
+            Lehrkräfte und Schuladministrationen können eine App mit ihrem Konto verbinden. Die App sieht nur
             Stunden und Klassen der Person, nie Daten von Schüler:innen, und die Person kann den Zugang jederzeit
             entziehen (siehe Abschnitt {{ $no('apps') }}).
         </li>
@@ -211,7 +211,7 @@
                 wenn deine Eltern eingewilligt haben, und ein Balken zeigt, ob es an ist.
             </li>
             <li>
-                Deine Lehrkraft kann eine Smartphone-App mit ihrem Konto verbinden. Die App sieht nur Stunden und Klassen
+                Deine Lehrkraft kann eine App mit ihrem Konto verbinden. Die App sieht nur Stunden und Klassen
                 deiner Lehrkraft, nie Daten von dir. Die Zusammenfassung, die du vor den Fragen liest, kann von so einer
                 App stammen.
             </li>
@@ -1015,7 +1015,7 @@
 
     <h2 id="apps">{{ $heading('apps') }}</h2>
     <p>
-        Lehrkräfte und Schuladministrationen können eine Smartphone-App, derzeit die Tuto-App, mit ihrem Konto verbinden.
+        Lehrkräfte und Schuladministrationen können eine App, derzeit Tuto Mic, mit ihrem Konto verbinden.
         Die App zeigt ihnen ihre Stunden und Klassen, legt neue Stunden an und setzt die Zusammenfassung einer Stunde. Das
         geschieht nur, wenn die Person die App selbst verbindet. Wer keine App verbindet, ist davon nicht betroffen.
     </p>

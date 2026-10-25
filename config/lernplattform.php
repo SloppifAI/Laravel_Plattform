@@ -169,7 +169,7 @@ return [
     'apps' => [
         'clients' => [
             'tuto-app' => [
-                'name' => 'Tuto-App',
+                'name' => 'Tuto Mic',
                 'redirect_uris' => array_values(array_filter(array_map('trim', explode(',', (string) env('LERNPLATTFORM_APP_REDIRECT_URIS', 'tutoapp://callback'))))),
                 'completion_page' => true,
             ],

@@ -408,7 +408,7 @@ class LegalPagesTest extends TestCase
 
         foreach ([
             'Verbundene Apps',
-            'Lehrkräfte und Schuladministrationen können eine Smartphone-App, derzeit die Tuto-App, mit ihrem Konto verbinden.',
+            'Lehrkräfte und Schuladministrationen können eine App, derzeit Tuto Mic, mit ihrem Konto verbinden.',
             'Schüler:innen und die Plattform-Administration können keine App verbinden.',
             'das Passwort erfährt die App nie',
             'Die App tauscht den Code innerhalb von '.AppAuthorizationCode::LIFETIME_MINUTES.' Minuten gegen einen Zugang',
