@@ -480,8 +480,10 @@
     <ul>
         <li>
             <strong>Das kann sie:</strong> registrierte Schulen und ihre Stammdaten ansehen und bearbeiten, Schulen
-            sperren und wieder freigeben, Zugänge von Schuladministrationen anlegen, ändern, zurücksetzen und löschen
-            und das gemeinsame Kompetenzraster pflegen. Auf ihrer Startseite sieht sie Zahlen, nämlich wie viele
+            sperren und wieder freigeben, Zugänge von Schuladministrationen anlegen (nur für Schulen, die noch keine haben)
+            und löschen (nie den letzten einer Schule) und das gemeinsame Kompetenzraster pflegen. Passwort und
+            E-Mail-Adresse einer Schuladministration kann sie nicht ändern, wer sich ausgesperrt hat, setzt das Passwort
+            selbst zurück. Auf ihrer Startseite sieht sie Zahlen, nämlich wie viele
             Schulen, Konten je Rolle und Klassen es gibt, und die zuletzt registrierten Schulen, aber keine Personen.
         </li>
         <li>

@@ -11,6 +11,7 @@ use App\Models\SchoolClass;
 use App\Models\User;
 use App\Role;
 use Filament\Actions\DeleteAction;
+use Filament\Forms\Components\Select;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -178,17 +179,83 @@ class OperatorAccountManagementTest extends TestCase
             ->assertHasFormErrors(['username' => 'unique']);
     }
 
-    public function test_operator_resets_the_password_of_a_school_administration(): void
+    public function test_operator_cannot_set_the_password_or_the_email_of_a_school_administration(): void
     {
-        $admin = User::factory()->admin()->create(['password' => 'altes-passwort-1']);
+        $admin = User::factory()->admin()->create(['password' => 'altes-passwort-1', 'email' => 'schulleitung@example.test']);
 
         Livewire::test(EditUser::class, ['record' => $admin->getRouteKey()])
             ->assertFormSet(['school_id' => $admin->school_id])
+            ->assertFormFieldHidden('password')
+            ->assertFormFieldIsDisabled('email')
+            // Whoever owns the password or the address the reset link goes to can sign in as the administration.
+            ->set('data.password', 'uebernommen-2026-x')
+            ->set('data.email', 'plattform@example.test')
+            ->set('data.name', 'Neuer Name')
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $admin->refresh();
+        $this->assertTrue(password_verify('altes-passwort-1', $admin->password));
+        $this->assertFalse(password_verify('uebernommen-2026-x', $admin->password));
+        $this->assertSame('schulleitung@example.test', $admin->email);
+        $this->assertSame('Neuer Name', $admin->name);
+    }
+
+    public function test_operator_still_sets_the_password_of_another_operator(): void
+    {
+        $other = User::factory()->operator()->create(['password' => 'altes-passwort-1']);
+
+        Livewire::test(EditUser::class, ['record' => $other->getRouteKey()])
+            ->assertFormFieldVisible('password')
+            ->assertFormFieldIsEnabled('email')
             ->fillForm(['password' => 'neues-passwort-2'])
             ->call('save')
             ->assertHasNoFormErrors();
 
-        $this->assertTrue(password_verify('neues-passwort-2', $admin->refresh()->password));
+        $this->assertTrue(password_verify('neues-passwort-2', $other->refresh()->password));
+    }
+
+    public function test_operator_cannot_add_an_administration_to_a_school_that_already_has_one(): void
+    {
+        $school = School::factory()->create();
+        User::factory()->admin()->for($school)->create();
+        $schoolWithoutAdministration = School::factory()->create();
+        User::factory()->teacher()->for($schoolWithoutAdministration)->create();
+
+        Livewire::test(CreateUser::class)
+            ->assertFormFieldExists('school_id', fn (Select $field): bool => array_keys($field->getOptions()) === [$schoolWithoutAdministration->id])
+            ->fillForm([
+                'name' => 'Zweite Schulleitung',
+                'username' => 'zweite.schulleitung',
+                'password' => 'sicheres-passwort-7',
+                'role' => Role::Admin->value,
+                'school_id' => $school->id,
+            ])
+            ->call('create')
+            ->assertHasFormErrors(['school_id']);
+
+        $this->assertDatabaseMissing(User::class, ['username' => 'zweite.schulleitung']);
+        $this->assertSame(1, $school->users()->where('role', Role::Admin)->count());
+    }
+
+    public function test_operator_cannot_take_over_a_school_by_deleting_its_last_administration(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $school = $admin->school;
+
+        $this->assertFalse($this->operator->can('delete', $admin));
+
+        Livewire::test(EditUser::class, ['record' => $admin->getRouteKey()])
+            ->assertActionHidden(DeleteAction::class);
+
+        Livewire::test(ListUsers::class)
+            ->callTableBulkAction('delete', [$admin]);
+
+        $this->assertModelExists($admin);
+
+        $second = User::factory()->admin()->for($school)->create();
+        $this->assertTrue($this->operator->can('delete', $admin));
+        $this->assertTrue($this->operator->can('delete', $second));
     }
 
     public function test_role_and_school_of_an_existing_account_cannot_be_changed(): void
@@ -212,6 +279,7 @@ class OperatorAccountManagementTest extends TestCase
     public function test_operator_deletes_an_administration_account_but_not_their_own(): void
     {
         $admin = User::factory()->admin()->create();
+        User::factory()->admin()->for($admin->school)->create();
 
         Livewire::test(EditUser::class, ['record' => $this->operator->getRouteKey()])
             ->assertActionHidden(DeleteAction::class);

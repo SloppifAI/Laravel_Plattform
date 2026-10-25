@@ -13,6 +13,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Validation\Rules\Password;
 
 class UserForm
@@ -27,6 +28,12 @@ class UserForm
         $roleOf = fn (Get $get): ?Role => $get->enum('role', Role::class, isNullable: true);
         $isStudent = fn (Get $get): bool => $roleOf($get) === Role::Student;
         $isSchoolAdmin = fn (Get $get): bool => $roleOf($get) === Role::Admin;
+        // Whoever sets the password or the e-mail address (the reset link goes there) of a school's administration can sign in
+        // as it and read the school's learning data, which the operator must not see. So the operator leaves both to the school.
+        $operatorEditsSchoolAccount = fn (?Model $record): bool => $isOperator && $record?->school_id !== null;
+        // A school that has an administration runs its own accounts, so the operator only sets up the first one. An existing
+        // account keeps its school (and shows it), so only the choice for a new account is narrowed.
+        $schoolsToChoose = fn (Builder $query, string $operation): Builder => $query->when($operation === 'create', fn (Builder $schools) => $schools->withoutAdministration());
 
         return $schema
             ->components([
@@ -47,9 +54,12 @@ class UserForm
                             ->label(__('E-Mail (optional)'))
                             ->email()
                             ->maxLength(255)
-                            ->unique(ignoreRecord: true),
+                            ->unique(ignoreRecord: true)
+                            ->disabled($operatorEditsSchoolAccount)
+                            ->helperText(fn (?Model $record): ?string => $operatorEditsSchoolAccount($record) ? __('E-Mail-Adresse und Passwort ändert die Schuladministration selbst. Wer sich ausgesperrt hat, nutzt „Passwort vergessen?“ auf der Anmeldeseite.') : null),
                         TextInput::make('password')
                             ->label(__('Passwort'))
+                            ->hidden($operatorEditsSchoolAccount)
                             ->password()
                             ->revealable()
                             ->rule(Password::default())
@@ -76,13 +86,14 @@ class UserForm
                             ->helperText(fn (string $operation): ?string => $isOperator && $operation === 'edit' ? __('Die Rolle lässt sich nach dem Anlegen nicht mehr ändern.') : null),
                         Select::make('school_id')
                             ->label(__('Schule'))
-                            ->options(fn (): array => School::query()->orderBy('name')->pluck('name', 'id')->all())
+                            ->options(fn (string $operation): array => $schoolsToChoose(School::query(), $operation)->orderBy('name')->pluck('name', 'id')->all())
                             ->searchable()
                             // Only operators choose a school, and only for a school administration. Everyone else's
                             // accounts get the school of the signed-in administrator in CreateUser.
                             ->visible(fn (Get $get): bool => $isOperator && $isSchoolAdmin($get))
                             ->required()
-                            ->exists(School::class, 'id')
+                            ->scopedExists(School::class, 'id', $schoolsToChoose)
+                            ->helperText(fn (string $operation): ?string => $operation === 'create' ? __('Nur Schulen ohne Schuladministration. Weitere Konten legt die Schuladministration selbst an.') : null)
                             // Moving an account to another school is not offered.
                             ->disabledOn('edit'),
                         Select::make('school_class_id')

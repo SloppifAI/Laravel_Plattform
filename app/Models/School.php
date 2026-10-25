@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Role;
 use Database\Factories\SchoolFactory;
 use DomainException;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -105,6 +106,17 @@ class School extends Model
         return $this->hasAcceptedDpa()
             && $this->dpa_version === config('lernplattform.dpa.version')
             && $this->dpa_fingerprint === DpaAcceptance::fingerprint();
+    }
+
+    /**
+     * Schools without a school administration. Only for those may the platform operator create one: a school that
+     * has one runs its own accounts, so the operator cannot get an administration's sign-in of its own making.
+     *
+     * @param  Builder<School>  $query
+     */
+    public function scopeWithoutAdministration(Builder $query): void
+    {
+        $query->whereDoesntHave('users', fn (Builder $users) => $users->where('role', Role::Admin));
     }
 
     /**
