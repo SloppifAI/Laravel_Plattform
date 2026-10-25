@@ -8,6 +8,7 @@ use App\Models\Lesson;
 use App\Models\Question;
 use App\Models\School;
 use App\Models\SchoolClass;
+use App\Models\Submission;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -81,6 +82,72 @@ class LessonPlacementTest extends TestCase
             ->assertHasFormErrors(['school_class_id']);
 
         $this->assertTrue($lesson->refresh()->schoolClass->is($this->ownClass));
+    }
+
+    public function test_a_draft_moves_to_another_class_the_teacher_teaches(): void
+    {
+        $this->colleagueClass->teachers()->attach($this->teacher);
+        $draft = Lesson::factory()->for($this->ownClass)->for($this->teacher, 'teacher')->create();
+        $this->actingAs($this->teacher);
+
+        Livewire::test(EditLesson::class, ['record' => $draft->getRouteKey()])
+            ->assertFormFieldIsEnabled('school_class_id')
+            ->fillForm(['school_class_id' => $this->colleagueClass->id])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertTrue($draft->refresh()->schoolClass->is($this->colleagueClass));
+    }
+
+    public function test_a_released_lesson_stays_in_its_class_and_can_still_be_saved(): void
+    {
+        $this->colleagueClass->teachers()->attach($this->teacher);
+        $student = User::factory()->student($this->ownClass)->create();
+        $released = Lesson::factory()->for($this->ownClass)->for($this->teacher, 'teacher')->publishedFor()->create();
+        Submission::factory()->for($released)->for($student, 'student')->create();
+        $this->actingAs($this->teacher);
+
+        Livewire::test(EditLesson::class, ['record' => $released->getRouteKey()])
+            ->assertFormFieldIsDisabled('school_class_id')
+            ->fillForm(['school_class_id' => $this->colleagueClass->id, 'topic' => 'Neues Thema'])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $released->refresh();
+        $this->assertSame('Neues Thema', $released->topic);
+        $this->assertTrue($released->schoolClass->is($this->ownClass));
+        $this->assertTrue($released->students()->whereKey($student->id)->exists());
+    }
+
+    public function test_the_class_can_be_chosen_again_after_the_release_was_withdrawn(): void
+    {
+        $this->colleagueClass->teachers()->attach($this->teacher);
+        $released = Lesson::factory()->for($this->ownClass)->for($this->teacher, 'teacher')->publishedFor()->create();
+        $this->actingAs($this->teacher);
+
+        Livewire::test(EditLesson::class, ['record' => $released->getRouteKey()])
+            ->callAction('withdraw')
+            ->assertFormFieldIsEnabled('school_class_id')
+            ->fillForm(['school_class_id' => $this->colleagueClass->id])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertTrue($released->refresh()->schoolClass->is($this->colleagueClass));
+    }
+
+    public function test_a_forged_class_change_of_a_released_lesson_is_refused(): void
+    {
+        $this->colleagueClass->teachers()->attach($this->teacher);
+        $released = Lesson::factory()->for($this->ownClass)->for($this->teacher, 'teacher')->publishedFor()->create();
+        $this->actingAs($this->teacher);
+        $edit = Livewire::test(EditLesson::class, ['record' => $released->getRouteKey()])->instance();
+
+        // A class the teacher may place lessons in, so only the release can be what refuses it.
+        $this->assertForbidden(fn () => (fn (array $data) => $this->mutateFormDataBeforeSave($data))->call($edit, ['school_class_id' => $this->colleagueClass->id]));
+
+        $unchanged = ['school_class_id' => $this->ownClass->id, 'topic' => 'Neues Thema'];
+        $this->assertSame($unchanged, (fn (array $data) => $this->mutateFormDataBeforeSave($data))->call($edit, $unchanged));
+        $this->assertSame(['topic' => 'Neues Thema'], (fn (array $data) => $this->mutateFormDataBeforeSave($data))->call($edit, ['topic' => 'Neues Thema']));
     }
 
     public function test_a_lesson_can_still_be_saved_after_the_teacher_stopped_teaching_its_class(): void
