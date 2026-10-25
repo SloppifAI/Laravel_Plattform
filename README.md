@@ -199,6 +199,7 @@ Alle Demo-Konten haben das Passwort **`hackathon2026`**. Auf der Anmeldeseite w�
 | `schulleitung` | Schuladministration | Petra Krause | Gesamtschule am Lernpark (Fulda) |
 | `lehrer` | Lehrkraft | Frau Schulze | Klassenleitung 7b |
 | `weber` | Lehrkraft | Thomas Weber | Klassenleitung 7a, unterrichtet auch 7b |
+| `lindner` | Lehrkraft | Sabine Lindner | vertritt für einige Tage die Klasse 7b |
 | `schueler` | Schüler:in | Emilian | Klasse 7b |
 | `ben.krueger`, `lena.schulz`, `jonas.becker`, `elif.yilmaz`, `noah.wagner`, `emma.fischer`, `luca.meyer` | Schüler:innen | Ben Krüger, Lena Schulz, Jonas Becker, Elif Yılmaz, Noah Wagner, Emma Fischer, Luca Meyer | Klasse 7b |
 | `paul.richter`, `hannah.koch`, `leon.wolf`, `sophie.neumann` | Schüler:innen | Paul Richter, Hannah Koch, Leon Wolf, Sophie Neumann | Klasse 7a |
@@ -206,7 +207,7 @@ Alle Demo-Konten haben das Passwort **`hackathon2026`**. Auf der Anmeldeseite w�
 | `gym-lehrer` | Lehrkraft | Julia Berger | Gymnasium Musterstadt, Klasse 8c |
 | `gym-schueler1`, `gym-schueler2` | Schüler:innen | Finn Albrecht, Clara Vogt | Gymnasium Musterstadt, Klasse 8c |
 
-Was die Demo-Schule „Gesamtschule am Lernpark“ mitbringt: Stunden in jedem Zustand (Entwurf, Hausaufgabe mit Ergebnissen, offene Hausaufgabe, Hausaufgabe für ausgewählte Schüler:innen, eine offene Förderaufgabe für Emilian und Ben), „Erklär’s mir“-Gespräche von Emilian, Klassenbuch-Einträge, eine laufende Vertretung durch Thomas Weber, Rückfragen von Emilian und Meldungen in der Glocke. Die KI ist für die Schule schon freigeschaltet (sie läuft aber erst, wenn auch der Plattformschalter an ist) und der AVV ist angenommen. Das Tuto-Mikro ist **nicht** freigeschaltet: Wie du es einrichtest, steht in [Tuto-Mikro für die Schule freischalten](#tuto-mikro-für-die-schule-freischalten). Das Gymnasium Musterstadt ist klein und zeigt, was Schulen voneinander nicht sehen.
+Was die Demo-Schule „Gesamtschule am Lernpark“ mitbringt: Stunden in jedem Zustand (Entwurf, Hausaufgabe mit Ergebnissen, offene Hausaufgabe, Hausaufgabe für ausgewählte Schüler:innen, eine offene Förderaufgabe für Emilian und Ben), „Erklär’s mir“-Gespräche von Emilian, Klassenbuch-Einträge, eine laufende Vertretung durch Sabine Lindner, Rückfragen von Emilian und Meldungen in der Glocke. Die KI ist für die Schule schon freigeschaltet (sie läuft aber erst, wenn auch der Plattformschalter an ist) und der AVV ist angenommen. Das Tuto-Mikro ist **nicht** freigeschaltet: Wie du es einrichtest, steht in [Tuto-Mikro für die Schule freischalten](#tuto-mikro-für-die-schule-freischalten). Das Gymnasium Musterstadt ist klein und zeigt, was Schulen voneinander nicht sehen.
 
 ---
 
@@ -261,13 +262,13 @@ Die Seitenleiste links ist in vier Gruppen geordnet: **Plattform**, **Unterricht
 **So erreichst du es:** `/login`
 
 1. Gib Benutzername und Passwort ein und klicke auf „Anmelden“.
-2. Du landest auf **Mein Lernbereich**, der Startseite deiner Rolle.
+2. Du landest auf der Startseite deiner Rolle: **Mein Unterricht** (Lehrkraft), **Schulübersicht** (Schuladministration), **Plattformübersicht** (Plattform-Administration) oder **Mein Lernbereich** (Schüler:in).
 
 Passwort vergessen? Klicke neben dem Passwortfeld auf „Passwort vergessen?“, gib Benutzername oder E-Mail-Adresse ein und klicke auf „Link zum Zurücksetzen senden“. Den Link bekommst du nur, wenn in deinem Konto eine E-Mail-Adresse steht und die Plattform Mails versenden kann. Ohne E-Mail-Adresse setzt die Schuladministration dein Passwort zurück (Verwaltung → Benutzer → bearbeiten).
 
 #### Orientierung
 
-- **Mein Lernbereich** ist die Startseite. Lehrkräfte sehen ihre Stunden und Kennzahlen, Schüler:innen ihre nächsten Hausaufgaben, die Schuladministration Kennzahlen und Abkürzungen zu allen Verwaltungsseiten, die Plattform-Administration die Schulen im Überblick.
+- Die **Startseite** heißt je nach Rolle „Mein Unterricht“, „Schulübersicht“, „Plattformübersicht“ oder „Mein Lernbereich“. Lehrkräfte begrüßt sie mit „Hallo …!“ und zeigt ihre Stunden und Kennzahlen, Schüler:innen ihre nächsten Hausaufgaben, die Schuladministration Kennzahlen und Abkürzungen zu allen Verwaltungsseiten, die Plattform-Administration die Schulen im Überblick.
 - Die **Glocke** in der Kopfleiste meldet Neues, ohne Namen: Schüler:innen erfahren von neuen Hausaufgaben und Förderaufgaben und von beantworteten Rückfragen, Lehrkräfte von neuen Abgaben und neuen Rückfragen (als Anzahl je Stunde). Ein Klick auf „Öffnen“ bringt dich zur passenden Seite.
 - Unten auf jeder Seite stehen Impressum, Datenschutzerklärung und Auftragsverarbeitung (AVV).
 - **Datenschutz & KI** in der Seitenleiste erklärt in einfachen Worten, was gespeichert wird und wer es sieht.
@@ -453,7 +454,7 @@ Die Liste zeigt je Klasse Klassenleitung, Zahl der weiteren Lehrkräfte, Klassen
 **So erreichst du es:** Verwaltung → Klassen → Klasse in der Liste öffnen („Bearbeiten“)
 
 1. Die **Klassenleitung** wählst du oben im Formular bei „Klassenleitung“. Sie unterrichtet die Klasse immer.
-2. Weitere Lehrkräfte ordnest du im Bereich „Unterrichtende Lehrkräfte“ zu: „Lehrkräfte hinzufügen“, Lehrkräfte auswählen (mehrere gehen), bestätigen. Mit „Nicht mehr zuordnen“ nimmst du die Zuordnung zurück.
+2. Weitere Lehrkräfte ordnest du im Reiter „Unterrichtende Lehrkräfte“ unter dem Formular zu (daneben gibt es die Reiter „Schüler:innen“ und „Vertretungen“): „Lehrkräfte hinzufügen“, Lehrkräfte auswählen (mehrere gehen), bestätigen. Mit „Nicht mehr zuordnen“ nimmst du die Zuordnung zurück.
 3. Nur die Klassenleitung und zugeordnete Lehrkräfte können in dieser Klasse Stunden anlegen und die Lernstände der Klasse sehen. Fehlt die Zuordnung, bekommt die Lehrkraft die Klasse in keiner Auswahl angezeigt.
 
 <p align="center">
@@ -493,15 +494,15 @@ Wer schon da ist, wird aktualisiert statt doppelt angelegt. Konten von Lehrkräf
 2. Die Schüler:innen öffnen die Registrierung und legen ihr Konto selbst an ([so geht’s](#registrieren-mit-klassencode)).
 3. Ist ein Code in die falschen Hände geraten: Klasse öffnen → „Neuen Code erzeugen“ (oben rechts). Der alte Code funktioniert dann nicht mehr, wer sich schon registriert hat, bleibt in der Klasse.
 
-**c) Von Hand:** Verwaltung → Benutzer, Rolle „Schüler:in“ mit Klasse, oder Verwaltung → Klassen → Klasse öffnen → „Schüler:innen“ → „Schüler:innen hinzufügen“. Mit „Aus Klasse entfernen“ löst du die Zuordnung.
+**c) Von Hand:** Verwaltung → Benutzer, Rolle „Schüler:in“ mit Klasse, oder Verwaltung → Klassen → Klasse öffnen → Reiter „Schüler:innen“ → „Schüler:innen hinzufügen“. Mit „Aus Klasse entfernen“ löst du die Zuordnung.
 
 #### Vertretung eintragen (Schuladministration)
 
-**So erreichst du es:** Verwaltung → Klassen → Klasse öffnen → Bereich „Vertretungen“
+**So erreichst du es:** Verwaltung → Klassen → Klasse öffnen → Reiter „Vertretungen“
 
 Die Klassenleitung richtet eine Vertretung auch selbst ein ([so geht’s](#vertretung-einrichten-und-übergabe-mappe)). Du kannst es für jede Klasse deiner Schule.
 
-1. Klicke im Bereich „Vertretungen“ auf **„Vertretung einrichten“** und wähle bei „Wer vertritt?“ eine Lehrkraft der Schule (die Klassenleitung und bereits zugeordnete Lehrkräfte unterrichten die Klasse ohnehin).
+1. Klicke im Reiter „Vertretungen“ auf **„Vertretung einrichten“** und wähle bei „Wer vertritt?“ eine Lehrkraft der Schule (die Klassenleitung und bereits zugeordnete Lehrkräfte unterrichten die Klasse ohnehin).
 2. Lege „Erster Tag“ und „Letzter Tag“ fest (dann „Einrichten“). Eine Vertretung kann nicht in der Vergangenheit beginnen und dauert höchstens 90 Tage. Dieselbe Lehrkraft vertritt eine Klasse zusammengerechnet höchstens so lange. Für länger ordnest du die Lehrkraft der Klasse fest zu.
 3. Schreibe bei „Hinweis zur Übergabe“, was die Vertretung wissen soll (Stand im Stoff, Absprachen). Bitte keine Namen oder persönlichen Angaben zu einzelnen Schüler:innen.
 4. Im Zeitraum kann die Vertretung Stunden in der Klasse anlegen, die Lernstände sehen, das Klassenbuch lesen und exportieren, Einwilligungen der Eltern erfassen und Tuto-Mikro nutzen. Danach endet das von selbst. Mit „Vorzeitig beenden“ (bzw. „Zurückziehen“ bei einer geplanten) beendest du sie früher.
@@ -649,10 +650,10 @@ Ganz unten unter „Tuto-Mikro in dieser Stunde“ siehst du den Nachweis je Sit
 
 **So erreichst du es:** Unterricht → Unterrichtsstunden → Stunde öffnen (oder auf **Heute** in der Zeile klicken)
 
-1. Klicke oben rechts auf **„Hausaufgabe mit KI erstellen“**. Tuto liest deine Notizen (und Arbeitsblätter) und erstellt eine **Zusammenfassung** der Stunde und fünf **Fragen**: zwei Verständnis-, zwei Anwendungs- und eine Reflexionsfrage. Zu jeder Frage gehört ein **Erwartungshorizont**, den nur du siehst. Zeigt Tuto die Meldung „Demo-Modus“, läuft die KI nicht und die Fragen sind Beispielentwürfe: Entweder ist der Plattformschalter aus oder deine Schule hat die KI noch nicht freigeschaltet (siehe [die zwei Schalter](#ki-einschalten-zwei-schalter)).
+1. Klicke oben rechts auf **„Hausaufgabe mit KI erstellen“**. (Derselbe Knopf steht auch über der Fragen-Tabelle im Reiter „Hausaufgabe“ und tut dasselbe.) Tuto liest deine Notizen (und Arbeitsblätter) und erstellt eine **Zusammenfassung** der Stunde und fünf **Fragen**: zwei Verständnis-, zwei Anwendungs- und eine Reflexionsfrage. Zu jeder Frage gehört ein **Erwartungshorizont**, den nur du siehst. Zeigt Tuto die Meldung „Demo-Modus“, läuft die KI nicht und die Fragen sind Beispielentwürfe: Entweder ist der Plattformschalter aus oder deine Schule hat die KI noch nicht freigeschaltet (siehe [die zwei Schalter](#ki-einschalten-zwei-schalter)).
 2. **Prüfe die Zusammenfassung.** Sie steht unter „Zusammenfassung“ und lässt sich direkt ändern. Die Schüler:innen lesen sie vor den Fragen. Speichere deine Änderungen.
-3. **Prüfe die Fragen** im Bereich **„Hausaufgabe“**. Du kannst jede Frage mit „Bearbeiten“ ändern (Art, Kompetenz, Frage, Erwartungshorizont), mit „Löschen“ entfernen, per Ziehen umordnen und über „Erstellen“ eigene Fragen ergänzen. Die Kompetenz ordnet die Frage dem Kompetenzraster zu, daraus wird später der Lernstand.
-4. **Stufen (optional):** Mit „Stufen mit KI erstellen“ (über der Tabelle für alle Fragen, in der Zeile für eine Frage) ergänzt die KI zu jeder Frage die Stufen „Einstieg“ und „Profi“. Selbst geschriebene Stufen bleiben erhalten. Du kannst die Stufen auch im Formular der Frage selbst schreiben („Stufe Einstieg (optional)“, „Stufe Profi (optional)“). Der Erwartungshorizont bleibt für alle Stufen gleich.
+3. **Prüfe die Fragen** im Reiter **„Hausaufgabe“**. Du kannst jede Frage mit „Bearbeiten“ ändern (Art, Kompetenz, Frage, Erwartungshorizont), mit „Löschen“ entfernen, per Ziehen umordnen und über „Erstellen“ eigene Fragen ergänzen. Die Kompetenz ordnet die Frage dem Kompetenzraster zu, daraus wird später der Lernstand.
+4. **Stufen (optional):** Mit „Stufen mit KI erstellen“ (über der Tabelle für alle Fragen, in der Zeile für eine Frage) ergänzt die KI zu jeder Frage die Stufen „Einstieg“ und „Profi“. Solange die Stunde noch keine Fragen hat, ist der Knopf über der Tabelle gesperrt und ein Hinweis sagt „Lege zuerst Fragen an, zum Beispiel mit der KI.“ Selbst geschriebene Stufen bleiben erhalten. Du kannst die Stufen auch im Formular der Frage selbst schreiben („Stufe Einstieg (optional)“, „Stufe Profi (optional)“). Der Erwartungshorizont bleibt für alle Stufen gleich.
 5. Klicke oben rechts auf **„Freigeben“** (der Knopf ist erst aktiv, wenn es Fragen gibt). Wähle „Abgabe bis“ und bei „Für wen?“ entweder „Ganze Klasse …“ oder „Ausgewählte Schüler:innen“ (dann wählst du die Namen). Bestätige mit „Freigeben“. Die Schüler:innen finden die Fragen danach in ihrem Lernbereich und bekommen eine Meldung. Den Erwartungshorizont sehen sie nicht.
 
 Nach der Freigabe sind die Fragen gesperrt, weil die Schüler:innen schon antworten könnten. Mit **„Freigabe zurücknehmen“** holst du die Hausaufgabe zurück, solange noch niemand abgegeben hat.
@@ -667,7 +668,7 @@ Nach der Freigabe sind die Fragen gesperrt, weil die Schüler:innen schon antwor
   <sub>Hausaufgabe freigeben</sub>
 </p>
 
-**Abgaben ansehen:** Im Bereich **„Abgaben“** derselben Seite siehst du, wer abgegeben hat, mit Zeitpunkt und Verständnis (zum Beispiel „Gut verstanden“, „Teilweise verstanden“, „Förderbedarf“). Über „Ansehen“ liest du Zusammenfassung, Antworten, die KI-Rückmeldung und die Lücken. Die Werte sind eine Einschätzung der KI und keine Note. Mit **„Zur Überarbeitung zurückgeben“** löschst du eine Abgabe samt KI-Prüfung, die Schüler:in kann dann neu abgeben. Über der Tabelle steht, wer noch nicht abgegeben hat.
+**Abgaben ansehen:** Im Reiter **„Abgaben“** derselben Seite siehst du, wer abgegeben hat, mit Zeitpunkt und Verständnis (zum Beispiel „Gut verstanden“, „Teilweise verstanden“, „Förderbedarf“). Über „Ansehen“ liest du Zusammenfassung, Antworten, die KI-Rückmeldung und die Lücken. Die Werte sind eine Einschätzung der KI und keine Note. Mit **„Zur Überarbeitung zurückgeben“** löschst du eine Abgabe samt KI-Prüfung, die Schüler:in kann dann neu abgeben. Über der Tabelle steht, wer noch nicht abgegeben hat.
 
 #### Einwilligungen der Eltern einsammeln
 
@@ -848,7 +849,7 @@ Wurde dein Konto von der Schule angelegt (Import), bekommst du Benutzername und 
 
 #### Mein Lernbereich
 
-Die Startseite begrüßt dich mit „Hallo …!“ und zeigt, was offen ist, wie gut du die Themen bisher verstanden hast („Dein Verständnis“), „Als Nächstes fällig“ und einen Einstieg in Erklär’s mir. Neue Hausaufgaben meldet außerdem die Glocke.
+Die Startseite begrüßt dich mit „Hallo …!“ und zeigt, was offen ist, wie gut du die Themen bisher verstanden hast („Dein Verständnis“), „Als Nächstes fällig“ und die Karte „Erklär’s mir“ mit dem Knopf „Thema Tuto erklären“. Neue Hausaufgaben meldet außerdem die Glocke.
 
 #### Hausaufgabe bearbeiten
 
@@ -899,7 +900,7 @@ Gibt dir deine Lehrkraft eine Förderaufgabe, erscheint sie unter Meine Hausaufg
 
 #### Erklär’s mir
 
-**So erreichst du es:** Seitenleiste → Lernen → Erklär’s mir (`/erklaer-es-mir`), oder auf der Hausaufgabe oben rechts den Knopf zu Erklär’s mir (dann ist die Stunde schon gewählt)
+**So erreichst du es:** Seitenleiste → Lernen → Erklär’s mir (`/erklaer-es-mir`), oder auf der Hausaufgabe oben rechts „Thema Tuto erklären“ (dann ist die Stunde schon gewählt)
 
 Wer etwas erklären kann, hat es wirklich verstanden. Dein KI-Lernpartner kennt das Thema noch nicht, ist neugierig und fragt nach.
 
@@ -945,7 +946,7 @@ Zu Themen aus deinen Hausaufgaben kannst du außerdem deiner Lehrkraft eine Frag
 Das sind Hinweise aus deinen Hausaufgaben, keine Noten. Du siehst nur deine eigenen Ergebnisse und wirst mit niemandem verglichen.
 
 1. Oben stehen „Dein Verständnis im Durchschnitt“, die „Entwicklung“ („Es geht aufwärts“, „Ziemlich gleich geblieben“, „Zuletzt etwas niedriger“) und wie viele Hausaufgaben bisher bewertet sind.
-2. Darunter stehen die Kompetenzen: was schon gut klappt, was fast sitzt und wo sich Üben lohnt. Bei Kompetenzen mit Nachholbedarf findest du die Förderaufgabe deiner Lehrkraft, falls sie eine gegeben hat, „Ergebnis ansehen“ zu den Hausaufgaben, bei denen es noch gehakt hat, und einen Weg zu Erklär’s mir.
+2. Darunter stehen die Kompetenzen: was schon gut klappt, was fast sitzt und wo sich Üben lohnt. Bei Kompetenzen mit Nachholbedarf findest du die Förderaufgabe deiner Lehrkraft, falls sie eine gegeben hat, „Ergebnis ansehen“ zu den Hausaufgaben, bei denen es noch gehakt hat, und „Thema Tuto erklären“ als Weg zu Erklär’s mir.
 
 <p align="center">
   <img src="docs/screenshots/mein-lernstand.webp" alt="Mein Lernstand" width="680"><br>
@@ -1397,7 +1398,7 @@ rollen-und-rechte.webp
 --- Plattform-Administration ---
 start-plattform-administration.webp
   URL: /   Login: hackathon
-  Sichtbar: Mein Lernbereich mit den Kennzahlen (Schulen, Schuladministrationen, Lehrkräfte, Schüler:innen, Klassen), den Abkürzungen und der Liste der Schulen; Seitenleiste mit der Gruppe "Plattform".
+  Sichtbar: Plattformübersicht mit den Kennzahlen (Schulen, Schuladministrationen, Lehrkräfte, Schüler:innen, Klassen), den Abkürzungen und der Liste der Schulen; Seitenleiste mit der Gruppe "Plattform".
 schulen-liste.webp
   URL: /schulen   Login: hackathon
   Sichtbar: Tabelle mit beiden Demo-Schulen, Spalten Schule, Schulnummer, AVV, Konten, Klassen, Status; in der Zeile "Bearbeiten" und "Sperren".
@@ -1411,7 +1412,7 @@ kompetenzraster.webp
 --- Schuladministration ---
 start-schuladministration.webp
   URL: /   Login: schulleitung
-  Sichtbar: Mein Lernbereich mit Kennzahlen (Schüler:innen, Lehrkräfte, Klassen, Unterrichtsstunden, Abgaben diese Woche) und den Abkürzungen zu den Verwaltungsseiten.
+  Sichtbar: Schulübersicht mit Kennzahlen (Schüler:innen, Lehrkräfte, Administration, Klassen, Unterrichtsstunden, Abgaben diese Woche) und den Abkürzungen zu den Verwaltungsseiten.
 meine-schule-avv.webp
   URL: /meine-schule   Login: schulleitung
   Sichtbar: Abschnitt "Auftragsverarbeitungsvertrag (AVV)" mit Stand "Angenommen, Version …" und den Knöpfen zum Ansehen, darunter die Stammdaten.
@@ -1426,7 +1427,7 @@ klassen-liste.webp
   Sichtbar: Klassen 7a und 7b mit Klassenleitung, weiteren Lehrkräften, Klassencode, Zahl der Schüler:innen.
 klasse-zuordnung.webp
   URL: /klassen/{id der Klasse 7b}/edit   Login: schulleitung
-  Sichtbar: Formular mit Name, Klassenleitung (Frau Schulze), Klassencode, oben rechts "Neuen Code erzeugen", darunter die Bereiche "Unterrichtende Lehrkräfte" (Thomas Weber), "Schüler:innen" und "Vertretungen".
+  Sichtbar: Formular mit Name, Klassenleitung (Frau Schulze), Klassencode, oben rechts "Neuen Code erzeugen", darunter die Reiter "Schüler:innen" (geöffnet, mit den Schüler:innen der 7b), "Unterrichtende Lehrkräfte" und "Vertretungen".
 schuelerliste-importieren.webp
   URL: /schuelerliste-importieren   Login: schulleitung
   Sichtbar: Datei-Auswahl "CSV-Datei" mit "Vorschau erstellen" und rechts die Karte "So muss die Datei aufgebaut sein" mit dem Beispiel.
@@ -1467,7 +1468,7 @@ einstieg-naechste-stunde.webp
   Sichtbar: Tafel "Einstieg für die nächste Stunde" mit drei Punkten ("Wer kann das erklären?"), Durchschnittswerten und den Knöpfen "Lösungshinweise einblenden", "Vollbild", "Drucken"; Lösungshinweise eingeblendet.
 klassenbuch.webp
   URL: /klassenbuch?klasse={id der Klasse 7b}   Login: lehrer
-  Sichtbar: Tabelle mit einem bestätigten und einem Entwurf-Eintrag (Datum, Fach und Thema, Unterrichtsinhalt, Hausaufgabe, Fehlt, Status) und oben rechts "Entwurf aus Stunde erstellen" und "CSV exportieren".
+  Sichtbar: Tabelle mit einem bestätigten und einem Entwurf-Eintrag (Datum, Fach und Thema, Unterrichtsinhalt, Hausaufgabe, Fehlende Schüler:innen, Status) und oben rechts "Entwurf aus Stunde erstellen" und "CSV exportieren".
 rueckfragen-lehrkraft.webp
   URL: /rueckfragen   Login: lehrer
   Sichtbar: Tabelle mit der offenen Frage von Emilian (Satz des Pythagoras) und der beantworteten (Fotosynthese), Status und den Knöpfen "Beantworten" und "Erledigt"; Zahl am Menüpunkt.
@@ -1482,7 +1483,7 @@ elterngespraech.webp
   Sichtbar: "Elterngespräch: Emilian" mit Kopfdaten, Hinweis zur Einordnung, Durchschnitt, Abgabequote, Verlauf, Kompetenzen und Hausaufgaben; oben rechts "Drucken".
 vertretung.webp
   URL: /vertretung   Login: lehrer
-  Sichtbar: die laufende Vertretung von Thomas Weber in 7b (Zeitraum, Status, Hinweis), oben rechts "Übergabe-Mappe" und "Vertretung einrichten".
+  Sichtbar: die laufende Vertretung von Sabine Lindner in 7b (Zeitraum, Status, Hinweis), oben rechts "Übergabe-Mappe" und "Vertretung einrichten".
 uebergabe-mappe.webp
   URL: /uebergabe/{id der Klasse 7b}   Login: lehrer
   Sichtbar: druckbare Mappe der Klasse 7b mit letzten Stunden, offener Hausaufgabe, Wiederholungspunkten, Hinweis zur Übergabe und Klassenleitung; oben rechts "Drucken".
@@ -1508,7 +1509,7 @@ frage-an-lehrkraft.webp
   Sichtbar: Fenster mit dem Hinweis, wer die Frage lesen kann, Feld "Deine Frage" und "Frage abschicken". Nicht absenden.
 erklaer-es-mir.webp
   URL: /erklaer-es-mir   Login: schueler
-  Sichtbar: ein offenes Gespräch (Thema Fotosynthese) mit Erklärung und Rückfrage des Lernpartners, "Erklärung beenden" bzw. die Auswertung, "Frage an meine Lehrkraft", rechts die Liste "Deine Erklärungen".
+  Sichtbar: ein offenes Gespräch (Thema Satz des Pythagoras) mit Erklärung und Rückfrage des Lernpartners, "Erklärung beenden" bzw. die Auswertung, "Frage an meine Lehrkraft", rechts die Liste "Deine Erklärungen".
 meine-rueckfragen.webp
   URL: /meine-rueckfragen   Login: schueler
   Sichtbar: Tabelle mit einer Frage "Wartet auf Antwort" und einer "Neue Antwort" mit dem Knopf "Gelesen".
