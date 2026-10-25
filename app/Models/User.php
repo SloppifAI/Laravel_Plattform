@@ -29,7 +29,9 @@ class User extends Authenticatable implements FilamentUser, HasLocalePreference
     /**
      * A deleted student's id must not stay behind in the absence lists of the Klassenbuch, and the tokens of a deleted
      * account's connected apps go with it (personal_access_tokens has no foreign key, it is polymorphic; the one-time
-     * codes of app_authorization_codes go by their foreign key).
+     * codes of app_authorization_codes go by their foreign key). A new password (profile, reset by the user or an
+     * administration) ends the connected apps as it ends the other browser sessions: whoever knew the old password
+     * must not keep an app connected for 180 days; the person reconnects the own apps with the new one.
      */
     protected static function booted(): void
     {
@@ -39,6 +41,13 @@ class User extends Authenticatable implements FilamentUser, HasLocalePreference
             }
 
             $user->tokens()->delete();
+        });
+
+        static::updated(function (User $user): void {
+            if ($user->wasChanged('password')) {
+                $user->tokens()->delete();
+                AppAuthorizationCode::query()->whereBelongsTo($user)->delete();
+            }
         });
     }
 

@@ -278,6 +278,28 @@ class TokenTest extends TestCase
         $this->assertSame([$other->id], AppAuthorizationCode::query()->pluck('user_id')->all());
     }
 
+    public function test_a_new_password_ends_the_connected_apps_of_that_account_only(): void
+    {
+        $token = $this->exchange($this->code())->json('token');
+        $this->code();
+        $other = User::factory()->teacher()->create();
+        $kept = $other->createToken('Tablet', TokenController::ABILITIES);
+        $this->code($other);
+
+        $this->teacher->update(['name' => 'Frau Schulze-Meier']);
+        $this->assertSame(1, $this->teacher->tokens()->count());
+        $this->assertSame(1, AppAuthorizationCode::query()->whereBelongsTo($this->teacher)->where('used_at', null)->count());
+
+        $this->teacher->update(['password' => 'ein-ganz-neues-passwort']);
+
+        $this->app['auth']->forgetGuards();
+        $this->withToken($token)->getJson(route('api.lessons.index'))->assertUnauthorized();
+        $this->assertSame(0, $this->teacher->tokens()->count());
+        $this->assertSame(0, AppAuthorizationCode::query()->whereBelongsTo($this->teacher)->count());
+        $this->assertSame([$kept->accessToken->getKey()], PersonalAccessToken::query()->pluck('id')->all());
+        $this->assertSame(1, AppAuthorizationCode::query()->whereBelongsTo($other)->count());
+    }
+
     public function test_spent_and_expired_codes_are_pruned(): void
     {
         $this->exchange($this->code())->assertCreated();

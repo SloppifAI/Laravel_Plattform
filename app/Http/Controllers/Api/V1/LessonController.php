@@ -70,6 +70,7 @@ class LessonController extends Controller
     public function show(Lesson $lesson): LessonResource
     {
         Gate::authorize('update', $lesson);
+        abort_if($lesson->isPracticeTask(), 404);
 
         return new LessonResource($lesson);
     }

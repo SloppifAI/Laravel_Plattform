@@ -182,6 +182,17 @@ class LessonApiTest extends TestCase
         $this->assertSame('Förderaufgabe.', $practiceTask->refresh()->summary);
     }
 
+    public function test_a_practice_task_is_not_shown_to_an_app(): void
+    {
+        $practiceTask = $this->lesson(attributes: ['practice_competency_id' => Competency::factory(), 'topic' => 'Förderaufgabe: Bruchrechnung']);
+        $admin = User::factory()->admin()->for($this->teacher->school)->create();
+
+        $this->withToken($this->token())->getJson(route('api.lessons.show', $practiceTask))->assertNotFound();
+
+        $this->app['auth']->forgetGuards();
+        $this->withToken($this->token($admin))->getJson(route('api.lessons.show', $practiceTask))->assertNotFound();
+    }
+
     public function test_a_token_stops_working_once_the_account_may_no_longer_connect_an_app(): void
     {
         $lesson = $this->lesson();
