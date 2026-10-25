@@ -9,7 +9,7 @@
     @if ($classes->isEmpty())
         <x-filament::empty-state
             :heading="__('Keine Klassen')"
-            :description="__('Sobald du eine Klasse leitest oder in einer Klasse unterrichtest, erscheint hier deren Lernstand.')"
+            :description="$isAdmin ? __('In deiner Schule gibt es noch keine Klasse. Lege zuerst unter „Klassen“ eine Klasse an.') : __('Sobald du eine Klasse leitest oder in einer Klasse unterrichtest, erscheint hier deren Lernstand.')"
             :icon="Heroicon::OutlinedUserGroup"
         />
     @else

@@ -9,7 +9,7 @@
             color="gray"
             :icon="Heroicon::OutlinedUserGroup"
             :heading="__('Keine Klasse zugeordnet')"
-            :description="__('Dir ist noch keine Klasse zugeordnet. Sobald die Schuladministration dich einer Klasse zuweist, erscheint sie hier.')"
+            :description="$isAdmin ? __('In deiner Schule gibt es noch keine Klasse. Lege zuerst unter „Klassen“ eine Klasse an.') : __('Dir ist noch keine Klasse zugeordnet. Sobald die Schuladministration dich einer Klasse zuweist, erscheint sie hier.')"
         />
     @else
         <div class="flex flex-wrap items-end justify-between gap-4">

@@ -169,9 +169,10 @@ class LearningProgress extends Page
     {
         $user = auth()->user();
         $classes = LearningInsights::visibleClasses($user)->orderBy('name')->pluck('name', 'id');
+        $isAdmin = $user->isAdmin();
 
         if ($this->schoolClassId === null) {
-            return ['classes' => $classes];
+            return ['classes' => $classes, 'isAdmin' => $isAdmin];
         }
 
         abort_unless($classes->has($this->schoolClassId), 403);
@@ -188,6 +189,7 @@ class LearningProgress extends Page
 
         return [
             'classes' => $classes,
+            'isAdmin' => $isAdmin,
             'students' => $students,
             'competencies' => $competencies,
             'averages' => LearningInsights::competencyAverages($answers),

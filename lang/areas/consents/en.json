@@ -89,6 +89,7 @@
     "Ich bin einverstanden": "I agree",
     "Ich bin nicht mehr einverstanden": "I no longer agree",
     "Im Fach :subject ist Tuto-Mikro an deiner Schule nicht möglich.": "Tuto-Mikro is not possible in :subject at your school.",
+    "In deiner Schule gibt es noch keine Klasse. Lege zuerst unter „Klassen“ eine Klasse an.": "Your school has no class yet. Create a class first under “Classes”.",
     "In diesen Fächern lässt sich das Tuto-Mikro nie einschalten, auch nicht mit Einwilligung: Dort geht es oft um Glauben, Überzeugungen oder Persönliches. Gesperrt ist eine Stunde, wenn ein Wort ihres Fachs so beginnt, Groß- und Kleinschreibung egal: „Religion“ sperrt auch „Katholische Religion“ und „Religionslehre“. Kurze Kürzel wie „LER“ müssen als ganzes Wort dastehen. Weitere Fächer schreibst du einfach dazu, mit Enter.": "In these subjects Tuto-Mikro can never be turned on, not even with consent: they often deal with faith, beliefs or personal matters. A lesson is blocked if a word of its subject begins like this, upper and lower case do not matter: “Religion” also blocks “Katholische Religion” and “Religionslehre”. Short abbreviations such as “LER” must appear as a whole word. Add further subjects simply by typing them and pressing Enter.",
     "In dieser Klasse gibt es noch keine Schüler:innen": "There are no students in this class yet",
     "Ja, ausschalten": "Yes, turn off",
