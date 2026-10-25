@@ -111,7 +111,8 @@ class LessonForm
                             ->label(__('Notizen'))
                             ->helperText(__('Stichpunkte, Tafelbild oder Notizen aus der Stunde'))
                             ->rows(12)
-                            ->required(),
+                            // Optional, e.g. when an app sets the summary; stored as an empty text like the API does (the column is not nullable).
+                            ->dehydrateStateUsing(fn (?string $state): string => $state ?? ''),
                         FileUpload::make('attachments')
                             ->label(__('Arbeitsblätter'))
                             ->helperText(__('Fotos oder Scans analoger Arbeitsblätter (JPG, PNG, WebP, HEIC oder PDF, max. 10 MB je Datei)'))

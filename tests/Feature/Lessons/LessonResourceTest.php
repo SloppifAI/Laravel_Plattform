@@ -36,6 +36,20 @@ class LessonResourceTest extends TestCase
         ]);
     }
 
+    public function test_a_lesson_can_be_created_without_notes(): void
+    {
+        $teacher = User::factory()->teacher()->create();
+        $schoolClass = SchoolClass::factory()->for($teacher, 'teacher')->create();
+        $this->actingAs($teacher);
+
+        Livewire::test(CreateLesson::class)
+            ->fillForm([...$this->lessonFormData($schoolClass), 'notes' => null])
+            ->call('create')
+            ->assertHasNoFormErrors();
+
+        $this->assertSame('', Lesson::query()->where('topic', 'Fotosynthese')->value('notes'));
+    }
+
     public function test_teachers_only_see_their_own_lessons(): void
     {
         $teacher = User::factory()->teacher()->create();
