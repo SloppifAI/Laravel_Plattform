@@ -15,6 +15,7 @@ use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -24,6 +25,7 @@ use Illuminate\Support\Facades\Storage;
  * configured number of school years. A lesson expires only when everything about it is older than the cut-off
  * (lesson date, last change, due date, newest hand-in), so current work is never lost to a mistyped date.
  * Questions, students' questions to the teacher, hand-ins, answers, messages and homework assignments go with them through the foreign keys. Klassenbuch entries (they name absent students) outlive their lesson and expire by their own date in the same run. Users, classes, schools and the competency framework are never touched.
+ * Worksheet files go with their lesson. A file that no lesson points to any more (lesson, class or teacher account deleted, worksheet removed in the form) is swept up in the same run once it is a day old.
  */
 #[Signature('lernplattform:prune-learning-data {--dry-run : Nur zählen, nichts löschen}')]
 #[Description('Löscht Unterrichtsstunden und Erklär\'s-mir-Gespräche, die älter als die Aufbewahrungsfrist sind')]
@@ -68,6 +70,8 @@ class PruneLearningData extends Command
 
         $files = $oldLessons()->whereNotNull('attachments')->pluck('attachments')->flatten()->filter(fn (mixed $path): bool => is_string($path))->unique();
 
+        $strayWorksheets = $this->strayWorksheets();
+
         $counts = [
             'Unterrichtsstunden' => $oldLessons()->count(),
             'Fragen' => Question::query()->whereIn('lesson_id', $oldLessons()->select('id'))->count(),
@@ -77,7 +81,7 @@ class PruneLearningData extends Command
             'Erklär\'s-mir-Gespräche' => $oldSessions()->count(),
             'Nachrichten' => ExplanationMessage::query()->whereIn('explanation_session_id', $oldSessions()->select('id'))->count(),
             'Klassenbuch-Einträge' => $oldClassBookEntries()->count(),
-            'Arbeitsblatt-Dateien' => $files->filter(fn (string $path): bool => Storage::disk('local')->exists($path))->count(),
+            'Arbeitsblatt-Dateien' => $files->filter(fn (string $path): bool => Storage::disk('local')->exists($path))->count() + $strayWorksheets->count(),
         ];
 
         $this->info(($dryRun ? 'Probelauf, es wird nichts gelöscht. ' : '').'Aufbewahrt wird alles ab dem '.$cutoff->format('d.m.Y').'.');
@@ -90,9 +94,10 @@ class PruneLearningData extends Command
             });
 
             // After the commit, so a failed delete never leaves lessons without their worksheets or the other way round.
-            Storage::disk('local')->delete(
-                $files->reject(fn (string $path): bool => Lesson::query()->whereJsonContains('attachments', $path)->exists())->values()->all(),
-            );
+            Storage::disk('local')->delete([
+                ...$files->reject(fn (string $path): bool => Lesson::query()->whereJsonContains('attachments', $path)->exists())->values()->all(),
+                ...$strayWorksheets->all(),
+            ]);
 
             Log::info('Lerndaten gelöscht', ['cutoff' => $cutoff->toDateString()] + $counts);
         }
@@ -100,6 +105,22 @@ class PruneLearningData extends Command
         $this->table(['Gegenstand', $dryRun ? 'würde gelöscht' : 'gelöscht'], collect($counts)->map(fn (int $count, string $label): array => [$label, $count])->values()->all());
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Worksheet files no lesson points to. The day of grace spares an upload that is being saved right now.
+     *
+     * @return Collection<int, string>
+     */
+    private function strayWorksheets(): Collection
+    {
+        $disk = Storage::disk('local');
+        $used = Lesson::query()->whereNotNull('attachments')->pluck('attachments')->flatten()->filter(fn (mixed $path): bool => is_string($path))->flip();
+        $graceEnds = now()->subDay()->getTimestamp();
+
+        return collect($disk->allFiles('worksheets'))
+            ->reject(fn (string $path): bool => $used->has($path) || $disk->lastModified($path) > $graceEnds)
+            ->values();
     }
 
     /**

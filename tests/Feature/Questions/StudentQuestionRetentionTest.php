@@ -6,6 +6,7 @@ use App\Models\Lesson;
 use App\Models\StudentQuestion;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class StudentQuestionRetentionTest extends TestCase
@@ -15,6 +16,8 @@ class StudentQuestionRetentionTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        Storage::fake('local');
 
         config([
             'lernplattform.retention.school_years_kept' => 1,

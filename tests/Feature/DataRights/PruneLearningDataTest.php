@@ -35,6 +35,9 @@ class PruneLearningDataTest extends TestCase
     {
         parent::setUp();
 
+        // The command also sweeps worksheets/, so no test may run it against the real disk.
+        Storage::fake('local');
+
         config([
             'lernplattform.retention.school_years_kept' => 2,
             'lernplattform.retention.school_year_starts' => '08-01',
@@ -305,6 +308,52 @@ class PruneLearningDataTest extends TestCase
 
         $this->assertModelExists($kept);
         Storage::disk('local')->assertExists('worksheets/shared.pdf');
+    }
+
+    public function test_worksheets_no_lesson_points_to_any_more_are_deleted_after_a_day(): void
+    {
+        $lessonDeleted = Lesson::factory()->create(['attachments' => ['worksheets/lesson-deleted.pdf']]);
+        $classDeleted = Lesson::factory()->create(['attachments' => ['worksheets/class-deleted.pdf']]);
+        $removedInForm = Lesson::factory()->create(['attachments' => ['worksheets/removed-in-form.pdf']]);
+        Lesson::factory()->create(['attachments' => ['worksheets/in-use.pdf']]);
+
+        foreach (['lesson-deleted', 'class-deleted', 'removed-in-form', 'in-use', 'never-referenced'] as $name) {
+            Storage::disk('local')->put("worksheets/{$name}.pdf", 'x');
+            touch(Storage::disk('local')->path("worksheets/{$name}.pdf"), now()->subDays(2)->getTimestamp());
+        }
+        Storage::disk('local')->put('worksheets/upload-of-today-saving.pdf', 'x');
+        Storage::disk('local')->put('exports/other.pdf', 'x');
+        touch(Storage::disk('local')->path('exports/other.pdf'), now()->subDays(2)->getTimestamp());
+        // A query delete fires no model event, so the file stays behind like after a cascade.
+        Lesson::query()->whereKey($lessonDeleted->getKey())->delete();
+        $classDeleted->schoolClass->delete();
+        $removedInForm->update(['attachments' => []]);
+        $this->assertModelMissing($classDeleted);
+
+        $this->artisan('lernplattform:prune-learning-data --dry-run')
+            ->expectsTable(['Gegenstand', 'würde gelöscht'], [
+                ['Unterrichtsstunden', 0],
+                ['Fragen', 0],
+                ['Rückfragen', 0],
+                ['Abgaben', 0],
+                ['Antworten', 0],
+                ['Erklär\'s-mir-Gespräche', 0],
+                ['Nachrichten', 0],
+                ['Klassenbuch-Einträge', 0],
+                ['Arbeitsblatt-Dateien', 4],
+            ])
+            ->assertSuccessful();
+        Storage::disk('local')->assertExists('worksheets/lesson-deleted.pdf');
+
+        $this->artisan('lernplattform:prune-learning-data')->assertSuccessful();
+
+        foreach (['lesson-deleted', 'class-deleted', 'removed-in-form', 'never-referenced'] as $name) {
+            Storage::disk('local')->assertMissing("worksheets/{$name}.pdf");
+        }
+        // Referenced, too young (an upload that is being saved right now) or outside worksheets/.
+        foreach (['worksheets/in-use.pdf', 'worksheets/upload-of-today-saving.pdf', 'exports/other.pdf'] as $path) {
+            Storage::disk('local')->assertExists($path);
+        }
     }
 
     public function test_a_broken_setting_deletes_nothing(): void
