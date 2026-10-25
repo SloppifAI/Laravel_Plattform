@@ -140,6 +140,7 @@ class QuestionsRelationManager extends RelationManager
                     ->authorize(fn (): bool => Gate::allows('update', $this->getLesson()))
                     ->visible(fn (): bool => ! $this->isReadOnly())
                     ->disabled(fn (): bool => $this->getLesson()->questions()->doesntExist())
+                    ->tooltip(fn (): ?string => $this->getLesson()->questions()->doesntExist() ? __('Lege zuerst Fragen an, zum Beispiel mit der KI.') : null)
                     ->requiresConfirmation()
                     ->modalHeading(__('Stufen für alle Fragen erstellen?'))
                     ->modalDescription(__('Die KI ergänzt bei jeder Frage die fehlenden Stufen Einstieg und Profi. Stufen, die du schon geschrieben hast, bleiben unverändert.'))
