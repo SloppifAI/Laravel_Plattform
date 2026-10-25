@@ -109,7 +109,7 @@ class DemoSeederTest extends TestCase
 
         $mia = User::query()->where('username', 'schueler')->sole();
         $this->assertSame('Emilian', $mia->name);
-        $this->assertSame('Frau Schulze', $mia->schoolClass->teacher->name);
+        $this->assertSame('Frau Sommer', $mia->schoolClass->teacher->name);
         $this->assertSame('7b', $mia->schoolClass->name);
         $this->assertSame('lehrer', $mia->schoolClass->teacher->username);
         $this->assertSame('Petra Krause', User::query()->where('username', 'schulleitung')->value('name'));

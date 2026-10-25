@@ -1094,7 +1094,7 @@
         </li>
         <li>
             <strong>Zugang:</strong> das Konto, der Name, den die App für das Gerät angibt (zum Beispiel „iPhone von Frau
-            Schulze“), der Hash des Zugangsschlüssels (nie der Schlüssel selbst), die Berechtigungen (Stunden und Klassen
+            Sommer“), der Hash des Zugangsschlüssels (nie der Schlüssel selbst), die Berechtigungen (Stunden und Klassen
             ansehen, Stunden anlegen, Zusammenfassung setzen, Namen der Schüler:innen abrufen) sowie der Zeitpunkt der
             Verbindung, der letzten Nutzung und des Ablaufs. Zum Zugang speichert Tuto keine IP-Adresse, keine Gerätekennung und keine E-Mail-Adresse.
         </li>

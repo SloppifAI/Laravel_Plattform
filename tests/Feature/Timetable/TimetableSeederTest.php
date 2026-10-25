@@ -63,7 +63,7 @@ class TimetableSeederTest extends TestCase
         $this->actingAs(User::query()->where('username', 'schueler')->firstOrFail())
             ->get(MyTimetable::getUrl())
             ->assertOk()
-            ->assertSee(['Mathematik', 'Frau Schulze', 'Sporthalle']);
+            ->assertSee(['Mathematik', 'Frau Sommer', 'Sporthalle']);
     }
 
     public function test_the_demo_teacher_of_two_classes_sees_both(): void

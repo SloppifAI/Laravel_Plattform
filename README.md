@@ -13,7 +13,7 @@ Tuto ist eine Lernplattform für Schulen (Laravel 13, Filament 5, PHP 8.4). Mehr
 | --- | --- | --- |
 | Plattform-Administration | `hackathon` | alle registrierten Schulen, Administrationszugänge, Kompetenzraster |
 | Schuladministration | `schulleitung` | Gesamtschule am Lernpark: Benutzer, Klassen, Einwilligungen, AVV, KI-Freischaltung |
-| Lehrkraft | `lehrer` (Frau Schulze) | Klasse 7b: Heute, Unterrichtsstunden, Hausaufgaben, Klassenbuch, Lernstand, Rückfragen |
+| Lehrkraft | `lehrer` (Frau Sommer) | Klasse 7b: Heute, Unterrichtsstunden, Hausaufgaben, Klassenbuch, Lernstand, Rückfragen |
 | Schüler | `schueler` (Emilian) | Hausaufgaben, „Erklär’s mir“, Mein Lernstand, Rückfragen |
 
 Alle Demo-Zugänge und was die zweite Demo-Schule zeigt, stehen im [Schnellstart](#2-schnellstart).
@@ -197,7 +197,7 @@ Alle Demo-Konten haben das Passwort **`hackathon2026`**. Auf der Anmeldeseite w�
 | --- | --- | --- | --- |
 | `hackathon` | Plattform-Administration | Hackathon | gehört zu keiner Schule |
 | `schulleitung` | Schuladministration | Petra Krause | Gesamtschule am Lernpark (Fulda) |
-| `lehrer` | Lehrkraft | Frau Schulze | Klassenleitung 7b |
+| `lehrer` | Lehrkraft | Frau Sommer | Klassenleitung 7b |
 | `weber` | Lehrkraft | Thomas Weber | Klassenleitung 7a, unterrichtet auch 7b |
 | `lindner` | Lehrkraft | Sabine Lindner | vertritt für einige Tage die Klasse 7b |
 | `schueler` | Schüler:in | Emilian | Klasse 7b |
@@ -1117,7 +1117,7 @@ Gut zu wissen:
 
 **So erreichst du es:** Benutzermenü oben rechts → Profil (`/profile`) → Abschnitt „Verbundene Apps“
 
-1. Die Liste zeigt jede verbundene App mit dem Namen, den die App für das Gerät angegeben hat (zum Beispiel „iPhone von Frau Schulze“), dem Tag der Verbindung, wann sie zuletzt genutzt wurde und bis wann der Zugang gilt.
+1. Die Liste zeigt jede verbundene App mit dem Namen, den die App für das Gerät angegeben hat (zum Beispiel „iPhone von Frau Sommer“), dem Tag der Verbindung, wann sie zuletzt genutzt wurde und bis wann der Zugang gilt.
 2. Klicke bei der App auf **„Zugang entziehen“** und bestätige. Die App kann danach nichts mehr in Tuto ansehen oder ändern, bis du sie neu verbindest.
 
 Ein Zugang gilt 180 Tage, danach verbindest du die App noch einmal. Hast du das Handy verloren, entziehe den Zugang sofort. Er hört auch auf zu gelten, solange deine Schule gesperrt ist oder den AVV neu annehmen muss, und wenn dein Konto nicht mehr Lehrkraft oder Schuladministration ist. Bekommt dein Konto ein neues Passwort (von dir, über den Link zum Zurücksetzen oder von der Schuladministration), enden alle verbundenen Apps, und du verbindest sie mit dem neuen Passwort neu. Mit dem Konto wird ein Zugang gelöscht.
@@ -1165,7 +1165,7 @@ Ein Zugang gilt 180 Tage, danach verbindest du die App noch einmal. Hast du das 
    | `client_id` | Wie in Schritt 2. |
    | `redirect_uri` | Genau wie in Schritt 2. |
    | `code_verifier` | Der `code_verifier` aus Schritt 1. |
-   | `device_name` | Name des Geräts, höchstens 100 Zeichen. Er steht im Profil unter „Verbundene Apps“, zum Beispiel „iPhone von Frau Schulze“. |
+   | `device_name` | Name des Geräts, höchstens 100 Zeichen. Er steht im Profil unter „Verbundene Apps“, zum Beispiel „iPhone von Frau Sommer“. |
 
    ```bash
    curl -X POST https://tuto.example.org/api/v1/token \
@@ -1177,7 +1177,7 @@ Ein Zugang gilt 180 Tage, danach verbindest du die App noch einmal. Hast du das 
        "client_id": "tuto-app",
        "redirect_uri": "tutoapp://callback",
        "code_verifier": "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk",
-       "device_name": "iPhone von Frau Schulze"
+       "device_name": "iPhone von Frau Sommer"
      }'
    ```
 
@@ -1189,7 +1189,7 @@ Ein Zugang gilt 180 Tage, danach verbindest du die App noch einmal. Hast du das 
      "token_type": "Bearer",
      "abilities": ["lessons:read", "lessons:create", "lessons:summary", "roster:read"],
      "expires_at": "2027-04-23T10:15:00+00:00",
-     "user": { "name": "Frau Schulze", "role": "teacher" }
+     "user": { "name": "Frau Sommer", "role": "teacher" }
    }
    ```
 
@@ -1427,7 +1427,7 @@ klassen-liste.webp
   Sichtbar: Klassen 7a und 7b mit Klassenleitung, weiteren Lehrkräften, Klassencode, Zahl der Schüler:innen.
 klasse-zuordnung.webp
   URL: /klassen/{id der Klasse 7b}/edit   Login: schulleitung
-  Sichtbar: Formular mit Name, Klassenleitung (Frau Schulze), Klassencode, oben rechts "Neuen Code erzeugen", darunter die Reiter "Schüler:innen" (geöffnet, mit den Schüler:innen der 7b), "Unterrichtende Lehrkräfte" und "Vertretungen".
+  Sichtbar: Formular mit Name, Klassenleitung (Frau Sommer), Klassencode, oben rechts "Neuen Code erzeugen", darunter die Reiter "Schüler:innen" (geöffnet, mit den Schüler:innen der 7b), "Unterrichtende Lehrkräfte" und "Vertretungen".
 schuelerliste-importieren.webp
   URL: /schuelerliste-importieren   Login: schulleitung
   Sichtbar: Datei-Auswahl "CSV-Datei" mit "Vorschau erstellen" und rechts die Karte "So muss die Datei aufgebaut sein" mit dem Beispiel.

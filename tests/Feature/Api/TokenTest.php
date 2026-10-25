@@ -35,7 +35,7 @@ class TokenTest extends TestCase
             'andere-app' => ['name' => 'Andere App', 'redirect_uris' => ['andereapp://callback']],
         ]]);
 
-        $this->teacher = User::factory()->teacher()->create(['name' => 'Frau Schulze']);
+        $this->teacher = User::factory()->teacher()->create(['name' => 'Frau Sommer']);
     }
 
     private function code(?User $user = null, string $clientId = 'tuto-app', string $redirectUri = 'tutoapp://callback'): string
@@ -70,7 +70,7 @@ class TokenTest extends TestCase
         $response = $this->exchange($this->code())
             ->assertCreated()
             ->assertJsonPath('abilities', ['lessons:read', 'lessons:create', 'lessons:summary', 'roster:read'])
-            ->assertJsonPath('user', ['name' => 'Frau Schulze', 'role' => 'teacher'])
+            ->assertJsonPath('user', ['name' => 'Frau Sommer', 'role' => 'teacher'])
             ->assertJsonMissingPath('user.email');
 
         $token = PersonalAccessToken::findToken($response->json('token'));
@@ -286,7 +286,7 @@ class TokenTest extends TestCase
         $kept = $other->createToken('Tablet', TokenController::ABILITIES);
         $this->code($other);
 
-        $this->teacher->update(['name' => 'Frau Schulze-Meier']);
+        $this->teacher->update(['name' => 'Frau Sommer-Meier']);
         $this->assertSame(1, $this->teacher->tokens()->count());
         $this->assertSame(1, AppAuthorizationCode::query()->whereBelongsTo($this->teacher)->where('used_at', null)->count());
 

@@ -453,7 +453,7 @@ class PersonalDataExportTest extends TestCase
         $other->createToken('Tablet einer Kollegin', TokenController::ABILITIES);
 
         $this->travelTo('2026-10-24 10:00:00');
-        $used = $teacher->createToken('iPhone von Frau Schulze', TokenController::ABILITIES, now()->addDays(180));
+        $used = $teacher->createToken('iPhone von Frau Sommer', TokenController::ABILITIES, now()->addDays(180));
         $unused = $teacher->createToken('Altes Tablet', ['lessons:read']);
         $this->travelTo('2026-10-25 08:30:00');
         $used->accessToken->forceFill(['last_used_at' => now()])->save();
@@ -462,7 +462,7 @@ class PersonalDataExportTest extends TestCase
 
         $this->assertSame([
             [
-                'name' => 'iPhone von Frau Schulze',
+                'name' => 'iPhone von Frau Sommer',
                 'verbunden_am' => now()->subDay()->setTime(10, 0)->toIso8601String(),
                 'zuletzt_genutzt_am' => now()->toIso8601String(),
                 'gueltig_bis' => now()->subDay()->setTime(10, 0)->addDays(180)->toIso8601String(),

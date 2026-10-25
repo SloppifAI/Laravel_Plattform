@@ -34,7 +34,7 @@ use Illuminate\Support\Facades\DB;
  *
  * Class 7b also shows the newer features: a confirmed and a draft Klassenbuch entry (one absence), a running Vertretung
  * by Sabine Lindner, an open and an answered Rückfrage of Emilian, Einstieg and Profi levels on the questions of "Satz des
- * Pythagoras" and a few bell notifications for Frau Schulze and Emilian. Like the lessons, all of it is only created when
+ * Pythagoras" and a few bell notifications for Frau Sommer and Emilian. Like the lessons, all of it is only created when
  * missing; the notifications only for a person who has none yet, and a Vertretung that has run out is renewed from today.
  */
 class DemoSchoolSeeder extends Seeder
@@ -49,13 +49,13 @@ class DemoSchoolSeeder extends Seeder
             $admin = $this->user('schulleitung', 'Petra Krause', Role::Admin, $school);
             $this->optIntoAi($school, $admin);
             $this->acceptDpa($school, $admin);
-            $anna = $this->user('lehrer', 'Frau Schulze', Role::Teacher, $school);
+            $anna = $this->user('lehrer', 'Frau Sommer', Role::Teacher, $school);
             $weber = $this->user('weber', 'Thomas Weber', Role::Teacher, $school);
             $lindner = $this->user('lindner', 'Sabine Lindner', Role::Teacher, $school);
 
             $class7b = $this->schoolClass($school, '7b', $anna);
             $class7a = $this->schoolClass($school, '7a', $weber);
-            // Thomas Weber leads 7a and also teaches 7b (assigned, not Klassenleitung); Frau Schulze's demo data stay the first thing
+            // Thomas Weber leads 7a and also teaches 7b (assigned, not Klassenleitung); Frau Sommer's demo data stay the first thing
             // she sees, which is why it is not the other way round. Re-seeding keeps assignments the administration added.
             $class7b->teachers()->syncWithoutDetaching([$weber->id]);
 
@@ -405,7 +405,7 @@ class DemoSchoolSeeder extends Seeder
                     ['Bei der Fotosynthese stellt die Pflanze aus Kohlenstoffdioxid und Wasser Traubenzucker her. Dafür braucht sie Licht und das Chlorophyll. Dabei entsteht Sauerstoff, den wir zum Atmen brauchen. Das passiert in den Chloroplasten in den Blättern. Das CO₂ kommt durch die Spaltöffnungen rein.', 85, 'Ausgangsstoffe, Produkte, Licht und Ort sind richtig und vollständig genannt. Es fehlt nur, wie das Wasser in die Pflanze gelangt (über die Wurzeln).'],
                     ['Hypothese: Je näher die Lampe ist, desto mehr Bläschen. Das stimmt, weil bei 10 cm 38 Bläschen waren und bei 50 cm nur 6. Die Bläschen sind Sauerstoff. Gleich bleiben muss die Pflanze.', 70, 'Die Messwerte sind richtig ausgewertet und der Sauerstoff wird erkannt. Die Hypothese beschreibt aber nur die Beobachtung (Abstand) statt den Zusammenhang Licht → Fotosynthese. Bei den Bedingungen fehlen Temperatur und Zählzeit.'],
                     ['Ich finde, der Vergleich passt, weil der Regenwald ganz viel Sauerstoff macht und wir den zum Atmen brauchen. Ohne Regenwald hätten wir keine Luft.', 55, 'Ein Argument für den Vergleich ist genannt. Es fehlt die Gegenseite: Eine Lunge nimmt Sauerstoff auf, die Pflanze gibt ihn ab. „Ohne Regenwald keine Luft“ ist zu stark verallgemeinert.'],
-                    ['Frau Schulze hat Pfeile für Tag und Nacht an die Tafel gemalt. Die Pflanze atmet immer, also auch nachts, sie macht nur nachts keine Fotosynthese. Mir hat geholfen, dass Jonas das gefragt hat, weil ich mir das auch nicht erklären konnte. Die Fabrik mit dem Abfallprodukt fand ich auch gut.', 80, 'Der Unterschied zwischen Tag und Nacht ist richtig wiedergegeben und der eigene Lernweg nachvollziehbar beschrieben. Den Fachbegriff Zellatmung noch verwenden.'],
+                    ['Frau Sommer hat Pfeile für Tag und Nacht an die Tafel gemalt. Die Pflanze atmet immer, also auch nachts, sie macht nur nachts keine Fotosynthese. Mir hat geholfen, dass Jonas das gefragt hat, weil ich mir das auch nicht erklären konnte. Die Fabrik mit dem Abfallprodukt fand ich auch gut.', 80, 'Der Unterschied zwischen Tag und Nacht ist richtig wiedergegeben und der eigene Lernweg nachvollziehbar beschrieben. Den Fachbegriff Zellatmung noch verwenden.'],
                 ],
             ],
             'ben.krueger' => [
@@ -444,7 +444,7 @@ class DemoSchoolSeeder extends Seeder
                     ['Die Pflanze nimmt CO₂ und Wasser auf und macht daraus Zucker und Sauerstoff. Dafür braucht sie Licht. Das ist in den Blättern.', 70, 'Ausgangsstoffe und Produkte sind korrekt. Genauer wäre: in den Chloroplasten, mithilfe von Chlorophyll.'],
                     ['Bei 10 cm waren es 38, bei 30 cm 17 und bei 50 cm 6. Also werden es weniger.', 45, 'Die Messwerte werden nur wiedergegeben. Es fehlen die Hypothese, die Erklärung (weniger Licht → weniger Fotosynthese → weniger Sauerstoff) und die konstanten Bedingungen.'],
                     ['Der Vergleich passt nicht ganz, weil die Lunge Sauerstoff braucht und der Wald Sauerstoff macht. Aber beide sind wichtig für die Luft.', 65, 'Der zentrale Unterschied ist erkannt. Das Urteil könnte deutlicher begründet und abschließend formuliert werden.'],
-                    ['Das war meine Frage :) Pflanzen atmen auch, das ist die Zellatmung, nachts gibt es aber keine Fotosynthese. Mir hat geholfen, dass Frau Schulze das gleich an der Tafel ergänzt hat und nicht erst nächste Woche.', 75, 'Inhalt richtig; die eigene Frage als Lernanlass gut reflektiert.'],
+                    ['Das war meine Frage :) Pflanzen atmen auch, das ist die Zellatmung, nachts gibt es aber keine Fotosynthese. Mir hat geholfen, dass Frau Sommer das gleich an der Tafel ergänzt hat und nicht erst nächste Woche.', 75, 'Inhalt richtig; die eigene Frage als Lernanlass gut reflektiert.'],
                 ],
             ],
             'elif.yilmaz' => [
@@ -718,7 +718,7 @@ class DemoSchoolSeeder extends Seeder
 
     /**
      * Two Rückfragen of Emilian: one about "Satz des Pythagoras" that waits for an answer, and one about "Fotosynthese" that
-     * Frau Schulze answered and Emilian has not read yet.
+     * Frau Sommer answered and Emilian has not read yet.
      *
      * @return array{0: StudentQuestion, 1: StudentQuestion} the open and the answered one
      */
@@ -770,7 +770,7 @@ class DemoSchoolSeeder extends Seeder
     }
 
     /**
-     * A few entries in the bell, made the way the platform makes them: Frau Schulze sees the new Rückfrage and the hand-ins of
+     * A few entries in the bell, made the way the platform makes them: Frau Sommer sees the new Rückfrage and the hand-ins of
      * "Satz des Pythagoras", Emilian the new homework and the answer to his question. Only for a person without any entry,
      * so re-seeding adds none.
      */
