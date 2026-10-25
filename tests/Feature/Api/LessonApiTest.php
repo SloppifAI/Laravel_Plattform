@@ -15,8 +15,9 @@ use Tests\TestCase;
 
 /**
  * What a connected app sees and changes: the lessons the account may edit (LessonPolicy::update), the classes it may
- * place lessons in, new lessons there and the summaries; nothing of another teacher or another school, no
- * Förderaufgaben and nothing about students. Every route asks for its own ability.
+ * place lessons in, new lessons there, the summaries and the subjects used at the school; beyond those subjects
+ * nothing of another teacher, nothing of another school, no Förderaufgaben and nothing about students. Every route
+ * asks for its own ability.
  */
 class LessonApiTest extends TestCase
 {
@@ -259,6 +260,30 @@ class LessonApiTest extends TestCase
             ->assertJsonPath('data.*.id', [$this->class->id]);
     }
 
+    public function test_the_subjects_of_the_school_come_once_each_and_alphabetically(): void
+    {
+        $this->lesson(attributes: ['subject' => 'Mathe']);
+        $this->lesson(attributes: ['subject' => 'Biologie']);
+        $colleague = User::factory()->teacher()->for($this->teacher->school)->create();
+        $this->lesson($colleague, SchoolClass::factory()->for($this->teacher->school)->create(), ['subject' => 'Mathe']);
+        $this->lesson(attributes: ['subject' => 'Förderfach', 'practice_competency_id' => Competency::factory()]);
+        Lesson::factory()->create(['subject' => 'Latein']);
+
+        $this->withToken($this->token())->getJson(route('api.subjects.index'))
+            ->assertOk()
+            ->assertExactJson(['data' => ['Biologie', 'Mathe']]);
+    }
+
+    public function test_a_teacher_without_a_school_gets_no_subjects_of_other_school_less_classes(): void
+    {
+        $teacher = User::factory()->teacher()->create(['school_id' => null]);
+        Lesson::factory()->for(SchoolClass::factory()->create(['school_id' => null]))->create(['subject' => 'Latein']);
+
+        $this->withToken($this->token($teacher))->getJson(route('api.subjects.index'))
+            ->assertOk()
+            ->assertExactJson(['data' => []]);
+    }
+
     public function test_a_teacher_creates_a_lesson_in_a_class_they_teach(): void
     {
         $taught = SchoolClass::factory()->for($this->teacher, 'teacher')->create(['name' => '5a']);
@@ -364,6 +389,7 @@ class LessonApiTest extends TestCase
                 $this->withToken($token)->getJson(route('api.classes.index')),
                 $this->withToken($token)->getJson(route('api.lessons.index')),
                 $this->withToken($token)->getJson(route('api.lessons.show', $lesson)),
+                $this->withToken($token)->getJson(route('api.subjects.index')),
             ],
             'lessons:create' => fn (string $token): array => [
                 $this->withToken($token)->postJson(route('api.lessons.store'), ['school_class_id' => $taught->id, 'subject' => 'Biologie', 'topic' => 'Thema']),

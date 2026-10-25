@@ -108,6 +108,7 @@ class AppAuthorizationTest extends TestCase
             ->assertSee(__(':app mit Tuto verbinden', ['app' => 'Tuto-App']))
             ->assertSee(__('Angemeldet als :name', ['name' => 'Frau Schulze']))
             ->assertSee(__('deine Stunden und Klassen sehen'))
+            ->assertSee(__('die Fächer deiner Schule sehen'))
             ->assertSee(__('Daten deiner Schüler:innen sehen'))
             ->assertSee('name="decision" value="allow"', false)
             ->assertSee(__('Erlauben'))

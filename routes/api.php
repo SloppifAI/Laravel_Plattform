@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\V1\LessonController;
 use App\Http\Controllers\Api\V1\SchoolClassController;
+use App\Http\Controllers\Api\V1\SubjectController;
 use App\Http\Controllers\Api\V1\TokenController;
 use App\Http\Middleware\EnsureAppMayConnect;
 use Illuminate\Support\Facades\Route;
@@ -24,6 +25,7 @@ Route::prefix('v1')->name('api.')->group(function (): void {
                 Route::get('classes', [SchoolClassController::class, 'index'])->name('classes.index');
                 Route::get('lessons', [LessonController::class, 'index'])->name('lessons.index');
                 Route::get('lessons/{lesson}', [LessonController::class, 'show'])->name('lessons.show');
+                Route::get('subjects', [SubjectController::class, 'index'])->name('subjects.index');
             });
 
             Route::post('lessons', [LessonController::class, 'store'])->middleware(CheckAbilities::class.':lessons:create')->name('lessons.store');
