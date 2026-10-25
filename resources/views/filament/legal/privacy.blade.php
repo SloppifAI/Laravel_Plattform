@@ -171,8 +171,8 @@
         </li>
         <li>
             Lehrkräfte und Schuladministrationen können eine App mit ihrem Konto verbinden. Die App sieht nur
-            Stunden und Klassen der Person, nie Daten von Schüler:innen, und die Person kann den Zugang jederzeit
-            entziehen (siehe Abschnitt {{ $no('apps') }}).
+            Stunden und Klassen der Person und von Schüler:innen nur die Namen, mit denen sie Texte auf dem Gerät
+            pseudonymisiert. Die Person kann den Zugang jederzeit entziehen (siehe Abschnitt {{ $no('apps') }}).
         </li>
     </ul>
 
@@ -211,9 +211,10 @@
                 wenn deine Eltern eingewilligt haben, und ein Balken zeigt, ob es an ist.
             </li>
             <li>
-                Deine Lehrkraft kann eine App mit ihrem Konto verbinden. Die App sieht nur Stunden und Klassen
-                deiner Lehrkraft, nie Daten von dir. Die Zusammenfassung, die du vor den Fragen liest, kann von so einer
-                App stammen.
+                Deine Lehrkraft oder die Schuladministration kann eine App mit ihrem Konto verbinden. Die App sieht nur
+                Stunden und Klassen dieser Person und von dir nur deinen Namen. Damit ersetzt sie deinen Namen auf dem
+                Gerät dieser Person durch einen Platzhalter, bevor ein Text das Gerät verlässt. Die Zusammenfassung, die du
+                vor den Fragen liest, kann von so einer App stammen.
             </li>
             <li>
                 Der Verständniswert von 0 bis 100 ist keine Note. Er zeigt nur, wo du vielleicht noch Hilfe brauchen
@@ -1021,8 +1022,11 @@
     <h2 id="apps">{{ $heading('apps') }}</h2>
     <p>
         Lehrkräfte und Schuladministrationen können eine App, derzeit Tuto Mic, mit ihrem Konto verbinden.
-        Die App zeigt ihnen ihre Stunden und Klassen, legt neue Stunden an und setzt die Zusammenfassung einer Stunde. Das
-        geschieht nur, wenn die Person die App selbst verbindet. Wer keine App verbindet, ist davon nicht betroffen.
+        Die App zeigt ihnen ihre Stunden und Klassen, legt neue Stunden an und setzt die Zusammenfassung einer Stunde.
+        Damit sie Namen in Texten auf dem Gerät durch Platzhalter ersetzen kann, bekommt sie die Namen der Schüler:innen
+        dieser Klassen. Das geschieht nur, wenn die Person die App selbst verbindet. Wer keine App verbindet, ist davon
+        nicht betroffen, Schüler:innen nur mit ihrem Namen, wenn eine ihrer Lehrkräfte oder die Schuladministration
+        eine App verbindet.
     </p>
     <h3>Wer eine App verbinden kann</h3>
     <p>
@@ -1046,16 +1050,24 @@
             <strong>Sehen:</strong> die Stunden, die die Person selbst bearbeiten darf, bei Lehrkräften ihre eigenen, bei
             der Schuladministration alle der Schule, jeweils ohne Förderaufgaben. Das sind Fach, Thema, Datum, die Klasse
             (Nummer und Name), die Zusammenfassung, ob sie aus einer App stammt und ob die Hausaufgabe freigegeben ist.
-            Dazu die Klassen, in denen die Person Stunden anlegen darf (Nummer und Name), und beim Verbinden der Name und
-            die Rolle der Person.
+            Dazu die Klassen, in denen die Person Stunden anlegen darf (Nummer und Name), die Fächer, die an der Schule
+            in Stunden vorkommen, und beim Verbinden der Name und die Rolle der Person.
+        </li>
+        <li>
+            <strong>Namen von Schüler:innen:</strong> die Anzeigenamen der Schüler:innen in den Klassen, die die Person
+            leitet, denen sie zugeordnet ist oder die sie an diesem Tag vertritt, bei der Schuladministration in allen
+            Klassen der Schule, jeweils mit Nummer und Name der Klasse. Nur der Name, keine Benutzernamen, Nummern,
+            E-Mail-Adressen oder anderen Angaben. Die App darf die Namen ausschließlich nutzen, um sie in Texten auf dem
+            Gerät durch Platzhalter zu ersetzen, bevor ein Text das Gerät verlässt (lokale Pseudonymisierung), und darf
+            sie nicht speichern. Tuto Mic arbeitet nach Angaben ihres Herstellers so.
         </li>
         <li>
             <strong>Ändern:</strong> in diesen Klassen neue Stunden anlegen (Klasse, Fach, Thema, Datum und auf Wunsch
             Notizen, die Person ist dann die Lehrkraft der Stunde) und die Zusammenfassung einer Stunde setzen.
         </li>
         <li>
-            <strong>Nie:</strong> Daten von Schüler:innen, die Notizen einer Stunde, Ergebnisse, Abgaben, Gespräche, die
-            E-Mail-Adresse oder das Passwort.
+            <strong>Nie:</strong> andere Daten von Schüler:innen als ihre Namen, die Notizen einer Stunde, Ergebnisse,
+            Abgaben, Gespräche, die E-Mail-Adresse oder das Passwort.
         </li>
     </ul>
     <p>
@@ -1083,8 +1095,8 @@
         <li>
             <strong>Zugang:</strong> das Konto, der Name, den die App für das Gerät angibt (zum Beispiel „iPhone von Frau
             Schulze“), der Hash des Zugangsschlüssels (nie der Schlüssel selbst), die Berechtigungen (Stunden und Klassen
-            ansehen, Stunden anlegen, Zusammenfassung setzen) sowie der Zeitpunkt der Verbindung, der letzten Nutzung und
-            des Ablaufs. Zum Zugang speichert Tuto keine IP-Adresse, keine Gerätekennung und keine E-Mail-Adresse.
+            ansehen, Stunden anlegen, Zusammenfassung setzen, Namen der Schüler:innen abrufen) sowie der Zeitpunkt der
+            Verbindung, der letzten Nutzung und des Ablaufs. Zum Zugang speichert Tuto keine IP-Adresse, keine Gerätekennung und keine E-Mail-Adresse.
         </li>
     </ul>
     <p>

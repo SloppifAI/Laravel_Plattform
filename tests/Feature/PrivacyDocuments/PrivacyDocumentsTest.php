@@ -462,7 +462,7 @@ class PrivacyDocumentsTest extends TestCase
             Schema::getColumnListing('app_authorization_codes'),
             'A new column of a one-time code has to be named in the register entry and the privacy policy first.',
         );
-        $this->assertSame(['lessons:read', 'lessons:create', 'lessons:summary'], TokenController::ABILITIES);
+        $this->assertSame(['lessons:read', 'lessons:create', 'lessons:summary', 'roster:read'], TokenController::ABILITIES);
         $this->assertSame(
             ['id', 'subject', 'topic', 'held_on', 'class', 'summary', 'summary_from_app', 'released'],
             array_keys((new LessonResource(Lesson::factory()->create()))->toArray(request())),
@@ -481,7 +481,8 @@ class PrivacyDocumentsTest extends TestCase
             ->assertSee('Mit dem Konto und mit jedem neuen Passwort des Kontos werden Zugänge und offene Codes gelöscht.')
             ->assertSee('Hash des Zugangsschlüssels (nie der Schlüssel selbst)')
             ->assertSee('Keine IP-Adresse, keine Gerätekennung, keine E-Mail-Adresse zum Zugang.')
-            ->assertSee('Nie abrufbar: Daten von Schüler:innen, Notizen, Ergebnisse, Abgaben, Gespräche, E-Mail-Adresse, Passwort.')
+            ->assertSee('Nie abrufbar: andere Daten von Schüler:innen als ihre Namen, Notizen, Ergebnisse, Abgaben, Gespräche, E-Mail-Adresse, Passwort.')
+            ->assertSee('die App darf sie nur zur lokalen Pseudonymisierung nutzen und nicht speichern')
             ->assertSee('Die Zugänge sieht nur die Person selbst (Profil, Datenexport)');
 
         config(['sanctum.expiration' => null]);

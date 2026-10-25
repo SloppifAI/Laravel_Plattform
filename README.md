@@ -1026,7 +1026,7 @@ Die wichtigsten Regeln im Überblick. Die ausführlichen Texte stehen in der Anw
 
 **Datenauskunft.** Jede Person lädt ihre Daten selbst herunter (Profil → „Meine Daten herunterladen“). Die Schuladministration kann das für Konten ihrer Schule tun (Benutzer → Konto → „Datenauskunft“). Die Datei der Person selbst enthält auch die Zugänge verbundener Apps (Name, Verbindung, letzte Nutzung, Ablauf, Berechtigungen), nie den Zugangsschlüssel.
 
-**Verbundene Apps.** Lehrkräfte und Schuladministrationen können eine App mit ihrem Konto verbinden ([Abschnitt 7](#7-app-anbindung)). Die App sieht und ändert nur Stunden und Klassen der Person und nie Daten von Schüler:innen. Dazu sieht sie, welche Fächer an der Schule in Stunden vorkommen, als Auswahl beim Anlegen einer Stunde. Tuto speichert den Einmal-Code (5 Minuten gültig) und den Zugangsschlüssel (180 Tage gültig) nur als Hash, dazu Name, Berechtigungen, Verbindung, letzte Nutzung und Ablauf des Zugangs, keine IP-Adresse. Beides wird mit dem Konto gelöscht, ein Zugang auch sofort, wenn die Person ihn im Profil entzieht oder ihr Passwort ändert.
+**Verbundene Apps.** Lehrkräfte und Schuladministrationen können eine App mit ihrem Konto verbinden ([Abschnitt 7](#7-app-anbindung)). Die App sieht und ändert nur Stunden und Klassen der Person. Dazu sieht sie, welche Fächer an der Schule in Stunden vorkommen, als Auswahl beim Anlegen einer Stunde. Von Schüler:innen bekommt sie nur die Anzeigenamen in den Klassen der Person, um Namen auf dem Gerät durch Platzhalter zu ersetzen (lokale Pseudonymisierung), und darf sie nicht speichern. Andere Daten von Schüler:innen sieht sie nie. Tuto speichert den Einmal-Code (5 Minuten gültig) und den Zugangsschlüssel (180 Tage gültig) nur als Hash, dazu Name, Berechtigungen, Verbindung, letzte Nutzung und Ablauf des Zugangs, keine IP-Adresse. Beides wird mit dem Konto gelöscht, ein Zugang auch sofort, wenn die Person ihn im Profil entzieht oder ihr Passwort ändert.
 
 **Wer sieht was.** Alles, was zu einer Schule gehört, sehen nur Personen dieser Schule. Die Plattform-Administration sieht keine Lerndaten. Lehrkräfte sehen die Ergebnisse, Rückmeldungen der KI und Lernstände zu ihren eigenen Stunden und den Klassen, die sie unterrichten, bis hin zum Bericht für das Elterngespräch. Die Schuladministration sieht alle Stunden und Ergebnisse ihrer Schule. Schüler:innen sehen nur ihre eigenen Daten. Mit dem Ende einer Vertretung endet auch der Zugriff der Vertretung.
 
@@ -1089,7 +1089,7 @@ Die Tests laufen mit einer SQLite-Datenbank im Arbeitsspeicher, ohne Zugang zu e
 
 ## 7. App-Anbindung
 
-Eine App, derzeit „Tuto Mic“, kann sich mit dem Konto einer Lehrkraft oder der Schuladministration verbinden. Sie zeigt die eigenen Stunden, legt neue Stunden an und setzt die Zusammenfassung einer Stunde. Die Verbindung baut auf Laravel Sanctum auf. Die App öffnet die Anmeldeseite von Tuto im Browser und bekommt am Ende einen Zugang. Das Passwort sieht sie nie.
+Eine App, derzeit „Tuto Mic“, kann sich mit dem Konto einer Lehrkraft oder der Schuladministration verbinden. Sie zeigt die eigenen Stunden, legt neue Stunden an, setzt die Zusammenfassung einer Stunde und pseudonymisiert Texte auf dem Gerät mit den Namen der Schüler:innen. Die Verbindung baut auf Laravel Sanctum auf. Die App öffnet die Anmeldeseite von Tuto im Browser und bekommt am Ende einen Zugang. Das Passwort sieht sie nie.
 
 ### 7.1 Für Lehrkräfte: App verbinden und Zugang entziehen
 
@@ -1100,7 +1100,7 @@ Verbinden können **Lehrkräfte und Schuladministrationen**. Schüler:innen und 
 **So erreichst du es:** Du startest das Verbinden in der App. Sie öffnet im Browser die Tuto-Seite `/app/verbinden`.
 
 1. Melde dich auf der Anmeldeseite von Tuto an, wie sonst auch. Bist du schon angemeldet, entfällt das. Dein Passwort gibst du nur hier ein, nie in der App.
-2. Die Seite „Tuto Mic mit Tuto verbinden“ zeigt, was die App **darf**: deine Stunden und Klassen sehen (als Schuladministration die Stunden und Klassen deiner Schule), die Fächer deiner Schule sehen, neue Stunden anlegen und die Zusammenfassung einer Stunde setzen. Und was sie **nicht darf**: Daten deiner Schüler:innen sehen, Ergebnisse und Abgaben sehen, dein Passwort erfahren.
+2. Die Seite „Tuto Mic mit Tuto verbinden“ zeigt, was die App **darf**: deine Stunden und Klassen sehen (als Schuladministration die Stunden und Klassen deiner Schule), die Fächer deiner Schule sehen, die Namen deiner Schüler:innen für die lokale Pseudonymisierung sehen (als Schuladministration die der Schüler:innen deiner Schule), neue Stunden anlegen und die Zusammenfassung einer Stunde setzen. Und was sie **nicht darf**: weitere Daten deiner Schüler:innen sehen, Ergebnisse und Abgaben sehen, dein Passwort erfahren.
 3. Klicke auf **„Erlauben“**. Mit „Abbrechen“ bekommt die App keinen Zugang: Die Seite zeigt dann „Verbindung abgelehnt“, und die App erfährt mit „Zurück zu Tuto Mic“ davon.
 4. Die Seite „Tuto Mic ist verbunden“ erscheint, und der Browser versucht, die App zu öffnen. Öffnet sie sich nicht von selbst, klicke auf **„Tuto Mic öffnen“**. Damit ist sie verbunden, das Browserfenster kannst du schließen.
 
@@ -1186,7 +1186,7 @@ Ein Zugang gilt 180 Tage, danach verbindest du die App noch einmal. Hast du das 
    {
      "token": "7|Qk3w…",
      "token_type": "Bearer",
-     "abilities": ["lessons:read", "lessons:create", "lessons:summary"],
+     "abilities": ["lessons:read", "lessons:create", "lessons:summary", "roster:read"],
      "expires_at": "2027-04-23T10:15:00+00:00",
      "user": { "name": "Frau Schulze", "role": "teacher" }
    }
@@ -1204,13 +1204,16 @@ curl https://tuto.example.org/api/v1/classes \
 
 #### Berechtigungen und Lebensdauer
 
-Jeder Zugang trägt immer alle drei Berechtigungen (Abilities). Jede Route prüft ihre eigene.
+Jeder neue Zugang trägt immer alle vier Berechtigungen (Abilities). Jede Route prüft ihre eigene.
 
 | Berechtigung | Erlaubt |
 | --- | --- |
 | `lessons:read` | `GET /classes`, `GET /subjects`, `GET /lessons`, `GET /lessons/{id}` |
 | `lessons:create` | `POST /lessons` |
 | `lessons:summary` | `PUT /lessons/{id}/summary` |
+| `roster:read` | `GET /roster` |
+
+Zugänge, die vor `roster:read` ausgestellt wurden, haben diese Berechtigung nicht: `GET /roster` antwortet ihnen mit 403. Die App verbindet die Person dann neu.
 
 Ein Zugang gilt 180 Tage ab dem Verbinden, auch wenn er täglich genutzt wird. Die Person entzieht ihn im Profil, die App mit `DELETE /api/v1/token`. Ein neues Passwort des Kontos löscht alle seine Zugänge und offenen Einmal-Codes. Außerdem prüft Tuto bei **jeder** Anfrage, ob das Konto noch Lehrkraft oder Schuladministration ist und die Schule weder gesperrt ist noch den AVV neu annehmen muss. Sonst antwortet es mit 403, ohne den Zugang zu löschen.
 
@@ -1228,8 +1231,9 @@ Alle Pfade stehen unter `/api/v1`. Antworten mit Daten haben die Form `{"data": 
 | `GET /lessons/{id}` | `lessons:read` | eine Stunde |
 | `POST /lessons` | `lessons:create` | legt eine Stunde an (201) |
 | `PUT /lessons/{id}/summary` | `lessons:summary` | setzt die Zusammenfassung einer Stunde |
+| `GET /roster` | `roster:read` | Namen der Schüler:innen in den Klassen der Person, für die lokale Pseudonymisierung |
 
-**Wer was sieht.** Lehrkräfte sehen die Klassen, die sie leiten, denen sie zugeordnet sind oder die sie gerade vertreten, und ihre eigenen Stunden. Eine Schuladministration sieht alle Klassen und alle Stunden ihrer Schule. Förderaufgaben sieht die App nie: Sie stehen nicht in der Liste, `GET /lessons/{id}` antwortet mit 404, und ihre Zusammenfassung lässt sich nicht setzen. Daten von Schüler:innen kommen in keiner Antwort vor.
+**Wer was sieht.** Lehrkräfte sehen die Klassen, die sie leiten, denen sie zugeordnet sind oder die sie gerade vertreten, und ihre eigenen Stunden. Eine Schuladministration sieht alle Klassen und alle Stunden ihrer Schule. Förderaufgaben sieht die App nie: Sie stehen nicht in der Liste, `GET /lessons/{id}` antwortet mit 404, und ihre Zusammenfassung lässt sich nicht setzen. Von Schüler:innen kommen nur in `GET /roster` die Anzeigenamen vor, sonst keine Daten.
 
 **Eine Stunde** sieht so aus:
 
@@ -1327,6 +1331,23 @@ curl -X PUT https://tuto.example.org/api/v1/lessons/12/summary \
 ```
 
 **Wichtig:** Eine Zusammenfassung darf **keine personenbezogenen Daten von Schüler:innen** enthalten (keine Namen, keine Leistungen). Schüler:innen lesen sie vor den Fragen der Hausaufgabe, und ein KI-Entwurf liest sie als Hintergrund, sofern die Schule die KI eingeschaltet hat. Ein neuer KI-Entwurf ersetzt sie nicht.
+
+##### Namen der Schüler:innen
+
+`GET /roster` liefert die Namen der Schüler:innen in den Klassen, die die Person leitet, denen sie zugeordnet ist oder die sie heute vertritt. Eine Schuladministration bekommt alle Klassen ihrer Schule. Die Klassen sind nach Name sortiert, die Namen darin ebenfalls. Eine Klasse ohne Schüler:innen erscheint mit leerer Liste.
+
+```bash
+curl https://tuto.example.org/api/v1/roster \
+  -H "Accept: application/json" -H "Authorization: Bearer 7|Qk3w…"
+```
+
+```json
+{ "data": [ { "class": { "id": 3, "name": "7b" }, "students": ["Lena Wagner", "Tom Becker"] } ] }
+```
+
+Die Antwort enthält nur den Anzeigenamen (`users.name`), keine Nummern, Benutzernamen, E-Mail-Adressen, Ergebnisse oder andere Angaben.
+
+**Zweck:** Eine App darf die Namen **ausschließlich zur lokalen Pseudonymisierung** nutzen: Sie ersetzt Namen in Texten auf dem Gerät durch Platzhalter, bevor ein Text das Gerät verlässt. Sie darf die Namen **nicht speichern**. Tuto Mic arbeitet nach Angaben ihres Herstellers so.
 
 #### Fehler
 

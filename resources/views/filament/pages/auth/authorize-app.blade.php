@@ -28,6 +28,7 @@
                     @foreach ([
                         $isAdmin ? __('die Stunden und Klassen deiner Schule sehen') : __('deine Stunden und Klassen sehen'),
                         __('die Fächer deiner Schule sehen'),
+                        $isAdmin ? __('die Namen der Schüler:innen deiner Schule für die lokale Pseudonymisierung sehen') : __('die Namen deiner Schüler:innen für die lokale Pseudonymisierung sehen'),
                         __('neue Stunden anlegen'),
                         __('die Zusammenfassung einer Stunde setzen'),
                     ] as $permission)
@@ -46,7 +47,7 @@
 
                 <ul class="mt-2 grid gap-2 text-sm text-gray-700 dark:text-gray-300">
                     @foreach ([
-                        __('Daten deiner Schüler:innen sehen'),
+                        $isAdmin ? __('weitere Daten der Schüler:innen deiner Schule sehen') : __('weitere Daten deiner Schüler:innen sehen'),
                         __('Ergebnisse und Abgaben sehen'),
                         __('dein Passwort erfahren'),
                     ] as $restriction)

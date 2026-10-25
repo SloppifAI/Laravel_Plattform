@@ -109,7 +109,8 @@ class AppAuthorizationTest extends TestCase
             ->assertSee(__('Angemeldet als :name', ['name' => 'Frau Schulze']))
             ->assertSee(__('deine Stunden und Klassen sehen'))
             ->assertSee(__('die Fächer deiner Schule sehen'))
-            ->assertSee(__('Daten deiner Schüler:innen sehen'))
+            ->assertSee(__('die Namen deiner Schüler:innen für die lokale Pseudonymisierung sehen'))
+            ->assertSee(__('weitere Daten deiner Schüler:innen sehen'))
             ->assertSee('name="decision" value="allow"', false)
             ->assertSee(__('Erlauben'))
             ->assertSee(__('Abbrechen'));
@@ -152,6 +153,8 @@ class AppAuthorizationTest extends TestCase
             ->get(route('app.authorize', $this->authorizationRequest()))
             ->assertOk()
             ->assertSee(__('die Stunden und Klassen deiner Schule sehen'))
+            ->assertSee(__('die Namen der Schüler:innen deiner Schule für die lokale Pseudonymisierung sehen'))
+            ->assertSee(__('weitere Daten der Schüler:innen deiner Schule sehen'))
             ->assertSee(__('Erlauben'));
     }
 

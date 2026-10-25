@@ -69,7 +69,7 @@ class TokenTest extends TestCase
     {
         $response = $this->exchange($this->code())
             ->assertCreated()
-            ->assertJsonPath('abilities', ['lessons:read', 'lessons:create', 'lessons:summary'])
+            ->assertJsonPath('abilities', ['lessons:read', 'lessons:create', 'lessons:summary', 'roster:read'])
             ->assertJsonPath('user', ['name' => 'Frau Schulze', 'role' => 'teacher'])
             ->assertJsonMissingPath('user.email');
 

@@ -28,7 +28,7 @@ class ConnectedAppsTest extends TestCase
             ->assertOk()
             ->assertSee(__('Verbundene Apps'))
             ->assertSee('Tablet im Lehrerzimmer')
-            ->assertSee(__('Apps, denen du in Tuto den Zugang erlaubt hast. Eine App sieht die Stunden und Klassen, die du in Tuto bearbeiten darfst, legt neue Stunden an und setzt die Zusammenfassung einer Stunde. Daten deiner Schüler:innen sieht sie nicht.'))
+            ->assertSee(__('Apps, denen du in Tuto den Zugang erlaubt hast. Eine App sieht die Stunden und Klassen, die du in Tuto bearbeiten darfst, legt neue Stunden an und setzt die Zusammenfassung einer Stunde. Von Schüler:innen sieht sie nur die Namen, damit sie sie auf deinem Gerät pseudonymisieren kann.'))
             ->assertSee(__('Zugang entziehen'))
             ->assertDontSee('Fremdes Handy');
     }

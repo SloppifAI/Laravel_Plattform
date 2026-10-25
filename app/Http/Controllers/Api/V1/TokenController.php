@@ -18,12 +18,13 @@ use Illuminate\Http\Response;
 class TokenController extends Controller
 {
     /**
-     * Everything a connected app may do, and nothing more: see its lessons and classes, create a lesson and set a
-     * lesson's summary. Each API route asks for its ability (routes/api.php).
+     * Everything a connected app may do, and nothing more: see its lessons and classes, create a lesson, set a
+     * lesson's summary and read the names of the students in its classes for pseudonymising on the device. Each API
+     * route asks for its ability (routes/api.php).
      *
      * @var list<string>
      */
-    public const array ABILITIES = ['lessons:read', 'lessons:create', 'lessons:summary'];
+    public const array ABILITIES = ['lessons:read', 'lessons:create', 'lessons:summary', 'roster:read'];
 
     public function store(StoreTokenRequest $request): JsonResponse
     {

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\LessonController;
+use App\Http\Controllers\Api\V1\RosterController;
 use App\Http\Controllers\Api\V1\SchoolClassController;
 use App\Http\Controllers\Api\V1\SubjectController;
 use App\Http\Controllers\Api\V1\TokenController;
@@ -30,6 +31,7 @@ Route::prefix('v1')->name('api.')->group(function (): void {
 
             Route::post('lessons', [LessonController::class, 'store'])->middleware(CheckAbilities::class.':lessons:create')->name('lessons.store');
             Route::put('lessons/{lesson}/summary', [LessonController::class, 'updateSummary'])->middleware(CheckAbilities::class.':lessons:summary')->name('lessons.summary.update');
+            Route::get('roster', [RosterController::class, 'index'])->middleware(CheckAbilities::class.':roster:read')->name('roster.index');
         });
     });
 });

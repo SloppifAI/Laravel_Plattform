@@ -466,7 +466,7 @@ class PersonalDataExportTest extends TestCase
                 'verbunden_am' => now()->subDay()->setTime(10, 0)->toIso8601String(),
                 'zuletzt_genutzt_am' => now()->toIso8601String(),
                 'gueltig_bis' => now()->subDay()->setTime(10, 0)->addDays(180)->toIso8601String(),
-                'berechtigungen' => ['lessons:read', 'lessons:create', 'lessons:summary'],
+                'berechtigungen' => ['lessons:read', 'lessons:create', 'lessons:summary', 'roster:read'],
             ],
             [
                 'name' => 'Altes Tablet',
