@@ -208,7 +208,7 @@ class LegalPagesTest extends TestCase
         $rows = array_filter(explode('</tr>', $body[1]), fn (string $row): bool => str_contains($row, '<th scope="row">'));
 
         $this->assertSame(['Daten', 'Schüler:in', 'Lehrkraft', 'Schuladministration (nur die eigene Schule)', 'Plattform-Administration'], $headers[1]);
-        $this->assertCount(13, $rows);
+        $this->assertCount(14, $rows);
 
         foreach ($rows as $row) {
             $this->assertSame(4, substr_count($row, '<td>'), $row);
@@ -371,6 +371,27 @@ class LegalPagesTest extends TestCase
             'keine Namen und keinen Text',
             'Die öffentliche Einwilligungsseite setzt kein Cookie',
             'Code ebenfalls in diesem Zugriffsprotokoll',
+        ] as $phrase) {
+            $this->assertStringContainsString($phrase, $text);
+        }
+    }
+
+    /**
+     * Fehlerdiagnose (issue #3, AC-10): what is stored, who sees it and where it comes from.
+     */
+    public function test_the_privacy_policy_covers_the_mistake_type(): void
+    {
+        $text = $this->text(route('legal.privacy'));
+
+        foreach ([
+            'Bei Antworten unter 80 Punkten außerdem als Hinweis die Fehlerart',
+            'und woher die Einordnung stammt: Demo-Logik, KI oder Lehrkraft.',
+            'Eingeordnet wird die Antwort, nicht die Person',
+            'Ist sie sich unsicher (Sicherheit unter 60 von 100), wird nichts gespeichert.',
+            'Die Fehlerart ändert weder Punkte noch Verständniswert noch Förderbedarf und steht nicht im Bericht für das Elterngespräch.',
+            'Lehrkräfte können sie korrigieren, dann gilt ihre Einordnung',
+            'Fehlerart einer Antwort (Hinweis)',
+            'in derselben Anfrage die Fehlerart als Hinweis',
         ] as $phrase) {
             $this->assertStringContainsString($phrase, $text);
         }

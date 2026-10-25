@@ -590,7 +590,10 @@
         <li>
             <strong>Abgaben (Schüler:innen):</strong> die eigene Zusammenfassung und die Antworten auf die Fragen mit der
             gewählten Stufe. Dazu das Ergebnis der Auswertung: ein Verständniswert von 0 bis 100 für die ganze Abgabe und
-            für jede Antwort, ein Feedback-Text, Hinweise auf Lücken und der Zeitpunkt der Auswertung.
+            für jede Antwort, ein Feedback-Text, Hinweise auf Lücken und der Zeitpunkt der Auswertung. Bei Antworten unter
+            {{ (int) config('lernplattform.mistakes.threshold') }} Punkten außerdem als Hinweis die Fehlerart (Grundidee
+            noch unklar, Weg/Schritt falsch, unvollständig, am Thema vorbei oder kein Versuch), bei einer Einordnung durch
+            die KI deren Sicherheit von 0 bis 100, und woher die Einordnung stammt: Demo-Logik, KI oder Lehrkraft.
         </li>
         <li>
             <strong>„Erklär’s mir“:</strong> Schüler:innen erklären der Computerfigur Tuto ein Thema und bekommen
@@ -673,6 +676,13 @@
                     <th scope="row">Abgaben, Verständniswerte und Feedback</th>
                     <td><span class="legal-cell-label">Schüler:in</span> nur die eigenen</td>
                     <td><span class="legal-cell-label">Lehrkraft</span> die Abgaben zu den eigenen Stunden, nach dem Ende einer Vertretung nicht mehr die zu Stunden aus der Vertretung, dazu im Elterngesprächs-Bericht Verständniswert und Feedback aller Hausaufgaben der Schüler:innen ihrer Klassen (siehe unten)</td>
+                    <td><span class="legal-cell-label">Schuladministration (nur die eigene Schule)</span> alle</td>
+                    <td><span class="legal-cell-label">Plattform-Administration</span> keine Einsicht</td>
+                </tr>
+                <tr>
+                    <th scope="row">Fehlerart einer Antwort (Hinweis)</th>
+                    <td><span class="legal-cell-label">Schüler:in</span> zu den eigenen Antworten einen passenden Tipp, nicht die Einordnung selbst</td>
+                    <td><span class="legal-cell-label">Lehrkraft</span> nur für Schüler:innen der Klassen, deren Lernstand sie sieht (Klassenleitung, zugeordnet oder gerade in Vertretung), mit der Möglichkeit, sie zu korrigieren</td>
                     <td><span class="legal-cell-label">Schuladministration (nur die eigene Schule)</span> alle</td>
                     <td><span class="legal-cell-label">Plattform-Administration</span> keine Einsicht</td>
                 </tr>
@@ -786,6 +796,20 @@
         entscheiden selbst, ob und wie sie den Wert nutzen. Über Förderung, Noten oder Versetzung entscheidet die Schule,
         nie die Plattform (siehe Abschnitt {{ $no('ki') }}).
     </p>
+    <h3>Fehlerart</h3>
+    <p>
+        Die Fehlerart ist nur ein Hinweis darauf, welche Art von Fehler eine Antwort zeigt. Eingeordnet wird die Antwort,
+        nicht die Person: ohne Antwortzeiten, Tipp- oder Verhaltensdaten und ohne Aussagen über Motivation oder Gefühle.
+        Ohne KI-Funktionen ordnet eine regelbasierte Demo-Logik auf der Plattform ein (leere, sehr kurze oder themenfremde
+        Antworten). Mit KI-Funktionen ordnet die KI in derselben Anfrage ein, mit der sie die Abgabe auswertet. Ist sie
+        sich unsicher (Sicherheit unter {{ (int) round(100 * (float) config('lernplattform.mistakes.min_confidence')) }} von
+        100), wird nichts gespeichert. Die Fehlerart ändert weder Punkte noch Verständniswert noch Förderbedarf und steht
+        nicht im Bericht für das Elterngespräch. Sie sehen die Lehrkräfte, die den Lernstand der Schüler:in sehen, als
+        Verteilung je Kompetenz und neben der einzelnen Antwort, und die Schuladministration der eigenen Schule.
+        Lehrkräfte können sie korrigieren, dann gilt ihre Einordnung und wird bei einer neuen Auswertung nicht
+        überschrieben. Schüler:innen sehen dazu einen ermutigenden Tipp. Die Fehlerart gehört zur Antwort und wird mit
+        ihr gelöscht.
+    </p>
     <h3>Rechtsgrundlage</h3>
     <p>
         Im Schulbetrieb Art. 6 Abs. 1 lit. e DSGVO in Verbindung mit dem jeweiligen Landesschulgesetz, im Demo- und
@@ -802,7 +826,9 @@
         </li>
         <li>
             <strong>Auswertung einer Abgabe:</strong> ein Verständniswert von 0 bis 100, eine Rückmeldung, bis zu drei
-            Hinweise auf Lücken und ein Wert je Antwort.
+            Hinweise auf Lücken und ein Wert je Antwort, für Antworten unter
+            {{ (int) config('lernplattform.mistakes.threshold') }} Punkten in derselben Anfrage die Fehlerart als Hinweis
+            (siehe Abschnitt {{ $no('lerndaten') }}). Dafür geht nichts zusätzlich an den Anbieter.
         </li>
         <li>
             <strong>„Erklär’s mir“:</strong> Die Computerfigur Tuto stellt Rückfragen und schätzt am Ende ein, wie gut das

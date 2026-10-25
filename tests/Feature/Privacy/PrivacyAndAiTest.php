@@ -328,6 +328,23 @@ class PrivacyAndAiTest extends TestCase
             ->assertDontSee('AI features turned off');
     }
 
+    /**
+     * Fehlerdiagnose (issue #3, AC-10): the page says what is stored, who sees it, where it comes from and that the
+     * evaluation request already carries it.
+     */
+    public function test_the_page_names_the_mistake_type(): void
+    {
+        $this->actingAs(User::factory()->teacher()->create())
+            ->get('/datenschutz')
+            ->assertOk()
+            ->assertSee('In the same request, for answers below 80 points, the type of mistake as a hint')
+            ->assertSee('Type of mistake: for answers below 80 points, Tuto stores as a hint which type of mistake the answer shows')
+            ->assertSee('(demo logic, AI or teacher)')
+            ->assertSee('It is the answer that is classified, never the person.')
+            ->assertSee('The type of mistake is seen by the teachers who see the student’s learning progress, and by the school administration. Teachers can correct it.')
+            ->assertSee('is not part of the report for the parent meeting');
+    }
+
     public function test_the_retention_phrase_follows_the_language_of_the_page(): void
     {
         config(['lernplattform.retention.school_years_kept' => 3]);

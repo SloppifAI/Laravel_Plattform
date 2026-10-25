@@ -1,6 +1,7 @@
 @php
     use App\Filament\Pages\ParentReport;
     use App\Filament\Resources\Lessons\LessonResource;
+    use App\MistakeType;
     use App\UnderstandingLevel;
     use Filament\Support\Icons\Heroicon;
 @endphp
@@ -210,6 +211,23 @@
                 </ul>
             @endif
         </x-filament::section>
+
+        @if (! empty($mistakeCounts))
+            <x-filament::section
+                :heading="__('Fehlerarten je Kompetenz')"
+                :description="__('Welche Arten von Fehlern in den Antworten der Klasse vorkommen, am häufigsten zuerst. KI-Hinweis, kann falsch sein: Er ändert keine Punkte und erscheint nicht im Bericht für das Elterngespräch. Korrigieren kannst du ihn in den Abgaben einer Stunde.')"
+                :icon="Heroicon::OutlinedLightBulb"
+            >
+                <ul class="grid gap-2 text-sm">
+                    @foreach ($competencies->only(array_keys($mistakeCounts)) as $competency)
+                        <li wire:key="mistakes-{{ $competency->id }}" class="text-gray-600 dark:text-gray-400">
+                            <span class="font-medium text-gray-950 dark:text-white">{{ $competency->name }}:</span>
+                            {{ collect($mistakeCounts[$competency->id])->map(fn (int $count, string $type): string => __(':count× :type', ['count' => $count, 'type' => MistakeType::tryFrom($type)?->getLabel() ?? $type]))->join(', ') }}
+                        </li>
+                    @endforeach
+                </ul>
+            </x-filament::section>
+        @endif
 
         <x-filament::section
             :heading="__('Klassendurchschnitt je Stunde')"

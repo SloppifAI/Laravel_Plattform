@@ -120,6 +120,25 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Mistake types (Fehlerdiagnose)
+    |--------------------------------------------------------------------------
+    |
+    | After a hand-in is evaluated, every answer scoring below `threshold` (0–100) gets the kind of its mistake as a hint
+    | (App\MistakeType: core idea unclear, a step wrong, incomplete, off topic, no attempt): from the AI's reading in the
+    | same request for a school with the AI switched on, from fixed text rules otherwise (App\Ai\MistakeClassifier). A
+    | reading less sure than `min_confidence` (0–1) is not stored: no type is better than a wrong one. The type never
+    | changes a score, the support threshold or the parent report, and a teacher's correction is never overwritten.
+    | A failing classifier leaves the type empty; the evaluation of the hand-in never waits for it or fails because of it.
+    |
+    */
+
+    'mistakes' => [
+        'threshold' => (int) env('LERNPLATTFORM_MISTAKES_THRESHOLD', 80),
+        'min_confidence' => (float) env('LERNPLATTFORM_MISTAKES_MIN_CONFIDENCE', 0.6),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Vertretung (substitute handover)
     |--------------------------------------------------------------------------
     |

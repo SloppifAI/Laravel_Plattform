@@ -3,8 +3,10 @@
 namespace App\Providers;
 
 use App\Ai\LessonAssistant;
+use App\Ai\MistakeClassifier;
 use App\Ai\RecordingAnalyst;
 use App\Ai\SchoolAwareLessonAssistant;
+use App\Ai\SchoolAwareMistakeClassifier;
 use App\Ai\SchoolAwareRecordingAnalyst;
 use App\Ai\SchoolAwareTranscriber;
 use App\Ai\Transcriber;
@@ -36,6 +38,7 @@ class AppServiceProvider extends ServiceProvider
     {
         // Each call goes to the real AI (SDK) only for a school that switched it on, otherwise to the offline demo logic.
         $this->app->bind(LessonAssistant::class, SchoolAwareLessonAssistant::class);
+        $this->app->bind(MistakeClassifier::class, SchoolAwareMistakeClassifier::class);
 
         // Tuto-Mikro: sound segments and notes go to the real AI (SDK) only for a school that switched it on, otherwise the demo answers.
         $this->app->bind(Transcriber::class, SchoolAwareTranscriber::class);

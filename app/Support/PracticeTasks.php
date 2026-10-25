@@ -34,6 +34,7 @@ class PracticeTasks
      * Nothing is stored when the assistant fails. The callers authorize and validate the students.
      * The draft draws on ordinary lessons only (never on an earlier Förderaufgabe) and on the notes of those lessons
      * the teacher may view: of a colleague's lesson, only its topic and date reach the draft and the stored notes.
+     * The group's most frequent mistake type in the competency (MistakeDiagnosis) shapes the draft.
      *
      * @param  array{student_ids: list<int>, lesson_ids: list<int>}  $support  see LearningInsights::competencySupport()
      * @param  list<int>  $studentIds  students of the class who receive the task
@@ -71,7 +72,9 @@ class PracticeTasks
             ->values()
             ->all();
 
-        $draft = app(LessonAssistant::class)->draftPracticeTask($competency, $subject, $sourceLessons, $gaps);
+        $mistakeType = MistakeDiagnosis::mostFrequent($support['student_ids'], $support['lesson_ids'], $competency->getKey());
+
+        $draft = app(LessonAssistant::class)->draftPracticeTask($competency, $subject, $sourceLessons, $gaps, $mistakeType);
 
         $lesson = DB::transaction(function () use ($teacher, $schoolClass, $competency, $subject, $sourceLessons, $draft, $studentIds, $dueOn): Lesson {
             $lesson = Lesson::query()->create([

@@ -12,6 +12,7 @@ use App\Ai\Agents\SubmissionEvaluator;
 use App\Ai\Agents\TextSimplifier;
 use App\Filament\Pages\ExplainIt;
 use App\MessageAuthor;
+use App\MistakeType;
 use App\Models\Competency;
 use App\Models\ExplanationMessage;
 use App\Models\ExplanationSession;
@@ -75,7 +76,7 @@ class SdkLessonAssistant implements LessonAssistant
         ];
     }
 
-    public function draftPracticeTask(Competency $competency, string $subject, Collection $sourceLessons, array $gaps): array
+    public function draftPracticeTask(Competency $competency, string $subject, Collection $sourceLessons, array $gaps, ?MistakeType $mistakeType = null): array
     {
         $sourceLessons = $sourceLessons->values();
         $pseudonymizers = $sourceLessons->map(fn (Lesson $lesson): Pseudonymizer => $this->pseudonymizer($lesson->schoolClass));
@@ -92,12 +93,13 @@ class SdkLessonAssistant implements LessonAssistant
             blank($lesson->notes) ? null : "Notizen der Lehrkraft:\n".$pseudonymizers[$index]->apply($lesson->notes),
         ])))->implode("\n\n---\n\n");
 
-        $result = $this->askForData(new PracticeTaskDrafter, implode("\n\n", [
+        $result = $this->askForData(new PracticeTaskDrafter, implode("\n\n", array_filter([
             "Fach: {$subject}",
             "Kompetenz: {$competency->area} – {$competency->name}\nBeschreibung: ".($competency->description ?: '(keine)'),
             "Hinweise der KI auf Lücken (anonym):\n".$gapList,
+            $mistakeType === null ? null : "Häufigste Fehlerart in der Gruppe: {$this->germanLabel($mistakeType)}. {$mistakeType->practiceGuidance()}",
             "Stunden, in denen sich die Lücke gezeigt hat:\n\n".($lessons ?: '(keine)'),
-        ]));
+        ])));
 
         return [
             'summary' => $this->summary($result),
@@ -139,6 +141,12 @@ class SdkLessonAssistant implements LessonAssistant
 
             if ($questionId !== null && $answers->has($questionId)) {
                 $evaluatedAnswers[$questionId] = ['score' => $this->clamp($answer['score'] ?? 0), 'feedback' => $this->text($answer['feedback'] ?? null)];
+                // Optional and only a hint: an unknown type is dropped, the score stands either way.
+                $mistakeType = MistakeType::tryFrom($this->text($answer['mistake_type'] ?? null));
+
+                if ($mistakeType !== null) {
+                    $evaluatedAnswers[$questionId] += ['mistake_type' => $mistakeType, 'mistake_confidence' => $this->clamp($answer['mistake_confidence'] ?? 0)];
+                }
             }
         }
 
@@ -373,7 +381,7 @@ class SdkLessonAssistant implements LessonAssistant
     /**
      * The prompts are German whatever language the interface speaks, so the labels of the enums in them are too.
      */
-    private function germanLabel(QuestionType|QuestionLevel $case): string
+    private function germanLabel(QuestionType|QuestionLevel|MistakeType $case): string
     {
         $locale = app()->getLocale();
         app()->setLocale('de');

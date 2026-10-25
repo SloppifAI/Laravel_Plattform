@@ -2,6 +2,7 @@
 
 namespace App\Ai;
 
+use App\MistakeType;
 use App\Models\Competency;
 use App\Models\ExplanationSession;
 use App\Models\Lesson;
@@ -27,11 +28,11 @@ class SchoolAwareLessonAssistant implements LessonAssistant
     /**
      * The school is the one of the source lessons, without any lesson (a Förderaufgabe from competency alone) the one of the signed-in user.
      */
-    public function draftPracticeTask(Competency $competency, string $subject, Collection $sourceLessons, array $gaps): array
+    public function draftPracticeTask(Competency $competency, string $subject, Collection $sourceLessons, array $gaps, ?MistakeType $mistakeType = null): array
     {
         $school = $sourceLessons->first()?->schoolClass?->school ?? auth()->user()?->school;
 
-        return $this->assistantFor($school)->draftPracticeTask($competency, $subject, $sourceLessons, $gaps);
+        return $this->assistantFor($school)->draftPracticeTask($competency, $subject, $sourceLessons, $gaps, $mistakeType);
     }
 
     public function evaluateSubmission(Submission $submission): array

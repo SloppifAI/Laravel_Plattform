@@ -2,6 +2,7 @@
 
 namespace App\Ai;
 
+use App\MistakeType;
 use App\Models\Competency;
 use App\Models\ExplanationSession;
 use App\Models\Lesson;
@@ -33,18 +34,21 @@ interface LessonAssistant
      * Draft a Förderaufgabe: three or four practice questions on one competency, from easier to harder with one
      * application question, for students who showed gaps in the given lessons. `$gaps` are the anonymous hints the AI
      * named when it evaluated their homework. Every question is mapped to `$competency`; the summary says what is practised.
+     * `$mistakeType`, the most frequent mistake type of the group in that competency, shapes the task: an explanation and
+     * easy entry questions for `concept`, a worked example in steps for `procedure`, a scaffold for `incomplete`.
      *
      * @param  Collection<int, Lesson>  $sourceLessons  the lessons in which the gap showed
      * @param  list<string>  $gaps
      * @return array{summary: string, questions: list<array{type: QuestionType, prompt: string, expected_answer: string, competency_id: int}>}
      */
-    public function draftPracticeTask(Competency $competency, string $subject, Collection $sourceLessons, array $gaps): array;
+    public function draftPracticeTask(Competency $competency, string $subject, Collection $sourceLessons, array $gaps, ?MistakeType $mistakeType = null): array;
 
     /**
      * Check a student's own summary and answers (`$submission->answers`) against the lesson.
-     * Scores are 0–100.
+     * Scores are 0–100. An answer may carry the AI's reading of its mistake type with a confidence of 0–100, in the
+     * same request (see MistakeClassifier); it never changes a score.
      *
-     * @return array{understanding_score: int, feedback: string, gaps: list<string>, answers: array<int, array{score: int, feedback: string}>} answers keyed by question id
+     * @return array{understanding_score: int, feedback: string, gaps: list<string>, answers: array<int, array{score: int, feedback: string, mistake_type?: MistakeType, mistake_confidence?: int}>} answers keyed by question id
      */
     public function evaluateSubmission(Submission $submission): array;
 

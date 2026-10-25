@@ -234,6 +234,10 @@ class PersonalDataExport
                         'antwort' => $answer->answer,
                         'punkte' => $answer->score,
                         'rueckmeldung' => $answer->feedback,
+                        // Fehlerdiagnose: only a hint on the answer, with who named it (Demo-Logik, KI or Lehrkraft).
+                        'fehlerart' => self::germanLabel($answer->mistake_type),
+                        'fehlerart_sicherheit' => $answer->mistake_confidence,
+                        'fehlerart_quelle' => self::germanLabel($answer->mistake_source),
                     ])
                     ->values()
                     ->all(),

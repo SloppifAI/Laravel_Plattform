@@ -94,7 +94,7 @@ class PersonalDataExportTest extends TestCase
         $this->assertSame(80, $export['abgaben'][0]['verstaendnis_punkte']);
         $this->assertSame(['Mitose'], $export['abgaben'][0]['luecken']);
         $this->assertSame(
-            [['frage' => 'Was macht der Zellkern?', 'stufe' => null, 'antwort' => 'Er steuert die Zelle.', 'punkte' => 70, 'rueckmeldung' => 'Fast.']],
+            [['frage' => 'Was macht der Zellkern?', 'stufe' => null, 'antwort' => 'Er steuert die Zelle.', 'punkte' => 70, 'rueckmeldung' => 'Fast.', 'fehlerart' => null, 'fehlerart_sicherheit' => null, 'fehlerart_quelle' => null]],
             $export['abgaben'][0]['antworten'],
         );
 

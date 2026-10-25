@@ -77,7 +77,8 @@ class PrivacyAndAi extends Page
                 'title' => __('Abgabe einschätzen'),
                 'sent' => __('Die Stunde wie beim Entwurf mit Arbeitsblättern, die Fragen mit Erwartungshorizont und der gewählten Stufe, die Zusammenfassung und die Antworten der Schüler:in.'),
                 'notSent' => __('Andere Abgaben und alles, was zum Konto gehört.'),
-                'result' => __('Verständniswert von 0 bis 100, Rückmeldung, bis zu drei Hinweise auf Lücken und Punkte je Antwort. Die Schüler:in sieht das Ergebnis gleich nach der Abgabe.'),
+                'result' => __('Verständniswert von 0 bis 100, Rückmeldung, bis zu drei Hinweise auf Lücken und Punkte je Antwort. Die Schüler:in sieht das Ergebnis gleich nach der Abgabe.')
+                    .' '.__('In derselben Anfrage für Antworten unter :threshold Punkten die Fehlerart als Hinweis, etwa „Unvollständig“, mit der Sicherheit der KI. Sie ändert keine Punkte.', ['threshold' => (int) config('lernplattform.mistakes.threshold')]),
             ],
             'LessonAssistant::differentiateQuestion' => [
                 'title' => __('Stufen einer Frage'),
@@ -213,6 +214,8 @@ class PrivacyAndAi extends Page
                 'notes' => [
                     __('Andere Schüler:innen sehen eine Abgabe nie.'),
                     __('Den Lernstand einer Klasse sehen die Lehrkräfte, die sie leiten, unterrichten oder gerade vertreten.'),
+                    __('Fehlerart: Bei Antworten unter :threshold Punkten speichert Tuto als Hinweis, welche Art von Fehler die Antwort zeigt, etwa „Unvollständig“ oder „Weg/Schritt falsch“, und woher die Einordnung stammt (Demo-Logik, KI oder Lehrkraft). Eingeordnet wird die Antwort, nie die Person.', ['threshold' => (int) config('lernplattform.mistakes.threshold')]),
+                    __('Die Fehlerart sehen die Lehrkräfte, die den Lernstand der Schüler:in sehen, und die Schuladministration. Lehrkräfte können sie korrigieren. Die Schüler:in bekommt dazu einen Tipp. Sie ändert keine Punkte und steht nicht im Bericht für das Elterngespräch.'),
                 ],
             ],
             [

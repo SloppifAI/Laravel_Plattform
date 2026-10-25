@@ -10,6 +10,7 @@ use App\Models\SchoolClass;
 use App\Models\User;
 use App\Role;
 use App\Support\LearningInsights;
+use App\Support\MistakeDiagnosis;
 use App\Support\PracticeTasks;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -196,6 +197,8 @@ class LearningProgress extends Page
             'supportNeeds' => $supportNeeds,
             'supportCounts' => $supportCounts,
             'supportCompetencies' => $competencies->filter(fn (Competency $competency): bool => $supportCounts->has($competency->id)),
+            // Only the visible students of the class: the distribution never reaches beyond LearningInsights.
+            'mistakeCounts' => MistakeDiagnosis::counts($students->modelKeys()),
             'practiceTasks' => PracticeTasks::forClass($user, $this->schoolClassId),
             'supportLessons' => Lesson::query()
                 ->whereKey(collect($supportNeeds)->flatten(1)->pluck('lesson_ids')->flatten()->unique()->all())

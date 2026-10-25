@@ -3,6 +3,7 @@
 namespace App\Ai;
 
 use App\MessageAuthor;
+use App\MistakeType;
 use App\Models\Competency;
 use App\Models\ExplanationMessage;
 use App\Models\ExplanationSession;
@@ -27,7 +28,7 @@ class DemoLessonAssistant implements LessonAssistant
      * German words that carry no lesson content, plus classroom words that are never the subject matter
      * (a Förderaufgabe's notes name the Förderaufgabe and the Kompetenz in their header).
      */
-    private const array STOPWORDS = [
+    public const array STOPWORDS = [
         'aber', 'alle', 'allem', 'allen', 'aller', 'alles', 'also', 'andere', 'anderen', 'anderer', 'anderes', 'anschließend',
         'auch', 'außerdem', 'beim', 'bevor', 'beide', 'beiden', 'bereits', 'besonders', 'bitte', 'bzw', 'dabei', 'dadurch',
         'dafür', 'dagegen', 'daher', 'damit', 'danach', 'dann', 'daran', 'darauf', 'daraus', 'darin', 'darum', 'darüber',
@@ -135,7 +136,11 @@ class DemoLessonAssistant implements LessonAssistant
         ];
     }
 
-    public function draftPracticeTask(Competency $competency, string $subject, Collection $sourceLessons, array $gaps): array
+    /**
+     * The most frequent mistake type of the group shapes the warm-up question and the summary: an explanation of the
+     * core idea for `concept`, the steps of the lesson as a worked example for `procedure`, sentence starters for `incomplete`.
+     */
+    public function draftPracticeTask(Competency $competency, string $subject, Collection $sourceLessons, array $gaps, ?MistakeType $mistakeType = null): array
     {
         $topics = $sourceLessons->pluck('topic')->filter()->unique()->values();
         $topicText = $topics->implode('. ');
@@ -179,11 +184,21 @@ class DemoLessonAssistant implements LessonAssistant
             ];
         }
 
+        $questions[0]['prompt'] = $this->practiceWarmUp($mistakeType, $term(0), $description, $sentences) ?? $questions[0]['prompt'];
+
         $focus = $terms === [] ? '' : ' Im Mittelpunkt stehen '.$this->quotedList(array_column(array_slice($terms, 0, 3), 'term')).'.';
         $recap = $sentences === [] ? '' : ' '.$this->expectedAnswer($sentences, array_slice($terms, 0, 2));
+        $approach = match ($mistakeType) {
+            MistakeType::Concept => ' Wir fangen bei der Grundidee an.',
+            MistakeType::Procedure => ' Ein Beispiel in Teilschritten zeigt dir den Weg.',
+            MistakeType::Incomplete => ' Satzanfänge helfen dir, vollständig zu antworten.',
+            MistakeType::OffTopic => ' Lies jede Frage genau: Wonach ist gefragt?',
+            MistakeType::Empty => ' Fang einfach an, jeder Versuch zählt.',
+            null => '',
+        };
 
         return [
-            'summary' => "Diese Förderaufgabe übt die Kompetenz „{$competency->name}“ ({$subject})".($description === '' ? '.' : ": {$this->sentenceEnd($description)}")."{$focus}{$recap} Die Aufgaben werden Schritt für Schritt schwerer – nimm dir Zeit, du schaffst das!",
+            'summary' => "Diese Förderaufgabe übt die Kompetenz „{$competency->name}“ ({$subject})".($description === '' ? '.' : ": {$this->sentenceEnd($description)}")."{$focus}{$recap}{$approach} Die Aufgaben werden Schritt für Schritt schwerer – nimm dir Zeit, du schaffst das!",
             'questions' => array_map(fn (array $question): array => [...$question, 'competency_id' => $competency->getKey()], $questions),
         ];
     }
@@ -572,6 +587,27 @@ class DemoLessonAssistant implements LessonAssistant
             ->take(4)
             ->values()
             ->all();
+    }
+
+    /**
+     * The first question of a Förderaufgabe for the group's most frequent mistake type, or null to keep the usual one.
+     *
+     * @param  list<string>  $sentences  of the lesson notes
+     */
+    private function practiceWarmUp(?MistakeType $mistakeType, string $term, string $description, array $sentences): ?string
+    {
+        $steps = array_slice($sentences, 0, 3);
+
+        return match ($mistakeType) {
+            MistakeType::Concept => 'Zuerst die Grundidee: '.$this->sentenceEnd($description !== '' ? $description : ($sentences[0] ?? "„{$term}“ ist der Kern dieser Übung"))." Erkläre danach in ein, zwei Sätzen mit eigenen Worten, was „{$term}“ bedeutet.",
+            MistakeType::Procedure => 'Ein Beispiel in Teilschritten: '
+                .($steps === []
+                    ? "Schreib die Schritte zu „{$term}“ einzeln auf (1., 2., 3.)."
+                    : implode(' ', array_map(fn (string $step, int $index): string => ($index + 1).'. '.$this->sentenceEnd($step), $steps, array_keys($steps))))
+                .' Geh die Schritte nach und schreib zu jedem Schritt auf, warum er nötig ist.',
+            MistakeType::Incomplete => "Zum Aufwärmen mit Gerüst: Erkläre, was man unter „{$term}“ versteht, und ergänze dazu diese Satzanfänge: „{$term}“ bedeutet … Ein Beispiel dafür ist … Wichtig ist dabei …",
+            default => null,
+        };
     }
 
     private function sentenceEnd(string $text): string

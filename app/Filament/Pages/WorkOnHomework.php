@@ -10,6 +10,7 @@ use App\Models\Submission;
 use App\Models\User;
 use App\QuestionLevel;
 use App\Support\AskTeacher;
+use App\Support\MistakeDiagnosis;
 use App\Support\Notify;
 use App\Support\ReviewSchedule;
 use App\UnderstandingLevel;
@@ -332,6 +333,9 @@ class WorkOnHomework extends Page
 
             // The evaluation stands: revising the questions later ("Heute wiederholen") must never turn it into a failure.
             rescue(fn () => ReviewSchedule::enqueueFor($submission));
+
+            // Only a hint, stored after the evaluation: it can neither undo nor delay it (fail closed).
+            rescue(fn () => MistakeDiagnosis::record($submission, $evaluation['answers']));
         } catch (Throwable $exception) {
             report($exception);
 
@@ -379,6 +383,12 @@ class WorkOnHomework extends Page
                         $this->plainText("answer_{$question->getKey()}", $answer?->answer, __('Deine Antwort')),
                         $this->plainText("answer_feedback_{$question->getKey()}", $answer?->feedback, __('Rückmeldung'))
                             ->visible(filled($answer?->feedback)),
+                        // The tip for the kind of mistake (Fehlerdiagnose), never its label: it speaks about the answer, not the student.
+                        Callout::make(__('Tipp für dich'))
+                            ->description($answer?->mistake_type?->studentHint())
+                            ->info()
+                            ->icon(Heroicon::OutlinedLightBulb)
+                            ->visible($answer?->mistake_type !== null),
                     ]);
             })->all(),
             Section::make($this->lesson->isPracticeTask() ? __('So fasst deine Lehrkraft „:competency“ zusammen', ['competency' => $this->competencyName()]) : __('So fasst deine Lehrkraft die Stunde zusammen'))
