@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Models\ExplanationSession;
 use App\Models\Lesson;
 use App\Models\SchoolClass;
 use App\Models\StudentQuestion;
@@ -54,6 +55,21 @@ class LessonPolicy
     public function update(User $user, Lesson $lesson): bool
     {
         return $this->manages($user, $lesson);
+    }
+
+    /**
+     * Whether the lesson may be moved to another class (on top of createFor() for the new class): not once students
+     * have used it, i.e. it was released or has hand-ins, "Erklär's mir" sessions or questions. viewResults() asks for
+     * the substitution of the class the lesson currently sits in, so a move would give a substitute whose period is
+     * over the results of the class they covered back.
+     */
+    public function changeClass(User $user, Lesson $lesson): bool
+    {
+        return $this->update($user, $lesson)
+            && ! $lesson->isPublished()
+            && ! $lesson->submissions()->exists()
+            && ! ExplanationSession::query()->whereBelongsTo($lesson)->exists()
+            && ! StudentQuestion::query()->whereBelongsTo($lesson)->exists();
     }
 
     /**

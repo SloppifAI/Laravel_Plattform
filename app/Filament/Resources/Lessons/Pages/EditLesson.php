@@ -57,14 +57,16 @@ class EditLesson extends EditRecord
     /**
      * Moving the lesson to another class needs the same right as creating one there. A lesson that stays in its class
      * is not checked, so drafts of a class the teacher no longer teaches stay editable. The class select only offers
-     * the allowed classes; this is the backstop for a forged form state.
+     * the allowed classes; this is the backstop for a forged form state. A lesson the students have used stays in its
+     * class (LessonPolicy::changeClass): the select is disabled then and not part of $data, a forged value is refused here.
      *
      * @param  array<string, mixed>  $data
      * @return array<string, mixed>
      */
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        if ((int) $data['school_class_id'] !== (int) $this->record->getOriginal('school_class_id')) {
+        if (isset($data['school_class_id']) && (int) $data['school_class_id'] !== (int) $this->record->getOriginal('school_class_id')) {
+            Gate::authorize('changeClass', $this->record);
             Gate::authorize('createFor', [Lesson::class, SchoolClass::findOrFail($data['school_class_id'])]);
         }
 

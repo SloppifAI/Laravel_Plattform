@@ -38,6 +38,9 @@ class LessonForm
                             ->searchable()
                             ->preload()
                             ->live()
+                            // Released or used by students, the lesson's students and results belong to its class (LessonPolicy::changeClass). Not saved while disabled.
+                            ->disabled(fn (?Lesson $record): bool => $record !== null && auth()->user()->cannot('changeClass', $record))
+                            ->helperText(fn (Select $component): ?string => $component->isDisabled() ? __('Die Schüler:innen der Klasse haben diese Stunde schon bekommen, deshalb bleibt sie in ihrer Klasse.') : null)
                             ->required(),
                         DatePicker::make('held_on')
                             ->label(__('Gehalten am'))
