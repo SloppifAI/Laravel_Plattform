@@ -67,6 +67,8 @@ class LessonStarterPageTest extends TestCase
             ->assertOk()
             ->assertSeeInOrder(['Starter for the next lesson', 'Fotosynthese', 'Biologie · 7b · Lesson of 01.10.2026', 'These points are worth repeating', 'Warum brauchen Pflanzen Licht?', 'On average 25 %', '3 of 3 answers below 50 %', 'Wo findet die Fotosynthese statt?', 'On average 65 %', '0 of 3 answers below 50 %', 'Chlorophyll verwechselt', 'Named as a gap in 3 of 3 submissions'])
             ->assertSee(['Who can explain this?', 'Full screen', 'Print', 'No names and no individual results are shown.'])
+            // The page title says "Starter for the next lesson"; the board under it must not repeat it word for word.
+            ->assertSeeText('From the lesson')
             ->assertDontSee('Was entsteht als Abfallprodukt?')
             ->assertDontSee(['Mia', 'Hoffmann', 'Ben', 'Schneider', 'Lena', 'Becker']);
     }

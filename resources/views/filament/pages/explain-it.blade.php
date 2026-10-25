@@ -159,7 +159,7 @@
                             {{ __(':tutor denkt nach …', ['tutor' => $tutorName]) }}
                         </div>
 
-                        <form wire:submit="send" x-data class="mt-4 border-t border-gray-950/5 pt-4 dark:border-white/10">
+                        <form wire:submit="send" x-data="{ touch: window.matchMedia('(pointer: coarse)').matches }" class="mt-4 border-t border-gray-950/5 pt-4 dark:border-white/10">
                             <label for="explain-it-message" class="text-sm font-medium text-gray-950 dark:text-white">
                                 {{ __('Deine Erklärung') }}
                             </label>
@@ -173,12 +173,14 @@
                                 aria-describedby="explain-it-hint @error('newMessage') explain-it-error @enderror"
                                 @error('newMessage') aria-invalid="true" @enderror
                                 {{-- Livewire makes the field read-only while the form submits; skip Enter then to avoid a double send. --}}
-                                x-on:keydown.enter="if (! $event.shiftKey && ! $event.isComposing && ! $el.readOnly) { $event.preventDefault(); $el.form.requestSubmit() }"
+                                x-on:keydown.enter="if (! touch && ! $event.shiftKey && ! $event.isComposing && ! $el.readOnly) { $event.preventDefault(); $el.form.requestSubmit() }"
                                 class="mt-1 block w-full resize-y rounded-xl border-none bg-white px-4 py-3 text-base text-gray-950 shadow-sm ring-1 ring-gray-950/10 placeholder:text-gray-400 focus:ring-2 focus:ring-primary-600 focus:outline-hidden read-only:opacity-70 sm:text-sm dark:bg-white/5 dark:text-white dark:ring-white/20 dark:placeholder:text-gray-500 dark:focus:ring-primary-500"
                             ></textarea>
 
+                            {{-- A soft keyboard has no Shift + Enter, so on a touch screen Enter starts a new line and "Senden" sends. --}}
                             <p id="explain-it-hint" class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                {{ __('Enter schickt ab. Mit Shift + Enter machst du eine neue Zeile.') }}
+                                <span x-show="! touch">{{ __('Enter schickt ab. Mit Shift + Enter machst du eine neue Zeile.') }}</span>
+                                <span x-show="touch" x-cloak>{{ __('Die Eingabetaste macht eine neue Zeile. Mit „Senden“ schickst du deine Erklärung ab.') }}</span>
                             </p>
 
                             @error('newMessage')

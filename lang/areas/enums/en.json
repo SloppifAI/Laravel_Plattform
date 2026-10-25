@@ -1,4 +1,10 @@
 {
+    ":count Schüler:in-Bestätigung fehlt|:count Schüler:in-Bestätigungen fehlen": ":count student confirmation missing|:count student confirmations missing",
+    ":count erteilt": ":count granted",
+    ":count fehlt|:count fehlen": ":count missing|:count missing",
+    ":count teilweise": ":count partial",
+    ":count veraltet": ":count outdated",
+    ":count widerrufen": ":count revoked",
     "Anwendung": "Application",
     "Bearbeitet zugewiesene Hausaufgaben und übt mit „Erklär’s mir“.": "Works on assigned homework and practises with “Explain it to me”.",
     "Bestätigt": "Confirmed",

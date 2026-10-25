@@ -70,6 +70,13 @@ class RecordingSettingsTest extends TestCase
         $this->assertStringContainsString('nach 10 Tagen', ConsentForm::defaultBody($this->school));
     }
 
+    public function test_the_list_of_subjects_without_tuto_mikro_asks_for_a_subject_not_for_a_label(): void
+    {
+        $this->page()
+            ->assertSee('New subject')
+            ->assertDontSee('New label');
+    }
+
     public function test_every_checklist_item_is_explained(): void
     {
         $page = $this->page();

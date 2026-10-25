@@ -176,7 +176,9 @@ class Today extends Page implements HasTable
             ->hidden(fn (Lesson $record): bool => $record->isPublished())
             ->disabled(fn (Lesson $record): bool => ! HomeworkDraft::hasMaterial($record))
             ->tooltip(fn (Lesson $record): ?string => HomeworkDraft::hasMaterial($record) ? null : HomeworkDraft::missingMaterialHint())
-            ->requiresConfirmation(fn (Lesson $record): bool => $record->questions_count > 0)
+            // Filament opens the dialog whenever a heading or description is set, so "nothing to replace" has to hide it.
+            ->modalHidden(fn (Lesson $record): bool => $record->questions_count === 0)
+            ->requiresConfirmation()
             ->modalHeading(__('Hausaufgabe neu erstellen?'))
             ->modalDescription(fn (Lesson $record): string => HomeworkDraft::confirmationText($record))
             ->modalSubmitActionLabel(__('Neu erstellen'))

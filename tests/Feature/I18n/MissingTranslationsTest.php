@@ -73,7 +73,7 @@ REGEX;
 
         $this->assertTrue($this->isPackageOrGroupKey('filament-panels::global-search.label'));
         $this->assertTrue($this->isPackageOrGroupKey('validation.required'));
-        $this->assertFalse($this->isPackageOrGroupKey('D.M.YYYY'));
+        $this->assertFalse($this->isPackageOrGroupKey('DD.MM.YYYY'));
         $this->assertFalse($this->isPackageOrGroupKey('Das ist ein Satz. Noch einer.'));
         // Looks like a group key, but no PHP group file has it: it is a JSON key and needs English.
         $this->assertFalse($this->isPackageOrGroupKey('vorname.nachname'));

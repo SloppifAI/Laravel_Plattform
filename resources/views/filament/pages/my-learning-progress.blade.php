@@ -72,7 +72,7 @@
                         <li wire:key="strength-{{ $strength['competency']->id }}" class="grid content-start gap-1 rounded-xl p-4 ring-1 ring-gray-950/5 dark:ring-white/10">
                             <span class="text-xs text-gray-600 dark:text-gray-400">{{ $strength['competency']->subject ?? __('Fachübergreifend') }}</span>
                             <span class="font-medium text-gray-950 dark:text-white">{{ $strength['competency']->name }}</span>
-                            <span class="text-sm text-gray-600 dark:text-gray-400">{{ Str::limit($strength['competency']->description, 110, preserveWords: true) }}</span>
+                            <span class="text-sm text-gray-600 dark:text-gray-400" @if (mb_strlen((string) $strength['competency']->description) > 110) x-tooltip="{ content: @js($strength['competency']->description), theme: $store.theme }" @endif>{{ Str::limit($strength['competency']->description, 110, preserveWords: true) }}</span>
                             <span class="mt-2">@include('filament.pages.my-learning-progress.score', ['score' => $strength['average']])</span>
                         </li>
                     @endforeach
@@ -99,7 +99,7 @@
                                     <div class="grid min-w-48 flex-1 gap-1">
                                         <span class="text-xs text-gray-600 dark:text-gray-400">{{ $need['competency']->subject ?? __('Fachübergreifend') }}</span>
                                         <h3 id="practice-title-{{ $need['competency']->id }}" class="font-medium text-gray-950 dark:text-white">{{ $need['competency']->name }}</h3>
-                                        <p class="text-sm text-gray-600 dark:text-gray-400">{{ Str::limit($need['competency']->description, 110, preserveWords: true) }}</p>
+                                        <p class="text-sm text-gray-600 dark:text-gray-400" @if (mb_strlen((string) $need['competency']->description) > 110) x-tooltip="{ content: @js($need['competency']->description), theme: $store.theme }" @endif>{{ Str::limit($need['competency']->description, 110, preserveWords: true) }}</p>
                                     </div>
 
                                     @include('filament.pages.my-learning-progress.score', ['score' => $need['average']])
@@ -178,7 +178,7 @@
                         <li wire:key="almost-{{ $near['competency']->id }}" class="grid content-start gap-1 rounded-xl p-4 ring-1 ring-gray-950/5 dark:ring-white/10">
                             <span class="text-xs text-gray-600 dark:text-gray-400">{{ $near['competency']->subject ?? __('Fachübergreifend') }}</span>
                             <span class="font-medium text-gray-950 dark:text-white">{{ $near['competency']->name }}</span>
-                            <span class="text-sm text-gray-600 dark:text-gray-400">{{ Str::limit($near['competency']->description, 110, preserveWords: true) }}</span>
+                            <span class="text-sm text-gray-600 dark:text-gray-400" @if (mb_strlen((string) $near['competency']->description) > 110) x-tooltip="{ content: @js($near['competency']->description), theme: $store.theme }" @endif>{{ Str::limit($near['competency']->description, 110, preserveWords: true) }}</span>
                             <span class="mt-2">@include('filament.pages.my-learning-progress.score', ['score' => $near['average']])</span>
 
                             <x-filament::link :href="ExplainIt::getUrl()" :icon="Heroicon::OutlinedChatBubbleLeftRight" size="sm" class="mt-2 w-fit">

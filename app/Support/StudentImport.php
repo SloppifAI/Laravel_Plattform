@@ -277,7 +277,8 @@ class StudentImport
             $student->save();
         }
 
-        return $this->outcome($row, 'updated', __(':changes aktualisiert.', ['changes' => $changes]), $student->username);
+        // The preview speaks of what will happen, only the import itself of what happened.
+        return $this->outcome($row, 'updated', $commit ? __(':changes aktualisiert.', ['changes' => $changes]) : __('Wird aktualisiert: :changes.', ['changes' => $changes]), $student->username);
     }
 
     /**
@@ -316,7 +317,7 @@ class StudentImport
             $this->seenEmails[] = mb_strtolower($row['email']);
         }
 
-        return $this->outcome($row, 'created', __('Konto angelegt.'), $username, $commit ? $password : null);
+        return $this->outcome($row, 'created', $commit ? __('Konto angelegt.') : __('Konto wird angelegt.'), $username, $commit ? $password : null);
     }
 
     /**

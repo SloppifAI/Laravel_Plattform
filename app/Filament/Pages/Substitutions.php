@@ -81,7 +81,7 @@ class Substitutions extends Page implements HasTable
             ->recordActions(SubstitutionsTable::recordActions())
             ->paginated([10, 25])
             ->emptyStateHeading(__('Keine Vertretungen'))
-            ->emptyStateDescription(__('Hier erscheinen Vertretungen für Klassen, die du leitest, und Klassen, die du vertrittst. Als Klassenleitung richtest du eine oben rechts ein.'));
+            ->emptyStateDescription(__('Hier erscheinen Vertretungen für Klassen, die du leitest, und Klassen, die du vertrittst. Als Klassenleitung richtest du eine mit „Vertretung einrichten“ über der Liste ein.'));
     }
 
     /**

@@ -136,6 +136,7 @@ class RecordingSettings extends Page
                     ->helperText(__('Je nach Bundesland und Schule reicht die Einwilligung der Eltern nicht, wenn die Schüler:innen schon einsichtsfähig sind. Dann bestätigt jede Schüler:in unter „Tuto-Mikro im Unterricht“ ihr Einverständnis, bevor in ihrer Klasse das Tuto-Mikro an ist.')),
                 TagsInput::make('mikro_blocked_subjects')
                     ->label(__('Fächer ohne Tuto-Mikro'))
+                    ->placeholder(__('Neues Fach'))
                     ->helperText(__('In diesen Fächern lässt sich das Tuto-Mikro nie einschalten, auch nicht mit Einwilligung: Dort geht es oft um Glauben, Überzeugungen oder Persönliches. Gesperrt ist eine Stunde, wenn ein Wort ihres Fachs so beginnt, Groß- und Kleinschreibung egal: „Religion“ sperrt auch „Katholische Religion“ und „Religionslehre“. Kurze Kürzel wie „LER“ müssen als ganzes Wort dastehen. Weitere Fächer schreibst du einfach dazu, mit Enter.'))
                     ->suggestions(School::DEFAULT_MIKRO_BLOCKED_SUBJECTS)
                     ->nestedRecursiveRules(['string', 'max:100'])

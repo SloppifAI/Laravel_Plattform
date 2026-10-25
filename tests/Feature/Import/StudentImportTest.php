@@ -109,6 +109,19 @@ class StudentImportTest extends TestCase
         $this->assertSame(3, count(array_unique(array_column($outcome['rows'], 'password'))));
     }
 
+    public function test_the_preview_says_what_will_happen_and_the_import_what_happened(): void
+    {
+        $student = User::factory()->student($this->classIn($this->school, '5a'))->create(['name' => 'Anna Mueller', 'username' => 'anna.mueller']);
+        $csv = "Nachname;Vorname;Klasse;Benutzername\nMüller;Anna;6a;anna.mueller\nSchmidt;Ben;5a;\n";
+
+        $preview = $this->previewCsv($csv);
+        $import = $this->importCsv($csv);
+
+        $this->assertSame(['Will be updated: Name and Class.', 'Account will be created.'], array_column($preview['rows'], 'message'));
+        $this->assertSame(['Name and Class updated.', 'Account created.'], array_column($import['rows'], 'message'));
+        $this->assertSame($student->id, User::where('username', 'anna.mueller')->value('id'));
+    }
+
     public function test_generated_usernames_are_unique_even_for_the_same_name(): void
     {
         User::factory()->teacher()->create(['username' => 'anna.schmidt']);
@@ -242,7 +255,9 @@ class StudentImportTest extends TestCase
 
         $this->assertSame(array_column($import['rows'], 'status'), array_column($preview['rows'], 'status'));
         $this->assertSame(array_column($import['rows'], 'username'), array_column($preview['rows'], 'username'));
-        $this->assertSame(array_column($import['rows'], 'message'), array_column($preview['rows'], 'message'));
+        // Only the tense differs: the preview says what will happen, the import what happened (see the test below).
+        $skipped = fn (array $rows): array => array_column(array_filter($rows, fn (array $row): bool => $row['status'] === 'skipped'), 'message');
+        $this->assertSame($skipped($import['rows']), $skipped($preview['rows']));
         $this->assertSame($import['newClasses'], $preview['newClasses']);
         $this->assertSame(['anna.mueller', 'anna.mueller2'], array_slice(array_column($preview['rows'], 'username'), 0, 2));
     }

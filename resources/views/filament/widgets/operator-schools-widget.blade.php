@@ -32,7 +32,7 @@
                         </span>
 
                         <span class="text-sm text-gray-700 tabular-nums dark:text-gray-300">
-                            {{ __('Registriert am :date', ['date' => $school->created_at->copy()->locale(app()->getLocale())->isoFormat(__('D.M.YYYY'))]) }}
+                            {{ __('Registriert am :date', ['date' => $school->created_at->copy()->locale(app()->getLocale())->isoFormat(__('DD.MM.YYYY'))]) }}
                         </span>
 
                         @if ($school->isBlocked())

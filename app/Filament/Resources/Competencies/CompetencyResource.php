@@ -168,7 +168,8 @@ class CompetencyResource extends Resource
             ->recordActions([
                 ViewAction::make(),
                 EditAction::make(),
-                DeleteAction::make(),
+                DeleteAction::make()
+                    ->modalDescription(__('Fragen und Förderaufgaben, die diese Kompetenz nutzen, bleiben bestehen, gehören dann aber zu keiner Kompetenz mehr. Das lässt sich nicht rückgängig machen.')),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

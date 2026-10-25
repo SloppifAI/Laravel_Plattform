@@ -181,6 +181,7 @@ class LessonForm
                     ->schema([
                         // No file attachments: the summary is text for the class, worksheets belong to "Inhalt der Stunde".
                         RichEditor::make('summary')
+                            ->label(__('Zusammenfassung'))
                             ->hiddenLabel()
                             ->toolbarButtons([
                                 ['bold', 'italic', 'underline'],

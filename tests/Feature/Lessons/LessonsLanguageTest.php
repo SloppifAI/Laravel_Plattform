@@ -109,6 +109,19 @@ class LessonsLanguageTest extends TestCase
             ->assertDontSee(['Abgaben offener Hausaufgaben', 'Schüler:innen mit Förderbedarf']);
     }
 
+    public function test_the_dates_of_the_list_and_the_lesson_page_follow_the_language(): void
+    {
+        $released = Lesson::query()->whereNotNull('published_at')->firstOrFail();
+
+        Livewire::test(ListLessons::class)->assertSee('21 Oct 2026')->assertDontSee('21.10.2026');
+        Livewire::test(EditLesson::class, ['record' => $released->getRouteKey()])->assertSee('due by 28 Oct 2026')->assertDontSee('28.10.2026');
+
+        $this->germanIsTheDefault();
+
+        Livewire::test(ListLessons::class)->assertSee('21.10.2026');
+        Livewire::test(EditLesson::class, ['record' => $released->getRouteKey()])->assertSee('Abgabe bis 28.10.2026');
+    }
+
     public function test_the_lesson_pages_render_in_german(): void
     {
         $this->germanIsTheDefault();
@@ -122,6 +135,9 @@ class LessonsLanguageTest extends TestCase
             ->assertActionHasLabel('draftHomework', 'Hausaufgabe mit KI erstellen')
             ->assertActionHasLabel('delegate', 'Freigeben')
             ->assertDontSee(['Held on', 'Content of the lesson']);
+
+        // The hidden label of the summary editor is read out by screen readers.
+        $this->assertDoesNotMatchRegularExpression('/>\s*Summary\s*</', Livewire::test(EditLesson::class, ['record' => $this->lesson->getRouteKey()])->html());
 
         Livewire::test(QuestionsRelationManager::class, ['ownerRecord' => $this->lesson, 'pageClass' => EditLesson::class])
             ->assertSee(['Nr.', 'Stufen', 'Kompetenz', 'Herkunft', 'Stufen mit KI erstellen']);

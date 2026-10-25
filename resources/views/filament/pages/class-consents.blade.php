@@ -76,7 +76,7 @@
 
                             <li>
                                 <x-filament::badge :color="$status->getColor()" :icon="$status->getIcon()">
-                                    {{ $count }} {{ $status->getLabel() }}
+                                    {{ $status->getCountLabel($count) }}
                                 </x-filament::badge>
                             </li>
                         @endforeach

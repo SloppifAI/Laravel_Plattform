@@ -52,6 +52,14 @@ class SubstitutionsGermanTest extends TestCase
             ->assertDontSee('Set up cover');
     }
 
+    public function test_the_empty_state_does_not_claim_a_position_for_the_button(): void
+    {
+        $this->actingAs($this->leader)->get(Substitutions::getUrl())
+            ->assertOk()
+            ->assertSee('richtest du eine mit „Vertretung einrichten“ über der Liste ein.')
+            ->assertDontSee('oben rechts');
+    }
+
     public function test_the_handover_sheet_reads_german(): void
     {
         ClassSubstitution::factory()->for($this->schoolClass)->create(['substitute_id' => $this->substitute->id, 'note' => 'Bitte den Beamer vorher testen.']);

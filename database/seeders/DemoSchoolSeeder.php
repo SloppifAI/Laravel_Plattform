@@ -396,7 +396,7 @@ class DemoSchoolSeeder extends Seeder
                 'Der Regenwald wird oft als „grüne Lunge der Erde“ bezeichnet. Beurteile mithilfe deines Wissens über die Fotosynthese, ob dieser Vergleich passt.',
                 'Dafür: Pflanzen nehmen Kohlenstoffdioxid auf und geben Sauerstoff ab, der Regenwald bindet große Mengen CO₂. Dagegen: Eine Lunge nimmt Sauerstoff auf und gibt Kohlenstoffdioxid ab, also genau umgekehrt; außerdem verbraucht der Wald einen Großteil seines Sauerstoffs durch Atmung und Zersetzung selbst. Ein begründetes Urteil wägt beide Seiten ab.'],
             [QuestionType::Reflection, null, 'Eigenes Lernen reflektieren',
-                'Jonas hat in der Stunde gefragt, warum eine Pflanze nachts nicht „erstickt“. Wie wurde das im Tafelbild ergänzt, und was hat dir persönlich geholfen, den Unterschied zwischen Tag und Nacht zu verstehen?',
+                'In der Stunde wurde gefragt, warum eine Pflanze nachts nicht „erstickt“. Wie wurde das im Tafelbild ergänzt, und was hat dir persönlich geholfen, den Unterschied zwischen Tag und Nacht zu verstehen?',
                 'Im Tafelbild wurden Pfeile für Tag und Nacht ergänzt: Pflanzen atmen ständig (Zellatmung, Sauerstoff wird verbraucht), Fotosynthese findet nur bei Licht statt; tagsüber überwiegt sie. Dazu eine persönliche Aussage, was beim Verstehen geholfen hat (z. B. die Pfeile, die Fabrik-Analogie, die Frage selbst).'],
         ], [
             'schueler' => [
@@ -534,7 +534,7 @@ class DemoSchoolSeeder extends Seeder
                 'Eine 5 m lange Leiter lehnt an einer Hauswand. Ihr Fuß steht 1,40 m von der Wand entfernt. In welcher Höhe berührt die Leiter die Wand? Fertige eine Skizze an und runde auf Zentimeter.',
                 'Skizze: rechtwinkliges Dreieck aus Wand, Boden und Leiter; die Leiter ist die Hypotenuse. h² = 5² − 1,40² = 25 − 1,96 = 23,04, also h = 4,80 m. Die Leiter berührt die Wand in 4,80 m Höhe.'],
             [QuestionType::Reflection, 'Mathematik', 'Mathematisch argumentieren',
-                'Elif war in der Stunde zuerst sicher, dass die Quadrat-Regel bei jedem Dreieck klappt. Wie hat eure Gruppe überprüft, ob das stimmt, und was folgt daraus für den Satz des Pythagoras?',
+                'Zu Beginn der Stunde waren viele sicher, dass die Quadrat-Regel bei jedem Dreieck klappt. Wie hat eure Gruppe überprüft, ob das stimmt, und was folgt daraus für den Satz des Pythagoras?',
                 'Mit einem Gegenbeispiel: Beim stumpfwinkligen (oder spitzwinkligen) Dreieck wurden die Quadrate an den Seiten verglichen, a² + b² war nicht gleich c². Daraus folgt: Der Satz gilt nur für rechtwinklige Dreiecke; ein einziges Gegenbeispiel genügt, um eine allgemeine Behauptung zu widerlegen.'],
         ], [
             'lena.schulz' => [
@@ -662,8 +662,8 @@ class DemoSchoolSeeder extends Seeder
                 'Eine 5 m lange Leiter lehnt an einer Hauswand, ihr Fuß steht 1,40 m von der Wand entfernt. Berechne, in welcher Höhe sie die Wand berührt, und runde auf Zentimeter. Prüfe dein Ergebnis mit einer Probe und begründe, warum die Höhe nie größer als die Leiterlänge sein kann.',
             ],
             [
-                'Elif dachte zuerst, die Quadrat-Regel klappt bei jedem Dreieck. Wie hat eure Gruppe das überprüft? Schreibe zwei oder drei Sätze.',
-                'Elif war zuerst sicher, dass die Quadrat-Regel bei jedem Dreieck klappt. Wie hat eure Gruppe das überprüft, und warum genügt ein einziges Gegenbeispiel, um eine allgemeine Behauptung zu widerlegen?',
+                'Viele dachten zuerst, die Quadrat-Regel klappt bei jedem Dreieck. Wie hat eure Gruppe das überprüft? Schreibe zwei oder drei Sätze.',
+                'Zuerst waren viele sicher, dass die Quadrat-Regel bei jedem Dreieck klappt. Wie hat eure Gruppe das überprüft, und warum genügt ein einziges Gegenbeispiel, um eine allgemeine Behauptung zu widerlegen?',
             ],
         ];
 

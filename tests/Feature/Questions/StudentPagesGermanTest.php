@@ -66,7 +66,7 @@ class StudentPagesGermanTest extends TestCase
         Livewire::actingAs($this->student)
             ->test(ExplainIt::class)
             ->call('openSession', $session->id)
-            ->assertSee(['Frage an meine Lehrkraft', 'Gespräch löschen', 'Deine Erklärung', 'Enter schickt ab.', 'Erklärung beenden'])
+            ->assertSee(['Frage an meine Lehrkraft', 'Gespräch löschen', 'Deine Erklärung', 'Enter schickt ab.', 'Die Eingabetaste macht eine neue Zeile.', 'Erklärung beenden'])
             ->assertDontSee('Question for my teacher')
             ->callAction('askTeacher', ['question' => 'Warum ist Chlorophyll grün?'])
             ->assertNotified('Deine Frage ist bei deiner Lehrkraft');

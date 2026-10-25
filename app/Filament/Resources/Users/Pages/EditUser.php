@@ -22,7 +22,8 @@ class EditUser extends EditRecord
     {
         return [
             $this->downloadDataAction(),
-            DeleteAction::make(),
+            DeleteAction::make()
+                ->modalDescription(__('Das Konto wird endgültig gelöscht, mit allem, was dazu gehört: bei Schüler:innen die Abgaben, Gespräche und Fragen, bei Lehrkräften ihre Stunden samt Abgaben. Das lässt sich nicht rückgängig machen.')),
         ];
     }
 

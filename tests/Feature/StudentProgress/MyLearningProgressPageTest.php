@@ -50,7 +50,9 @@ class MyLearningProgressPageTest extends TestCase
             // Cut at a word boundary, never in the middle of a word.
             ->assertSee('Beschreibung. Das ist...')
             ->assertDontSee('Das ist ein...')
-            ->assertDontSee('ENDE')
+            ->assertDontSeeText('ENDE')
+            // The whole description stays readable in the tooltip.
+            ->assertSee('ENDE', false)
             // Teacher language and the red warning do not belong on the student's page.
             ->assertDontSee('Needs support');
     }

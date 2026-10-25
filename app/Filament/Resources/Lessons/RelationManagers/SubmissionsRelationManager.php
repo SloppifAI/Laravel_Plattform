@@ -76,12 +76,14 @@ class SubmissionsRelationManager extends RelationManager
                     ->columnSpanFull()
                     ->schema([
                         TextEntry::make('summary')
+                            ->label(__('Zusammenfassung'))
                             ->hiddenLabel(),
                     ]),
                 Section::make(__('Antworten'))
                     ->columnSpanFull()
                     ->schema([
                         RepeatableEntry::make('answers')
+                            ->label(__('Antworten'))
                             ->hiddenLabel()
                             ->schema([
                                 TextEntry::make('question.prompt')

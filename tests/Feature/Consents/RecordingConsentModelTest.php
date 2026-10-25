@@ -175,6 +175,21 @@ class RecordingConsentModelTest extends TestCase
         $this->assertSame('Student confirmation missing', ConsentStatus::StudentPending->getLabel());
     }
 
+    public function test_the_count_badges_agree_with_their_number_in_german_and_english(): void
+    {
+        app()->setLocale('de');
+        $this->assertSame('1 fehlt', ConsentStatus::Missing->getCountLabel(1));
+        $this->assertSame('8 fehlen', ConsentStatus::Missing->getCountLabel(8));
+        $this->assertSame('1 Schüler:in-Bestätigung fehlt', ConsentStatus::StudentPending->getCountLabel(1));
+        $this->assertSame('3 Schüler:in-Bestätigungen fehlen', ConsentStatus::StudentPending->getCountLabel(3));
+        $this->assertSame('2 widerrufen', ConsentStatus::Revoked->getCountLabel(2));
+
+        app()->setLocale('en');
+        $this->assertSame('8 missing', ConsentStatus::Missing->getCountLabel(8));
+        $this->assertSame('3 student confirmations missing', ConsentStatus::StudentPending->getCountLabel(3));
+        $this->assertSame('2 outdated', ConsentStatus::Outdated->getCountLabel(2));
+    }
+
     public function test_recordings_cannot_be_enabled_without_the_whole_checklist(): void
     {
         $school = School::factory()->create();

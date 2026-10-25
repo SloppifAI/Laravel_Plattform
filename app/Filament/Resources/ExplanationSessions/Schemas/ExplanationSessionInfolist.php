@@ -44,6 +44,7 @@ class ExplanationSessionInfolist
                     ->columnSpanFull()
                     ->schema([
                         ViewEntry::make('messages')
+                            ->label(__('Gesprächsverlauf'))
                             ->hiddenLabel()
                             ->view('filament.resources.explanation-sessions.transcript'),
                     ]),

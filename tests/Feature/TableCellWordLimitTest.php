@@ -35,4 +35,23 @@ class TableCellWordLimitTest extends TestCase
         $this->assertSame(1, substr_count($html, 'Schlusswort'), 'only the tooltip has the end of the text');
         $this->assertStringContainsString('Kurze Aufgabe', $html);
     }
+
+    public function test_a_cut_right_after_a_full_stop_ends_in_three_dots_not_four(): void
+    {
+        $teacher = User::factory()->for(School::factory())->teacher()->create();
+        $schoolClass = SchoolClass::factory()->create(['school_id' => $teacher->school_id, 'teacher_id' => $teacher->getKey()]);
+        ClassBookEntry::factory()->for($schoolClass)->create([
+            'teacher_id' => $teacher->getKey(),
+            'content' => 'Eins zwei drei vier fünf sechs sieben acht neun zehn elf zwölf. Ein zweiter Satz',
+            'homework' => 'Kurze Aufgabe',
+        ]);
+
+        $html = Livewire::actingAs($teacher)
+            ->withQueryParams(['klasse' => $schoolClass->getKey()])
+            ->test(ClassBook::class)
+            ->html();
+
+        $this->assertStringContainsString('elf zwölf...', $html);
+        $this->assertStringNotContainsString('zwölf....', $html);
+    }
 }

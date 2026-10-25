@@ -108,7 +108,9 @@ class InsightsLanguageTest extends TestCase
 
         Livewire::actingAs($this->teacher)
             ->test(ViewExplanationSession::class, ['record' => $session->getRouteKey()])
-            ->assertSee(['Gesprächsverlauf', 'Es gibt noch keine Nachrichten in dieser Sitzung.']);
+            ->assertSee(['Gesprächsverlauf', 'Es gibt noch keine Nachrichten in dieser Sitzung.'])
+            // The label for screen readers is German as well.
+            ->assertDontSee('Messages');
 
         $this->assertSame('Erklär-Sitzungen', ExplanationSessionResource::getNavigationLabel());
     }

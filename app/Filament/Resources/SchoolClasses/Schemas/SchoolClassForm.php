@@ -35,7 +35,7 @@ class SchoolClassForm
                             ->preload(),
                         TextInput::make('join_code')
                             ->label(__('Klassencode'))
-                            ->helperText(__('Diesen Code geben Schüler:innen bei der Registrierung ein. Mit „Neuen Code erzeugen“ oben rechts wird er ersetzt.'))
+                            ->helperText(__('Diesen Code geben Schüler:innen bei der Registrierung ein. Mit „Neuen Code erzeugen“ über dem Formular wird er ersetzt.'))
                             ->copyable(copyMessage: __('Code kopiert'))
                             ->disabled()
                             ->dehydrated(false)

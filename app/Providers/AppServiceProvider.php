@@ -59,8 +59,9 @@ class AppServiceProvider extends ServiceProvider
         SelectColumn::configureUsing(fn (SelectColumn $column): SelectColumn => $column->native(false));
 
         // Long texts in table cells end after a few words with an ellipsis; the tooltip shows the whole text. HTML stays whole.
+        // A cut right after a full stop gets two dots, so the text does not end in four.
         TextColumn::configureUsing(fn (TextColumn $column): TextColumn => $column
-            ->words(self::TABLE_CELL_WORDS)
+            ->words(self::TABLE_CELL_WORDS, fn (mixed $state): string => is_string($state) && str_ends_with(Str::words($state, self::TABLE_CELL_WORDS, ''), '.') ? '..' : '...')
             ->tooltip(fn (TextColumn $column, mixed $state): ?string => is_string($state) && ! $column->isHtml() && Str::words($state, self::TABLE_CELL_WORDS) !== $state ? $state : null));
 
         // The parents' consent page: a small limit per link and IP, and a generous ceiling per IP only against abuse, because a whole

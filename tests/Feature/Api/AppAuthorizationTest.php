@@ -184,6 +184,8 @@ class AppAuthorizationTest extends TestCase
             ->assertSeeText(__(':app ist verbunden', ['app' => 'Tuto-App']))
             ->assertSeeText(__('Du kannst dieses Fenster jetzt schließen und zu :app zurückkehren.', ['app' => 'Tuto-App']))
             ->assertSeeText(__(':app öffnen', ['app' => 'Tuto-App']));
+        // The browser tab says what the page says, like the consent page before it.
+        $this->assertMatchesRegularExpression('/<title>\s*'.preg_quote(__(':app ist verbunden', ['app' => 'Tuto-App']), '/').'\s*-\s*Tuto\s*<\/title>/', $response->getContent());
         $answer = $this->answer($response);
 
         $this->assertSame('zustand-123', $answer['state']);

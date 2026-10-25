@@ -53,6 +53,21 @@ enum ConsentStatus: string implements HasColor, HasIcon, HasLabel
     }
 
     /**
+     * The label of a count badge ("8 fehlen"): the count comes first, so the verb has to agree with it.
+     */
+    public function getCountLabel(int $count): string
+    {
+        return match ($this) {
+            self::Granted => trans_choice(':count erteilt', $count),
+            self::Partial => trans_choice(':count teilweise', $count),
+            self::Missing => trans_choice(':count fehlt|:count fehlen', $count),
+            self::Revoked => trans_choice(':count widerrufen', $count),
+            self::Outdated => trans_choice(':count veraltet', $count),
+            self::StudentPending => trans_choice(':count Schüler:in-Bestätigung fehlt|:count Schüler:in-Bestätigungen fehlen', $count),
+        };
+    }
+
+    /**
      * Why a recording is blocked for a student in this state, as a clause after the student's name.
      */
     public function getReason(): string

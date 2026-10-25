@@ -27,6 +27,7 @@ use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -424,6 +425,20 @@ class DemoSeederTest extends TestCase
             'Neue Hausaufgabe: „Satz des Pythagoras“',
         ], $titles('schueler'));
         $this->assertSame(4, DB::table('notifications')->count());
+    }
+
+    public function test_no_question_of_the_demo_names_a_student(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+
+        // Questions are shown to the whole class, and the board for the next lesson promises that it shows no names.
+        $firstNames = User::query()->withRole(Role::Student)->pluck('name')->map(fn (string $name): string => Str::before($name, ' '))->unique();
+
+        foreach (Question::query()->get(['prompt', 'prompt_basis', 'prompt_plus']) as $question) {
+            foreach ($firstNames as $firstName) {
+                $this->assertDoesNotMatchRegularExpression('/\b'.preg_quote($firstName, '/').'\b/u', implode(' ', array_filter($question->only(['prompt', 'prompt_basis', 'prompt_plus']))), "A question names {$firstName}.");
+            }
+        }
     }
 
     public function test_seeders_do_not_depend_on_dev_packages(): void

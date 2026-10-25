@@ -173,6 +173,18 @@ class TodayTest extends TestCase
             ->assertMountedActionModalSee('The summary and the AI questions are replaced by a new AI draft. 2 questions of your own or edited by you are kept.');
     }
 
+    public function test_a_lesson_without_questions_is_drafted_straight_away_without_asking_to_replace_anything(): void
+    {
+        $lesson = $this->lesson('2026-10-21');
+        $this->actingAs($this->teacher);
+
+        Livewire::test(Today::class)
+            ->mountAction(TestAction::make('draftHomework')->table($lesson))
+            ->assertActionNotMounted();
+
+        $this->assertGreaterThan(0, $lesson->questions()->count());
+    }
+
     public function test_the_draft_of_a_school_with_ai_carries_no_demo_hint(): void
     {
         $this->preventRealAiCalls();

@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Lessons\Tables;
 
 use App\Models\Lesson;
 use App\UnderstandingLevel;
+use Carbon\Carbon;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -29,7 +30,7 @@ class LessonsTable
             ->columns([
                 TextColumn::make('held_on')
                     ->label(__('Datum'))
-                    ->date('d.m.Y')
+                    ->formatStateUsing(fn (?Carbon $state): ?string => $state?->isoFormat(__('DD.MM.YYYY')))
                     ->sortable(),
                 TextColumn::make('schoolClass.name')
                     ->label(__('Klasse'))

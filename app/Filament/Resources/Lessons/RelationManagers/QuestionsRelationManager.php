@@ -99,6 +99,7 @@ class QuestionsRelationManager extends RelationManager
             ->recordTitleAttribute('prompt')
             ->modelLabel(__('Frage'))
             ->pluralModelLabel(__('Fragen'))
+            ->emptyStateDescription(fn (): ?string => $this->isReadOnly() ? null : __('Erstelle eine Frage, zum Beispiel mit der KI.'))
             ->description(fn (): ?string => $this->isReadOnly()
                 ? __('Die Hausaufgabe ist freigegeben. Um Fragen zu ändern, nimm die Freigabe zurück (nur möglich, solange niemand abgegeben hat).')
                 : null)
@@ -164,7 +165,9 @@ class QuestionsRelationManager extends RelationManager
                     ->color('gray')
                     ->authorize('update')
                     ->visible(fn (): bool => ! $this->isReadOnly())
-                    ->requiresConfirmation(fn (Question $record): bool => $record->hasLevels())
+                    // Filament opens the dialog whenever a heading or description is set, so "nothing to replace" has to hide it.
+                    ->modalHidden(fn (Question $record): bool => ! $record->hasLevels())
+                    ->requiresConfirmation()
                     ->modalHeading(__('Stufen neu erstellen?'))
                     ->modalDescription(__('Die Stufen dieser Frage werden durch einen neuen KI-Entwurf ersetzt.'))
                     ->modalSubmitActionLabel(__('Neu erstellen'))
@@ -181,7 +184,10 @@ class QuestionsRelationManager extends RelationManager
 
                         return $record;
                     }),
-                DeleteAction::make(),
+                // The default heading is the whole question plus "löschen", several lines long.
+                DeleteAction::make()
+                    ->modalHeading(__('Frage löschen?'))
+                    ->modalDescription(__('Die Frage wird aus der Hausaufgabe entfernt. Das lässt sich nicht rückgängig machen.')),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

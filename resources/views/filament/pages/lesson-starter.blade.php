@@ -65,7 +65,7 @@
     >
         <div class="py-8 ps-10 pe-4 sm:py-10 sm:ps-20 sm:pe-10">
             <header class="min-w-0">
-                <p class="text-base font-medium text-primary-700 sm:text-lg dark:text-primary-400">{{ __('Einstieg für die nächste Stunde') }}</p>
+                <p class="text-base font-medium text-primary-700 sm:text-lg dark:text-primary-400">{{ __('Aus der Stunde') }}</p>
 
                 <h2 id="lp-starter-topic" class="mt-1 min-w-0 text-3xl font-semibold tracking-tight text-balance break-words hyphens-auto text-gray-950 sm:text-5xl dark:text-white">
                     {{ $lesson->topic }}

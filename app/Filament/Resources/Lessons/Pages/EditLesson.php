@@ -62,7 +62,7 @@ class EditLesson extends EditRecord
 
         return __('Freigegeben für :students · Abgabe bis :date', [
             'students' => trans_choice(':count Schüler:in|:count Schüler:innen', $lesson->students()->count()),
-            'date' => $lesson->due_on?->format('d.m.Y'),
+            'date' => $lesson->due_on?->isoFormat(__('DD.MM.YYYY')),
         ]);
     }
 
@@ -145,7 +145,9 @@ class EditLesson extends EditRecord
                 // Locked by the saved lesson; the action checks again after saving, as the form may have been emptied meanwhile.
                 ->disabled(fn (Lesson $record): bool => ! HomeworkDraft::hasMaterial($record))
                 ->tooltip(fn (Lesson $record): ?string => HomeworkDraft::hasMaterial($record) ? null : HomeworkDraft::missingMaterialHint())
-                ->requiresConfirmation(fn (Lesson $record): bool => $record->questions()->exists())
+                // Filament opens the dialog whenever a heading or description is set, so "nothing to replace" has to hide it.
+                ->modalHidden(fn (Lesson $record): bool => $record->questions()->doesntExist())
+                ->requiresConfirmation()
                 ->modalHeading(__('Hausaufgabe neu erstellen?'))
                 ->modalDescription(fn (Lesson $record): string => HomeworkDraft::confirmationText($record))
                 ->modalSubmitActionLabel(__('Neu erstellen'))
@@ -248,7 +250,7 @@ class EditLesson extends EditRecord
                         ->title(__('Hausaufgabe freigegeben'))
                         ->body(__('Für :students, Abgabe bis :date.', [
                             'students' => trans_choice(':count Schüler:in|:count Schüler:innen', $reached),
-                            'date' => $dueOn->format('d.m.Y'),
+                            'date' => $dueOn->isoFormat(__('DD.MM.YYYY')),
                         ]))
                         ->send();
                 }),
@@ -281,7 +283,7 @@ class EditLesson extends EditRecord
                         ->title(__('Schüler:innen hinzugefügt'))
                         ->body(__('Für :students, Abgabe bis :date.', [
                             'students' => trans_choice(':count Schüler:in|:count Schüler:innen', $reached),
-                            'date' => $record->due_on?->format('d.m.Y'),
+                            'date' => $record->due_on?->isoFormat(__('DD.MM.YYYY')),
                         ]))
                         ->send();
                 }),
@@ -304,7 +306,8 @@ class EditLesson extends EditRecord
                         ->title(__('Freigabe zurückgenommen'))
                         ->send();
                 }),
-            DeleteAction::make(),
+            DeleteAction::make()
+                ->modalDescription(__('Die Stunde wird endgültig gelöscht, mit ihren Fragen, der Zusammenfassung, den Notizen aus der Stunde und allen Abgaben. Das lässt sich nicht rückgängig machen.')),
         ];
     }
 }

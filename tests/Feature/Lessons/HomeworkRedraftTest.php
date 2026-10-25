@@ -140,6 +140,53 @@ class HomeworkRedraftTest extends TestCase
             ->assertMountedActionModalSee('1 question of your own or edited by you is kept.');
     }
 
+    public function test_a_lesson_without_questions_is_drafted_straight_away_without_asking_to_replace_anything(): void
+    {
+        $this->mock(LessonAssistant::class, fn (MockInterface $mock) => $mock->shouldReceive('draftHomework')->once()->andReturn([
+            'summary' => 'Neue Zusammenfassung.',
+            'questions' => [['type' => QuestionType::Comprehension, 'prompt' => 'Neue KI-Frage', 'expected_answer' => 'A', 'competency_id' => null]],
+        ]));
+
+        Livewire::test(EditLesson::class, ['record' => $this->lesson->getRouteKey()])
+            ->mountAction('draftHomework')
+            ->assertActionNotMounted();
+
+        $this->assertSame(['Neue KI-Frage'], $this->lesson->questions()->pluck('prompt')->all());
+    }
+
+    public function test_the_levels_of_a_question_without_levels_are_created_without_a_confirmation_dialog(): void
+    {
+        $plain = Question::factory()->for($this->lesson)->create();
+        $withLevels = Question::factory()->for($this->lesson)->create(['prompt_basis' => 'Leichter', 'prompt_plus' => 'Schwerer']);
+
+        $this->manager()
+            ->mountAction(TestAction::make('differentiate')->table($plain))
+            ->assertActionNotMounted()
+            ->mountAction(TestAction::make('differentiate')->table($withLevels))
+            ->assertActionMounted(TestAction::make('differentiate')->table($withLevels))
+            ->assertMountedActionModalSee('The levels of this question are replaced by a new AI draft.');
+
+        $this->assertTrue($plain->refresh()->hasLevels());
+    }
+
+    public function test_deleting_a_question_asks_a_short_question_and_not_the_whole_prompt(): void
+    {
+        $question = Question::factory()->for($this->lesson)->create(['prompt' => 'Nenne zwei Ursachen der Französischen Revolution.']);
+
+        $this->manager()
+            ->mountAction(TestAction::make('delete')->table($question))
+            ->assertMountedActionModalSee('Delete question?')
+            ->assertMountedActionModalDontSee('Französischen Revolution')
+            ->assertMountedActionModalSee('The question is removed from the homework.');
+    }
+
+    public function test_the_empty_questions_table_invites_to_create_a_question_in_proper_grammar(): void
+    {
+        $this->manager()
+            ->assertSee('Create a question, for example with the AI.')
+            ->assertDontSee('(e)');
+    }
+
     public function test_the_demo_keeps_an_edited_question_and_does_not_repeat_it(): void
     {
         $this->lesson->update(['topic' => 'Fotosynthese', 'notes' => 'Pflanzen nutzen Licht, Wasser und Kohlendioxid. Chlorophyll fängt das Licht ein. Im Versuch bildete die Wasserpest Bläschen aus Sauerstoff.']);

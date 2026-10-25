@@ -71,7 +71,8 @@ class TimetableEntriesTable
             ->emptyStateDescription(__('Trage die Stunden der Klassen ein. Schüler:innen und Lehrkräfte sehen ihren Plan dann unter „Stundenplan“.'))
             ->recordActions([
                 EditAction::make(),
-                DeleteAction::make(),
+                DeleteAction::make()
+                    ->modalDescription(__('Die Stunde verschwindet aus dem Stundenplan der Klasse und der Lehrkraft.')),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

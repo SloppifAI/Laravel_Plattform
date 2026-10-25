@@ -83,9 +83,9 @@ class EditProfile extends BaseEditProfile
                 ->map(fn (PersonalAccessToken $token): Component => TextEntry::make('connectedApp'.$token->getKey())
                     ->label($token->name)
                     ->state(collect([
-                        __('Verbunden am :date', ['date' => $token->created_at->isoFormat(__('D.M.YYYY'))]),
-                        $token->last_used_at ? __('zuletzt genutzt am :date', ['date' => $token->last_used_at->isoFormat(__('D.M.YYYY'))]) : __('noch nicht genutzt'),
-                        $token->expires_at ? __('gültig bis :date', ['date' => $token->expires_at->isoFormat(__('D.M.YYYY'))]) : null,
+                        __('Verbunden am :date', ['date' => $token->created_at->isoFormat(__('DD.MM.YYYY'))]),
+                        $token->last_used_at ? __('zuletzt genutzt am :date', ['date' => $token->last_used_at->isoFormat(__('DD.MM.YYYY'))]) : __('noch nicht genutzt'),
+                        $token->expires_at ? __('gültig bis :date', ['date' => $token->expires_at->isoFormat(__('DD.MM.YYYY'))]) : null,
                     ])->filter()->implode(' · '))
                     ->afterContent($this->revokeTokenAction($token)))
                 ->whenEmpty(fn () => collect([Text::make(__('Noch keine App verbunden.'))]))

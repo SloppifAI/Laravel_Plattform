@@ -33,7 +33,8 @@ class EditSchoolClass extends EditRecord
                         ->success()
                         ->send();
                 }),
-            DeleteAction::make(),
+            DeleteAction::make()
+                ->modalDescription(__('Die Klasse wird endgültig gelöscht, mit ihren Stunden, Abgaben, Klassenbucheinträgen und Stundenplan-Einträgen. Die Konten der Schüler:innen bleiben bestehen, gehören dann aber zu keiner Klasse. Das lässt sich nicht rückgängig machen.')),
         ];
     }
 }

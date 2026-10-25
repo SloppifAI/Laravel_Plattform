@@ -33,6 +33,25 @@ class ConnectedAppsTest extends TestCase
             ->assertDontSee('Fremdes Handy');
     }
 
+    public function test_the_dates_of_an_app_are_all_written_the_same_way_in_both_languages(): void
+    {
+        $this->travelTo('2026-04-03 10:00:00');
+        $teacher = User::factory()->teacher()->create();
+        $teacher->createToken('Tablet im Lehrerzimmer', TokenController::ABILITIES, now()->addDays(20));
+
+        $this->actingAs($teacher)->get(EditProfile::getUrl())
+            ->assertSee('Connected on 3 Apr 2026')
+            ->assertSee('valid until 23 Apr 2026');
+
+        app()->setLocale('de');
+        $teacher->update(['locale' => 'de']);
+
+        $this->actingAs($teacher->fresh())->get(EditProfile::getUrl())
+            ->assertSee('Verbunden am 03.04.2026')
+            ->assertSee('gültig bis 23.04.2026')
+            ->assertDontSee('gültig bis 23.4.2026');
+    }
+
     public function test_an_administration_without_apps_is_told_so(): void
     {
         $this->actingAs(User::factory()->admin()->create())->get(EditProfile::getUrl())

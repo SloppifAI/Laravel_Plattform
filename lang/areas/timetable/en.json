@@ -46,5 +46,6 @@
     "Wochentag": "Weekday",
     "Übernimmt Klasse und Fach aus deinem Stundenplan. Du kannst beides danach noch ändern.": "Takes class and subject from your timetable. You can still change both afterwards.",
     "z. B. Mathematik": "e.g. Mathematics",
-    "z. B. R 104": "e.g. R 104"
+    "z. B. R 104": "e.g. R 104",
+    "Die Stunde verschwindet aus dem Stundenplan der Klasse und der Lehrkraft.": "The lesson disappears from the timetable of the class and the teacher."
 }
