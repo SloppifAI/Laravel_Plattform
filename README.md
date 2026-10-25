@@ -38,7 +38,10 @@ Eine Lehrkraft hält eine Stunde und trägt ein, was dran war: Notizen, ein Tafe
 - **Rund um den Schulalltag.** Klassenbuch mit Entwurf aus der Stunde, Vertretung mit Übergabe-Mappe, Rückfragen der Schüler:innen an die Lehrkraft, Einstieg für die nächste Stunde, Bericht für das Elterngespräch und eine Glocke, die über Neues informiert.
 - **Datenschutz von Anfang an.** Namen werden ersetzt, bevor ein Text zur KI geht. Jede Schule entscheidet selbst, ob die KI überhaupt benutzt wird. Der Ton wird nicht gespeichert. Lerndaten werden zum Ende des Schuljahres gelöscht. Mehr dazu in [Abschnitt 5](#5-datenschutz).
 
-![Anmeldeseite mit den Demo-Zugängen](docs/screenshots/anmeldeseite-demo-zugaenge.png)
+<p align="center">
+  <img src="docs/screenshots/anmeldeseite-demo-zugaenge.webp" alt="Anmeldeseite mit den Demo-Zugängen" width="680"><br>
+  <sub>Anmeldeseite mit den Demo-Zugängen</sub>
+</p>
 
 ---
 
@@ -222,7 +225,10 @@ Wer eine Klasse „unterrichtet“, ist Klassenleitung, wurde der Klasse zugeord
 
 Die Matrix mit allen Zeilen und Erklärungen findest du in der Anwendung unter **Rollen & Rechte** (Plattform-Administration: Plattform → Rollen & Rechte, Schuladministration: Verwaltung → Rollen & Rechte).
 
-![Die Rechte-Matrix unter Rollen & Rechte](docs/screenshots/rollen-und-rechte.png)
+<p align="center">
+  <img src="docs/screenshots/rollen-und-rechte.webp" alt="Die Rechte-Matrix unter Rollen &amp; Rechte" width="680"><br>
+  <sub>Die Rechte-Matrix unter Rollen &amp; Rechte</sub>
+</p>
 
 ---
 
@@ -263,7 +269,10 @@ Passwort vergessen? Klicke neben dem Passwortfeld auf „Passwort vergessen?“,
 
 Deine Wahl wird an deinem Konto gespeichert und gilt auf jedem Gerät. Texte, die noch nicht übersetzt sind, erscheinen auf Deutsch.
 
-![Profil mit Sprachauswahl und dem Knopf „Meine Daten herunterladen“](docs/screenshots/profil-daten-herunterladen.png)
+<p align="center">
+  <img src="docs/screenshots/profil-daten-herunterladen.webp" alt="Profil mit Sprachauswahl und dem Knopf „Meine Daten herunterladen“" width="680"><br>
+  <sub>Profil mit Sprachauswahl und dem Knopf „Meine Daten herunterladen“</sub>
+</p>
 
 ---
 
@@ -271,7 +280,10 @@ Deine Wahl wird an deinem Konto gespeichert und gilt auf jedem Gerät. Texte, di
 
 Anmelden mit `hackathon`. Du siehst keine Unterrichts- und Lerndaten, nur Schulen und Zugänge.
 
-![Startseite der Plattform-Administration](docs/screenshots/start-plattform-administration.png)
+<p align="center">
+  <img src="docs/screenshots/start-plattform-administration.webp" alt="Startseite der Plattform-Administration" width="680"><br>
+  <sub>Startseite der Plattform-Administration</sub>
+</p>
 
 #### Schulen ansehen und sperren
 
@@ -284,7 +296,10 @@ Neue Schulen legst du nicht an: Sie registrieren sich selbst ([so geht’s](#sch
 3. Klicke auf „Sperren“ und bestätige mit „Ja, Schule sperren“. Danach kann sich niemand aus dieser Schule mehr anmelden, auch wer gerade angemeldet ist. Der Klassencode der Schule gilt als unbekannt.
 4. „Entsperren“ in der Zeile oder oben auf der Bearbeiten-Seite macht alles wieder frei.
 
-![Liste der Schulen](docs/screenshots/schulen-liste.png)
+<p align="center">
+  <img src="docs/screenshots/schulen-liste.webp" alt="Liste der Schulen" width="680"><br>
+  <sub>Liste der Schulen</sub>
+</p>
 
 #### Administrationskonten anlegen
 
@@ -297,7 +312,10 @@ Neue Schulen legst du nicht an: Sie registrieren sich selbst ([so geht’s](#sch
 
 Hier setzt du auch das Passwort eines Administrationskontos zurück: Konto öffnen, neues Passwort eintragen, speichern.
 
-![Administrationskonten](docs/screenshots/administrationskonten.png)
+<p align="center">
+  <img src="docs/screenshots/administrationskonten.webp" alt="Administrationskonten" width="680"><br>
+  <sub>Administrationskonten</sub>
+</p>
 
 #### Kompetenzraster pflegen
 
@@ -305,7 +323,10 @@ Hier setzt du auch das Passwort eines Administrationskontos zurück: Konto öffn
 
 Das Kompetenzraster gilt für alle Schulen. Es enthält die Prozesskompetenzen der Bildungsstandards und Lehrpläne der Sekundarstufe I (Mathematik, Deutsch, Biologie, Geschichte und weitere Fächer) sowie fachübergreifende Kompetenzen. Du legst Kompetenzen an („Fach“, „Kompetenzbereich“, „Kompetenz“, „Beschreibung“), bearbeitest oder löschst sie. Schuladministrationen und Lehrkräfte können das Raster nur nachschlagen.
 
-![Kompetenzraster](docs/screenshots/kompetenzraster.png)
+<p align="center">
+  <img src="docs/screenshots/kompetenzraster.webp" alt="Kompetenzraster" width="680"><br>
+  <sub>Kompetenzraster</sub>
+</p>
 
 #### Datenschutz-Unterlagen und Rollen & Rechte
 
@@ -317,7 +338,10 @@ Unter Plattform → Datenschutz-Unterlagen findest du dieselben Vorlagen wie die
 
 Anmelden mit `schulleitung` (Demo) oder mit dem Konto, das bei der Registrierung deiner Schule entstanden ist.
 
-![Startseite der Schuladministration](docs/screenshots/start-schuladministration.png)
+<p align="center">
+  <img src="docs/screenshots/start-schuladministration.webp" alt="Startseite der Schuladministration" width="680"><br>
+  <sub>Startseite der Schuladministration</sub>
+</p>
 
 #### Schule registrieren
 
@@ -328,7 +352,10 @@ Anmelden mit `schulleitung` (Demo) oder mit dem Konto, das bei der Registrierung
 3. Setze die Haken: „Ich bin berechtigt, die Schule zu vertreten“, die Datenschutzerklärung und, wenn der AVV freigegeben ist, „Ich akzeptiere den Auftragsverarbeitungsvertrag (AVV) im Namen der Schule“. Ist der AVV noch ein Entwurf, kannst du ihn lesen und nimmst ihn später unter „Meine Schule“ an.
 4. Klicke auf „Schule registrieren“. Du bist danach angemeldet. Als Nächstes legst du Klassen an oder importierst eine Schülerliste.
 
-![Schule registrieren](docs/screenshots/schule-registrieren.png)
+<p align="center">
+  <img src="docs/screenshots/schule-registrieren.webp" alt="Schule registrieren" width="680"><br>
+  <sub>Schule registrieren</sub>
+</p>
 
 #### AVV annehmen
 
@@ -343,7 +370,10 @@ Der Vertrag zur Auftragsverarbeitung (Art. 28 DSGVO) regelt, wie Tuto die Daten 
 
 Unter „Meine Schule“ pflegst du außerdem die Stammdaten der Schule (Formular unten, „Speichern“).
 
-![Meine Schule mit dem AVV-Abschnitt](docs/screenshots/meine-schule-avv.png)
+<p align="center">
+  <img src="docs/screenshots/meine-schule-avv.webp" alt="Meine Schule mit dem AVV-Abschnitt" width="680"><br>
+  <sub>Meine Schule mit dem AVV-Abschnitt</sub>
+</p>
 
 #### KI-Funktionen freischalten
 
@@ -362,7 +392,10 @@ Standardmäßig antwortet die Demo-Logik auf der Plattform. Erst wenn du die KI 
 
 Mit „KI-Funktionen ausschalten“ geht sofort nichts mehr an den Anbieter; gespeicherte Ergebnisse bleiben. Nimmst du später einen Haken zurück und speicherst, schaltet sich die KI selbst aus.
 
-![KI-Funktionen mit Checkliste](docs/screenshots/ki-funktionen.png)
+<p align="center">
+  <img src="docs/screenshots/ki-funktionen.webp" alt="KI-Funktionen mit Checkliste" width="680"><br>
+  <sub>KI-Funktionen mit Checkliste</sub>
+</p>
 
 #### Benutzer anlegen
 
@@ -377,7 +410,10 @@ Lehrkräfte bekommen ihren Zugang von dir, sie registrieren sich nicht selbst. S
 
 Zum Bearbeiten klickst du in der Liste auf die Person. Passwort leer lassen heißt: das bisherige bleibt. Oben rechts auf der Seite gibt es „Datenauskunft“: Alle Daten zu diesem Konto als Datei (JSON), falls jemand Auskunft verlangt. Das eigene Konto kann niemand löschen.
 
-![Benutzerliste der Schule](docs/screenshots/benutzer-liste.png)
+<p align="center">
+  <img src="docs/screenshots/benutzer-liste.webp" alt="Benutzerliste der Schule" width="680"><br>
+  <sub>Benutzerliste der Schule</sub>
+</p>
 
 #### Klassen anlegen
 
@@ -389,7 +425,10 @@ Zum Bearbeiten klickst du in der Liste auf die Person. Passwort leer lassen hei�
 
 Die Liste zeigt je Klasse Klassenleitung, Zahl der weiteren Lehrkräfte, Klassencode (zum Kopieren) und Zahl der Schüler:innen.
 
-![Klassenliste](docs/screenshots/klassen-liste.png)
+<p align="center">
+  <img src="docs/screenshots/klassen-liste.webp" alt="Klassenliste" width="680"><br>
+  <sub>Klassenliste</sub>
+</p>
 
 #### Klassenleitung und weitere Lehrkräfte zuordnen
 
@@ -399,7 +438,10 @@ Die Liste zeigt je Klasse Klassenleitung, Zahl der weiteren Lehrkräfte, Klassen
 2. Weitere Lehrkräfte ordnest du im Bereich „Unterrichtende Lehrkräfte“ zu: „Lehrkräfte hinzufügen“, Lehrkräfte auswählen (mehrere gehen), bestätigen. Mit „Nicht mehr zuordnen“ nimmst du die Zuordnung zurück.
 3. Nur die Klassenleitung und zugeordnete Lehrkräfte können in dieser Klasse Stunden anlegen und die Lernstände der Klasse sehen. Fehlt die Zuordnung, bekommt die Lehrkraft die Klasse in keiner Auswahl angezeigt.
 
-![Klasse bearbeiten mit Lehrkräften, Schüler:innen und Vertretungen](docs/screenshots/klasse-zuordnung.png)
+<p align="center">
+  <img src="docs/screenshots/klasse-zuordnung.webp" alt="Klasse bearbeiten mit Lehrkräften, Schüler:innen und Vertretungen" width="680"><br>
+  <sub>Klasse bearbeiten mit Lehrkräften, Schüler:innen und Vertretungen</sub>
+</p>
 
 #### Schüler:innen in die Klasse bringen
 
@@ -417,9 +459,15 @@ Es gibt drei Wege.
 
 Wer schon da ist, wird aktualisiert statt doppelt angelegt. Konten von Lehrkräften und der Administration bleiben unberührt.
 
-![Schülerliste importieren](docs/screenshots/schuelerliste-importieren.png)
+<p align="center">
+  <img src="docs/screenshots/schuelerliste-importieren.webp" alt="Schülerliste importieren" width="680"><br>
+  <sub>Schülerliste importieren</sub>
+</p>
 
-![Vorschau des Imports](docs/screenshots/schuelerliste-vorschau.png)
+<p align="center">
+  <img src="docs/screenshots/schuelerliste-vorschau.webp" alt="Vorschau des Imports" width="680"><br>
+  <sub>Vorschau des Imports</sub>
+</p>
 
 **b) Mit dem Klassencode**
 
@@ -466,7 +514,10 @@ Darunter stellst du zwei Dinge ein:
 
 Die Seite zeigt außerdem, wie viele Schüler:innen schon eingewilligt haben, und listet alle veröffentlichten Fassungen.
 
-![Tuto-Mikro & Einwilligungen](docs/screenshots/tuto-mikro-einstellungen.png)
+<p align="center">
+  <img src="docs/screenshots/tuto-mikro-einstellungen.webp" alt="Tuto-Mikro &amp; Einwilligungen" width="680"><br>
+  <sub>Tuto-Mikro &amp; Einwilligungen</sub>
+</p>
 
 #### Einwilligungen einsammeln
 
@@ -486,7 +537,10 @@ Du siehst das Klassenbuch jeder Klasse deiner Schule (Klasse oben auswählen) un
 
 Fünf Vorlagen zum Ausdrucken und Anpassen, vorausgefüllt mit den Stammdaten deiner Schule und den echten Einstellungen der Plattform (Aufbewahrung, KI-Anbieter, Schalter deiner Schule, Tuto-Mikro): **Checkliste** (was vor dem Start, vor den KI-Funktionen und vor dem Tuto-Mikro zu klären ist), **Folgenabschätzung** (Art. 35 DSGVO), **Verzeichnis** der Verarbeitungstätigkeiten (Art. 30), **Elterninformation** (Art. 13) und **Einwilligung** (Muster für das Tuto-Mikro). Die Vorlagen sind Entwürfe und keine Rechtsberatung: Stimme sie mit deiner Datenschutzbeauftragten oder deinem Datenschutzbeauftragten ab.
 
-![Datenschutz-Unterlagen](docs/screenshots/datenschutz-unterlagen.png)
+<p align="center">
+  <img src="docs/screenshots/datenschutz-unterlagen.webp" alt="Datenschutz-Unterlagen" width="680"><br>
+  <sub>Datenschutz-Unterlagen</sub>
+</p>
 
 #### Auswertungen deiner Schule
 
@@ -514,7 +568,10 @@ Die Seite zeigt deine Stunden von heute und den letzten beiden Schultagen (Monta
 
 Die Schüler:innen bekommen eine Meldung in der Glocke.
 
-![Heute: Hausaufgaben prüfen und freigeben](docs/screenshots/heute.png)
+<p align="center">
+  <img src="docs/screenshots/heute.webp" alt="Heute: Hausaufgaben prüfen und freigeben" width="680"><br>
+  <sub>Heute: Hausaufgaben prüfen und freigeben</sub>
+</p>
 
 #### Stunde erfassen
 
@@ -528,7 +585,10 @@ Die Schüler:innen bekommen eine Meldung in der Glocke.
 
 Die Liste der Stunden zeigt Datum, Klasse, Fach, Thema, Status, wie viele abgegeben haben und das durchschnittliche Verständnis. Mit den Filtern grenzt du nach Klasse, Status und Art (normale Stunde oder Förderaufgabe) ein.
 
-![Stunde erfassen](docs/screenshots/stunde-erfassen.png)
+<p align="center">
+  <img src="docs/screenshots/stunde-erfassen.webp" alt="Stunde erfassen" width="680"><br>
+  <sub>Stunde erfassen</sub>
+</p>
 
 #### Tuto-Mikro: Notizen aus der Stunde
 
@@ -546,11 +606,17 @@ Der Knopf „Tuto-Mikro“ fehlt bei Förderaufgaben und in Fächern, die deine 
 4. Klicke auf **„Mikro an“**. Dein Browser fragt, ob er das Mikrofon benutzen darf. Erlaube es. Tuto-Mikro funktioniert nur über eine gesicherte Verbindung (https). Ist das Mikrofon blockiert, steht auf der Seite, wie du es freigibst.
 5. Bis zum Ende bleibt die Seite offen. Kommt jemand dazu, schalte das Mikro aus, hake die Person an und schalte es wieder an. Mit **„Mikro aus“** beendest du die Sitzung.
 
-![Tuto-Mikro: Wer ist heute da? und Einwilligungs-Prüfung](docs/screenshots/tuto-mikro-einwilligungspruefung.png)
+<p align="center">
+  <img src="docs/screenshots/tuto-mikro-einwilligungspruefung.webp" alt="Tuto-Mikro: Wer ist heute da? und Einwilligungs-Prüfung" width="680"><br>
+  <sub>Tuto-Mikro: Wer ist heute da? und Einwilligungs-Prüfung</sub>
+</p>
 
 **Beamer-Anzeige:** Klicke auf „Beamer-Anzeige öffnen“, ziehe das neue Fenster auf den Beamer und klicke dort auf „Vollbild“. Die Klasse sieht, ob das Mikro **an** oder **aus** ist, und das Thema der Stunde, sonst nichts: keine Namen, keine Texte. „Mikro aus“ ist als Einziges rot.
 
-![Beamer-Anzeige](docs/screenshots/tuto-mikro-beamer.png)
+<p align="center">
+  <img src="docs/screenshots/tuto-mikro-beamer.webp" alt="Beamer-Anzeige" width="680"><br>
+  <sub>Beamer-Anzeige</sub>
+</p>
 
 **Nach der Stunde:**
 
@@ -573,9 +639,15 @@ Ganz unten unter „Tuto-Mikro in dieser Stunde“ siehst du den Nachweis je Sit
 
 Nach der Freigabe sind die Fragen gesperrt, weil die Schüler:innen schon antworten könnten. Mit **„Freigabe zurücknehmen“** holst du die Hausaufgabe zurück, solange noch niemand abgegeben hat.
 
-![Stunde mit Zusammenfassung und Fragen](docs/screenshots/stunde-hausaufgabe.png)
+<p align="center">
+  <img src="docs/screenshots/stunde-hausaufgabe.webp" alt="Stunde mit Zusammenfassung und Fragen" width="680"><br>
+  <sub>Stunde mit Zusammenfassung und Fragen</sub>
+</p>
 
-![Hausaufgabe freigeben](docs/screenshots/hausaufgabe-freigeben.png)
+<p align="center">
+  <img src="docs/screenshots/hausaufgabe-freigeben.webp" alt="Hausaufgabe freigeben" width="680"><br>
+  <sub>Hausaufgabe freigeben</sub>
+</p>
 
 **Abgaben ansehen:** Im Bereich **„Abgaben“** derselben Seite siehst du, wer abgegeben hat, mit Zeitpunkt und Verständnis (zum Beispiel „Gut verstanden“, „Teilweise verstanden“, „Förderbedarf“). Über „Ansehen“ liest du Zusammenfassung, Antworten, die KI-Rückmeldung und die Lücken. Die Werte sind eine Einschätzung der KI und keine Note. Mit **„Zur Überarbeitung zurückgeben“** löschst du eine Abgabe samt KI-Prüfung, die Schüler:in kann dann neu abgeben. Über der Tabelle steht, wer noch nicht abgegeben hat.
 
@@ -595,7 +667,10 @@ Voraussetzung: Die Schuladministration hat den Einwilligungstext veröffentlicht
 
 Verlangt deine Schule zusätzlich die eigene Zustimmung der Schüler:innen, zeigt die Seite „Schüler:in-Bestätigung fehlt“, bis diese unter „Tuto-Mikro im Unterricht“ zugestimmt haben.
 
-![Einwilligungen einer Klasse](docs/screenshots/einwilligungen-klasse.png)
+<p align="center">
+  <img src="docs/screenshots/einwilligungen-klasse.webp" alt="Einwilligungen einer Klasse" width="680"><br>
+  <sub>Einwilligungen einer Klasse</sub>
+</p>
 
 #### Einstieg in die nächste Stunde
 
@@ -607,7 +682,10 @@ Eine Tafel für den Beamer mit den **drei Punkten, die die Klasse am wenigsten v
 2. „Lösungshinweise einblenden“ zeigt zu jedem Punkt den Hinweis aus deinem Erwartungshorizont, wenn du ihn brauchst. Er bleibt unsichtbar, bis du ihn einblendest.
 3. „Vollbild“ füllt den Beamer, „Drucken“ gibt die Tafel als Blatt aus.
 
-![Einstieg für die nächste Stunde](docs/screenshots/einstieg-naechste-stunde.png)
+<p align="center">
+  <img src="docs/screenshots/einstieg-naechste-stunde.webp" alt="Einstieg für die nächste Stunde" width="680"><br>
+  <sub>Einstieg für die nächste Stunde</sub>
+</p>
 
 #### Klassenbuch führen
 
@@ -623,7 +701,10 @@ Das Klassenbuch hält fest, was in der Klasse unterrichtet wurde, die Hausaufgab
 
 Das Klassenbuch sehen die Lehrkräfte der Klasse (auch Vertretungen, solange sie dauert) und die Schuladministration, nie die Schüler:innen, weil die Einträge Fehlende nennen. Bearbeiten und bestätigen kannst du nur die Einträge deiner eigenen Stunden. Die Einträge anderer Lehrkräfte der Klasse liest und exportierst du nur, die Schuladministration kann sie bearbeiten und bestätigen.
 
-![Klassenbuch](docs/screenshots/klassenbuch.png)
+<p align="center">
+  <img src="docs/screenshots/klassenbuch.webp" alt="Klassenbuch" width="680"><br>
+  <sub>Klassenbuch</sub>
+</p>
 
 #### Rückfragen der Schüler:innen beantworten
 
@@ -637,7 +718,10 @@ Schüler:innen stellen Fragen zu deinen Stunden, aus ihrem Hausaufgaben-Ergebnis
 
 Die Fragen lesen nur du und die Schuladministration, die Mitschüler:innen nicht.
 
-![Rückfragen der Schüler:innen](docs/screenshots/rueckfragen-lehrkraft.png)
+<p align="center">
+  <img src="docs/screenshots/rueckfragen-lehrkraft.webp" alt="Rückfragen der Schüler:innen" width="680"><br>
+  <sub>Rückfragen der Schüler:innen</sub>
+</p>
 
 #### Lernstand und Förderbedarf
 
@@ -650,7 +734,10 @@ Die Fragen lesen nur du und die Schuladministration, die Mitschüler:innen nicht
 
 Der Wert ist eine Einschätzung der KI. Er zeigt, wo jemand Unterstützung braucht, ersetzt aber keine Beurteilung. Die Kennzahlen auf der Startseite („Abgaben offener Hausaufgaben“, „Ø Verständnis der letzten Hausaufgabe“, „Schüler:innen mit Förderbedarf“) kommen aus denselben Daten.
 
-![Lernstand und Förderbedarf](docs/screenshots/lernstand-foerderbedarf.png)
+<p align="center">
+  <img src="docs/screenshots/lernstand-foerderbedarf.webp" alt="Lernstand und Förderbedarf" width="680"><br>
+  <sub>Lernstand und Förderbedarf</sub>
+</p>
 
 #### Förderaufgabe erstellen
 
@@ -664,7 +751,10 @@ Der Wert ist eine Einschätzung der KI. Er zeigt, wo jemand Unterstützung brauc
 
 Schüler:innen bearbeiten eine Förderaufgabe wie eine Hausaufgabe, mit kürzerer eigener Zusammenfassung (mindestens 40 Zeichen). Eine Förderaufgabe hat kein Tuto-Mikro, keinen Einstieg und keinen Klassenbuch-Eintrag.
 
-![Förderaufgabe erstellen](docs/screenshots/foerderaufgabe-erstellen.png)
+<p align="center">
+  <img src="docs/screenshots/foerderaufgabe-erstellen.webp" alt="Förderaufgabe erstellen" width="680"><br>
+  <sub>Förderaufgabe erstellen</sub>
+</p>
 
 #### Bericht für das Elterngespräch
 
@@ -672,7 +762,10 @@ Schüler:innen bearbeiten eine Förderaufgabe wie eine Hausaufgabe, mit kürzere
 
 Eine druckbare Seite („Elterngespräch: Name“) mit Durchschnitt aller bewerteten Hausaufgaben, Abgabequote (pünktlich, verspätet, nicht abgegeben), Verlauf, Stärken, Förderbedarf je Kompetenz, allen Hausaufgaben mit Rückmeldung und Lücken und den Erklär’s-mir-Sitzungen. Oben rechts druckst du sie mit „Drucken“. Die Punktwerte sind KI-gestützte Einschätzungen, keine Noten.
 
-![Bericht für das Elterngespräch](docs/screenshots/elterngespraech.png)
+<p align="center">
+  <img src="docs/screenshots/elterngespraech.webp" alt="Bericht für das Elterngespräch" width="680"><br>
+  <sub>Bericht für das Elterngespräch</sub>
+</p>
 
 #### Vertretung einrichten und Übergabe-Mappe
 
@@ -688,9 +781,15 @@ Als Klassenleitung gibst du deine Klasse für einige Tage oder Wochen an eine Ko
 
 Wer eine Klasse vertritt, findet sie im Zeitraum in allen Klassenauswahlen und öffnet die Übergabe-Mappe auf der Seite Vertretung über „Übergabe-Mappe“ in der Zeile der Vertretung.
 
-![Vertretung](docs/screenshots/vertretung.png)
+<p align="center">
+  <img src="docs/screenshots/vertretung.webp" alt="Vertretung" width="680"><br>
+  <sub>Vertretung</sub>
+</p>
 
-![Übergabe-Mappe](docs/screenshots/uebergabe-mappe.png)
+<p align="center">
+  <img src="docs/screenshots/uebergabe-mappe.webp" alt="Übergabe-Mappe" width="680"><br>
+  <sub>Übergabe-Mappe</sub>
+</p>
 
 #### Klassencode zeigen
 
@@ -709,7 +808,10 @@ Das Fenster zeigt für jede deiner Klassen den Klassencode und die Adresse der R
 
 Anmelden mit `schueler` (Demo, Emilian).
 
-![Startseite einer Schüler:in](docs/screenshots/start-schueler.png)
+<p align="center">
+  <img src="docs/screenshots/start-schueler.webp" alt="Startseite einer Schüler:in" width="680"><br>
+  <sub>Startseite einer Schüler:in</sub>
+</p>
 
 #### Registrieren mit Klassencode
 
@@ -721,7 +823,10 @@ Anmelden mit `schueler` (Demo, Emilian).
 
 Wurde dein Konto von der Schule angelegt (Import), bekommst du Benutzername und Startpasswort von deiner Lehrkraft. Ändere das Passwort danach im Profil.
 
-![Registrieren mit Klassencode](docs/screenshots/registrierung-klassencode.png)
+<p align="center">
+  <img src="docs/screenshots/registrierung-klassencode.webp" alt="Registrieren mit Klassencode" width="680"><br>
+  <sub>Registrieren mit Klassencode</sub>
+</p>
 
 #### Mein Lernbereich
 
@@ -741,18 +846,30 @@ Die Liste zeigt Thema, Fach, Stunde vom, Status („Offen“, „Überfällig“
 
 **Deine Auswertung:** Nach der Prüfung siehst du oben eine Rückmeldung mit einem Wert („Gut verstanden“, „Teilweise verstanden“ oder „Förderbedarf“, mit „… von 100“), den Abschnitt „Darauf solltest du noch einmal schauen“, deine Zusammenfassung, jede Frage mit deiner Antwort, dem Wert und der Rückmeldung und zum Schluss, wie deine Lehrkraft die Stunde zusammenfasst. Der Wert ist keine Note. Er zeigt dir und deiner Lehrkraft, was du schon gut kannst und was du noch üben solltest.
 
-![Meine Hausaufgaben](docs/screenshots/meine-hausaufgaben.png)
+<p align="center">
+  <img src="docs/screenshots/meine-hausaufgaben.webp" alt="Meine Hausaufgaben" width="680"><br>
+  <sub>Meine Hausaufgaben</sub>
+</p>
 
-![Hausaufgabe bearbeiten](docs/screenshots/hausaufgabe-bearbeiten.png)
+<p align="center">
+  <img src="docs/screenshots/hausaufgabe-bearbeiten.webp" alt="Hausaufgabe bearbeiten" width="680"><br>
+  <sub>Hausaufgabe bearbeiten</sub>
+</p>
 
-![Auswertung einer Hausaufgabe](docs/screenshots/hausaufgabe-auswertung.png)
+<p align="center">
+  <img src="docs/screenshots/hausaufgabe-auswertung.webp" alt="Auswertung einer Hausaufgabe" width="680"><br>
+  <sub>Auswertung einer Hausaufgabe</sub>
+</p>
 
 #### Stufe wählen und Einfache Sprache
 
 - **Stufe:** Bei Fragen mit Stufen wählst du über der Antwort zwischen **„Einstieg“**, **„Standard“** und **„Profi“**. Such dir die Fassung aus, die zu dir passt, du kannst jederzeit wechseln. Die Stufe, mit der du abgibst, wird mit gespeichert. Bewertet wird dein Verständnis, die Stufe ist keine Note.
 - **Einfache Sprache:** Oben auf der Seite schaltest du **„Einfache Sprache“** ein. Dann stehen die Zusammenfassung und die Fragen deiner Lehrkraft in kurzen Sätzen mit einfachen Wörtern da. Deine eigenen Antworten bleiben, wie du sie schreibst. Die KI sieht dabei nur die Texte deiner Lehrkraft, nie deine Antworten. Ob der Schalter an ist, merkt sich nur dein Browser.
 
-![Hausaufgabe mit Einfacher Sprache](docs/screenshots/hausaufgabe-einfache-sprache.png)
+<p align="center">
+  <img src="docs/screenshots/hausaufgabe-einfache-sprache.webp" alt="Hausaufgabe mit Einfacher Sprache" width="680"><br>
+  <sub>Hausaufgabe mit Einfacher Sprache</sub>
+</p>
 
 #### Vorlesen und Diktieren
 
@@ -775,7 +892,10 @@ Wer etwas erklären kann, hat es wirklich verstanden. Dein KI-Lernpartner kennt 
 
 Zu Themen aus deinen Hausaufgaben kannst du außerdem deiner Lehrkraft eine Frage stellen (nächster Abschnitt). Lehrkräfte sehen Gespräche zu ihren Stunden. Gespräche zu einem eigenen Thema bleiben bei dir.
 
-![Erklär’s mir](docs/screenshots/erklaer-es-mir.png)
+<p align="center">
+  <img src="docs/screenshots/erklaer-es-mir.webp" alt="Erklär’s mir" width="680"><br>
+  <sub>Erklär’s mir</sub>
+</p>
 
 #### Frage an die Lehrkraft
 
@@ -790,9 +910,15 @@ Zu Themen aus deinen Hausaufgaben kannst du außerdem deiner Lehrkraft eine Frag
 
 **Die Antwort findest du unter** Seitenleiste → Lernen → **Meine Rückfragen** (`/meine-rueckfragen`). Eine Zahl am Menüpunkt zeigt neue Antworten. Der Status sagt „Wartet auf Antwort“, „Neue Antwort“, „Gelesen“ oder „Erledigt“ (deine Lehrkraft hat die Frage im Unterricht besprochen). Klicke auf „Gelesen“, wenn du die Antwort gelesen hast.
 
-![Frage an die Lehrkraft](docs/screenshots/frage-an-lehrkraft.png)
+<p align="center">
+  <img src="docs/screenshots/frage-an-lehrkraft.webp" alt="Frage an die Lehrkraft" width="680"><br>
+  <sub>Frage an die Lehrkraft</sub>
+</p>
 
-![Meine Rückfragen](docs/screenshots/meine-rueckfragen.png)
+<p align="center">
+  <img src="docs/screenshots/meine-rueckfragen.webp" alt="Meine Rückfragen" width="680"><br>
+  <sub>Meine Rückfragen</sub>
+</p>
 
 #### Mein Lernstand und Nachholbedarf
 
@@ -803,7 +929,10 @@ Das sind Hinweise aus deinen Hausaufgaben, keine Noten. Du siehst nur deine eige
 1. Oben stehen „Dein Verständnis im Durchschnitt“, die „Entwicklung“ („Es geht aufwärts“, „Ziemlich gleich geblieben“, „Zuletzt etwas niedriger“) und wie viele Hausaufgaben bisher bewertet sind.
 2. Darunter stehen die Kompetenzen: was schon gut klappt, was fast sitzt und wo sich Üben lohnt. Bei Kompetenzen mit Nachholbedarf findest du die Förderaufgabe deiner Lehrkraft, falls sie eine gegeben hat, „Ergebnis ansehen“ zu den Hausaufgaben, bei denen es noch gehakt hat, und einen Weg zu Erklär’s mir.
 
-![Mein Lernstand](docs/screenshots/mein-lernstand.png)
+<p align="center">
+  <img src="docs/screenshots/mein-lernstand.webp" alt="Mein Lernstand" width="680"><br>
+  <sub>Mein Lernstand</sub>
+</p>
 
 #### Einwilligungsübersicht: Tuto-Mikro im Unterricht
 
@@ -815,7 +944,10 @@ Manchmal schaltet deine Lehrkraft im Unterricht das Tuto-Mikro ein. Es erfasst n
 2. Liegt sie vor, siehst du bei „Dein Einverständnis“, ob du schon Ja gesagt hast. Klicke auf **„Ich bin einverstanden“**, wenn du zustimmst.
 3. Du kannst jederzeit deine Meinung ändern: **„Ich bin nicht mehr einverstanden“**. Dir passiert dadurch nichts. Solange du nicht zustimmst, bleibt das Tuto-Mikro in deiner Klasse aus.
 
-![Tuto-Mikro im Unterricht, Sicht der Schüler:in](docs/screenshots/tuto-mikro-im-unterricht-schueler.png)
+<p align="center">
+  <img src="docs/screenshots/tuto-mikro-im-unterricht-schueler.webp" alt="Tuto-Mikro im Unterricht, Sicht der Schüler:in" width="680"><br>
+  <sub>Tuto-Mikro im Unterricht, Sicht der Schüler:in</sub>
+</p>
 
 #### Daten herunterladen
 
@@ -842,7 +974,10 @@ Eltern brauchen kein Konto. Sie bekommen von der Lehrkraft einen Brief mit pers�
 
 Die Seite braucht keine Anmeldung und legt keine Sitzung an. Sie verrät über das Kind nichts außer Vorname und Klasse.
 
-![Einwilligungsseite für Eltern](docs/screenshots/einwilligung-elternseite.png)
+<p align="center">
+  <img src="docs/screenshots/einwilligung-elternseite.webp" alt="Einwilligungsseite für Eltern" width="680"><br>
+  <sub>Einwilligungsseite für Eltern</sub>
+</p>
 
 ---
 
@@ -929,164 +1064,164 @@ vendor/bin/pint --dirty --format agent               # Formatierung der geänder
 Die Tests laufen mit einer SQLite-Datenbank im Arbeitsspeicher, ohne Zugang zu einer KI: `phpunit.xml` setzt `AI_ENABLED=false` und `LERNPLATTFORM_DPA_FINAL=false`, und die KI wird in Tests nur durch Attrappen des SDK ersetzt. **Es wird in Tests nie eine echte KI aufgerufen**, dafür brauchst du keinen Schlüssel.
 
 <!--
-SCREENSHOTS für den späteren Lauf (Ablage in docs/screenshots/, PNG, empfohlen 1440 px breit, helles Design; die Dateinamen stehen so in den Verweisen oben).
+SCREENSHOTS für den späteren Lauf (Ablage in docs/screenshots/, WebP, empfohlen 1440 px breit, helles Design; die Dateinamen stehen so in den Verweisen oben).
 
 ACHTUNG, Datenbank: "migrate:fresh" löscht alle Tabellen. Führe es nur gegen eine Wegwerf-Datenbank aus, nie gegen die gemeinsame Entwicklungs- oder die Produktionsdatenbank (die .env des Projekts zeigt auf eine entfernte MariaDB). Vorgehen: Lege eine leere Datei database/screenshots.sqlite und eine Umgebungsdatei .env.screenshots an (APP_KEY wie in der .env, DB_CONNECTION=sqlite, DB_DATABASE=database/screenshots.sqlite, APP_LOCALE=de, LERNPLATTFORM_LOCALE=de) und setze in der Shell APP_ENV=screenshots: Laravel liest dann diese Datei statt der .env. Einzelne DB_*-Variablen in der Shell reichen nicht, denn "php artisan serve" gibt sie nicht an den Server weiter, der dann doch die .env läse. Prüfe mit "php artisan config:show database.default", dass "sqlite" erscheint, und starte erst dann "php artisan migrate:fresh --seed" und "php artisan serve" (beide mit demselben APP_ENV).
 
 Allgemein: Frisch gesäte Demo-Daten (migrate:fresh --seed, siehe oben), Passwort aller Demo-Konten ist hackathon2026. {id} = Datenbank-Nummer des genannten Datensatzes (aus der Adresszeile nach dem Anklicken ablesen). Plattformschalter für die KI auf "aus" lassen, außer es steht etwas anderes dabei.
 
 Vorbereitung für die Tuto-Mikro-Bilder (Einstellungen, Einwilligungsprüfung, Beamer, Elternbrief, Schüler-Seite):
- a) als schulleitung: Verwaltung > Tuto-Mikro & Einwilligungen: alle fünf Punkte abhaken, Speichern, "Als Version 1 veröffentlichen", "Tuto-Mikro freischalten". Den Schalter "Schüler:innen bestätigen zusätzlich selbst" nur für tuto-mikro-im-unterricht-schueler.png einschalten.
+ a) als schulleitung: Verwaltung > Tuto-Mikro & Einwilligungen: alle fünf Punkte abhaken, Speichern, "Als Version 1 veröffentlichen", "Tuto-Mikro freischalten". Den Schalter "Schüler:innen bestätigen zusätzlich selbst" nur für tuto-mikro-im-unterricht-schueler.webp einschalten.
  b) als lehrer: Unterricht > Einwilligungen, Klasse 7b, in dieser Reihenfolge:
-    1. "Elternbriefe erzeugen" für die ganze Klasse. Den Link des ersten Briefs notieren, dessen Schüler:in noch keine Einwilligung hat, und damit einwilligung-elternseite.png aufnehmen, bevor für diese Schüler:in etwas erfasst wird (sonst zeigt die Seite das grüne "Einwilligung erteilt" und das Formular nur eingeklappt).
-    2. Für drei Schüler:innen "Papier-Einwilligung erfassen" (alle Zwecke angekreuzt), bei einer davon danach "Widerruf erfassen". Die übrigen fünf bleiben offen. So sind Erteilt, Widerrufen und Fehlt zugleich zu sehen: jetzt einwilligungen-klasse.png aufnehmen.
+    1. "Elternbriefe erzeugen" für die ganze Klasse. Den Link des ersten Briefs notieren, dessen Schüler:in noch keine Einwilligung hat, und damit einwilligung-elternseite.webp aufnehmen, bevor für diese Schüler:in etwas erfasst wird (sonst zeigt die Seite das grüne "Einwilligung erteilt" und das Formular nur eingeklappt).
+    2. Für drei Schüler:innen "Papier-Einwilligung erfassen" (alle Zwecke angekreuzt), bei einer davon danach "Widerruf erfassen". Die übrigen fünf bleiben offen. So sind Erteilt, Widerrufen und Fehlt zugleich zu sehen: jetzt einwilligungen-klasse.webp aufnehmen.
     3. Erst danach für alle noch nicht eingewilligten Schüler:innen (auch die widerrufene) "Papier-Einwilligung erfassen", sodass alle acht eine gültige Einwilligung haben und "Mikro an" aktiv wird. Ab hier die Tuto-Mikro-Bilder aufnehmen.
- c) für tuto-mikro-beamer.png (nach a und b): als lehrer "/tuto-mikro/{id von "Satz des Pythagoras"}" öffnen, unter "Wer ist heute da?" alle Schüler:innen anhaken, die Bestätigung setzen und "Mikro an" drücken. Chrome dafür mit einem Test-Mikrofon starten (--use-fake-ui-for-media-stream --use-fake-device-for-media-stream), sonst gibt es keine Sitzung. Dann im selben Browser einen zweiten Tab mit "/tuto-mikro/{id}/beamer" öffnen (das Beamer-Fenster erfährt den Stand nur über den Browser, der die Sitzung hält), den Recorder-Tab offen lassen. Blau "Mikro an" erscheint nur, wenn die Schule wirklich zuhört: entweder Plattformschalter für die KI mit gültigem Schlüssel an (dann Spracherkennung auf dem Server) oder ein Browser, der Deutsch auf dem Gerät erkennt (Sprachpaket installiert). Sonst läuft die Sitzung ohne Zuhören ("manuell"), und der Beamer zeigt rot "Mikro aus"; das Bild mit "Mikro aus" ist dann das einzige, das sich so aufnehmen lässt.
+ c) für tuto-mikro-beamer.webp (nach a und b): als lehrer "/tuto-mikro/{id von "Satz des Pythagoras"}" öffnen, unter "Wer ist heute da?" alle Schüler:innen anhaken, die Bestätigung setzen und "Mikro an" drücken. Chrome dafür mit einem Test-Mikrofon starten (--use-fake-ui-for-media-stream --use-fake-device-for-media-stream), sonst gibt es keine Sitzung. Dann im selben Browser einen zweiten Tab mit "/tuto-mikro/{id}/beamer" öffnen (das Beamer-Fenster erfährt den Stand nur über den Browser, der die Sitzung hält), den Recorder-Tab offen lassen. Blau "Mikro an" erscheint nur, wenn die Schule wirklich zuhört: entweder Plattformschalter für die KI mit gültigem Schlüssel an (dann Spracherkennung auf dem Server) oder ein Browser, der Deutsch auf dem Gerät erkennt (Sprachpaket installiert). Sonst läuft die Sitzung ohne Zuhören ("manuell"), und der Beamer zeigt rot "Mikro aus"; das Bild mit "Mikro aus" ist dann das einzige, das sich so aufnehmen lässt.
 
 --- Allgemein / Anmeldung ---
-anmeldeseite-demo-zugaenge.png
+anmeldeseite-demo-zugaenge.webp
   URL: /login   Login: nicht angemeldet
   Sichtbar: Formular mit Willkommen-Text, der Block "Demo-Zugänge" mit den vier Rollen, die Links "Mit Klassencode registrieren" und "Schule registrieren", in der Fußzeile Impressum, Datenschutzerklärung, Auftragsverarbeitung (AVV) und die Sprachwahl Deutsch | English.
-registrierung-klassencode.png
+registrierung-klassencode.webp
   URL: /register   Login: nicht angemeldet
   Sichtbar: Formular "Mit Klassencode registrieren" mit Name, Benutzername, Klassencode, Passwort, E-Mail (freiwillig).
-schule-registrieren.png
+schule-registrieren.webp
   URL: /schule-registrieren   Login: nicht angemeldet
   Sichtbar: "Neue Schule registrieren" mit "Deine Schule", "Erster Zugang der Schuladministration", den drei Bestätigungen und dem Knopf "Schule registrieren".
-profil-daten-herunterladen.png
+profil-daten-herunterladen.webp
   URL: /profile   Login: schueler
   Sichtbar: Profil mit Sprache-Auswahl, Passwort-Feldern und oben rechts "Meine Daten herunterladen".
-rollen-und-rechte.png
+rollen-und-rechte.webp
   URL: /rollen-und-rechte   Login: schulleitung
   Sichtbar: die vier Rollenkarten und die Rechte-Matrix (die ersten Zeilen reichen).
 
 --- Plattform-Administration ---
-start-plattform-administration.png
+start-plattform-administration.webp
   URL: /   Login: hackathon
   Sichtbar: Mein Lernbereich mit den Kennzahlen (Schulen, Schuladministrationen, Lehrkräfte, Schüler:innen, Klassen), den Abkürzungen und der Liste der Schulen; Seitenleiste mit der Gruppe "Plattform".
-schulen-liste.png
+schulen-liste.webp
   URL: /schulen   Login: hackathon
   Sichtbar: Tabelle mit beiden Demo-Schulen, Spalten Schule, Schulnummer, AVV, Konten, Klassen, Status; in der Zeile "Bearbeiten" und "Sperren".
-administrationskonten.png
+administrationskonten.webp
   URL: /benutzer   Login: hackathon
   Sichtbar: Liste "Administrationskonten" mit schulleitung, gym-admin und hackathon.
-kompetenzraster.png
+kompetenzraster.webp
   URL: /kompetenzraster   Login: hackathon
   Sichtbar: Tabelle der Kompetenzen, gruppiert nach Fach, mit den Filtern Fach und Kompetenzbereich.
 
 --- Schuladministration ---
-start-schuladministration.png
+start-schuladministration.webp
   URL: /   Login: schulleitung
   Sichtbar: Mein Lernbereich mit Kennzahlen (Schüler:innen, Lehrkräfte, Klassen, Unterrichtsstunden, Abgaben diese Woche) und den Abkürzungen zu den Verwaltungsseiten.
-meine-schule-avv.png
+meine-schule-avv.webp
   URL: /meine-schule   Login: schulleitung
   Sichtbar: Abschnitt "Auftragsverarbeitungsvertrag (AVV)" mit Stand "Angenommen, Version …" und den Knöpfen zum Ansehen, darunter die Stammdaten.
-ki-funktionen.png
+ki-funktionen.webp
   URL: /ki-funktionen   Login: schulleitung
   Sichtbar: die vier Punkte der Checkliste (abgehakt), Stand der KI-Funktionen und der Knopf "KI-Funktionen ausschalten" (bzw. "einschalten").
-benutzer-liste.png
+benutzer-liste.webp
   URL: /benutzer   Login: schulleitung
   Sichtbar: Liste der Konten der Gesamtschule am Lernpark mit Rolle und Klasse (Rollen-Anzeige sichtbar).
-klassen-liste.png
+klassen-liste.webp
   URL: /klassen   Login: schulleitung
   Sichtbar: Klassen 7a und 7b mit Klassenleitung, weiteren Lehrkräften, Klassencode, Zahl der Schüler:innen.
-klasse-zuordnung.png
+klasse-zuordnung.webp
   URL: /klassen/{id der Klasse 7b}/edit   Login: schulleitung
   Sichtbar: Formular mit Name, Klassenleitung (Frau Schulze), Klassencode, oben rechts "Neuen Code erzeugen", darunter die Bereiche "Unterrichtende Lehrkräfte" (Thomas Weber), "Schüler:innen" und "Vertretungen".
-schuelerliste-importieren.png
+schuelerliste-importieren.webp
   URL: /schuelerliste-importieren   Login: schulleitung
   Sichtbar: Datei-Auswahl "CSV-Datei" mit "Vorschau erstellen" und rechts die Karte "So muss die Datei aufgebaut sein" mit dem Beispiel.
-schuelerliste-vorschau.png
+schuelerliste-vorschau.webp
   URL: /schuelerliste-importieren, nach dem Hochladen einer Beispiel-CSV (Nachname;Vorname;Klasse mit zwei neuen Schülern in einer neuen Klasse und einer Zeile, die übersprungen wird)   Login: schulleitung
   Sichtbar: Hinweis "Das ist nur eine Vorschau", die Zähler (werden angelegt, werden aktualisiert, übersprungen), die Tabelle mit Ergebnis und Hinweis und die Knöpfe "Import ausführen" und "Andere Datei wählen". Nicht ausführen.
-tuto-mikro-einstellungen.png
+tuto-mikro-einstellungen.webp
   URL: /tuto-mikro-einstellungen   Login: schulleitung (nach Vorbereitung a)
   Sichtbar: Hinweis "Tuto-Mikro ist freigeschaltet", Abschnitt "1. Voraussetzungen" mit den fünf Punkten, "Fächer ohne Tuto-Mikro" mit den Standardfächern, "2. Einwilligungserklärung" und "3. Tuto-Mikro freischalten".
-datenschutz-unterlagen.png
+datenschutz-unterlagen.webp
   URL: /datenschutz-unterlagen?document=checkliste   Login: schulleitung
   Sichtbar: die Reiter Checkliste, Folgenabschätzung, Verzeichnis, Elterninformation, Einwilligung und der Anfang der Checkliste.
 
 --- Lehrkraft ---
-heute.png
+heute.webp
   URL: /heute   Login: lehrer
   Sichtbar: Karte "Freigabe in 30 Sekunden", Tabelle mit mindestens einer Stunde "Wartet auf Freigabe" (Ursachen der Französischen Revolution) und den Zeilen-Knöpfen "Hausaufgabe mit KI erstellen" und "Freigeben". Ist dort ein Entwurf mit Fragen vorhanden, ist oben rechts "Alle bereiten freigeben" zu sehen.
-stunde-erfassen.png
+stunde-erfassen.webp
   URL: /lessons/create   Login: lehrer
   Sichtbar: Formular "Unterrichtsstunde" (Klasse 7b, Gehalten am, Fach, Thema) und "Inhalt der Stunde" mit Notizen und Arbeitsblättern; als Fach z. B. Mathematik, damit der Hinweis auf die vorige Stunde erscheint, sofern vorhanden.
-stunde-hausaufgabe.png
+stunde-hausaufgabe.webp
   URL: /lessons/{id von "Satz des Pythagoras"}/edit   Login: lehrer
   Sichtbar: Kopfzeile mit den Knöpfen (Einstieg nächste Stunde, Klassenbuch-Eintrag, Tuto-Mikro), Abschnitt Zusammenfassung und die Reiter "Hausaufgabe" (Fragen mit Stufen) und "Abgaben".
-hausaufgabe-freigeben.png
+hausaufgabe-freigeben.webp
   URL: /lessons/{id von "Ursachen der Französischen Revolution"}/edit, nachdem "Hausaufgabe mit KI erstellen" gelaufen ist, mit geöffnetem Fenster "Hausaufgabe freigeben"   Login: lehrer
   Sichtbar: Fenster mit "Abgabe bis", "Für wen?" (Ganze Klasse 7b / Ausgewählte Schüler:innen) und dem Knopf "Freigeben". Nicht absenden.
-tuto-mikro-einwilligungspruefung.png
+tuto-mikro-einwilligungspruefung.webp
   URL: /tuto-mikro/{id von "Satz des Pythagoras"}   Login: lehrer (nach Vorbereitung a und b)
   Sichtbar: oben die Hinweise (nur dein Mikrofon, nur Ton, Ton wird nicht gespeichert), "Wer ist heute da?" mit den Schüler:innen, der grüne Hinweis, dass alle eingewilligt haben, die Bestätigung "Nur die Schüler:innen, die hier angehakt sind, sind im Raum", die Knöpfe "Beamer-Anzeige öffnen" und "Mikro an".
-tuto-mikro-beamer.png
+tuto-mikro-beamer.webp
   URL: /tuto-mikro/{id von "Satz des Pythagoras"}/beamer   Login: lehrer (nach Vorbereitung a, b und c: Sitzung läuft im anderen Tab desselben Browsers)
   Sichtbar: Vollbild-Seite mit "Mikro an" (ein zweites Bild mit "Mikro aus" in Rot ist optional, siehe Vorbereitung c) und dem Thema der Stunde, sonst nichts.
-einwilligungen-klasse.png
+einwilligungen-klasse.webp
   URL: /einwilligungen?klasse={id der Klasse 7b}   Login: lehrer (nach Vorbereitung a, aber noch vor Schritt 3 von b, damit Erteilt, Widerrufen und Fehlt zugleich zu sehen sind)
   Sichtbar: Klassenauswahl, Tabelle mit den Ständen der Schüler:innen (Erteilt, Fehlt, Widerrufen mit Symbol), oben rechts "Elternbriefe erzeugen"; ein geöffnetes Aktionen-Menü einer Zeile mit "Papier-Einwilligung erfassen", "Widerruf erfassen" und neuem Brief.
-einstieg-naechste-stunde.png
+einstieg-naechste-stunde.webp
   URL: /einstieg/{id von "Fotosynthese"}   Login: lehrer
   Sichtbar: Tafel "Einstieg für die nächste Stunde" mit drei Punkten ("Wer kann das erklären?"), Durchschnittswerten und den Knöpfen "Lösungshinweise einblenden", "Vollbild", "Drucken"; Lösungshinweise eingeblendet.
-klassenbuch.png
+klassenbuch.webp
   URL: /klassenbuch?klasse={id der Klasse 7b}   Login: lehrer
   Sichtbar: Tabelle mit einem bestätigten und einem Entwurf-Eintrag (Datum, Fach und Thema, Unterrichtsinhalt, Hausaufgabe, Fehlt, Status) und oben rechts "Entwurf aus Stunde erstellen" und "CSV exportieren".
-rueckfragen-lehrkraft.png
+rueckfragen-lehrkraft.webp
   URL: /rueckfragen   Login: lehrer
   Sichtbar: Tabelle mit der offenen Frage von Emilian (Satz des Pythagoras) und der beantworteten (Fotosynthese), Status und den Knöpfen "Beantworten" und "Erledigt"; Zahl am Menüpunkt.
-lernstand-foerderbedarf.png
+lernstand-foerderbedarf.webp
   URL: /lernstand?klasse={id der Klasse 7b}   Login: lehrer
   Sichtbar: Klassenauswahl, Kompetenzmatrix, Bereich "Förderbedarf" mit Kompetenz und Schüler:innen und dem Knopf "Förderaufgabe erstellen".
-foerderaufgabe-erstellen.png
+foerderaufgabe-erstellen.webp
   URL: /lernstand?klasse={id der Klasse 7b}, mit geöffnetem Fenster "Förderaufgabe: …" (auf "Förderaufgabe erstellen" klicken)   Login: lehrer
   Sichtbar: Schüler:innen-Auswahl mit Vorauswahl, Schalter "Direkt freigeben", Knopf "Förderaufgabe erstellen". Nicht absenden.
-elterngespraech.png
+elterngespraech.webp
   URL: /elterngespraech/{id von Emilian}   Login: lehrer
   Sichtbar: "Elterngespräch: Emilian" mit Kopfdaten, Hinweis zur Einordnung, Durchschnitt, Abgabequote, Verlauf, Kompetenzen und Hausaufgaben; oben rechts "Drucken".
-vertretung.png
+vertretung.webp
   URL: /vertretung   Login: lehrer
   Sichtbar: die laufende Vertretung von Thomas Weber in 7b (Zeitraum, Status, Hinweis), oben rechts "Übergabe-Mappe" und "Vertretung einrichten".
-uebergabe-mappe.png
+uebergabe-mappe.webp
   URL: /uebergabe/{id der Klasse 7b}   Login: lehrer
   Sichtbar: druckbare Mappe der Klasse 7b mit letzten Stunden, offener Hausaufgabe, Wiederholungspunkten, Hinweis zur Übergabe und Klassenleitung; oben rechts "Drucken".
 
 --- Schüler:in ---
-start-schueler.png
+start-schueler.webp
   URL: /   Login: schueler
   Sichtbar: "Hallo Emilian!", Verständnis-Ring, "Als Nächstes fällig", Karte "Erklär’s mir"; Seitenleiste mit der Gruppe "Lernen" und den Zählern an Meine Hausaufgaben und Meine Rückfragen.
-meine-hausaufgaben.png
+meine-hausaufgaben.webp
   URL: /hausaufgaben   Login: schueler
   Sichtbar: Tabelle mit offenen Hausaufgaben (Satz des Pythagoras: Offen, Förderaufgabe) und abgegebenen mit Verständnis-Abzeichen (Fotosynthese).
-hausaufgabe-bearbeiten.png
+hausaufgabe-bearbeiten.webp
   URL: /hausaufgaben/{id von "Satz des Pythagoras"}   Login: schueler
   Sichtbar: Hinweis "So gehst du vor", Zusammenfassung der Lehrkraft, Frage 1 mit Stufenwahl (Einstieg, Standard, Profi) und Antwortfeld, "Vorlesen"-Knöpfe, ganz unten "In deinen Worten" und "Abgeben und prüfen lassen". Nichts abgeben.
-hausaufgabe-einfache-sprache.png
+hausaufgabe-einfache-sprache.webp
   URL: /hausaufgaben/{id von "Satz des Pythagoras"}   Login: schueler, Schalter "Einfache Sprache" eingeschaltet
   Sichtbar: Schalter "Einfache Sprache" an mit dem Hinweistext und die Zusammenfassung in einfacher Sprache.
-hausaufgabe-auswertung.png
+hausaufgabe-auswertung.webp
   URL: /hausaufgaben/{id von "Fotosynthese"}   Login: schueler
   Sichtbar: "Deine Auswertung" mit Wert-Abzeichen, "Darauf solltest du noch einmal schauen", die Fragen mit Antwort und Rückmeldung; oben rechts "Frage an meine Lehrkraft".
-frage-an-lehrkraft.png
+frage-an-lehrkraft.webp
   URL: /hausaufgaben/{id von "Fotosynthese"}, mit geöffnetem Fenster "Frage an deine Lehrkraft"   Login: schueler
   Sichtbar: Fenster mit dem Hinweis, wer die Frage lesen kann, Feld "Deine Frage" und "Frage abschicken". Nicht absenden.
-erklaer-es-mir.png
+erklaer-es-mir.webp
   URL: /erklaer-es-mir   Login: schueler
   Sichtbar: ein offenes Gespräch (Thema Fotosynthese) mit Erklärung und Rückfrage des Lernpartners, "Erklärung beenden" bzw. die Auswertung, "Frage an meine Lehrkraft", rechts die Liste "Deine Erklärungen".
-meine-rueckfragen.png
+meine-rueckfragen.webp
   URL: /meine-rueckfragen   Login: schueler
   Sichtbar: Tabelle mit einer Frage "Wartet auf Antwort" und einer "Neue Antwort" mit dem Knopf "Gelesen".
-mein-lernstand.png
+mein-lernstand.webp
   URL: /mein-lernstand   Login: schueler
   Sichtbar: "Wo stehst du gerade?" mit Durchschnitt und Entwicklung, Kompetenzen, die Förderaufgabe zu "Probleme mathematisch lösen" und Hausaufgaben mit Nachholbedarf.
-tuto-mikro-im-unterricht-schueler.png
+tuto-mikro-im-unterricht-schueler.webp
   URL: /tuto-mikro-im-unterricht   Login: schueler (nach Vorbereitung a mit eingeschaltetem Schalter "Schüler:innen bestätigen zusätzlich selbst" und Papier-Einwilligung der Eltern für Emilian)
   Sichtbar: Erklärung zum Tuto-Mikro, "Einwilligung deiner Eltern: Liegt vor", "Dein Einverständnis: Noch nicht gesagt" und der Knopf "Ich bin einverstanden".
 
 --- Eltern ---
-einwilligung-elternseite.png
+einwilligung-elternseite.webp
   URL: /einwilligung/{persönlicher Code}   Login: nicht angemeldet (Code aus "Elternbriefe erzeugen" in Vorbereitung b, Schritt 1: der Link des Briefs einer Schüler:in, für die noch nichts erfasst ist; nicht absenden)
   Sichtbar: Schule, Vorname und Klasse des Kindes, der Einwilligungstext, die Auswahl der Zwecke (Ton immer dabei), Name der unterschreibenden Person, die Bestätigung "erziehungsberechtigt" und der Knopf zum Absenden. Nicht absenden.
 -->
