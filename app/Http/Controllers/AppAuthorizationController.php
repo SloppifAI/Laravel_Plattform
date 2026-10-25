@@ -6,16 +6,17 @@ use App\Http\Middleware\EnsureAppMayConnect;
 use App\Models\AppAuthorizationCode;
 use App\Models\User;
 use Closure;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Connecting a native app (OAuth 2.0 authorization code with PKCE, RFC 7636 and RFC 8252, on top of Sanctum): the app
  * opens /app/verbinden in the browser, the person signs in on the normal login page and confirms on the consent page
  * (Filament\Pages\Auth\AuthorizeApp), and this controller sends the browser back to the app with a one-time code or
- * with `access_denied`. The app trades the code for a token at POST /api/v1/token (Api\V1\TokenController).
+ * with `access_denied`, through a completion page or a redirect. The app trades the code for a token at
+ * POST /api/v1/token (Api\V1\TokenController).
  *
  * A request that is not from a registered app or not for one of its registered redirect URIs is never redirected
  * anywhere: the address could be anybody's (RFC 6749, 4.1.2.1).
@@ -59,9 +60,14 @@ class AppAuthorizationController extends Controller
 
     /**
      * "Erlauben" sends the app a one-time code, "Abbrechen" tells it the person declined. Both go to the registered
-     * redirect URI, which is usually the app's own scheme (tutoapp://...), so it is a redirect away from the platform.
+     * redirect URI, which is usually the app's own scheme (tutoapp://...).
+     *
+     * A desktop browser hands such a link to the app but stays on the consent page, as if nothing had happened, so by
+     * default the answer is a completion page: it tries the link on load (browsers may block that without a click) and
+     * has a button for it. The code is in this POST answer only, never in a URL the server logs; the page is not
+     * stored and sends no Referer. A client with `completion_page` false gets the plain redirect.
      */
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request): Response
     {
         $authorization = self::validRequest($request->all()) ?? abort(400, __('Diese Anfrage zum Verbinden einer App ist ungültig. Bitte starte das Verbinden in der App noch einmal.'));
         $decision = $request->input('decision');
@@ -79,7 +85,18 @@ class AppAuthorizationController extends Controller
             : ['error' => 'access_denied'];
 
         $redirectUri = $authorization['redirect_uri'];
+        $returnUrl = $redirectUri.(str_contains($redirectUri, '?') ? '&' : '?').http_build_query([...$answer, 'state' => $authorization['state']]);
 
-        return redirect()->away($redirectUri.(str_contains($redirectUri, '?') ? '&' : '?').http_build_query([...$answer, 'state' => $authorization['state']]));
+        if (! config("lernplattform.apps.clients.{$authorization['client_id']}.completion_page", true)) {
+            return redirect()->away($returnUrl);
+        }
+
+        return response()
+            ->view('filament.pages.auth.app-authorization-complete', [
+                'appName' => self::clientName($authorization['client_id']),
+                'isAllowed' => $decision === 'allow',
+                'returnUrl' => $returnUrl,
+            ])
+            ->withHeaders(['Cache-Control' => 'no-store', 'Referrer-Policy' => 'no-referrer']);
     }
 }
