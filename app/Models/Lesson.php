@@ -12,6 +12,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasOneThrough;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * A held lesson. Its notes and worksheets are the source for the AI summary and homework questions;
@@ -30,9 +32,19 @@ class Lesson extends Model
 
     /**
      * The "Einfache Sprache" copy (`summary_simple`) belongs to the summary it was made from: when the summary changes, the copy goes.
+     * The worksheet files go with the lesson. A deleted class or teacher account takes its lessons along without a model event; `lernplattform:prune-learning-data` sweeps those files.
      */
     protected static function booted(): void
     {
+        // After the commit, so a rolled-back delete never costs the lesson its worksheets; a file another lesson still lists stays.
+        static::deleted(fn (Lesson $lesson) => DB::afterCommit(fn () => Storage::disk('local')->delete(
+            collect($lesson->attachments)
+                ->filter(fn (mixed $path): bool => is_string($path))
+                ->reject(fn (string $path): bool => static::query()->whereJsonContains('attachments', $path)->exists())
+                ->values()
+                ->all(),
+        )));
+
         static::saving(function (Lesson $lesson): void {
             if ($lesson->isDirty('summary') && ! $lesson->isDirty('summary_simple')) {
                 $lesson->setAttribute('summary_simple', null);
